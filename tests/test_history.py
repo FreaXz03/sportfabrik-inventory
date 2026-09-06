@@ -35,8 +35,8 @@ def test_not_found_and_validation(client):
         assert client.get(path).status_code==200
 
 def test_snapshot_preserved(client):
-    from app.catalog import get_session
-    from app.models import InvoiceItemSource, InvoiceItem
+    from app.core.database import get_session
+    from app.core.models import InvoiceItemSource, InvoiceItem
     from sqlalchemy import select
     dependency=client.app.dependency_overrides[get_session]
     generator=dependency();session=next(generator)

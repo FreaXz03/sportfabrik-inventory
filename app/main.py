@@ -2,17 +2,17 @@ from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
-from .dashboard import router as dashboard_router
+from .routers.dashboard import router as dashboard_router
 
 from fastapi import Depends, FastAPI
 from sqlalchemy import text
 
-from .auth import SESSION_MAX_AGE, SESSION_SECRET, require_login_page
-from .auth import router as auth_router
-from .database import engine
-from .preview import router as preview_router
-from .catalog import router as catalog_router
-from .history import router as history_router
+from .routers.auth import SESSION_MAX_AGE, SESSION_SECRET, require_login_page
+from .routers.auth import router as auth_router
+from .core.database import engine
+from .routers.preview import router as preview_router
+from .routers.catalog import router as catalog_router
+from .routers.history import router as history_router
 
 
 app = FastAPI(

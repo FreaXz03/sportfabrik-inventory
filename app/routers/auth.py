@@ -11,9 +11,9 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy import select
 
-from .database import get_session
-from .models import User
-from .security import verify_password
+from ..core.database import get_session
+from ..core.models import User
+from ..core.security import verify_password
 
 load_dotenv()
 
@@ -67,7 +67,7 @@ def require_chef_api(user: User = Depends(require_login_api)) -> User:
 
 @router.get("/login", include_in_schema=False)
 def login_page():
-    return FileResponse(Path(__file__).parent / "templates" / "login.html")
+    return FileResponse(Path(__file__).resolve().parents[1] / "templates" / "login.html")
 
 
 @router.post("/login")

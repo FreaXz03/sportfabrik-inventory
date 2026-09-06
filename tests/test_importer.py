@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import create_engine, select, func, event
 from sqlalchemy.orm import sessionmaker
 
-from app.models import Base, Product, Invoice, InvoiceItem, InvoiceItemSource
-from app.importer import import_invoice, ImportRejected
+from app.core.models import Base, Product, Invoice, InvoiceItem, InvoiceItemSource
+from app.services.importer import import_invoice, ImportRejected
 
 
 @pytest.fixture
@@ -63,7 +63,7 @@ def test_transaction_rollback(setup_import):
 
 
 def test_reuse_products_on_next_invoice(setup_import, monkeypatch):
-    from app import importer
+    from app.services import importer
     pdf, digest, sessions, _ = setup_import
     import_invoice(pdf, 'rechnung.pdf', digest, sessions)
     original_parse = importer.parse_invoice

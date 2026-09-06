@@ -4,10 +4,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 from .auth import require_chef_api, require_login_api, require_login_page
-from .catalog import get_session, contains
-from .database import SessionLocal
-from .importer import delete_invoice, DeleteRejected
-from .models import Product, Invoice, InvoiceItem, InvoiceItemSource
+from .catalog import contains
+from ..core.database import SessionLocal, get_session
+from ..services.importer import delete_invoice, DeleteRejected
+from ..core.models import Product, Invoice, InvoiceItem, InvoiceItemSource
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ router = APIRouter()
 @router.get('/invoices/{record_id}', include_in_schema=False)
 @router.get('/articles/{record_id}/history', include_in_schema=False)
 def history_page(record_id: int = 0, user=Depends(require_login_page)):
-    return FileResponse(Path(__file__).parent / 'templates' / 'history.html')
+    return FileResponse(Path(__file__).resolve().parents[1] / 'templates' / 'history.html')
 
 
 def invoice_data(invoice):

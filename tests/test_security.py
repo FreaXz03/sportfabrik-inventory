@@ -1,4 +1,4 @@
-from app.security import hash_password, verify_password
+from app.core.security import hash_password, verify_password
 
 
 def test_round_trip():

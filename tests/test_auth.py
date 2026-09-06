@@ -8,9 +8,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.main import app
-from app.database import get_session
-from app.models import Base, User
-from app.security import hash_password
+from app.core.database import get_session
+from app.core.models import Base, User
+from app.core.security import hash_password
 
 
 @pytest.fixture
@@ -126,7 +126,7 @@ def test_chef_passes_delete_rbac_gate(client, monkeypatch):
         calls["invoice_id"] = invoice_id
         return {"invoice_id": invoice_id, "invoice_number": "9001759392", "item_count": 0, "affected_products": 0}
 
-    monkeypatch.setattr("app.history.delete_invoice", fake_delete_invoice)
+    monkeypatch.setattr("app.routers.history.delete_invoice", fake_delete_invoice)
     login_chef(client)
     r = client.delete("/api/invoices/42")
     assert r.status_code == 200

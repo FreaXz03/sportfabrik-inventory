@@ -16,9 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import select  # noqa: E402
 
-from app.database import SessionLocal  # noqa: E402
-from app.models import User  # noqa: E402
-from app.security import hash_password  # noqa: E402
+from app.core.database import SessionLocal  # noqa: E402
+from app.core.models import User  # noqa: E402
+from app.core.security import hash_password  # noqa: E402
 
 
 def read_password() -> str:

@@ -128,7 +128,7 @@ ersten Start auf dem Linux-Server) macht stattdessen `alembic upgrade head`
 
 ## Künftige Schemaänderungen
 
-1. Modell in `app/models.py` anpassen.
+1. Modell in `app/core/models.py` anpassen.
 2. Migration erzeugen: `alembic revision --autogenerate -m "kurze Beschreibung"`.
 3. Die erzeugte Datei in `migrations/versions/` kontrollieren (Autogenerate
    erkennt nicht alles zuverlässig, z. B. Umbenennungen).

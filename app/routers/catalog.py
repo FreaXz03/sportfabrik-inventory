@@ -4,8 +4,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from .auth import require_login_api, require_login_page
-from .database import get_session  # re-exported: history.py/dashboard.py import get_session from here
-from .models import Product, Invoice, InvoiceItem
+from ..core.database import get_session
+from ..core.models import Product, Invoice, InvoiceItem
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get('/articles', include_in_schema=False)
 def articles_page(user=Depends(require_login_page)):
-    return FileResponse(Path(__file__).parent / 'templates' / 'articles.html')
+    return FileResponse(Path(__file__).resolve().parents[1] / 'templates' / 'articles.html')
 
 
 def contains(column, value):

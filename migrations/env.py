@@ -10,8 +10,8 @@ from alembic import context
 # Projekt-Root auf den Pfad, damit 'app' importierbar ist, egal von wo alembic aufgerufen wird.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.database import DATABASE_URL  # noqa: E402  (gleiche .env / DB_* Logik wie die App)
-from app.models import Base  # noqa: E402
+from app.core.database import DATABASE_URL  # noqa: E402  (gleiche .env / DB_* Logik wie die App)
+from app.core.models import Base  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

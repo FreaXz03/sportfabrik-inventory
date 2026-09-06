@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
 import hashlib
 from starlette.concurrency import run_in_threadpool
 from .auth import require_chef_api, require_chef_page
-from .parser import InvoiceParseError, parse_invoice
+from ..services.parser import InvoiceParseError, parse_invoice
 from pathlib import Path
 from fastapi.responses import FileResponse
 
@@ -12,7 +12,7 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 @router.get('/preview', include_in_schema=False)
 def preview_page(user=Depends(require_chef_page)):
-    return FileResponse(Path(__file__).parent / 'templates' / 'preview.html')
+    return FileResponse(Path(__file__).resolve().parents[1] / 'templates' / 'preview.html')
 
 
 @router.post('/upload-preview')
@@ -39,8 +39,8 @@ async def confirm_import(file: UploadFile, expected_hash: str = Form(...), confi
         data = await file.read(MAX_UPLOAD_BYTES + 1)
         if len(data) > MAX_UPLOAD_BYTES:
             raise HTTPException(413, 'Die PDF-Datei darf höchstens 20 MB gross sein.')
-        from .database import SessionLocal
-        from .importer import import_invoice, ImportRejected
+        from ..core.database import SessionLocal
+        from ..services.importer import import_invoice, ImportRejected
         from sqlalchemy.exc import SQLAlchemyError
         try:
             return await run_in_threadpool(import_invoice, data, file.filename, expected_hash, SessionLocal,

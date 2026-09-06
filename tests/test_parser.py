@@ -7,9 +7,9 @@ import pymupdf
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
-from app.auth import require_chef_api, require_chef_page
-from app.preview import router
-from app.parser import InvoiceParseError, decimal_value, parse_invoice
+from app.routers.auth import require_chef_api, require_chef_page
+from app.routers.preview import router
+from app.services.parser import InvoiceParseError, decimal_value, parse_invoice
 
 app = FastAPI()
 app.include_router(router)
@@ -87,5 +87,5 @@ def test_decimal(value, expected):
 
 
 def test_upload_limit(monkeypatch):
-    monkeypatch.setattr('app.preview.MAX_UPLOAD_BYTES', 4)
+    monkeypatch.setattr('app.routers.preview.MAX_UPLOAD_BYTES', 4)
     assert TestClient(app).post('/upload-preview', files={'file': ('large.pdf', b'12345')}).status_code == 413

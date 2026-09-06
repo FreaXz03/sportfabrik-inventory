@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 from .auth import require_login_api
-from .catalog import get_session
-from .models import Product, Invoice, InvoiceItem
+from ..core.database import get_session
+from ..core.models import Product, Invoice, InvoiceItem
 from .history import invoice_data
 router=APIRouter()
 @router.get('/api/dashboard')

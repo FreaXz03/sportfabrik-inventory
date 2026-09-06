@@ -6,9 +6,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from app.models import Base, Product, Invoice, InvoiceItem
-from app.auth import require_login_api, require_login_page
-from app.catalog import router, get_session
+from app.core.models import Base, Product, Invoice, InvoiceItem
+from app.routers.auth import require_login_api, require_login_page
+from app.routers.catalog import router
+from app.core.database import get_session
 
 @pytest.fixture
 def client():
@@ -26,7 +27,7 @@ def client():
                    InvoiceItem(product_id=p.id,invoice_id=older.id,quantity=Decimal('3'),unit='PAA',uvp=Decimal('180')),
                    InvoiceItem(product_id=p.id,invoice_id=older.id,quantity=Decimal('1'),unit='STK',uvp=Decimal('180'))])
     app=FastAPI();app.include_router(router)
-    from app.history import router as history_router
+    from app.routers.history import router as history_router
     app.include_router(history_router)
     # Diese Tests prüfen Katalog-/Historie-Logik, nicht die Zugriffsrechte (siehe tests/test_auth.py).
     app.dependency_overrides[require_login_api] = lambda: None

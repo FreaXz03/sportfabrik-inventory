@@ -9,7 +9,7 @@ import pymupdf
 from sqlalchemy import delete, func, select, or_, text
 from sqlalchemy.exc import IntegrityError
 
-from .models import Invoice, InvoiceItem, InvoiceItemSource, Product
+from ..core.models import Invoice, InvoiceItem, InvoiceItemSource, Product
 from .parser import parse_invoice
 
 
