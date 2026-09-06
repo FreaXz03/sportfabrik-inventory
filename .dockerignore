@@ -3,5 +3,8 @@
 !requirements-server.txt
 !app/
 !app/**
+!migrations/
+!migrations/**
+!alembic.ini
 app/**/__pycache__/
 app/**/*.pyc

@@ -88,5 +88,33 @@ docker compose --env-file .env.server start
 Daten erhalten bleiben sollen.** Eine Passwortänderung in `.env.server` ändert
 nicht automatisch das Passwort einer bereits initialisierten Datenbank.
 
-Die App legt fehlende Tabellen beim Start an. Änderungen an bestehenden Tabellen
-benötigen später eigene Migrationen; ein Neustart ersetzt diese nicht.
+Die App legt Tabellen nicht mehr selbst an. Datenbankschema wird mit Alembic
+verwaltet (Ordner `migrations/`). Der Container führt beim Start automatisch
+`alembic upgrade head` aus, bevor die App startet (siehe `Dockerfile`).
+
+## Alembic: einmalige Umstellung auf der bestehenden Windows-Datenbank
+
+Die lokale Windows-Datenbank hat ihre Tabellen bereits über die alte
+`create_all()`-Logik erhalten, bevor Migrationen eingeführt wurden. Damit
+Alembic nicht versucht, dieselben Tabellen ein zweites Mal anzulegen, einmalig
+im Projektordner (mit aktivierter `.venv`) ausführen:
+
+```powershell
+alembic stamp head
+```
+
+Das trägt nur in einer neuen Tabelle `alembic_version` ein, dass der aktuelle
+Stand ("baseline schema") bereits erreicht ist – es verändert keine
+bestehenden Daten oder Tabellen. Auf einer neuen, leeren Datenbank (z. B. beim
+ersten Start auf dem Linux-Server) macht stattdessen `alembic upgrade head`
+(automatisch beim Containerstart) alle Tabellen von Grund auf.
+
+## Künftige Schemaänderungen
+
+1. Modell in `app/models.py` anpassen.
+2. Migration erzeugen: `alembic revision --autogenerate -m "kurze Beschreibung"`.
+3. Die erzeugte Datei in `migrations/versions/` kontrollieren (Autogenerate
+   erkennt nicht alles zuverlässig, z. B. Umbenennungen).
+4. Lokal testen: `alembic upgrade head`.
+5. Migration zusammen mit der Codeänderung committen. Beim nächsten Deployment
+   wendet der Container sie automatisch an.
