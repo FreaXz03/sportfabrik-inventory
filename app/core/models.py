@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Numeric, String, JSON
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Numeric, String, JSON, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -65,6 +65,12 @@ class Invoice(Base):
 
     imported_by_kassennummer: Mapped[str | None] = mapped_column(String(20))
     imported_by_name: Mapped[str | None] = mapped_column(String(100))
+
+    # True when this invoice's PDF had no text layer (a paper invoice that
+    # arrived in the package and was scanned instead of received digitally)
+    # and had to be read via OCR - see app/services/ocr.py. OCR is less
+    # reliable than a native text layer, so this stays visible for later audits.
+    ocr_used: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text('false'))
 
 
 class InvoiceItem(Base):

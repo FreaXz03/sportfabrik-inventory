@@ -18,6 +18,7 @@ flowchart TB
     subgraph services["app/services/ — Fachlogik"]
         importer["importer.py<br/>Import/Löschung"]
         parser["parser.py<br/>PDF → Positionen"]
+        ocr["ocr.py<br/>OCR-Fallback für Scans ohne Textebene"]
     end
     subgraph core["app/core/ — Fundament"]
         database["database.py<br/>Engine, Session"]
@@ -32,6 +33,7 @@ flowchart TB
     auth --> core
     preview --> importer
     preview --> parser
+    parser --> ocr
     history --> importer
 ```
 
@@ -119,6 +121,36 @@ unsichere Zeile bekommt eine Warnung, die den Import blockiert, bis sie
 manuell geprüft wurde. Ein unbekanntes Rechnungslayout (fehlender
 Tabellenkopf) führt zu einem expliziten Fehler statt zu stillem
 Fehlverhalten.
+
+## OCR-Fallback für gescannte Papierrechnungen
+
+Ganz selten kommt eine Rechnung nicht digital per Mail, sondern nur als
+Papier im Paket. Ein Scan davon ist eine PDF ohne Textebene (reines
+Rasterbild je Seite) und würde beim normalen Parsing sofort mit
+"Tabellenkopf fehlt" scheitern. `parser.page_content()` prüft deshalb je
+Seite zuerst `page.get_text("words")`; liefert das nichts, übernimmt
+`app/services/ocr.py` die Seite:
+
+1. Seite mit PyMuPDF als Bild rendern (300 DPI); Tesseracts
+   Ausrichtungserkennung (OSD) korrigiert eine noch falsche Drehung, falls
+   der Scan sie nicht schon selbst im PDF vermerkt hat.
+2. Tesseract liest Wörter samt Positionen aus dem Bild.
+3. Die Pixel-Koordinaten werden in PDF-Punkte umgerechnet und je
+   erkannter Textzeile auf eine gemeinsame Höhe normalisiert, sodass das
+   Ergebnis exakt wie PyMuPDFs eigene `words`-Liste aussieht — die
+   bestehende Tabellenerkennung in `parser.py` (Kopfzeilensuche,
+   Spaltengrenzen, Zeilengruppierung) läuft danach unverändert weiter,
+   ganz gleich ob die Wörter aus der Textebene oder per OCR stammen.
+
+OCR-Seiten und die daraus gelesenen Positionen werden mit `ocr_used`
+markiert (bis in die Datenbank, `Invoice.ocr_used`); die Vorschau zeigt
+dafür einen eigenen Hinweis, der zu besonders sorgfältiger Kontrolle rät,
+blockiert den Import über diese Markierung allein aber nicht — nur
+echte Datenprobleme (fehlende Pflichtfelder, uneindeutige Farbe/Grösse
+usw.) tun das, genau wie bei digital erhaltenen Rechnungen. Ist
+Tesseract auf dem Rechner nicht installiert, meldet der Upload einen
+klaren Fehler statt eines stillen Fehlschlags (siehe `README.md` fürs
+lokale Setup; im Docker-Image ist Tesseract bereits enthalten).
 
 ## Fehlerbehandlung
 

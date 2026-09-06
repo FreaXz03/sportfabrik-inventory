@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select, or_, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.models import Invoice, InvoiceItem, InvoiceItemSource, Product
-from .parser import parse_invoice
+from .parser import page_content, parse_invoice
 
 
 class ImportRejected(ValueError):
@@ -22,14 +22,19 @@ class DeleteRejected(ValueError):
 
 
 def invoice_dates(pdf):
+    # Uses the same native-text-or-OCR fallback as parse_invoice, so dates are
+    # still found on scanned (paper) invoices - see parser.py. All pages are
+    # searched, not just the first: a scanned invoice's pages are not always
+    # in the order a digital export always uses (the header block with these
+    # dates can end up scanned onto a later page).
     with pymupdf.open(stream=pdf, filetype='pdf') as doc:
-        words = doc[0].get_text('words')
+        pages_words = [page_content(page)[0] for page in doc]
     result = {}
     for label, key in [('Rechnungsdatum', 'invoice_date'), ('Belegdatum', 'document_date')]:
-        anchors = [w for w in words if w[4] == label]
+        anchors = [(words, w) for words in pages_words for w in words if w[4] == label]
         if len(anchors) != 1:
             raise ImportRejected(f'{label} nicht eindeutig erkannt.')
-        anchor = anchors[0]
+        words, anchor = anchors[0]
         candidates = [w[4] for w in words if w[0] > anchor[2] and abs(w[1]-anchor[1]) < 2
                       and re.fullmatch(r'\d{2}\.\d{2}\.\d{4}', w[4])]
         if len(candidates) != 1:
@@ -71,7 +76,8 @@ def import_invoice(pdf, filename, expected_hash, session_factory, imported_by=No
             invoice = Invoice(invoice_number=parsed['invoice_number'], file_hash=digest,
                 filename=(filename or 'rechnung.pdf')[:500], supplier='INTERSPORT Schweiz AG',
                 imported_by_kassennummer=(imported_by or {}).get('kassennummer'),
-                imported_by_name=(imported_by or {}).get('name'), **dates)
+                imported_by_name=(imported_by or {}).get('name'),
+                ocr_used=bool(parsed.get('ocr_used')), **dates)
             session.add(invoice)
             session.flush()
             new_products, reused = 0, set()

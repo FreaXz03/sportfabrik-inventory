@@ -6,7 +6,10 @@ ihre `.env` bleiben weiter nutzbar.
 
 ## Dateien
 
-- `Dockerfile`: App ohne Entwicklungsmodus, als Benutzer ohne Root-Rechte.
+- `Dockerfile`: App ohne Entwicklungsmodus, als Benutzer ohne Root-Rechte;
+  installiert auch Tesseract OCR (für eingescannte Papierrechnungen ohne
+  Textebene) — auf dem Server ist dafür kein manueller Schritt nötig,
+  anders als beim lokalen Windows-Setup (siehe `README.md`).
 - `requirements-server.txt`: Serverpakete getrennt von der Windows-Installation.
 - `compose.yaml`: App und PostgreSQL 18, dauerhaftes Datenvolume, Startprüfungen.
 - `.env.server.example`: Vorlage für Servereinstellungen.

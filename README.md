@@ -15,6 +15,8 @@ Chefs dürfen Rechnungen hochladen, importieren und löschen.
 - **Backend**: FastAPI + SQLAlchemy 2.0, Python 3.10+
 - **Datenbank**: PostgreSQL, Schema-Verwaltung über Alembic-Migrationen
 - **PDF-Parsing**: PyMuPDF (wortkoordinatenbasierte Tabellenerkennung)
+- **OCR**: Tesseract (über `pytesseract`) als Fallback für eingescannte
+  Papierrechnungen ohne Textebene
 - **Frontend**: Vanilla HTML/CSS/JS, kein Framework, keine Build-Pipeline
 - **Tests**: pytest
 - **Deployment**: Docker / docker compose (siehe [`SERVER-SETUP.md`](SERVER-SETUP.md))
@@ -53,6 +55,7 @@ app/
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen
     parser.py          PDF-Rechnungen in strukturierte Positionen umwandeln
+    ocr.py              OCR-Fallback (Tesseract) für gescannte Seiten ohne Textebene
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skript
@@ -76,6 +79,19 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+Für den OCR-Fallback bei eingescannten Papierrechnungen zusätzlich
+Tesseract OCR installieren — das ist ein externes Programm, kein
+Python-Paket, deshalb nicht in `requirements.txt` enthalten:
+Windows-Installer von
+[github.com/UB-Mannheim/tesseract/wiki](https://github.com/UB-Mannheim/tesseract/wiki)
+herunterladen, bei den "Additional language data" die Sprachpakete
+Deutsch (`deu`) und Ausrichtungserkennung (`osd`) mit auswählen, und den
+Installationsordner (Standard `C:\Program Files\Tesseract-OCR`) zum
+`PATH` hinzufügen. Ohne Tesseract läuft die App normal weiter — nur
+eingescannte (nicht digital per Mail erhaltene) Rechnungen können dann
+nicht hochgeladen werden. Auf dem Linux-Server ist Tesseract bereits im
+Docker-Image enthalten, dort ist kein zusätzlicher Schritt nötig.
 
 `.env` anlegen (nicht eingecheckt) mit mindestens:
 

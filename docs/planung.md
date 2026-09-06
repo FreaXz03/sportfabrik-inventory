@@ -37,9 +37,10 @@ kommen aktuell primär von INTERSPORT Schweiz AG per PDF-Rechnung.
 | F10 | Nur Chefs dürfen Rechnungen hochladen, importieren und löschen; Mitarbeiter dürfen nur ansehen/suchen | RBAC-Dependencies (`require_chef_*` / `require_login_*`) |
 | F11 | Nachvollziehbar, welche Person (Kassennummer/Name) eine Rechnung importiert hat | `imported_by_kassennummer`/`imported_by_name` auf `Invoice` |
 | F12 | Betrieb auf einem Linux-Server im Geschäft, Zugriff über das lokale Netz | Docker/Compose, `SERVER-SETUP.md` |
+| F13 | Eingescannte Papierrechnungen ohne digitale Textebene (Ausnahmefall: Rechnung liegt nur auf Papier im Paket, kein Mail-PDF) per OCR lesbar machen | `app/services/ocr.py`, `parser.page_content()` |
 
-F9–F11 wurden erst nachträglich in dieser Session ergänzt; F1–F8 und F12
-waren zu Beginn der Session bereits umgesetzt.
+F9–F11 und F13 wurden erst nachträglich in dieser Session ergänzt; F1–F8
+und F12 waren zu Beginn der Session bereits umgesetzt.
 
 ## Nicht-funktionale Anforderungen (rekonstruiert)
 
@@ -67,7 +68,8 @@ waren zu Beginn der Session bereits umgesetzt.
 | 3 | 2026-09-06, 13:28 | Anmeldung und rollenbasierte Zugriffsrechte umgesetzt (Kassensystem-Muster); Benutzerverwaltung per CLI-Skript (`scripts/manage_users.py`) |
 | 4 | 2026-09-06, 13:59 | UI-Korrekturen: defekter „Zurücksetzen"-Knopf repariert (ID-Namenskollision mit `HTMLFormElement.reset`), Upload-Hinweis für Mitarbeiter ausgeblendet, Nachvollziehbarkeit ergänzt (wer hat eine Rechnung importiert) |
 | 5 | 2026-09-06, 14:13 | Ordnerstruktur aufgeräumt (`app/` in `core/`, `routers/`, `services/` gegliedert; `static/` nach Dateityp sortiert); `README.md` ergänzt |
-| 6 | 2026-09-06, laufend | Vorliegende Gesamtdokumentation (dieses Dokument, `architektur.md`, `datenmodell.md`, `api-referenz.md`, sowie ein zusammengefasstes Word-Dokument) |
+| 6 | 2026-09-06, 15:20 | Vorliegende Gesamtdokumentation (dieses Dokument, `architektur.md`, `datenmodell.md`, `api-referenz.md`, sowie ein zusammengefasstes Word-Dokument) |
+| 7 | 2026-09-06, laufend | OCR-Fallback für eingescannte Papierrechnungen ohne Textebene (`app/services/ocr.py`), inkl. Testabdeckung (`tests/test_ocr.py`) und Migration für `Invoice.ocr_used` |
 
 ## Zentrale Entscheidungen (mit Begründung)
 
@@ -123,6 +125,20 @@ Dateien auf einer Ebene.
 Begründung: Benutzerkonten ändern sich selten (neue Mitarbeiter, neue
 Chefs); eine eigene Weboberfläche dafür stünde in keinem Verhältnis zum
 Nutzen bei vier PCs und einer Handvoll Konten.
+
+**E11 — OCR-Fallback statt eigenem Bild-Parser für gescannte Rechnungen.**
+Fehlt einer PDF-Seite jede Textebene (Papierrechnung eingescannt statt
+digital per Mail erhalten), rendert `app/services/ocr.py` die Seite und
+liest sie per Tesseract OCR; die erkannten Wörter werden exakt wie
+PyMuPDF-Wortkoordinaten aufbereitet, sodass die bestehende
+Tabellenerkennung in `parser.py` unverändert weiterverwendet werden kann.
+Begründung: eine eigene, parallele Bild-Parsing-Logik hätte dieselbe
+Spaltenerkennung ein zweites Mal, fehleranfällig, nachbauen müssen. OCR
+ist grundsätzlich weniger zuverlässig als eine native Textebene; Positionen
+und Rechnungen aus OCR werden deshalb explizit markiert (`ocr_used`) und
+in der Vorschau mit einem Hinweis zur besonders sorgfältigen Prüfung
+versehen — der Import bleibt aber möglich, solange keine echten
+Datenprobleme vorliegen (OCR-Nutzung allein blockiert den Import nicht).
 
 ## Offene Punkte
 

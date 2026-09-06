@@ -8,6 +8,8 @@ import re
 
 import pymupdf
 
+from . import ocr
+
 
 class InvoiceParseError(ValueError):
     pass
@@ -33,11 +35,32 @@ def joined(words):
     return " ".join(w[4] for w in words).strip()
 
 
+def page_content(page):
+    """Return (words, text, height, ocr_used) for a page.
+
+    Falls back to OCR when a page has no extractable text at all - a paper
+    invoice that was scanned instead of received digitally. OCR-derived
+    words are shaped exactly like PyMuPDF's own word tuples (see ocr.py) so
+    everything below this function is unaware of where the words came from.
+    """
+    words = page.get_text("words")
+    if words:
+        return words, page.get_text(), page.rect.height, False
+    try:
+        result = ocr.ocr_page(page)
+    except ocr.OcrUnavailableError as exc:
+        raise InvoiceParseError(str(exc)) from exc
+    return result['words'], result['text'], result['height'], True
+
+
 def parse_invoice(pdf_data: bytes) -> dict:
     """Return all occurrences, identifiers as text and exact decimals as strings.
 
-    No database imports, file writes, OCR or silent deduplication. Uncertain
-    rows remain in the preview with warnings. Unknown layouts fail explicitly.
+    No database imports, file writes or silent deduplication. Uncertain rows
+    remain in the preview with warnings. Unknown layouts fail explicitly.
+    Pages without a text layer (scanned paper invoices) are read via OCR
+    (see ocr.py); such pages are listed in the returned ocr_pages field so
+    callers can prompt for extra-careful review - OCR is not 100% reliable.
     """
     try:
         document = pymupdf.open(stream=pdf_data, filetype="pdf")
@@ -48,11 +71,12 @@ def parse_invoice(pdf_data: bytes) -> dict:
             raise InvoiceParseError("Passwortgeschützte PDFs werden nicht unterstützt.")
         if not 1 <= len(document) <= 200:
             raise InvoiceParseError("Erlaubt sind 1 bis 200 Seiten.")
-        items, warnings, counts = [], [], []
+        items, warnings, counts, ocr_pages = [], [], [], []
         invoice_number = None
         for page_index, page in enumerate(document):
-            words = page.get_text("words")
-            text = page.get_text()
+            words, text, page_height, page_ocr_used = page_content(page)
+            if page_ocr_used:
+                ocr_pages.append(page_index + 1)
             match = re.search(r"Rechnung\s+Nr\.\s*(\d+)", text)
             if match:
                 if invoice_number and invoice_number != match[1]:
@@ -61,7 +85,8 @@ def parse_invoice(pdf_data: bytes) -> dict:
             rows = lines(words)
             headers = [r for r in rows if {"Marke", "FEDAS", "EAN", "Bezeichnung", "Menge", "Einheit", "UVP", "Preis"} <= {w[4] for w in r}]
             if len(headers) != 1:
-                raise InvoiceParseError(f"Seite {page_index + 1}: INTERSPORT-Tabellenkopf fehlt oder ist mehrdeutig (Scan/anderes Layout).")
+                hint = " (Scan per OCR gelesen; bitte Bildqualität/Ausrichtung prüfen)" if page_ocr_used else " (Scan/anderes Layout)"
+                raise InvoiceParseError(f"Seite {page_index + 1}: INTERSPORT-Tabellenkopf fehlt oder ist mehrdeutig{hint}.")
             header = headers[0]
             h = {w[4]: w for w in header}
             # Left-aligned text columns; numeric columns are bounded by the
@@ -77,7 +102,7 @@ def parse_invoice(pdf_data: bytes) -> dict:
             top = max(w[3] for w in header)
             stop = min([w[1] for w in words if w[1] > top and
                         (w[4] in {"Rechnungsrabatt", "INTERSPORT", "MWST", "MWST-Betrag"}
-                         or w[4] == "Total" )] or [page.rect.height-50])
+                         or w[4] == "Total" )] or [page_height-50])
             body = [r for r in rows if top < r[0][1] < stop and max(w[3]-w[1] for w in r) > 3]
             current = None
             page_items = []
@@ -102,6 +127,7 @@ def parse_invoice(pdf_data: bytes) -> dict:
                 else:
                     warnings.append(f"Seite {page_index+1}: nicht zugeordnete Zeile: {joined(row)}")
             for item in page_items:
+                item['ocr_used'] = page_ocr_used
                 desc = item['description_lines']
                 variant_index = next((i for i, s in enumerate(desc) if i > 0 and '(' in s), None)
                 item.update(color=None, size=None, variant_raw=None)
@@ -139,7 +165,7 @@ def parse_invoice(pdf_data: bytes) -> dict:
         return dict(invoice_number=invoice_number, pages=len(document), item_count=len(items),
                     page_item_counts=counts, items=items, duplicate_eans=duplicates,
                     warnings=warnings, rows_with_warnings=sum(bool(i['warnings']) for i in items),
-                    preview_only=True)
+                    preview_only=True, ocr_used=bool(ocr_pages), ocr_pages=ocr_pages)
 
 
 if __name__ == '__main__':
