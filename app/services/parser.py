@@ -35,6 +35,32 @@ def joined(words):
     return " ".join(w[4] for w in words).strip()
 
 
+def _collapsed(word):
+    """Lower-case a word, drop a trailing period and collapse consecutive
+    duplicate letters - normalises the OCR spelling jitter seen on a short,
+    recurring printed note ("MwSt." also read back as "Mwst." or "MwsSt.",
+    a doubled letter) so it can be matched against a known, exact phrase."""
+    word = word.lower().rstrip('.')
+    result = []
+    for ch in word:
+        if not result or result[-1] != ch:
+            result.append(ch)
+    return ''.join(result)
+
+
+# A short "Preise inkl. MwSt."-style disclaimer note prints right above the
+# item table on this INTERSPORT paper-invoice layout (a "Lieferschein"
+# enclosed in the package rather than the standard emailed PDF, which does
+# not appear to carry it - see docs/architektur.md). It sits inside the
+# table's row range but is not an item, so it would otherwise show up as an
+# "unassigned line" warning on every single page of every invoice of this
+# type - not a real problem, but with the all-or-nothing warning policy it
+# would permanently block importing this whole class of invoice. Recognised
+# exactly (not as a loose keyword match) so it never masks a genuine
+# unrecognised line elsewhere in the table.
+_IGNORABLE_ROWS = {"mwst", "inkl mwst"}
+
+
 def page_content(page):
     """Return (words, text, height, ocr_used) for a page.
 
@@ -95,7 +121,13 @@ def parse_invoice(pdf_data: bytes) -> dict:
             arts = [w[0] for w in header if w[4] == "Art."]
             if lief is None or len(arts) != 2:
                 raise InvoiceParseError("Artikelspalten konnten nicht erkannt werden.")
-            bounds = [h['Marke'][0]-3, h['FEDAS'][0]-3, lief-3, arts[-1]-3,
+            # Marke has no column to its left, so its start gets extra left
+            # margin (unlike the others, widening it can't bleed into a
+            # neighbouring column): a leading quote character in the brand
+            # name (e.g. a quoted "Giro") gets its own, wider OCR bounding
+            # box than the letter after it, which can otherwise push the
+            # word's left edge past a tight 3pt margin and drop it entirely.
+            bounds = [h['Marke'][0]-15, h['FEDAS'][0]-3, lief-3, arts[-1]-3,
                       h['EAN'][0]-3, h['Bezeichnung'][0]-3,
                       h['Menge'][0]-3, h['Menge'][2]+3,
                       h['Einheit'][2]+3, h['UVP'][2]+3]
@@ -125,7 +157,9 @@ def parse_invoice(pdf_data: bytes) -> dict:
                     if continuation:
                         current['description_lines'].append(continuation)
                 else:
-                    warnings.append(f"Seite {page_index+1}: nicht zugeordnete Zeile: {joined(row)}")
+                    row_text = joined(row)
+                    if ' '.join(_collapsed(w[4]) for w in row) not in _IGNORABLE_ROWS:
+                        warnings.append(f"Seite {page_index+1}: nicht zugeordnete Zeile: {row_text}")
             for item in page_items:
                 item['ocr_used'] = page_ocr_used
                 desc = item['description_lines']

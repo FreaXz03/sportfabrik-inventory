@@ -33,7 +33,10 @@ _POINTS_PER_PIXEL = 72 / OCR_DPI
 
 # Table borders and smudges are frequently misread by OCR as stray
 # underscores, pipes or similar marks glued to the start/end of a real word.
-_NOISE = re.compile(r"^[_|~¦†‡•·=]+|[_|~¦†‡•·=]+$")
+# Quote characters around a quoted brand name (e.g. a printed "Giro") are
+# kept by Tesseract as part of that word too - strip those as well so the
+# same brand reads identically whether or not the original print quoted it.
+_NOISE = re.compile(r"^[_|~¦†‡•·=\"'‘’“”]+|[_|~¦†‡•·=\"'‘’“”]+$")
 
 _UNAVAILABLE_MESSAGE = (
     "Diese Datei enthält keinen lesbaren Text (vermutlich ein eingescanntes "
