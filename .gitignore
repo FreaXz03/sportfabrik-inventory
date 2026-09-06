@@ -1,0 +1,9 @@
+.venv/
+.env
+__pycache__/
+uploads/
+.env.server
+backups/
+Recchnungen/
+output/
+.pytest_cache/

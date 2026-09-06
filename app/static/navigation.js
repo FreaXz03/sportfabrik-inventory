@@ -1,0 +1,1 @@
+document.querySelectorAll('nav a').forEach(a=>{const p=location.pathname;if(a.pathname==='/'?p==='/':p.startsWith(a.pathname))a.setAttribute('aria-current','page');});
