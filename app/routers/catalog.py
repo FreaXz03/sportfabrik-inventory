@@ -1,4 +1,6 @@
 from pathlib import Path
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func, or_
@@ -8,6 +10,22 @@ from ..core.database import get_session
 from ..core.models import Product, Invoice, InvoiceItem
 
 router = APIRouter()
+
+# Whitelist of columns the article table may be sorted by. Only real,
+# per-product columns are sortable - "Geliefert gesamt" and "Letzter
+# UVP"/"UVP vom" are computed after pagination from separate queries
+# below and are intentionally left out.
+SORTABLE_COLUMNS = {
+    'brand': Product.brand,
+    'description': Product.description,
+    'article_no': Product.article_no,
+    'supplier_article_no': Product.supplier_article_no,
+    'ean': Product.ean,
+    'color': Product.color,
+    'size': Product.size,
+    'first_seen': Product.first_seen,
+    'last_seen': Product.last_seen,
+}
 
 
 
@@ -36,6 +54,9 @@ def articles(q: str = Query('', max_length=200), brand: str = Query('', max_leng
              ean: str = Query('', max_length=30), article_no: str = Query('', max_length=100),
              description: str = Query('', max_length=500),
              page: int = Query(1, ge=1), page_size: int = Query(25, ge=1, le=100),
+             sort_by: Literal['brand', 'description', 'article_no', 'supplier_article_no',
+                               'ean', 'color', 'size', 'first_seen', 'last_seen'] = Query('brand'),
+             sort_dir: Literal['asc', 'desc'] = Query('asc'),
              user=Depends(require_login_api), session=Depends(get_session)):
     conditions = []
     if q.strip():
@@ -53,8 +74,10 @@ def articles(q: str = Query('', max_length=200), brand: str = Query('', max_leng
         conditions.append(contains(Product.description, description))
     try:
         total = session.scalar(select(func.count()).select_from(Product).where(*conditions))
+        sort_column = SORTABLE_COLUMNS[sort_by]
+        primary = sort_column.desc() if sort_dir == 'desc' else sort_column.asc()
         products = session.scalars(select(Product).where(*conditions).order_by(
-            Product.brand.asc().nulls_last(), Product.description.asc().nulls_last(), Product.id
+            primary.nulls_last(), Product.id
         ).offset((page-1)*page_size).limit(page_size)).all()
         ids = [p.id for p in products]
         totals = {}
@@ -81,6 +104,7 @@ def articles(q: str = Query('', max_length=200), brand: str = Query('', max_leng
             item.update(delivered=totals.get(p.id, []), latest_uvp=format(price['uvp'], 'f')
                 if price else None, uvp_date=price['invoice_date'] if price else None)
             items.append(item)
-        return {'items': items, 'total': total, 'page': page, 'page_size': page_size}
+        return {'items': items, 'total': total, 'page': page, 'page_size': page_size,
+                'sort_by': sort_by, 'sort_dir': sort_dir}
     except SQLAlchemyError as exc:
         raise HTTPException(503, 'Artikelsuche fehlgeschlagen. Bitte die Datenbankverbindung prüfen.') from exc

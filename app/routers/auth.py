@@ -61,7 +61,7 @@ def require_chef_page(user: User = Depends(require_login_page)) -> User:
 
 def require_chef_api(user: User = Depends(require_login_api)) -> User:
     if user.role != "chef":
-        raise HTTPException(403, "Dafür ist ein Chef-Konto nötig.")
+        raise HTTPException(403, "Dafür ist ein Filialleiter-Konto nötig.")
     return user
 
 

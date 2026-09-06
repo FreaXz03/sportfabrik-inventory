@@ -67,3 +67,22 @@ def test_pages(client):
 def test_page_and_brands(client):
     assert client.get('/articles').status_code==200
     assert client.get('/api/brands').json()==['Hoka','Nike']
+
+@pytest.mark.parametrize('sort_dir,expected',[('asc',['Hoka','Nike']),('desc',['Nike','Hoka'])])
+def test_sort_by_brand(client,sort_dir,expected):
+    data=client.get('/api/articles',params={'sort_by':'brand','sort_dir':sort_dir}).json()
+    assert [item['brand'] for item in data['items']]==expected
+    assert data['sort_by']=='brand' and data['sort_dir']==sort_dir
+
+def test_sort_by_description_desc(client):
+    data=client.get('/api/articles',params={'sort_by':'description','sort_dir':'desc'}).json()
+    assert [item['description'] for item in data['items']]==['Bondi 9','100%_Cotton']
+
+def test_sort_invalid_column_rejected(client):
+    assert client.get('/api/articles',params={'sort_by':'latest_uvp'}).status_code==422
+    assert client.get('/api/articles',params={'sort_dir':'sideways'}).status_code==422
+
+def test_sort_default_unchanged(client):
+    # No sort params given: behaviour matches the previous default ordering.
+    data=client.get('/api/articles').json()
+    assert [item['brand'] for item in data['items']]==['Hoka','Nike']
