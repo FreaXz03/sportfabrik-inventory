@@ -2,7 +2,7 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
+from sqlalchemy import create_engine
 from sqlalchemy import pool
 
 from alembic import context
@@ -29,7 +29,8 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Immer dieselbe URL wie die laufende App verwenden (.env lokal, DB_HOST/DB_PASSWORD im Container).
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# Pass the URL directly to SQLAlchemy/Alembic. ConfigParser only accepts
+# strings and also interprets percent signs in encoded passwords.
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -49,9 +50,8 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -68,9 +68,8 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_engine(
+        DATABASE_URL,
         poolclass=pool.NullPool,
     )
 
