@@ -6,5 +6,7 @@
 !migrations/
 !migrations/**
 !alembic.ini
+!scripts/
+!scripts/**
 app/**/__pycache__/
 app/**/*.pyc

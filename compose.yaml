@@ -24,6 +24,7 @@ services:
       DB_NAME: inventory_db
       DB_USER: inventory
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.server}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env.server}
     ports:
       - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-8080}:8000"
     depends_on:

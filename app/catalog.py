@@ -3,19 +3,16 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
-from .database import SessionLocal
+from .auth import require_login_api, require_login_page
+from .database import get_session  # re-exported: history.py/dashboard.py import get_session from here
 from .models import Product, Invoice, InvoiceItem
 
 router = APIRouter()
 
 
-def get_session():
-    with SessionLocal() as session:
-        yield session
-
 
 @router.get('/articles', include_in_schema=False)
-def articles_page():
+def articles_page(user=Depends(require_login_page)):
     return FileResponse(Path(__file__).parent / 'templates' / 'articles.html')
 
 
@@ -26,7 +23,7 @@ def contains(column, value):
 
 
 @router.get('/api/brands')
-def brands(session=Depends(get_session)):
+def brands(user=Depends(require_login_api), session=Depends(get_session)):
     try:
         return session.scalars(select(Product.brand).where(Product.brand.is_not(None),
             Product.brand != '').distinct().order_by(Product.brand)).all()
@@ -39,7 +36,7 @@ def articles(q: str = Query('', max_length=200), brand: str = Query('', max_leng
              ean: str = Query('', max_length=30), article_no: str = Query('', max_length=100),
              description: str = Query('', max_length=500),
              page: int = Query(1, ge=1), page_size: int = Query(25, ge=1, le=100),
-             session=Depends(get_session)):
+             user=Depends(require_login_api), session=Depends(get_session)):
     conditions = []
     if q.strip():
         conditions.append(or_(*(contains(c, q) for c in (Product.brand,

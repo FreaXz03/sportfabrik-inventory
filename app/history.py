@@ -3,7 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
+from .auth import require_chef_api, require_login_api, require_login_page
 from .catalog import get_session, contains
+from .database import SessionLocal
+from .importer import delete_invoice, DeleteRejected
 from .models import Product, Invoice, InvoiceItem, InvoiceItemSource
 
 router = APIRouter()
@@ -11,7 +14,7 @@ router = APIRouter()
 @router.get('/invoices', include_in_schema=False)
 @router.get('/invoices/{record_id}', include_in_schema=False)
 @router.get('/articles/{record_id}/history', include_in_schema=False)
-def history_page(record_id: int = 0):
+def history_page(record_id: int = 0, user=Depends(require_login_page)):
     return FileResponse(Path(__file__).parent / 'templates' / 'history.html')
 
 
@@ -22,7 +25,8 @@ def invoice_data(invoice):
 
 @router.get('/api/invoices')
 def invoices(q: str = Query('', max_length=200), page: int = Query(1, ge=1),
-             page_size: int = Query(25, ge=1, le=100), session=Depends(get_session)):
+             page_size: int = Query(25, ge=1, le=100),
+             user=Depends(require_login_api), session=Depends(get_session)):
     try:
         condition = [contains(Invoice.invoice_number,q)] if q.strip() else []
         total=session.scalar(select(func.count()).select_from(Invoice).where(*condition))
@@ -57,7 +61,8 @@ def positions(session, condition, page, page_size, chronological=False):
 
 
 @router.get('/api/invoices/{invoice_id}')
-def invoice_detail(invoice_id:int, page:int=Query(1,ge=1),page_size:int=Query(25,ge=1,le=100),session=Depends(get_session)):
+def invoice_detail(invoice_id:int, page:int=Query(1,ge=1),page_size:int=Query(25,ge=1,le=100),
+                    user=Depends(require_login_api), session=Depends(get_session)):
     try:
         invoice=session.get(Invoice,invoice_id)
         if invoice is None: raise HTTPException(404,'Rechnung nicht gefunden.')
@@ -67,7 +72,8 @@ def invoice_detail(invoice_id:int, page:int=Query(1,ge=1),page_size:int=Query(25
 
 
 @router.get('/api/articles/{product_id}/history')
-def article_history(product_id:int,page:int=Query(1,ge=1),page_size:int=Query(25,ge=1,le=100),session=Depends(get_session)):
+def article_history(product_id:int,page:int=Query(1,ge=1),page_size:int=Query(25,ge=1,le=100),
+                     user=Depends(require_login_api), session=Depends(get_session)):
     try:
         product=session.get(Product,product_id)
         if product is None: raise HTTPException(404,'Artikel nicht gefunden.')
@@ -75,3 +81,13 @@ def article_history(product_id:int,page:int=Query(1,ge=1),page_size:int=Query(25
             **positions(session,InvoiceItem.product_id==product_id,page,page_size,True))
     except SQLAlchemyError as exc:
         raise HTTPException(503,'Artikelhistorie konnte nicht geladen werden.') from exc
+
+
+@router.delete('/api/invoices/{invoice_id}')
+def remove_invoice(invoice_id: int, user=Depends(require_chef_api)):
+    try:
+        return delete_invoice(invoice_id, SessionLocal)
+    except DeleteRejected as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, 'Rechnung konnte nicht gelöscht werden. Bitte erneut versuchen.') from exc

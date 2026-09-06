@@ -1,11 +1,12 @@
-"""Atomic, duplicate-safe imports. Call only after explicit preview confirmation."""
+"""Atomic, duplicate-safe imports and deletions. Import: call only after explicit
+preview confirmation. Deletion: chef-only, see app/auth.py."""
 from datetime import datetime
 from decimal import Decimal
 import hashlib
 import re
 
 import pymupdf
-from sqlalchemy import select, or_, text
+from sqlalchemy import delete, func, select, or_, text
 from sqlalchemy.exc import IntegrityError
 
 from .models import Invoice, InvoiceItem, InvoiceItemSource, Product
@@ -13,6 +14,10 @@ from .parser import parse_invoice
 
 
 class ImportRejected(ValueError):
+    pass
+
+
+class DeleteRejected(ValueError):
     pass
 
 
@@ -96,3 +101,40 @@ def import_invoice(pdf, filename, expected_hash, session_factory):
         return result
     except IntegrityError as exc:
         raise ImportRejected('Datenkonflikt: Der Import wurde vollständig zurückgerollt. Bitte Vorschau erneut prüfen.') from exc
+
+
+def delete_invoice(invoice_id: int, session_factory) -> dict:
+    """Löscht eine Rechnung samt Positionen und Originaltexten unwiderruflich.
+
+    Betroffene Artikel (first_seen/last_seen) werden aus den verbleibenden
+    Lieferungen neu berechnet, statt veraltete Werte stehen zu lassen.
+    """
+    with session_factory() as session, session.begin():
+        # Dieselbe Sperre wie beim Import: verhindert, dass ein gleichzeitiger
+        # Import/Löschvorgang mit denselben Artikeln first_seen/last_seen falsch berechnet.
+        if session.bind.dialect.name == 'postgresql':
+            session.execute(text('SELECT pg_advisory_xact_lock(73421061)'))
+        invoice = session.get(Invoice, invoice_id)
+        if invoice is None:
+            raise DeleteRejected(f'Rechnung {invoice_id} wurde nicht gefunden.')
+        invoice_number = invoice.invoice_number
+        item_rows = session.execute(
+            select(InvoiceItem.id, InvoiceItem.product_id).where(InvoiceItem.invoice_id == invoice_id)
+        ).all()
+        item_ids = [item_id for item_id, _ in item_rows]
+        product_ids = {product_id for _, product_id in item_rows}
+        if item_ids:
+            session.execute(delete(InvoiceItemSource).where(InvoiceItemSource.item_id.in_(item_ids)))
+            session.execute(delete(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id))
+        session.delete(invoice)
+        session.flush()
+        for product_id in product_ids:
+            first_seen, last_seen = session.execute(
+                select(func.min(Invoice.invoice_date), func.max(Invoice.invoice_date))
+                .select_from(InvoiceItem).join(Invoice, Invoice.id == InvoiceItem.invoice_id)
+                .where(InvoiceItem.product_id == product_id)
+            ).one()
+            product = session.get(Product, product_id)
+            product.first_seen, product.last_seen = first_seen, last_seen
+        return dict(invoice_id=invoice_id, invoice_number=invoice_number,
+                    item_count=len(item_ids), affected_products=len(product_ids))

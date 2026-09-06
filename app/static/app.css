@@ -46,3 +46,6 @@ h1{font-weight:750;font-size:38px}h2{font-weight:650}.panel{box-shadow:none;bord
 .hero{background:#fff3df;border:1px solid #f5d6a8;border-radius:18px;padding:34px;margin-bottom:30px;position:relative;overflow:hidden}.hero h1{font-size:44px}.hero .eyebrow{letter-spacing:.12em;color:#805000}.hero p{color:#555}.hero .button{white-space:nowrap}.metric{border-top:4px solid #f39200;border-radius:10px}.metric strong{font-size:44px;font-weight:750}.stat{border-left:3px solid #f39200}input[type=checkbox]{accent-color:#f39200}.steps strong{color:#2e2e2e}.tablewrap{border-radius:6px}th{font-weight:600}footer{border-top:1px solid #e5e5e5;padding-top:22px}
 @media(max-width:1050px){header{gap:12px}.brand img{width:200px}.brand span{display:none}nav{gap:3px}nav a{font-size:12px}}
 @media(max-width:600px){header{padding:20px 4%}.hero{padding:24px}.hero h1{font-size:32px}h1{font-size:30px}nav a[href='/preview']{padding:10px 12px}.brand img{width:210px}.hero .button{white-space:normal}}
+
+.session-bar{display:flex;align-items:center;gap:14px;font-size:13px;color:#666666}.session-bar button{padding:8px 16px;font-size:12px}
+@media(max-width:1050px){.session-bar{font-size:12px;gap:8px}}

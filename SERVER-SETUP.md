@@ -70,10 +70,27 @@ Erst nach erfolgreichem Test `APP_BIND_IP` auf die interne Server-IP setzen
 und `docker compose --env-file .env.server up -d` erneut ausführen.
 Zugriff dann über `http://SERVER-IP:8080`. PostgreSQL veröffentlicht keinen Port.
 
-Die App hat derzeit keine Anmeldung. Netzwerkzugriff nur für berechtigte
+Anmeldung nach Kassensystem-Muster: Mitarbeiter melden sich nur mit ihrer
+Kassennummer an, Chefs zusätzlich mit Passwort. Nur Chef-Konten dürfen
+Rechnungen hochladen, importieren und löschen; Mitarbeiter können Artikel
+suchen und Rechnungen ansehen. Netzwerkzugriff trotzdem nur für berechtigte
 Laden-PCs freigeben, keine Internet-Portweiterleitung. Serververwaltung muss
-Docker-Portfreigaben und Firewallregeln gemeinsam prüfen. Benutzerkonten und
-HTTPS bei Bedarf vor Freigabe ergänzen.
+Docker-Portfreigaben und Firewallregeln gemeinsam prüfen. HTTPS bei Bedarf vor
+Freigabe ergänzen.
+
+### Erste Konten anlegen
+
+`SESSION_SECRET` muss in `.env.server` gesetzt sein (siehe `.env.server.example`),
+sonst startet die App nicht. Danach im laufenden Container mindestens ein
+Chef-Konto anlegen:
+
+```sh
+docker compose --env-file .env.server exec app python scripts/manage_users.py add-chef 910199 "Fabian Morf"
+docker compose --env-file .env.server exec app python scripts/manage_users.py add-mitarbeiter 910141 "Anna Muster"
+```
+
+Weitere Befehle: `list` (alle Konten anzeigen), `set-password <kassennummer>`
+(Chef-Passwort zurücksetzen), `remove <kassennummer>` (Konto entfernen).
 
 ## Betrieb
 

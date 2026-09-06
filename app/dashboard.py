@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
+from .auth import require_login_api
 from .catalog import get_session
 from .models import Product, Invoice, InvoiceItem
 from .history import invoice_data
 router=APIRouter()
 @router.get('/api/dashboard')
-def dashboard(session=Depends(get_session)):
+def dashboard(user=Depends(require_login_api), session=Depends(get_session)):
     try:
         counts={key:session.scalar(select(func.count()).select_from(model)) for key,model in
             [('products',Product),('invoices',Invoice),('positions',InvoiceItem)]}

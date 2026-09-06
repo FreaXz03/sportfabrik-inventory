@@ -6,4 +6,4 @@ async function load(){if(controller)controller.abort();const current=new AbortCo
 $('filters').addEventListener('submit',event=>{event.preventDefault();filters=new URLSearchParams(new FormData(event.target));page=1;load();});$('reset').addEventListener('click',()=>{$('filters').reset();filters=new URLSearchParams();page=1;load();});$('prev').addEventListener('click',()=>{page--;load();});$('next').addEventListener('click',()=>{page++;load();});
 async function brands(){try{const response=await fetch('/api/brands');if(!response.ok)throw new Error();for(const brand of await response.json())$('brands').add(new Option(brand,brand));}catch{$('brands').disabled=true;$('brands').title='Marken konnten nicht geladen werden. Bitte Seite neu laden; die Schnellsuche bleibt verfügbar.';}}
 brands();load();
-</script><footer>Sport-Fabrik Inventory · Gelieferte Mengen sind kein aktueller Lagerbestand.</footer></body></html>
+</script><footer>Sport-Fabrik Inventory · Gelieferte Mengen sind kein aktueller Lagerbestand.</footer><script src="/static/session.js"></script></body></html>

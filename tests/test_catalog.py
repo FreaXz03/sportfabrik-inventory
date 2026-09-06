@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.models import Base, Product, Invoice, InvoiceItem
+from app.auth import require_login_api, require_login_page
 from app.catalog import router, get_session
 
 @pytest.fixture
@@ -27,6 +28,9 @@ def client():
     app=FastAPI();app.include_router(router)
     from app.history import router as history_router
     app.include_router(history_router)
+    # Diese Tests prüfen Katalog-/Historie-Logik, nicht die Zugriffsrechte (siehe tests/test_auth.py).
+    app.dependency_overrides[require_login_api] = lambda: None
+    app.dependency_overrides[require_login_page] = lambda: None
     def session():
         with sessions() as s: yield s
     app.dependency_overrides[get_session]=session

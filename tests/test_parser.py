@@ -7,11 +7,15 @@ import pymupdf
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
+from app.auth import require_chef_api, require_chef_page
 from app.preview import router
 from app.parser import InvoiceParseError, decimal_value, parse_invoice
 
 app = FastAPI()
 app.include_router(router)
+# Diese Tests prüfen die Parser-Logik, nicht die Zugriffsrechte (siehe tests/test_auth.py).
+app.dependency_overrides[require_chef_api] = lambda: None
+app.dependency_overrides[require_chef_page] = lambda: None
 
 
 @pytest.fixture

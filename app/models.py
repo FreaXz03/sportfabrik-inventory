@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, JSON
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Numeric, String, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -97,3 +97,36 @@ class InvoiceItemSource(Base):
     __tablename__ = "invoice_item_sources"
     item_id: Mapped[int] = mapped_column(ForeignKey('invoice_items.id'), primary_key=True)
     data: Mapped[dict] = mapped_column(JSON)
+
+
+class User(Base):
+    """Anmeldung übers Kassensystem-Muster: Mitarbeiter nur mit Kassennummer,
+    Chefs zusätzlich mit Passwort. Rollen steuern Zugriff (siehe app/auth.py)."""
+    __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("role IN ('mitarbeiter', 'chef')", name="ck_users_role"),
+        CheckConstraint(
+            "(role = 'chef' AND password_hash IS NOT NULL) OR "
+            "(role = 'mitarbeiter' AND password_hash IS NULL)",
+            name="ck_users_chef_has_password",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    kassennummer: Mapped[str] = mapped_column(
+        String(20),
+        unique=True,
+        index=True
+    )
+
+    name: Mapped[str | None] = mapped_column(String(100))
+
+    role: Mapped[str] = mapped_column(String(20))
+
+    password_hash: Mapped[str | None] = mapped_column(String(200))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
