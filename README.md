@@ -19,6 +19,22 @@ Chefs dürfen Rechnungen hochladen, importieren und löschen.
 - **Tests**: pytest
 - **Deployment**: Docker / docker compose (siehe [`SERVER-SETUP.md`](SERVER-SETUP.md))
 
+## Dokumentation
+
+Dieses README ist der Schnelleinstieg. Ausführlichere Dokumentation liegt in
+`docs/`:
+
+- [`docs/planung.md`](docs/planung.md) — Anforderungen, Entwicklungsphasen und
+  zentrale Entscheidungen (rückwirkend rekonstruiert)
+- [`docs/architektur.md`](docs/architektur.md) — Schichtenmodell,
+  Sicherheitsmodell, Ablaufdiagramme für Upload/Import/Löschen
+- [`docs/datenmodell.md`](docs/datenmodell.md) — Tabellen, ER-Diagramm,
+  Migrationshistorie
+- [`docs/api-referenz.md`](docs/api-referenz.md) — alle Endpunkte mit
+  Berechtigungen
+
+Für Deployment siehe [`SERVER-SETUP.md`](SERVER-SETUP.md).
+
 ## Ordnerstruktur
 
 ```
