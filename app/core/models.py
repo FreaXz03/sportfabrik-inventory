@@ -139,3 +139,17 @@ class User(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)
     )
+
+
+class ArticleNote(Base):
+    __tablename__ = 'article_notes'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey('products.id'), index=True)
+    body: Mapped[str] = mapped_column(String(2000))
+    author_user_id: Mapped[int] = mapped_column()
+    author_name: Mapped[str] = mapped_column(String(100))
+    author_number: Mapped[str] = mapped_column(String(20))
+    updated_by: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    version: Mapped[int] = mapped_column(default=1)

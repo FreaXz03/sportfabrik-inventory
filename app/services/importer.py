@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ..core.models import Invoice, InvoiceItem, InvoiceItemSource, Product
 from .parser import page_content, parse_invoice
+from .corrections import apply_corrections, CorrectionError
 
 
 class ImportRejected(ValueError):
@@ -46,11 +47,16 @@ def invoice_dates(pdf):
     return result
 
 
-def import_invoice(pdf, filename, expected_hash, session_factory, imported_by=None):
+def import_invoice(pdf, filename, expected_hash, session_factory, imported_by=None, corrections=None):
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
         raise ImportRejected('Die Datei stimmt nicht mit der geprüften Vorschau überein. Bitte Vorschau neu erstellen.')
     parsed = parse_invoice(pdf)
+    if corrections:
+        try:
+            parsed = apply_corrections(parsed, corrections, imported_by)
+        except CorrectionError as exc:
+            raise ImportRejected(str(exc)) from exc
     if not parsed['invoice_number'] or parsed['warnings'] or parsed['rows_with_warnings']:
         raise ImportRejected('Import gesperrt: Rechnungsnummer fehlt oder die Vorschau enthält Warnungen.')
     dates = invoice_dates(pdf)

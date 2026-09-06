@@ -108,3 +108,4 @@ def articles(q: str = Query('', max_length=200), brand: str = Query('', max_leng
                 'sort_by': sort_by, 'sort_dir': sort_dir}
     except SQLAlchemyError as exc:
         raise HTTPException(503, 'Artikelsuche fehlgeschlagen. Bitte die Datenbankverbindung prüfen.') from exc
+

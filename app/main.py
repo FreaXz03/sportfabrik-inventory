@@ -13,6 +13,7 @@ from .core.database import engine
 from .routers.preview import router as preview_router
 from .routers.catalog import router as catalog_router
 from .routers.history import router as history_router
+from .routers.article_details import router as article_details_router
 
 
 app = FastAPI(
@@ -23,6 +24,7 @@ app.include_router(auth_router)
 app.include_router(preview_router)
 app.include_router(catalog_router)
 app.include_router(history_router)
+app.include_router(article_details_router)
 app.include_router(dashboard_router)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 

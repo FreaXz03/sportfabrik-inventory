@@ -55,7 +55,8 @@ def positions(session, condition, page, page_size, chronological=False):
             quantity=format(item.quantity,'f') if item.quantity is not None else None,
             unit=item.unit,uvp=format(item.uvp,'f') if item.uvp is not None else None,
             source_available=bool(source),row_number=snapshot.get('row_number'),
-            page=snapshot.get('page'),raw_lines=snapshot.get('raw_lines',[]))
+            page=snapshot.get('page'),raw_lines=snapshot.get('raw_lines',[]),
+            correction_audit=snapshot.get('correction_audit'))
         items.append(data)
     return dict(total=total,page=page,page_size=page_size,items=items)
 
