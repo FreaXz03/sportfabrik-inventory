@@ -78,3 +78,21 @@ def test_reuse_products_on_next_invoice(setup_import, monkeypatch):
     assert result['reused_products'] == 203
     with sessions() as s:
         assert s.scalar(select(func.count()).select_from(InvoiceItem)) == 434
+
+
+def test_imported_by_is_recorded(setup_import):
+    pdf, digest, sessions, _ = setup_import
+    import_invoice(pdf, 'rechnung.pdf', digest, sessions, {'kassennummer': '910199', 'name': 'Fabian Morf'})
+    with sessions() as s:
+        invoice = s.scalar(select(Invoice))
+        assert invoice.imported_by_kassennummer == '910199'
+        assert invoice.imported_by_name == 'Fabian Morf'
+
+
+def test_imported_by_defaults_to_none_without_user(setup_import):
+    pdf, digest, sessions, _ = setup_import
+    import_invoice(pdf, 'rechnung.pdf', digest, sessions)
+    with sessions() as s:
+        invoice = s.scalar(select(Invoice))
+        assert invoice.imported_by_kassennummer is None
+        assert invoice.imported_by_name is None

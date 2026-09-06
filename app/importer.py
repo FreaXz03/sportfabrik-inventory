@@ -41,7 +41,7 @@ def invoice_dates(pdf):
     return result
 
 
-def import_invoice(pdf, filename, expected_hash, session_factory):
+def import_invoice(pdf, filename, expected_hash, session_factory, imported_by=None):
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
         raise ImportRejected('Die Datei stimmt nicht mit der geprüften Vorschau überein. Bitte Vorschau neu erstellen.')
@@ -69,7 +69,9 @@ def import_invoice(pdf, filename, expected_hash, session_factory):
             if existing:
                 raise ImportRejected(f'Rechnung {existing.invoice_number} wurde bereits importiert (ID {existing.id}).')
             invoice = Invoice(invoice_number=parsed['invoice_number'], file_hash=digest,
-                filename=(filename or 'rechnung.pdf')[:500], supplier='INTERSPORT Schweiz AG', **dates)
+                filename=(filename or 'rechnung.pdf')[:500], supplier='INTERSPORT Schweiz AG',
+                imported_by_kassennummer=(imported_by or {}).get('kassennummer'),
+                imported_by_name=(imported_by or {}).get('name'), **dates)
             session.add(invoice)
             session.flush()
             new_products, reused = 0, set()

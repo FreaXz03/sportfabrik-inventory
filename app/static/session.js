@@ -15,6 +15,8 @@
     if(me.role!=='chef'){
       var uploadLink=document.querySelector('nav a[href="/preview"]');
       if(uploadLink) uploadLink.remove();
+      var uploadHero=document.getElementById('uploadHero');
+      if(uploadHero) uploadHero.remove();
     }
   }).catch(function(){});
 })();

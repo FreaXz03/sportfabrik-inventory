@@ -20,7 +20,7 @@ def history_page(record_id: int = 0, user=Depends(require_login_page)):
 
 def invoice_data(invoice):
     return {key:getattr(invoice,key) for key in ('id','invoice_number','invoice_date',
-        'document_date','supplier','filename','uploaded_at')}
+        'document_date','supplier','filename','uploaded_at','imported_by_kassennummer','imported_by_name')}
 
 
 @router.get('/api/invoices')

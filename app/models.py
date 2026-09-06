@@ -63,6 +63,9 @@ class Invoice(Base):
         default=lambda: datetime.now(timezone.utc)
     )
 
+    imported_by_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    imported_by_name: Mapped[str | None] = mapped_column(String(100))
+
 
 class InvoiceItem(Base):
     __tablename__ = "invoice_items"

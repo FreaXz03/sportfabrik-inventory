@@ -43,7 +43,8 @@ async def confirm_import(file: UploadFile, expected_hash: str = Form(...), confi
         from .importer import import_invoice, ImportRejected
         from sqlalchemy.exc import SQLAlchemyError
         try:
-            return await run_in_threadpool(import_invoice, data, file.filename, expected_hash, SessionLocal)
+            return await run_in_threadpool(import_invoice, data, file.filename, expected_hash, SessionLocal,
+                {'kassennummer': user.kassennummer, 'name': user.name})
         except (ImportRejected, InvoiceParseError) as exc:
             raise HTTPException(409, str(exc)) from exc
         except SQLAlchemyError as exc:
