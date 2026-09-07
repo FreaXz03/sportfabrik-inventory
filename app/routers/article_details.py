@@ -21,7 +21,11 @@ def delete_note(
 ):
     try:
         _, group_ids = article_group(session, product_id)
-        note = session.scalar(select(ArticleNote).where(ArticleNote.id == note_id, ArticleNote.product_id.in_(group_ids)))
+        note = session.scalar(
+            select(ArticleNote).where(
+                ArticleNote.id == note_id, ArticleNote.product_id.in_(group_ids)
+            )
+        )
         if note is None:
             raise HTTPException(404, "Notiz nicht gefunden.")
         if user.role != "chef" and note.author_user_id != user.id:
@@ -64,6 +68,7 @@ def prices(
                 InvoiceItem.unit,
                 InvoiceItem.uvp,
                 func.count(InvoiceItem.id).label("positions"),
+                func.sum(InvoiceItem.quantity).label("quantity"),
             )
             .join(InvoiceItem, InvoiceItem.invoice_id == Invoice.id)
             .where(InvoiceItem.product_id.in_(group_ids), InvoiceItem.uvp.is_not(None))
@@ -90,6 +95,7 @@ def prices(
                     "unit": r[3],
                     "uvp": format(r[4], "f"),
                     "positions": r[5],
+                    "quantity": format(r[6], "f") if r[6] is not None else None,
                 }
                 for r in rows
             ]
@@ -204,7 +210,11 @@ def edit_note(
 ):
     try:
         _, group_ids = article_group(session, product_id)
-        note = session.scalar(select(ArticleNote).where(ArticleNote.id == note_id, ArticleNote.product_id.in_(group_ids)))
+        note = session.scalar(
+            select(ArticleNote).where(
+                ArticleNote.id == note_id, ArticleNote.product_id.in_(group_ids)
+            )
+        )
         if note is None:
             raise HTTPException(404, "Notiz nicht gefunden.")
         if user.role != "chef" and note.author_user_id != user.id:

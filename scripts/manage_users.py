@@ -7,6 +7,7 @@ Beispiele:
     python scripts/manage_users.py set-password 910199
     python scripts/manage_users.py remove 910141
 """
+
 import argparse
 import getpass
 import sys
@@ -35,7 +36,9 @@ def read_password() -> str:
 
 def cmd_list(args):
     with SessionLocal() as session:
-        users = session.scalars(select(User).order_by(User.role, User.kassennummer)).all()
+        users = session.scalars(
+            select(User).order_by(User.role, User.kassennummer)
+        ).all()
         if not users:
             print("Noch keine Benutzer angelegt.")
             return
@@ -48,8 +51,17 @@ def cmd_add_mitarbeiter(args):
         if session.scalar(select(User).where(User.kassennummer == args.kassennummer)):
             print(f"Kassennummer {args.kassennummer} existiert bereits.")
             return
-        session.add(User(kassennummer=args.kassennummer, name=args.name, role="mitarbeiter", password_hash=None))
-    print(f"Mitarbeiter {args.kassennummer} ({args.name}) angelegt. Anmeldung nur mit Kassennummer, kein Passwort.")
+        session.add(
+            User(
+                kassennummer=args.kassennummer,
+                name=args.name,
+                role="mitarbeiter",
+                password_hash=None,
+            )
+        )
+    print(
+        f"Mitarbeiter {args.kassennummer} ({args.name}) angelegt. Anmeldung nur mit Kassennummer, kein Passwort."
+    )
 
 
 def cmd_add_chef(args):
@@ -58,19 +70,29 @@ def cmd_add_chef(args):
             print(f"Kassennummer {args.kassennummer} existiert bereits.")
             return
         password = read_password()
-        session.add(User(kassennummer=args.kassennummer, name=args.name, role="chef",
-                          password_hash=hash_password(password)))
+        session.add(
+            User(
+                kassennummer=args.kassennummer,
+                name=args.name,
+                role="chef",
+                password_hash=hash_password(password),
+            )
+        )
     print(f"Chef-Konto {args.kassennummer} ({args.name}) angelegt.")
 
 
 def cmd_set_password(args):
     with SessionLocal() as session, session.begin():
-        user = session.scalar(select(User).where(User.kassennummer == args.kassennummer))
+        user = session.scalar(
+            select(User).where(User.kassennummer == args.kassennummer)
+        )
         if user is None:
             print(f"Kassennummer {args.kassennummer} nicht gefunden.")
             return
         if user.role != "chef":
-            print(f"{args.kassennummer} ist kein Chef-Konto (Mitarbeiter melden sich ohne Passwort an).")
+            print(
+                f"{args.kassennummer} ist kein Chef-Konto (Mitarbeiter melden sich ohne Passwort an)."
+            )
             return
         user.password_hash = hash_password(read_password())
     print(f"Passwort für {args.kassennummer} aktualisiert.")
@@ -78,12 +100,16 @@ def cmd_set_password(args):
 
 def cmd_remove(args):
     with SessionLocal() as session, session.begin():
-        user = session.scalar(select(User).where(User.kassennummer == args.kassennummer))
+        user = session.scalar(
+            select(User).where(User.kassennummer == args.kassennummer)
+        )
         if user is None:
             print(f"Kassennummer {args.kassennummer} nicht gefunden.")
             return
         if not args.yes:
-            confirm = input(f"{user.kassennummer} ({user.name}, {user.role}) wirklich löschen? [j/N] ")
+            confirm = input(
+                f"{user.kassennummer} ({user.name}, {user.role}) wirklich löschen? [j/N] "
+            )
             if confirm.strip().lower() not in ("j", "ja", "y", "yes"):
                 print("Abgebrochen.")
                 return
@@ -92,17 +118,23 @@ def cmd_remove(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Benutzerverwaltung Sportfabrik Inventory")
+    parser = argparse.ArgumentParser(
+        description="Benutzerverwaltung Sportfabrik Inventory"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("list", help="Alle Benutzer auflisten").set_defaults(func=cmd_list)
 
-    p = sub.add_parser("add-mitarbeiter", help="Mitarbeiter anlegen (Anmeldung nur mit Kassennummer)")
+    p = sub.add_parser(
+        "add-mitarbeiter", help="Mitarbeiter anlegen (Anmeldung nur mit Kassennummer)"
+    )
     p.add_argument("kassennummer")
     p.add_argument("name")
     p.set_defaults(func=cmd_add_mitarbeiter)
 
-    p = sub.add_parser("add-chef", help="Chef-Konto anlegen (Anmeldung mit Kassennummer + Passwort)")
+    p = sub.add_parser(
+        "add-chef", help="Chef-Konto anlegen (Anmeldung mit Kassennummer + Passwort)"
+    )
     p.add_argument("kassennummer")
     p.add_argument("name")
     p.set_defaults(func=cmd_add_chef)

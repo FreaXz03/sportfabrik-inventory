@@ -1,40 +1,68 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>try{var t=localStorage.getItem('sportfabrikTheme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script><title>Anmelden · Sport-Fabrik</title><link rel="stylesheet" href="/static/css/app.css?v=sportfabrik-1"></head><body><header><a class="brand" href="/" aria-label="Sport-Fabrik Inventory"><img src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a></header><main style="max-width:460px"><h1>Anmelden</h1><section class="panel login-panel"><form id="login"><label>Kassennummer<input id="kassennummer" name="kassennummer" inputmode="numeric" autocomplete="username" autofocus required></label><label id="passwordField" hidden>Passwort<input id="password" name="password" type="password" autocomplete="current-password"></label><button id="submit">Anmelden</button></form><div id="status" role="status" aria-live="polite"></div></section></main><footer>Sport-Fabrik Inventory</footer>
-<script src="/static/js/login-redirect.js"></script>
-<script>
-const $=id=>document.getElementById(id);
-const params=new URLSearchParams(location.search);
-const next=safeLoginRedirect(params.get('next'), location.origin);
-let awaitingPassword=false;
-$('login').addEventListener('submit',async event=>{
-  event.preventDefault();
-  $('submit').disabled=true;
-  $('status').className='';
-  $('status').textContent=awaitingPassword?'Passwort wird geprüft …':'Kassennummer wird geprüft …';
-  try{
-    const body=new URLSearchParams();
-    body.set('kassennummer',$('kassennummer').value.trim());
-    if(awaitingPassword)body.set('password',$('password').value);
-    const response=await fetch('/login',{method:'POST',body});
-    const result=await response.json();
-    if(!response.ok){
-      $('status').className='notice error';
-      $('status').textContent=typeof result.detail==='string'?result.detail:'Anmeldung fehlgeschlagen.';
-      if(awaitingPassword){$('password').value='';$('password').focus();}
-      return;
-    }
-    if(result.requires_password){
-      awaitingPassword=true;
-      $('passwordField').hidden=false;
-      $('password').focus();
-      $('status').textContent='Bitte Passwort eingeben.';
-      return;
-    }
-    location.href=next;
-  }catch(error){
-    $('status').className='notice error';
-    $('status').textContent='Verbindung zur App unterbrochen. Bitte erneut versuchen.';
-  }finally{
-    $('submit').disabled=false;
-  }
-});
-</script><script src="/static/js/theme.js"></script></body></html>
+<!doctype html>
+<html lang="de">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script>try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>
+  <title>Anmelden · Sport-Fabrik</title>
+  <link rel="stylesheet" href="/static/css/app.css?v=sportfabrik-1">
+</head>
+
+<body>
+  <header><a class="brand" href="/" aria-label="Sport-Fabrik Inventory"><img src="/static/img/sportfabrik-logo.png"
+        alt="SPORT-FABRIK"><span>INVENTORY</span></a></header>
+  <main style="max-width:460px">
+    <h1>Anmelden</h1>
+    <section class="panel login-panel">
+      <form id="login"><label>Kassennummer<input id="kassennummer" name="kassennummer" inputmode="numeric"
+            autocomplete="username" autofocus required></label><label id="passwordField" hidden>Passwort<input
+            id="password" name="password" type="password" autocomplete="current-password"></label><button
+          id="submit">Anmelden</button></form>
+      <div id="status" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+  <footer>Sport-Fabrik Inventory</footer>
+  <script src="/static/js/login-redirect.js"></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const next = safeLoginRedirect(params.get('next'), location.origin);
+    let awaitingPassword = false;
+    $('login').addEventListener('submit', async event => {
+      event.preventDefault();
+      $('submit').disabled = true;
+      $('status').className = '';
+      $('status').textContent = awaitingPassword ? 'Passwort wird geprüft …' : 'Kassennummer wird geprüft …';
+      try {
+        const body = new URLSearchParams();
+        body.set('kassennummer', $('kassennummer').value.trim());
+        if (awaitingPassword) body.set('password', $('password').value);
+        const response = await fetch('/login', { method: 'POST', body });
+        const result = await response.json();
+        if (!response.ok) {
+          $('status').className = 'notice error';
+          $('status').textContent = typeof result.detail === 'string' ? result.detail : 'Anmeldung fehlgeschlagen.';
+          if (awaitingPassword) { $('password').value = ''; $('password').focus(); }
+          return;
+        }
+        if (result.requires_password) {
+          awaitingPassword = true;
+          $('passwordField').hidden = false;
+          $('password').focus();
+          $('status').textContent = 'Bitte Passwort eingeben.';
+          return;
+        }
+        location.href = next;
+      } catch (error) {
+        $('status').className = 'notice error';
+        $('status').textContent = 'Verbindung zur App unterbrochen. Bitte erneut versuchen.';
+      } finally {
+        $('submit').disabled = false;
+      }
+    });
+  </script>
+  <script src="/static/js/theme.js"></script>
+</body>
+
+</html>

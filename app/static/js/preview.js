@@ -22,7 +22,24 @@ $('editMode').addEventListener('change',()=>{$('editHelp').hidden=!$('editMode')
 $('resetEdits').addEventListener('click',()=>{if(!originalData||!previewFile||busy)return;data=structuredClone(originalData);validated=true;editRevision++;$('confirm').checked=false;$('import').disabled=true;$('editStatus').textContent='Korrekturen zurückgesetzt.';saveCurrent();selectEntry(active);});
 function bodyForCurrent(){const body=new FormData();body.append('file',previewFile);body.append('expected_hash',data.file_hash);body.append('corrections',JSON.stringify(getEdits()));return body;}
 $('validateEdits').addEventListener('click',async()=>{if(!data||!previewFile||busy)return;lock(true);$('editStatus').textContent='Korrekturen werden geprüft …';try{data=await request('/validate-preview',bodyForCurrent());validated=true;$('editStatus').textContent=`${data.corrected_rows} korrigierte Positionen · ${data.rows_with_warnings} Positionen mit Warnungen. `+(data.rows_with_warnings||data.warnings.length?'Offene Warnungen beheben.':'Prüfung erfolgreich. Import erneut bestätigen.');}catch(error){$('editStatus').textContent=error.message;}finally{saveCurrent();lock(false);selectEntry(active);}});
-$('import').addEventListener('click',async()=>{if(!data||!previewFile||!validated||!$('confirm').checked||busy)return;lock(true);const entry=queue[active];$('importStatus').textContent='Rechnung wird gespeichert …';try{const body=bodyForCurrent();body.append('confirmed','true');const result=await request('/import-invoice',body);entry.state='imported';entry.invoiceId=result.invoice_id;entry.message=`Rechnung ${result.invoice_number} gespeichert: ${result.item_count} Positionen, ${result.new_products} neue Artikel, ${result.reused_products} vorhandene Artikel verwendet.`;}catch(error){entry.message=error.message;}finally{saveCurrent();lock(false);selectEntry(active);}});
+$('import').addEventListener('click',async()=>{if(!data||!previewFile||!validated||!$('confirm').checked||busy)return;lock(true);const entry=queue[active];let imported=false;$('importStatus').textContent='Rechnung wird gespeichert …';try{const body=bodyForCurrent();body.append('confirmed','true');const result=await request('/import-invoice',body);imported=true;entry.state='imported';entry.invoiceId=result.invoice_id;entry.message=`Rechnung ${result.invoice_number} gespeichert: ${result.item_count} Positionen, ${result.new_products} neue Artikel, ${result.reused_products} vorhandene Artikel verwendet.`;}catch(error){entry.message=error.message;}finally{saveCurrent();lock(false);if(imported)advanceAfterImport();else selectEntry(active);}});
 for(const id of ['search','brand','warningsOnly'])$(id).addEventListener('input',render);
 $('download').addEventListener('click',()=>{if(!data)return;const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='rechnung-vorschau.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 window.addEventListener('beforeunload',event=>{if(busy||queue.some(e=>e.state==='ready')){event.preventDefault();event.returnValue='';}});
+
+function advanceAfterImport(){
+ const order=queue.map((_,offset)=>(active+1+offset)%queue.length);
+ const ready=index=>queue[index].state==='ready';
+ let next=order.find(index=>ready(index)&&queue[index].validated&&!queue[index].data.rows_with_warnings&&!queue[index].data.warnings.length);
+ if(next===undefined)next=order.find(ready);
+ if(next!==undefined){
+  selectEntry(next);
+  const table=document.querySelector('#result .tablewrap');
+  if(table){table.scrollTop=0;table.scrollLeft=0;}
+  $('result').scrollIntoView({behavior:'smooth',block:'start'});
+ }else if(queue.some(entry=>['error','waiting','reading'].includes(entry.state))){
+  selectEntry(active);
+  $('status').textContent='Import erfolgreich. Im Stapel sind noch offene Dateien oder Lesefehler. Bitte prüfen.';
+  $('batch').scrollIntoView({behavior:'smooth',block:'start'});
+ }else{location.assign('/');}
+}

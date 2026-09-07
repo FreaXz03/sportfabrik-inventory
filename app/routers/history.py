@@ -1,3 +1,6 @@
+import re
+from decimal import Decimal
+from typing import Literal
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -77,7 +80,64 @@ def invoices(
         ) from exc
 
 
-def positions(session, condition, page, page_size, chronological=False):
+SortField = Literal[
+    "position",
+    "invoice_date",
+    "description",
+    "ean",
+    "article_no",
+    "color",
+    "size",
+    "quantity",
+    "unit",
+    "uvp",
+]
+
+
+def position_sort_key(item, field):
+    value = item.get("row_number" if field == "position" else field)
+    if field in ("quantity", "uvp", "position"):
+        return Decimal(str(value))
+    if field == "invoice_date":
+        return value
+    value = str(value).strip().upper()
+    sizes = {
+        "XXXS": 0,
+        "XXS": 1,
+        "XS": 2,
+        "S": 3,
+        "M": 4,
+        "L": 5,
+        "XL": 6,
+        "XXL": 7,
+        "2XL": 7,
+        "XXXL": 8,
+        "3XL": 8,
+        "4XL": 9,
+        "5XL": 10,
+    }
+    if field == "size" and value in sizes:
+        return ((0, Decimal(sizes[value])),)
+    return tuple(
+        (
+            (0, Decimal(part.replace(",", ".")))
+            if re.fullmatch(r"\d+(?:[.,]\d+)?", part)
+            else (1, part)
+        )
+        for part in re.split(r"(\d+(?:[.,]\d+)?)", value)
+        if part
+    )
+
+
+def positions(
+    session,
+    condition,
+    page,
+    page_size,
+    chronological=False,
+    sort_by=None,
+    sort_dir="asc",
+):
     total = session.scalar(
         select(func.count()).select_from(InvoiceItem).where(condition)
     )
@@ -94,7 +154,9 @@ def positions(session, condition, page, page_size, chronological=False):
         else (InvoiceItem.id,)
     )
     rows = session.execute(
-        stmt.order_by(*ordering).offset((page - 1) * page_size).limit(page_size)
+        stmt.order_by(*ordering)
+        if sort_by
+        else stmt.order_by(*ordering).offset((page - 1) * page_size).limit(page_size)
     )
     items = []
     for item, product, invoice, source in rows:
@@ -127,6 +189,15 @@ def positions(session, condition, page, page_size, chronological=False):
             correction_audit=snapshot.get("correction_audit"),
         )
         items.append(data)
+    if sort_by:
+        field = "row_number" if sort_by == "position" else sort_by
+        present = [item for item in items if item.get(field) not in (None, "")]
+        missing = [item for item in items if item.get(field) in (None, "")]
+        present.sort(
+            key=lambda item: position_sort_key(item, sort_by),
+            reverse=sort_dir == "desc",
+        )
+        items = (present + missing)[(page - 1) * page_size : page * page_size]
     return dict(total=total, page=page, page_size=page_size, items=items)
 
 
@@ -135,6 +206,8 @@ def invoice_detail(
     invoice_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
+    sort_by: SortField | None = Query(None),
+    sort_dir: Literal["asc", "desc"] = Query("asc"),
     user=Depends(require_login_api),
     session=Depends(get_session),
 ):
@@ -144,7 +217,14 @@ def invoice_detail(
             raise HTTPException(404, "Rechnung nicht gefunden.")
         return dict(
             invoice=invoice_data(invoice),
-            **positions(session, InvoiceItem.invoice_id == invoice_id, page, page_size)
+            **positions(
+                session,
+                InvoiceItem.invoice_id == invoice_id,
+                page,
+                page_size,
+                sort_by=sort_by,
+                sort_dir=sort_dir,
+            )
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
@@ -157,6 +237,8 @@ def article_history(
     product_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
+    sort_by: SortField | None = Query(None),
+    sort_dir: Literal["asc", "desc"] = Query("asc"),
     user=Depends(require_login_api),
     session=Depends(get_session),
 ):
@@ -168,7 +250,13 @@ def article_history(
                 for key in ("id", "brand", "description", "ean", "supplier_article_no")
             },
             **positions(
-                session, InvoiceItem.product_id.in_(group_ids), page, page_size, True
+                session,
+                InvoiceItem.product_id.in_(group_ids),
+                page,
+                page_size,
+                True,
+                sort_by,
+                sort_dir,
             )
         )
     except SQLAlchemyError as exc:

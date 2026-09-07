@@ -12,20 +12,20 @@
   function drawPrices(){
     const unit=$('priceUnit').value;
     const rows=prices.filter(p=>JSON.stringify(p.unit)===unit);
-    const table=document.createElement('table');const head=document.createElement('thead');const hr=document.createElement('tr');for(const h of ['Rechnungsdatum','UVP (CHF)','Rechnung','Positionen'])hr.append(node('th',h));head.append(hr);table.append(head);const body=document.createElement('tbody');
-    for(const p of rows){const tr=document.createElement('tr');tr.append(node('td',date(p.date)),node('td',p.uvp));const td=document.createElement('td'),a=node('a',p.invoice_number);a.href='/invoices/'+p.invoice_id;td.append(a);tr.append(td,node('td',p.positions));body.append(tr);}table.append(body);$('priceTable').replaceChildren(table);$('priceTable').hidden=!rows.length;
+    const table=document.createElement('table');const head=document.createElement('thead');const hr=document.createElement('tr');for(const h of ['Rechnungsdatum','UVP (CHF)','Rechnung','Gelieferte Menge'])hr.append(node('th',h));head.append(hr);table.append(head);const body=document.createElement('tbody');
+    for(const p of rows){const tr=document.createElement('tr');tr.append(node('td',date(p.date)),node('td',p.uvp));const td=document.createElement('td'),a=node('a',p.invoice_number);a.href='/invoices/'+p.invoice_id;td.append(a);tr.append(td,node('td',p.quantity===null?'Unbekannt':new Intl.NumberFormat('de-CH').format(p.quantity)+' '+(p.unit||'')));body.append(tr);}table.append(body);$('priceTable').replaceChildren(table);$('priceTable').hidden=!rows.length;
     const points=rows.filter(p=>p.date).map(p=>({...p,x:Date.parse(p.date+'T00:00:00Z'),y:Number(p.uvp)}));
     $('priceChart').replaceChildren();
     if(!points.length){$('priceStatus').textContent=rows.length?'Kein Rechnungsdatum vorhanden; Preise stehen in der Tabelle.':'Noch keine UVP-Werte für diesen Artikel vorhanden.';return;}
     $('priceStatus').textContent=points.length===1?'Ein Preis erfasst – weitere Rechnungen ergänzen den Verlauf.':`${points.length} Preisangaben mit Datum. Punkte zeigen den UVP; Verbindungslinien dienen der Orientierung.`;
     if(rows.length>points.length)$('priceStatus').textContent+=' Werte ohne Datum stehen nur in der Tabelle.';
-    const xmin=Math.min(...points.map(p=>p.x)),xmax=Math.max(...points.map(p=>p.x));const low=Math.min(...points.map(p=>p.y)),high=Math.max(...points.map(p=>p.y));const pad=Math.max((high-low)*.15,1);const ymin=Math.max(0,low-pad),ymax=high+pad;
-    const x=v=>xmin===xmax?450:75+(v-xmin)/(xmax-xmin)*750;const y=v=>215-(v-ymin)/(ymax-ymin)*170;
+    const xmin=Math.min(...points.map(p=>p.x)),xmax=Math.max(...points.map(p=>p.x));const low=Math.min(...points.map(p=>p.y)),high=Math.max(...points.map(p=>p.y));const pad=Math.max((high-low)*.15,1);const step=Math.max(5,Math.ceil((high-low+2*pad)/30)*5);const ymin=Math.floor((low>=0?Math.max(0,low-pad):low-pad)/step)*step,ymax=Math.ceil((high+pad)/step)*step;
+    const x=v=>xmin===xmax?450:115+(v-xmin)/(xmax-xmin)*710;const y=v=>215-(v-ymin)/(ymax-ymin)*170;
     const svg=svgNode('svg',{viewBox:'0 0 900 270',role:'img','aria-label':'UVP-Verlauf in CHF. Genaue Werte in der anschliessenden Tabelle.'});
-    for(let i=0;i<=4;i++){const val=ymin+(ymax-ymin)*i/4;svg.append(svgNode('line',{x1:75,x2:825,y1:y(val),y2:y(val),stroke:'var(--border)'}),svgNode('text',{x:65,y:y(val)+4,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},val.toFixed(2)));}
+    for(let val=ymin;val<=ymax;val+=step){svg.append(svgNode('line',{x1:115,x2:825,y1:y(val),y2:y(val),stroke:'var(--border)'}),svgNode('text',{x:105,y:y(val)+4,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},val.toFixed(2)+' CHF'));}
     svg.append(svgNode('polyline',{points:points.map(p=>`${x(p.x)},${y(p.y)}`).join(' '),fill:'none',stroke:'var(--accent)','stroke-width':2}));
     for(const p of points){const c=svgNode('circle',{cx:x(p.x),cy:y(p.y),r:5,fill:'var(--accent)',tabindex:0});c.append(svgNode('title',{},`${date(p.date)}: CHF ${p.uvp} · Rechnung ${p.invoice_number}`));svg.append(c);}
-    svg.append(svgNode('text',{x:75,y:245,fill:'var(--text-muted)','font-size':12},date(points[0].date)),svgNode('text',{x:825,y:245,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},date(points[points.length-1].date)));
+    svg.append(svgNode('text',{x:115,y:245,fill:'var(--text-muted)','font-size':12},date(points[0].date)),svgNode('text',{x:825,y:245,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},date(points[points.length-1].date)));
     $('priceChart').append(svg);
   }
   async function loadPrices(){$('reloadPrices').disabled=true;$('priceStatus').textContent='Preise werden geladen …';try{prices=(await api('/prices')).items;const options=[...new Set(prices.map(p=>JSON.stringify(p.unit)))];$('priceUnit').replaceChildren();for(const value of options)$('priceUnit').add(new Option(JSON.parse(value)||'Einheit unbekannt',value));drawPrices();}catch(e){$('priceStatus').textContent=e.message;}finally{$('reloadPrices').disabled=false;}}

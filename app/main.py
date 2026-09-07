@@ -15,33 +15,32 @@ from .routers.catalog import router as catalog_router
 from .routers.history import router as history_router
 from .routers.article_details import router as article_details_router
 
-
-app = FastAPI(
-    title="Sport-Fabrik Inventory"
+app = FastAPI(title="Sport-Fabrik Inventory")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    max_age=SESSION_MAX_AGE,
+    same_site="lax",
 )
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, max_age=SESSION_MAX_AGE, same_site="lax")
 app.include_router(auth_router)
 app.include_router(preview_router)
 app.include_router(catalog_router)
 app.include_router(history_router)
 app.include_router(article_details_router)
 app.include_router(dashboard_router)
-app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+app.mount(
+    "/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static"
+)
 
 
 @app.get("/")
 def home(user=Depends(require_login_page)):
-    return FileResponse(Path(__file__).parent / 'templates' / 'dashboard.html')
+    return FileResponse(Path(__file__).parent / "templates" / "dashboard.html")
 
 
 @app.get("/db-test")
 def database_test():
     with engine.connect() as connection:
-        result = connection.execute(
-            text("SELECT 1")
-        ).scalar_one()
+        result = connection.execute(text("SELECT 1")).scalar_one()
 
-    return {
-        "database": "connected",
-        "result": result
-    }
+    return {"database": "connected", "result": result}

@@ -9,3 +9,4 @@ output/
 .pytest_cache/
 Claude outputs/
 Sportfabrik-Inventory-Dokumentation.docx
+tmp/

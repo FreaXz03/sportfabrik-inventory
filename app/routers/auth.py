@@ -2,6 +2,7 @@
 Chefs zusätzlich mit Passwort. Session-Cookie bleibt aktiv bis zur manuellen
 Abmeldung (kein automatisches Ablaufen), analog zum bestehenden Kassensystem.
 """
+
 import os
 from pathlib import Path
 from urllib.parse import quote
@@ -41,7 +42,9 @@ def require_login_page(request: Request, session=Depends(get_session)) -> User:
     """Für Seiten (GET, liefert HTML): leitet nicht angemeldete Nutzer zum Login um."""
     user = _load_user(request, session)
     if user is None:
-        raise HTTPException(303, headers={"Location": f"/login?next={quote(request.url.path)}"})
+        raise HTTPException(
+            303, headers={"Location": f"/login?next={quote(request.url.path)}"}
+        )
     return user
 
 
@@ -67,12 +70,18 @@ def require_chef_api(user: User = Depends(require_login_api)) -> User:
 
 @router.get("/login", include_in_schema=False)
 def login_page():
-    return FileResponse(Path(__file__).resolve().parents[1] / "templates" / "login.html")
+    return FileResponse(
+        Path(__file__).resolve().parents[1] / "templates" / "login.html"
+    )
 
 
 @router.post("/login")
-def login(request: Request, kassennummer: str = Form(...), password: str | None = Form(None),
-          session=Depends(get_session)):
+def login(
+    request: Request,
+    kassennummer: str = Form(...),
+    password: str | None = Form(None),
+    session=Depends(get_session),
+):
     user = session.scalar(select(User).where(User.kassennummer == kassennummer.strip()))
     if user is None:
         raise HTTPException(401, "Unbekannte Kassennummer.")

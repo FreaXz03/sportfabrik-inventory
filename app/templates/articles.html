@@ -47,7 +47,7 @@
         <table id="articlesTable">
           <thead>
             <tr>
-              
+
               <th class="sortable" data-sort="brand">Marke</th>
               <th class="sortable" data-sort="description">Bezeichnung</th>
               <th class="sortable" data-sort="article_no">Art. Nr.</th>
@@ -70,33 +70,216 @@
     </section>
   </main>
   <script>
-    const $ = id => document.getElementById(id); let page = 1, total = 0, controller = null, filters = new URLSearchParams(); const pageSize = 100; let sortBy = 'brand', sortDir = 'asc';
-    function cell(value) { const td = document.createElement('td'); td.textContent = value ?? '—'; return td; }
-    function date(value) { if (!value) return '—'; return value.split('-').reverse().join('.'); }
-    async function load() { if (controller) controller.abort(); const current = new AbortController(); controller = current; $('status').textContent = 'Artikel werden geladen …'; $('table').hidden = true; $('prev').disabled = true; $('next').disabled = true; const params = new URLSearchParams(filters); params.set('page', page); params.set('page_size', pageSize); params.set('sort_by', sortBy); params.set('sort_dir', sortDir); try { const response = await fetch('/api/articles?' + params, { signal: current.signal }); const data = await response.json(); if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Suche fehlgeschlagen.'); if (controller !== current) return; total = data.total; const fragment = document.createDocumentFragment(); for (const item of data.items) { const tr = document.createElement('tr'); const link = document.createElement('a'); link.href = '/articles/' + item.id + '/history'; link.textContent = item.description || 'Artikel ansehen'; const td = document.createElement('td'); td.append(link); tr.append(cell(item.brand), td); for (const value of [item.article_no, item.supplier_article_no, item.ean, item.color, item.size, item.delivered.map(d => `${d.quantity ?? 'unbekannt'} ${d.unit ?? '(Einheit unbekannt)'}`).join(' / ') || '—', item.latest_uvp !== null ? `${item.latest_uvp} CHF` : null, date(item.uvp_date), date(item.first_seen), date(item.last_seen)]) tr.append(cell(value)); fragment.append(tr); } $('rows').replaceChildren(fragment); $('table').hidden = !data.items.length; $('status').textContent = total ? `${total} Artikel gefunden · ${Math.min((page - 1) * pageSize + 1, total)}–${Math.min(page * pageSize, total)} angezeigt` : filters.toString() ? 'Keine passenden Artikel gefunden. Bitte Filter anpassen.' : 'Noch keine Artikel vorhanden. Lade zuerst unter „Rechnung hochladen“ eine Rechnung hoch und bestätige den Import.'; $('page').textContent = `Seite ${page} von ${Math.max(1, Math.ceil(total / pageSize))}`; $('prev').disabled = page <= 1; $('next').disabled = page * pageSize >= total; } catch (error) { if (error.name === 'AbortError') return; $('status').textContent = error.message === 'Failed to fetch' ? 'Keine Verbindung zur App. Bitte erneut suchen.' : error.message; $('page').textContent = ''; } }
-    $('filters').addEventListener('submit', event => { event.preventDefault(); filters = new URLSearchParams(new FormData(event.target)); page = 1; load(); }); $('resetBtn').addEventListener('click', () => { $('filters').reset(); filters = new URLSearchParams(); page = 1; load(); }); $('prev').addEventListener('click', () => { page--; load(); }); $('next').addEventListener('click', () => { page++; load(); });
-    async function brands() { try { const response = await fetch('/api/brands'); if (!response.ok) throw new Error(); for (const brand of await response.json()) $('brands').add(new Option(brand, brand)); } catch { $('brands').disabled = true; $('brands').title = 'Marken konnten nicht geladen werden. Bitte Seite neu laden; die Schnellsuche bleibt verfügbar.'; } }
-    function updateSortIndicators() { document.querySelectorAll('#table thead th.sortable').forEach(th => { th.classList.toggle('sort-asc', th.dataset.sort === sortBy && sortDir === 'asc'); th.classList.toggle('sort-desc', th.dataset.sort === sortBy && sortDir === 'desc'); }); }
-    document.querySelectorAll('#table thead th.sortable').forEach(th => { th.addEventListener('click', () => { const col = th.dataset.sort; if (sortBy === col) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; } else { sortBy = col; sortDir = 'asc'; } page = 1; updateSortIndicators(); load(); }); });
+    const $ = (id) => document.getElementById(id);
+    let page = 1,
+      total = 0,
+      controller = null,
+      filters = new URLSearchParams();
+    const pageSize = 100;
+    let sortBy = 'brand',
+      sortDir = 'asc';
+
+    function cell(value) {
+      const td = document.createElement('td');
+      td.textContent = value ?? '—';
+      return td;
+    }
+
+    function date(value) {
+      if (!value) return '—';
+      return value.split('-').reverse().join('.');
+    }
+
+    async function load() {
+      if (controller) controller.abort();
+      const current = new AbortController();
+      controller = current;
+
+      $('status').textContent = 'Artikel werden geladen …';
+      $('table').hidden = true;
+      $('prev').disabled = true;
+      $('next').disabled = true;
+
+      const params = new URLSearchParams(filters);
+      params.set('page', page);
+      params.set('page_size', pageSize);
+      params.set('sort_by', sortBy);
+      params.set('sort_dir', sortDir);
+
+      try {
+        const response = await fetch('/api/articles?' + params, { signal: current.signal });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(typeof data.detail === 'string' ? data.detail : 'Suche fehlgeschlagen.');
+        }
+
+        if (controller !== current) return;
+
+        total = data.total;
+        const fragment = document.createDocumentFragment();
+
+        for (const item of data.items) {
+          const tr = document.createElement('tr');
+          const link = document.createElement('a');
+          link.href = '/articles/' + item.id + '/history';
+          link.textContent = item.description || 'Artikel ansehen';
+
+          const td = document.createElement('td');
+          td.append(link);
+          tr.append(cell(item.brand), td);
+
+          for (const value of [
+            item.article_no,
+            item.supplier_article_no,
+            item.ean,
+            item.color,
+            item.size,
+            item.delivered
+              .map((d) => `${d.quantity ?? 'unbekannt'} ${d.unit ?? '(Einheit unbekannt)'}`)
+              .join(' / ') || '—',
+            item.latest_uvp !== null ? `${item.latest_uvp} CHF` : null,
+            date(item.uvp_date),
+            date(item.first_seen),
+            date(item.last_seen)
+          ]) {
+            tr.append(cell(value));
+          }
+
+          fragment.append(tr);
+        }
+
+        $('rows').replaceChildren(fragment);
+        $('table').hidden = !data.items.length;
+        $('status').textContent = total
+          ? `${total} Artikel gefunden · ${Math.min((page - 1) * pageSize + 1, total)}–${Math.min(page * pageSize, total)} angezeigt`
+          : filters.toString()
+            ? 'Keine passenden Artikel gefunden. Bitte Filter anpassen.'
+            : 'Noch keine Artikel vorhanden. Lade zuerst unter „Rechnung hochladen“ eine Rechnung hoch und bestätige den Import.';
+        $('page').textContent = `Seite ${page} von ${Math.max(1, Math.ceil(total / pageSize))}`;
+        $('prev').disabled = page <= 1;
+        $('next').disabled = page * pageSize >= total;
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        $('status').textContent =
+          error.message === 'Failed to fetch'
+            ? 'Keine Verbindung zur App. Bitte erneut suchen.'
+            : error.message;
+        $('page').textContent = '';
+      }
+    }
+
+    $('filters').addEventListener('submit', (event) => {
+      event.preventDefault();
+      filters = new URLSearchParams(new FormData(event.target));
+      page = 1;
+      load();
+    });
+
+    $('resetBtn').addEventListener('click', () => {
+      $('filters').reset();
+      filters = new URLSearchParams();
+      page = 1;
+      load();
+    });
+
+    $('prev').addEventListener('click', () => {
+      page--;
+      load();
+    });
+
+    $('next').addEventListener('click', () => {
+      page++;
+      load();
+    });
+
+    async function brands() {
+      try {
+        const response = await fetch('/api/brands');
+        if (!response.ok) throw new Error();
+
+        for (const brand of await response.json()) {
+          $('brands').add(new Option(brand, brand));
+        }
+      } catch {
+        $('brands').disabled = true;
+        $('brands').title = 'Marken konnten nicht geladen werden. Bitte Seite neu laden; die Schnellsuche bleibt verfügbar.';
+      }
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('#table thead th.sortable').forEach((th) => {
+        th.classList.toggle('sort-asc', th.dataset.sort === sortBy && sortDir === 'asc');
+        th.classList.toggle('sort-desc', th.dataset.sort === sortBy && sortDir === 'desc');
+      });
+    }
+
+    document.querySelectorAll('#table thead th.sortable').forEach((th) => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort;
+
+        if (sortBy === col) {
+          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortBy = col;
+          sortDir = 'asc';
+        }
+
+        page = 1;
+        updateSortIndicators();
+        load();
+      });
+    });
+
     updateSortIndicators();
+
     const COLUMN_STORAGE_KEY = 'sportfabrikArticlesHiddenColumnsV2';
-    function loadHiddenColumns() { try { return new Set(JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY)) || []); } catch { return new Set(); } }
-    function saveHiddenColumns(set) { try { localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...set])); } catch { } }
-    function applyColumnVisibility(hidden) { const table = $('articlesTable'); table.className = ''; for (const col of hidden) table.classList.add('hide-col-' + col); }
+
+    function loadHiddenColumns() {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY)) || []);
+      } catch {
+        return new Set();
+      }
+    }
+
+    function saveHiddenColumns(set) {
+      try {
+        localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...set]));
+      } catch {
+        // ignored
+      }
+    }
+
+    function applyColumnVisibility(hidden) {
+      const table = $('articlesTable');
+      table.className = '';
+
+      for (const col of hidden) {
+        table.classList.add('hide-col-' + col);
+      }
+    }
+
     const hiddenColumns = loadHiddenColumns();
-    document.querySelectorAll('#columnPicker input[type=checkbox]').forEach(cb => {
+
+    document.querySelectorAll('#columnPicker input[type=checkbox]').forEach((cb) => {
       const col = cb.dataset.col;
       cb.checked = !hiddenColumns.has(col);
+
       cb.addEventListener('change', () => {
-        if (cb.checked) hiddenColumns.delete(col); else hiddenColumns.add(col);
+        if (cb.checked) hiddenColumns.delete(col);
+        else hiddenColumns.add(col);
+
         applyColumnVisibility(hiddenColumns);
         saveHiddenColumns(hiddenColumns);
       });
     });
+
     applyColumnVisibility(hiddenColumns);
-    brands(); load();
+    brands();
+    load();
   </script>
-  <footer>Sport-Fabrik Inventory · Gelieferte Mengen sind kein aktueller Lagerbestand.</footer>
+  <footer>Sport-Fabrik Inventory</footer>
   <script src="/static/js/session.js"></script>
   <script src="/static/js/theme.js"></script>
 </body>

@@ -118,6 +118,7 @@ def test_supplier_group_variants_prices_and_notes(client):
         assert history['product']['supplier_article_no'] == 'SUP-9'
         prices = client.get(f'/api/articles/{pid}/prices').json()['items']
         assert prices[-1]['positions'] == 2
+        assert prices[-1]['quantity'] == '3.00'
     assert client.get(f'/api/articles/{other_id}/history').json()['total'] == 1
     assert client.get('/api/articles/2/history').json()['total'] == 0
     assert client.get(f'/api/articles/{blank_id}/history').json()['total'] == 1
@@ -125,3 +126,20 @@ def test_supplier_group_variants_prices_and_notes(client):
     assert client.get(f'/api/articles/{variant_id}/notes').json()['items'][0]['id'] == note['id']
     assert client.put(f"/api/articles/{variant_id}/notes/{note['id']}", json={'body':'Gemeinsam', 'version':1}).status_code == 200
     assert client.delete(f"/api/articles/{variant_id}/notes/{note['id']}?version=2").status_code == 204
+
+
+def test_history_sorting_before_pagination(client):
+    setup(client)
+    url = '/api/articles/1/history?sort_by=quantity&page_size=1'
+    assert client.get(url + '&sort_dir=asc').json()['items'][0]['quantity'] == '1.00'
+    assert client.get(url + '&sort_dir=desc').json()['items'][0]['quantity'] == '3.00'
+    assert client.get(url + '&sort_dir=asc&page=2').json()['items'][0]['quantity'] == '2.00'
+    assert client.get('/api/articles/1/history?sort_by=invalid').status_code == 422
+
+
+def test_natural_size_order():
+    from app.routers.history import position_sort_key
+    def ordered(values):
+        return sorted(values, key=lambda v: position_sort_key({'size': v}, 'size'))
+    assert ordered(['10.5', '8.5', '11', '7', '9']) == ['7', '8.5', '9', '10.5', '11']
+    assert ordered(['XL', 'S', 'XXL', 'M', 'XS', 'L']) == ['XS', 'S', 'M', 'L', 'XL', 'XXL']

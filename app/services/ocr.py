@@ -12,6 +12,7 @@ OCR is inherently less reliable than a native text layer, so callers are
 expected to flag results derived this way for extra human review - see
 parser.parse_invoice's ocr_used/ocr_pages fields.
 """
+
 import re
 
 try:
@@ -107,8 +108,18 @@ def _grouped_words(data):
         y0, y1 = groups[key]
         x0 = left * _POINTS_PER_PIXEL
         x1 = (left + width) * _POINTS_PER_PIXEL
-        words.append((x0, y0 * _POINTS_PER_PIXEL, x1, y1 * _POINTS_PER_PIXEL,
-                      word, key[0], key[1] * 1000 + key[2], word_num))
+        words.append(
+            (
+                x0,
+                y0 * _POINTS_PER_PIXEL,
+                x1,
+                y1 * _POINTS_PER_PIXEL,
+                word,
+                key[0],
+                key[1] * 1000 + key[2],
+                word_num,
+            )
+        )
     return words
 
 
@@ -124,9 +135,13 @@ def ocr_page(page, dpi=OCR_DPI):
         raise OcrUnavailableError(_UNAVAILABLE_MESSAGE)
     try:
         image = render_upright_image(page, dpi=dpi)
-        data = pytesseract.image_to_data(image, output_type=Output.DICT, config="--psm 6")
+        data = pytesseract.image_to_data(
+            image, output_type=Output.DICT, config="--psm 6"
+        )
         text = pytesseract.image_to_string(image, config="--psm 6")
     except pytesseract.TesseractNotFoundError as exc:
         raise OcrUnavailableError(_UNAVAILABLE_MESSAGE) from exc
 
-    return dict(words=_grouped_words(data), text=text, height=image.height * _POINTS_PER_PIXEL)
+    return dict(
+        words=_grouped_words(data), text=text, height=image.height * _POINTS_PER_PIXEL
+    )

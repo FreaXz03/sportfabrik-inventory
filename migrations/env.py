@@ -10,7 +10,9 @@ from alembic import context
 # Projekt-Root auf den Pfad, damit 'app' importierbar ist, egal von wo alembic aufgerufen wird.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.database import DATABASE_URL  # noqa: E402  (gleiche .env / DB_* Logik wie die App)
+from app.core.database import (
+    DATABASE_URL,
+)  # noqa: E402  (gleiche .env / DB_* Logik wie die App)
 from app.core.models import Base  # noqa: E402
 
 # this is the Alembic Config object, which provides
@@ -74,9 +76,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
