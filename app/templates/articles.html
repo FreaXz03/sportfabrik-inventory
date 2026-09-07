@@ -1,27 +1,104 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>try{var t=localStorage.getItem('sportfabrikTheme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script><title>Artikelsuche · Sport-Fabrik</title><link rel="stylesheet" href="/static/css/app.css?v=sportfabrik-1"></head><body><header><a class="brand" href="/" aria-label="Sport-Fabrik Inventory – Übersicht"><img src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a><nav aria-label="Hauptnavigation"><a href="/">Übersicht</a><a href="/articles">Artikel</a><a href="/invoices">Rechnungen</a><a href="/preview">Rechnung hochladen</a></nav></header><main class="wide"><h1>Artikelsuche</h1><p>Alle bisher importierten Artikel an einem Ort. Suche nach EAN, Marke oder Bezeichnung.</p><section class="panel"><form id="filters" class="filters"><label>Schnellsuche<input name="q" placeholder="Artikel, Farbe, Grösse …" maxlength="200"></label><label>Marke<select name="brand" id="brands"><option value="">Alle Marken</option></select></label><label>EAN · exakt<input name="ean" inputmode="numeric" maxlength="30" placeholder="Auch mit führender Null"></label><label>Art.-Nr. / Lief. Art.-Nr.<input name="article_no" maxlength="100"></label><label>Bezeichnung<input name="description" maxlength="500"></label><button>Suchen</button><button type="button" class="secondary" id="resetBtn">Zurücksetzen</button></form><div id="status" role="status" aria-live="polite"></div><p class="muted">Gelieferte Mengen werden je Einheit summiert und entsprechen nicht dem aktuellen Lagerbestand. UVP: zuletzt erfasster Wert nach Rechnungsdatum.</p><details id="columnPicker" class="column-picker"><summary>Spalten anzeigen</summary><div class="column-picker-body"><label><input type="checkbox" data-col="2" checked>Marke</label><label><input type="checkbox" data-col="3" checked>Bezeichnung</label><label><input type="checkbox" data-col="4" checked>Art. Nr.</label><label><input type="checkbox" data-col="5" checked>Lief. Art. Nr.</label><label><input type="checkbox" data-col="6" checked>EAN</label><label><input type="checkbox" data-col="7" checked>Farbe</label><label><input type="checkbox" data-col="8" checked>Grösse</label><label><input type="checkbox" data-col="9" checked>Geliefert gesamt</label><label><input type="checkbox" data-col="10" checked>Letzter UVP</label><label><input type="checkbox" data-col="11" checked>UVP vom</label><label><input type="checkbox" data-col="12" checked>Erste Lieferung</label><label><input type="checkbox" data-col="13" checked>Letzte Lieferung</label></div></details><div id="table" class="tablewrap" hidden><table id="articlesTable"><thead><tr><th>Historie</th><th class="sortable" data-sort="brand">Marke</th><th class="sortable" data-sort="description">Bezeichnung</th><th class="sortable" data-sort="article_no">Art. Nr.</th><th class="sortable" data-sort="supplier_article_no">Lief. Art. Nr.</th><th class="sortable" data-sort="ean">EAN</th><th class="sortable" data-sort="color">Farbe</th><th class="sortable" data-sort="size">Grösse</th><th>Geliefert gesamt</th><th>Letzter UVP</th><th>UVP vom</th><th class="sortable" data-sort="first_seen">Erste Lieferung</th><th class="sortable" data-sort="last_seen">Letzte Lieferung</th></tr></thead><tbody id="rows"></tbody></table></div><div class="paging"><button type="button" id="prev" class="secondary" disabled>← Zurück</button><span id="page"></span><button type="button" id="next" class="secondary" disabled>Weiter →</button></div></section></main><script>
-const $=id=>document.getElementById(id);let page=1,total=0,controller=null,filters=new URLSearchParams();const pageSize=100;let sortBy='brand',sortDir='asc';
-function cell(value){const td=document.createElement('td');td.textContent=value??'—';return td;}
-function date(value){if(!value)return '—';return value.split('-').reverse().join('.');}
-async function load(){if(controller)controller.abort();const current=new AbortController();controller=current;$('status').textContent='Artikel werden geladen …';$('table').hidden=true;$('prev').disabled=true;$('next').disabled=true;const params=new URLSearchParams(filters);params.set('page',page);params.set('page_size',pageSize);params.set('sort_by',sortBy);params.set('sort_dir',sortDir);try{const response=await fetch('/api/articles?'+params,{signal:current.signal});const data=await response.json();if(!response.ok)throw new Error(typeof data.detail==='string'?data.detail:'Suche fehlgeschlagen.');if(controller!==current)return;total=data.total;const fragment=document.createDocumentFragment();for(const item of data.items){const tr=document.createElement('tr');const link=document.createElement('a');link.href='/articles/'+item.id+'/history';link.textContent='Lieferungen →';const td=document.createElement('td');td.append(link);tr.append(td);for(const value of [item.brand,item.description,item.article_no,item.supplier_article_no,item.ean,item.color,item.size,item.delivered.map(d=>`${d.quantity??'unbekannt'} ${d.unit??'(Einheit unbekannt)'}`).join(' / ')||'—',item.latest_uvp!==null?`${item.latest_uvp} CHF`:null,date(item.uvp_date),date(item.first_seen),date(item.last_seen)])tr.append(cell(value));fragment.append(tr);}$('rows').replaceChildren(fragment);$('table').hidden=!data.items.length;$('status').textContent=total?`${total} Artikel gefunden · ${Math.min((page-1)*pageSize+1,total)}–${Math.min(page*pageSize,total)} angezeigt`:filters.toString()?'Keine passenden Artikel gefunden. Bitte Filter anpassen.':'Noch keine Artikel vorhanden. Lade zuerst unter „Rechnung hochladen“ eine Rechnung hoch und bestätige den Import.';$('page').textContent=`Seite ${page} von ${Math.max(1,Math.ceil(total/pageSize))}`;$('prev').disabled=page<=1;$('next').disabled=page*pageSize>=total;}catch(error){if(error.name==='AbortError')return;$('status').textContent=error.message==='Failed to fetch'?'Keine Verbindung zur App. Bitte erneut suchen.':error.message;$('page').textContent='';}}
-$('filters').addEventListener('submit',event=>{event.preventDefault();filters=new URLSearchParams(new FormData(event.target));page=1;load();});$('resetBtn').addEventListener('click',()=>{$('filters').reset();filters=new URLSearchParams();page=1;load();});$('prev').addEventListener('click',()=>{page--;load();});$('next').addEventListener('click',()=>{page++;load();});
-async function brands(){try{const response=await fetch('/api/brands');if(!response.ok)throw new Error();for(const brand of await response.json())$('brands').add(new Option(brand,brand));}catch{$('brands').disabled=true;$('brands').title='Marken konnten nicht geladen werden. Bitte Seite neu laden; die Schnellsuche bleibt verfügbar.';}}
-function updateSortIndicators(){document.querySelectorAll('#table thead th.sortable').forEach(th=>{th.classList.toggle('sort-asc',th.dataset.sort===sortBy&&sortDir==='asc');th.classList.toggle('sort-desc',th.dataset.sort===sortBy&&sortDir==='desc');});}
-document.querySelectorAll('#table thead th.sortable').forEach(th=>{th.addEventListener('click',()=>{const col=th.dataset.sort;if(sortBy===col){sortDir=sortDir==='asc'?'desc':'asc';}else{sortBy=col;sortDir='asc';}page=1;updateSortIndicators();load();});});
-updateSortIndicators();
-const COLUMN_STORAGE_KEY='sportfabrikArticlesHiddenColumns';
-function loadHiddenColumns(){try{return new Set(JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY))||[]);}catch{return new Set();}}
-function saveHiddenColumns(set){try{localStorage.setItem(COLUMN_STORAGE_KEY,JSON.stringify([...set]));}catch{}}
-function applyColumnVisibility(hidden){const table=$('articlesTable');table.className='';for(const col of hidden)table.classList.add('hide-col-'+col);}
-const hiddenColumns=loadHiddenColumns();
-document.querySelectorAll('#columnPicker input[type=checkbox]').forEach(cb=>{
-  const col=cb.dataset.col;
-  cb.checked=!hiddenColumns.has(col);
-  cb.addEventListener('change',()=>{
-    if(cb.checked)hiddenColumns.delete(col);else hiddenColumns.add(col);
+<!doctype html>
+<html lang="de">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script>try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>
+  <title>Artikelsuche · Sport-Fabrik</title>
+  <link rel="stylesheet" href="/static/css/app.css?v=sportfabrik-1">
+</head>
+
+<body>
+  <header><a class="brand" href="/" aria-label="Sport-Fabrik Inventory – Übersicht"><img
+        src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a>
+    <nav aria-label="Hauptnavigation"><a href="/">Übersicht</a><a href="/articles">Artikel</a><a
+        href="/invoices">Rechnungen</a><a href="/preview">Rechnung hochladen</a></nav>
+  </header>
+  <main class="wide">
+    <h1>Artikelsuche</h1>
+    <p>Alle bisher importierten Artikel an einem Ort. Suche nach EAN, Marke oder Bezeichnung.</p>
+    <section class="panel">
+      <form id="filters" class="filters"><label>Schnellsuche<input name="q" placeholder="Artikel, Farbe, Grösse …"
+            maxlength="200"></label><label>Marke<select name="brand" id="brands">
+            <option value="">Alle Marken</option>
+          </select></label><label>EAN · exakt<input name="ean" inputmode="numeric" maxlength="30"
+            placeholder="Auch mit führender Null"></label><label>Art.-Nr. / Lief. Art.-Nr.<input name="article_no"
+            maxlength="100"></label><label>Bezeichnung<input name="description"
+            maxlength="500"></label><button>Suchen</button><button type="button" class="secondary"
+          id="resetBtn">Zurücksetzen</button></form>
+      <div id="status" role="status" aria-live="polite"></div>
+      <p class="muted">Gelieferte Mengen werden je Einheit summiert und entsprechen nicht dem aktuellen Lagerbestand.
+        UVP: zuletzt erfasster Wert nach Rechnungsdatum.</p>
+      <details id="columnPicker" class="column-picker">
+        <summary>Spalten anzeigen</summary>
+        <div class="column-picker-body"><label><input type="checkbox" data-col="1" checked>Marke</label><label><input
+              type="checkbox" data-col="2" checked>Bezeichnung</label><label><input type="checkbox" data-col="3"
+              checked>Art. Nr.</label><label><input type="checkbox" data-col="4" checked>Lief. Art.
+            Nr.</label><label><input type="checkbox" data-col="5" checked>EAN</label><label><input type="checkbox"
+              data-col="6" checked>Farbe</label><label><input type="checkbox" data-col="7"
+              checked>Grösse</label><label><input type="checkbox" data-col="8" checked>Geliefert
+            gesamt</label><label><input type="checkbox" data-col="9" checked>Letzter UVP</label><label><input
+              type="checkbox" data-col="10" checked>UVP vom</label><label><input type="checkbox" data-col="11"
+              checked>Erste Lieferung</label><label><input type="checkbox" data-col="12" checked>Letzte
+            Lieferung</label></div>
+      </details>
+      <div id="table" class="tablewrap" hidden>
+        <table id="articlesTable">
+          <thead>
+            <tr>
+              
+              <th class="sortable" data-sort="brand">Marke</th>
+              <th class="sortable" data-sort="description">Bezeichnung</th>
+              <th class="sortable" data-sort="article_no">Art. Nr.</th>
+              <th class="sortable" data-sort="supplier_article_no">Lief. Art. Nr.</th>
+              <th class="sortable" data-sort="ean">EAN</th>
+              <th class="sortable" data-sort="color">Farbe</th>
+              <th class="sortable" data-sort="size">Grösse</th>
+              <th>Geliefert gesamt</th>
+              <th>Letzter UVP</th>
+              <th>UVP vom</th>
+              <th class="sortable" data-sort="first_seen">Erste Lieferung</th>
+              <th class="sortable" data-sort="last_seen">Letzte Lieferung</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="paging"><button type="button" id="prev" class="secondary" disabled>← Zurück</button><span
+          id="page"></span><button type="button" id="next" class="secondary" disabled>Weiter →</button></div>
+    </section>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id); let page = 1, total = 0, controller = null, filters = new URLSearchParams(); const pageSize = 100; let sortBy = 'brand', sortDir = 'asc';
+    function cell(value) { const td = document.createElement('td'); td.textContent = value ?? '—'; return td; }
+    function date(value) { if (!value) return '—'; return value.split('-').reverse().join('.'); }
+    async function load() { if (controller) controller.abort(); const current = new AbortController(); controller = current; $('status').textContent = 'Artikel werden geladen …'; $('table').hidden = true; $('prev').disabled = true; $('next').disabled = true; const params = new URLSearchParams(filters); params.set('page', page); params.set('page_size', pageSize); params.set('sort_by', sortBy); params.set('sort_dir', sortDir); try { const response = await fetch('/api/articles?' + params, { signal: current.signal }); const data = await response.json(); if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Suche fehlgeschlagen.'); if (controller !== current) return; total = data.total; const fragment = document.createDocumentFragment(); for (const item of data.items) { const tr = document.createElement('tr'); const link = document.createElement('a'); link.href = '/articles/' + item.id + '/history'; link.textContent = item.description || 'Artikel ansehen'; const td = document.createElement('td'); td.append(link); tr.append(cell(item.brand), td); for (const value of [item.article_no, item.supplier_article_no, item.ean, item.color, item.size, item.delivered.map(d => `${d.quantity ?? 'unbekannt'} ${d.unit ?? '(Einheit unbekannt)'}`).join(' / ') || '—', item.latest_uvp !== null ? `${item.latest_uvp} CHF` : null, date(item.uvp_date), date(item.first_seen), date(item.last_seen)]) tr.append(cell(value)); fragment.append(tr); } $('rows').replaceChildren(fragment); $('table').hidden = !data.items.length; $('status').textContent = total ? `${total} Artikel gefunden · ${Math.min((page - 1) * pageSize + 1, total)}–${Math.min(page * pageSize, total)} angezeigt` : filters.toString() ? 'Keine passenden Artikel gefunden. Bitte Filter anpassen.' : 'Noch keine Artikel vorhanden. Lade zuerst unter „Rechnung hochladen“ eine Rechnung hoch und bestätige den Import.'; $('page').textContent = `Seite ${page} von ${Math.max(1, Math.ceil(total / pageSize))}`; $('prev').disabled = page <= 1; $('next').disabled = page * pageSize >= total; } catch (error) { if (error.name === 'AbortError') return; $('status').textContent = error.message === 'Failed to fetch' ? 'Keine Verbindung zur App. Bitte erneut suchen.' : error.message; $('page').textContent = ''; } }
+    $('filters').addEventListener('submit', event => { event.preventDefault(); filters = new URLSearchParams(new FormData(event.target)); page = 1; load(); }); $('resetBtn').addEventListener('click', () => { $('filters').reset(); filters = new URLSearchParams(); page = 1; load(); }); $('prev').addEventListener('click', () => { page--; load(); }); $('next').addEventListener('click', () => { page++; load(); });
+    async function brands() { try { const response = await fetch('/api/brands'); if (!response.ok) throw new Error(); for (const brand of await response.json()) $('brands').add(new Option(brand, brand)); } catch { $('brands').disabled = true; $('brands').title = 'Marken konnten nicht geladen werden. Bitte Seite neu laden; die Schnellsuche bleibt verfügbar.'; } }
+    function updateSortIndicators() { document.querySelectorAll('#table thead th.sortable').forEach(th => { th.classList.toggle('sort-asc', th.dataset.sort === sortBy && sortDir === 'asc'); th.classList.toggle('sort-desc', th.dataset.sort === sortBy && sortDir === 'desc'); }); }
+    document.querySelectorAll('#table thead th.sortable').forEach(th => { th.addEventListener('click', () => { const col = th.dataset.sort; if (sortBy === col) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; } else { sortBy = col; sortDir = 'asc'; } page = 1; updateSortIndicators(); load(); }); });
+    updateSortIndicators();
+    const COLUMN_STORAGE_KEY = 'sportfabrikArticlesHiddenColumnsV2';
+    function loadHiddenColumns() { try { return new Set(JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY)) || []); } catch { return new Set(); } }
+    function saveHiddenColumns(set) { try { localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...set])); } catch { } }
+    function applyColumnVisibility(hidden) { const table = $('articlesTable'); table.className = ''; for (const col of hidden) table.classList.add('hide-col-' + col); }
+    const hiddenColumns = loadHiddenColumns();
+    document.querySelectorAll('#columnPicker input[type=checkbox]').forEach(cb => {
+      const col = cb.dataset.col;
+      cb.checked = !hiddenColumns.has(col);
+      cb.addEventListener('change', () => {
+        if (cb.checked) hiddenColumns.delete(col); else hiddenColumns.add(col);
+        applyColumnVisibility(hiddenColumns);
+        saveHiddenColumns(hiddenColumns);
+      });
+    });
     applyColumnVisibility(hiddenColumns);
-    saveHiddenColumns(hiddenColumns);
-  });
-});
-applyColumnVisibility(hiddenColumns);
-brands();load();
-</script><footer>Sport-Fabrik Inventory · Gelieferte Mengen sind kein aktueller Lagerbestand.</footer><script src="/static/js/session.js"></script><script src="/static/js/theme.js"></script></body></html>
+    brands(); load();
+  </script>
+  <footer>Sport-Fabrik Inventory · Gelieferte Mengen sind kein aktueller Lagerbestand.</footer>
+  <script src="/static/js/session.js"></script>
+  <script src="/static/js/theme.js"></script>
+</body>
+
+</html>
