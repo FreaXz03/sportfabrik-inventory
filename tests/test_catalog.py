@@ -161,3 +161,31 @@ def test_sort_default_unchanged(client):
     # No sort params given: behaviour matches the previous default ordering.
     data = client.get("/api/articles").json()
     assert [item["brand"] for item in data["items"]] == ["Hoka", "Nike"]
+
+
+def test_last_delivery_date_filter(client):
+    from app.core.database import get_session
+    generator = client.app.dependency_overrides[get_session]()
+    session = next(generator)
+    try:
+        session.get(Product, 1).last_seen = date(2026, 8, 5)
+        session.get(Product, 2).last_seen = date(2026, 7, 5)
+        session.commit()
+    finally:
+        generator.close()
+    url = '/api/articles'
+    result = client.get(url, params={'last_delivery_from':'2026-08-05', 'last_delivery_to':'2026-08-05'}).json()
+    assert result['total'] == 1 and result['items'][0]['id'] == 1
+    assert client.get(url, params={'last_delivery_to':'2026-07-31'}).json()['items'][0]['id'] == 2
+    assert client.get(url, params={'last_delivery_from':'2027-01-01'}).json()['total'] == 0
+    assert client.get(url, params={'last_delivery_from':'2026-09-01','last_delivery_to':'2026-01-01'}).status_code == 422
+    assert client.get(url, params={'last_delivery_from':'invalid'}).status_code == 422
+    assert client.get(url).json()['total'] == 2
+
+
+def test_search_and_export_with_empty_date_fields(client):
+    params = {'article_no': 'SUP-9', 'last_delivery_from': '', 'last_delivery_to': ''}
+    response = client.get('/api/articles', params=params)
+    assert response.status_code == 200
+    assert response.json()['total'] == 1
+    assert client.get('/api/articles/export', params=params).status_code == 200

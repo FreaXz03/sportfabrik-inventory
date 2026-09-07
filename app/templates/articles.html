@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <script>try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>
   <title>Artikelsuche · Sport-Fabrik</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=sportfabrik-1">
+  <link rel="stylesheet" href="/static/css/app.css?v=settings-spacing-1">
 </head>
 
 <body>
@@ -25,7 +25,7 @@
           </select></label><label>EAN · exakt<input name="ean" inputmode="numeric" maxlength="30"
             placeholder="Auch mit führender Null"></label><label>Art.-Nr. / Lief. Art.-Nr.<input name="article_no"
             maxlength="100"></label><label>Bezeichnung<input name="description"
-            maxlength="500"></label><button>Suchen</button><button type="button" class="secondary"
+            maxlength="500"></label><label>Letzte Lieferung von<input type="date" name="last_delivery_from"></label><label>Letzte Lieferung bis<input type="date" name="last_delivery_to"></label><button>Suchen</button><button type="button" class="secondary"
           id="resetBtn">Zurücksetzen</button></form>
       <div id="status" role="status" aria-live="polite"></div>
       <p class="muted">Gelieferte Mengen werden je Einheit summiert und entsprechen nicht dem aktuellen Lagerbestand.
@@ -79,6 +79,7 @@
     let sortBy = 'brand',
       sortDir = 'asc';
 
+    window.articleExportParams = () => { const params = new URLSearchParams(filters); params.set('sort_by', sortBy); params.set('sort_dir', sortDir); return params; };
     function cell(value) {
       const td = document.createElement('td');
       td.textContent = value ?? '—';
@@ -171,7 +172,7 @@
 
     $('filters').addEventListener('submit', (event) => {
       event.preventDefault();
-      filters = new URLSearchParams(new FormData(event.target));
+      filters = new URLSearchParams([...new FormData(event.target)].filter(([, value]) => value !== ''));
       page = 1;
       load();
     });
@@ -280,8 +281,8 @@
     load();
   </script>
   <footer>Sport-Fabrik Inventory</footer>
-  <script src="/static/js/session.js"></script>
-  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/session.js?v=excel-2"></script>
+  <script src="/static/js/theme.js?v=2"></script>
 </body>
 
 </html>

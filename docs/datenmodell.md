@@ -1,6 +1,6 @@
 # Datenmodell
 
-Fünf Tabellen, verwaltet über SQLAlchemy 2.0 (`app/core/models.py`) und
+Sechs Tabellen, verwaltet über SQLAlchemy 2.0 (`app/core/models.py`) und
 Alembic-Migrationen (`migrations/`).
 
 ```mermaid
@@ -8,6 +8,7 @@ erDiagram
     PRODUCTS ||--o{ INVOICE_ITEMS : "wird geliefert in"
     INVOICES ||--o{ INVOICE_ITEMS : "enthält"
     INVOICE_ITEMS ||--o| INVOICE_ITEM_SOURCES : "Original-Snapshot"
+    PRODUCTS ||--o{ ARTICLE_NOTES : "hat"
 
     PRODUCTS {
         int id PK
@@ -32,6 +33,7 @@ erDiagram
         datetime uploaded_at
         string imported_by_kassennummer
         string imported_by_name
+        boolean ocr_used
     }
     INVOICE_ITEMS {
         int id PK
@@ -45,6 +47,18 @@ erDiagram
         int item_id PK_FK
         json data
     }
+    ARTICLE_NOTES {
+        int id PK
+        int product_id FK
+        string body
+        int author_user_id
+        string author_name
+        string author_number
+        string updated_by
+        datetime created_at
+        datetime updated_at
+        int version
+    }
     USERS {
         int id PK
         string kassennummer UK
@@ -55,10 +69,14 @@ erDiagram
     }
 ```
 
-`USERS` steht bewusst ohne Verknüpfungslinie zu `INVOICES`: wer eine
-Rechnung importiert hat, wird als Momentaufnahme (`imported_by_*`) direkt
-auf `INVOICES` gespeichert, nicht als Fremdschlüssel — siehe Entscheidung
-E5 in `planung.md`.
+`USERS` steht bewusst ohne Verknüpfungslinie zu `INVOICES` oder
+`ARTICLE_NOTES`: wer eine Rechnung importiert bzw. eine Notiz verfasst hat,
+wird als Momentaufnahme (`imported_by_*` bzw. `author_name`/`author_number`)
+direkt gespeichert, nicht als Fremdschlüssel — siehe Entscheidung E5 in
+`planung.md`. `article_notes.author_user_id` ist zwar eine Nutzer-ID, aber
+absichtlich ohne Fremdschlüssel-Constraint auf `users.id`: eine Notiz bleibt
+so lesbar und ihrem ursprünglichen Autor zuordenbar, selbst wenn das
+zugehörige Benutzerkonto später entfernt wird.
 
 ## Tabellen im Detail
 
@@ -69,13 +87,22 @@ Artikelnummer usw. stammen dann von der ersten Lieferung, spätere
 Lieferungen liefern nur neue Mengen/Preise. `first_seen`/`last_seen` werden
 bei jedem Import und jeder Löschung neu berechnet.
 
+Für Notizen, Preisverlauf und Lieferhistorie werden **Varianten desselben
+Artikels** (gleiche Marke + gleiche Lieferanten-Artikelnummer, z. B.
+verschiedene Farben/Grössen) serverseitig zu einer Gruppe zusammengefasst
+(`app/services/article_groups.py`) — Artikel ohne Lieferanten-Artikelnummer
+bleiben einzeln. Das ist eine reine Abfrage-Gruppierung zur Anzeige; in der
+Tabelle bleibt jede EAN-Variante ein eigener `products`-Datensatz.
+
 ### `invoices`
 Ein Datensatz je importierter Rechnung. `invoice_number` und `file_hash`
 sind eindeutig — verhindert Doppelimporte derselben Rechnung. `supplier`
-ist aktuell immer `"INTERSPORT Schweiz AG"` (siehe Anforderung F-offen:
-weitere Lieferanten). `imported_by_kassennummer`/`imported_by_name` sind
-nullable, weil sie erst nachträglich eingeführt wurden — vor September 2026
-importierte Rechnungen zeigen hier „—".
+ist aktuell immer `"INTERSPORT Schweiz AG"` (siehe offener Punkt: weitere
+Lieferanten). `imported_by_kassennummer`/`imported_by_name` sind nullable,
+weil sie erst nachträglich eingeführt wurden — vor September 2026
+importierte Rechnungen zeigen hier „—". `ocr_used` markiert Rechnungen, die
+mangels Textebene per Tesseract-OCR statt direkt aus dem PDF gelesen wurden
+(siehe `architektur.md`, Abschnitt OCR-Fallback).
 
 ### `invoice_items`
 Eine Zeile je Position einer Rechnung (kann mehrfach dieselbe `product_id`
@@ -85,14 +112,26 @@ referenzieren, z. B. Farbvarianten oder Nachlieferungen). `quantity` und
 ### `invoice_item_sources`
 Ein optionaler 1:1-Datensatz je `invoice_items`-Zeile mit den kompletten,
 unveränderten Originaldaten der Position (inkl. Rohtext, Seiten-/Zeilennummer,
-etwaige Parser-Warnungen) als JSON. Bleibt erhalten, auch wenn sich die
+etwaige Parser-Warnungen sowie ein `correction_audit`-Feld, falls die Position
+vor dem Import manuell korrigiert wurde — siehe `architektur.md`, Abschnitt
+„Korrekturen in der Vorschau") als JSON. Bleibt erhalten, auch wenn sich die
 `products`-Stammdaten später ändern — Grundlage des Audit-Trails.
+
+### `article_notes`
+Freitext-Notizen zu einem Artikel bzw. einer Artikelgruppe (z. B. „Grösse M
+läuft schlecht, wenig nachbestellen"). Jede Notiz trägt eine Autor-Momentaufnahme
+(`author_name`, `author_number`) und ein `version`-Feld für optimistisches
+Sperren: Bearbeiten/Löschen verlangt die zuletzt gelesene `version`, sonst
+schlägt die Anfrage mit HTTP 409 fehl (verhindert, dass zwei Personen
+gleichzeitig dieselbe Notiz widersprüchlich ändern). Mitarbeiter dürfen nur
+eigene Notizen bearbeiten/löschen, Filialleiter alle.
 
 ### `users`
 Ein Datensatz je Kassennummer. Zwei Check-Constraints erzwingen auf
 Datenbankebene, dass `role` nur `mitarbeiter` oder `chef` sein kann und dass
-ausschliesslich Chefs einen `password_hash` besitzen (Mitarbeiter: immer
-`NULL`).
+ausschliesslich Chefs (intern weiterhin als Rolle `chef` gespeichert, in der
+Oberfläche als „Filialleiter" beschriftet) einen `password_hash` besitzen
+(Mitarbeiter: immer `NULL`).
 
 ## Migrationshistorie
 
@@ -101,6 +140,8 @@ ausschliesslich Chefs einen `password_hash` besitzen (Mitarbeiter: immer
 | `5ce94c6a96e3` | Baseline: `products`, `invoices`, `invoice_items`, `invoice_item_sources` |
 | `7129c5082ac9` | `users`-Tabelle inkl. beider Check-Constraints |
 | `246c67c1d45e` | `imported_by_kassennummer`/`imported_by_name` auf `invoices` |
+| `d567ef887517` | `ocr_used` (Boolean, Default `false`) auf `invoices` |
+| `e901abc23456` | Neue Tabelle `article_notes` inkl. Autor-Snapshot und Versionsfeld |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

@@ -26,6 +26,22 @@
       settingsPanel.className='settings-panel';
       settingsPanel.hidden=true;
       settingsPanel.append(window.SportfabrikTheme.createToggleButton());
+      if(location.pathname.replace(/\/$/,'')==='/articles'){
+        var exportButton=document.createElement('button');
+        exportButton.type='button';exportButton.className='secondary';exportButton.textContent='Excel exportieren';
+        exportButton.addEventListener('click',async function(){
+          exportButton.disabled=true;exportButton.textContent='Export wird erstellt …';
+          try{
+            var response=await fetch('/api/articles/export?'+window.articleExportParams());
+            if(!response.ok){var error=await response.json();throw new Error(typeof error.detail==='string'?error.detail:'Export fehlgeschlagen.');}
+            var url=URL.createObjectURL(await response.blob());var link=document.createElement('a');link.href=url;
+            var filename=(response.headers.get('Content-Disposition')||'').match(/filename="([^"]+)"/);
+            link.download=filename?filename[1]:'Artikel.xlsx';document.body.append(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+          }catch(error){alert(error.message);}
+          finally{exportButton.disabled=false;exportButton.textContent='Excel exportieren';}
+        });
+        settingsPanel.append(exportButton);
+      }
       settingsToggle.addEventListener('click',function(event){
         event.stopPropagation();
         var willOpen=settingsPanel.hidden;

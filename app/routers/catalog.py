@@ -1,7 +1,8 @@
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,6 +11,7 @@ from ..core.database import get_session
 from ..core.models import Product, Invoice, InvoiceItem
 
 router = APIRouter()
+
 
 # Whitelist of columns the article table may be sorted by. Only real,
 # per-product columns are sortable - "Geliefert gesamt" and "Letzter
@@ -56,13 +58,17 @@ def brands(user=Depends(require_login_api), session=Depends(get_session)):
         ) from exc
 
 
+@router.get("/api/articles/export")
 @router.get("/api/articles")
 def articles(
+    request: Request,
     q: str = Query("", max_length=200),
     brand: str = Query("", max_length=100),
     ean: str = Query("", max_length=30),
     article_no: str = Query("", max_length=100),
     description: str = Query("", max_length=500),
+    last_delivery_from: str | None = Query(None),
+    last_delivery_to: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     sort_by: Literal[
@@ -80,7 +86,18 @@ def articles(
     user=Depends(require_login_api),
     session=Depends(get_session),
 ):
+    try:
+        last_delivery_from = date.fromisoformat(last_delivery_from) if last_delivery_from else None
+        last_delivery_to = date.fromisoformat(last_delivery_to) if last_delivery_to else None
+    except ValueError as exc:
+        raise HTTPException(422, 'Bitte ein gültiges Lieferdatum eingeben.') from exc
+    if last_delivery_from and last_delivery_to and last_delivery_from > last_delivery_to:
+        raise HTTPException(422, 'Das Von-Datum darf nicht nach dem Bis-Datum liegen.')
     conditions = []
+    if last_delivery_from:
+        conditions.append(Product.last_seen >= last_delivery_from)
+    if last_delivery_to:
+        conditions.append(Product.last_seen <= last_delivery_to)
     if q.strip():
         conditions.append(
             or_(
@@ -117,13 +134,14 @@ def articles(
         )
         sort_column = SORTABLE_COLUMNS[sort_by]
         primary = sort_column.desc() if sort_dir == "desc" else sort_column.asc()
-        products = session.scalars(
-            select(Product)
+        exporting = request.url.path.endswith("/export")
+        product_query = (select(Product)
             .where(*conditions)
             .order_by(primary.nulls_last(), Product.id)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        ).all()
+        )
+        if not exporting:
+            product_query = product_query.offset((page - 1) * page_size).limit(page_size)
+        products = session.scalars(product_query).all()
         ids = [p.id for p in products]
         totals = {}
         latest = {}
@@ -194,6 +212,9 @@ def articles(
                 uvp_date=price["invoice_date"] if price else None,
             )
             items.append(item)
+        if exporting:
+            from ..services.article_export import export_articles
+            return export_articles(items)
         return {
             "items": items,
             "total": total,

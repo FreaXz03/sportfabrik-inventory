@@ -22,7 +22,7 @@
     return btn;
   }
   window.SportfabrikTheme={createToggleButton:createToggleButton};
-  if(!document.querySelector('script[src="/static/js/session.js"]')){
+  if(!document.querySelector('script[src^="/static/js/session.js"]')){
     var nav=document.querySelector('nav');
     var target=nav||document.querySelector('header');
     if(target)target.append(createToggleButton());
