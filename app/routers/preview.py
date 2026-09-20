@@ -3,7 +3,8 @@ import hashlib
 import json
 from ..services.corrections import apply_corrections, CorrectionError
 from starlette.concurrency import run_in_threadpool
-from .auth import require_chef_api, require_chef_page
+from .auth import get_language, require_chef_api, require_chef_page
+from ..core.i18n import translate
 from ..services.parser import InvoiceParseError, parse_invoice
 from pathlib import Path
 from fastapi.responses import FileResponse
@@ -20,13 +21,17 @@ def preview_page(user=Depends(require_chef_page)):
 
 
 @router.post("/upload-preview")
-async def upload_preview(file: UploadFile, user=Depends(require_chef_api)):
+async def upload_preview(
+    file: UploadFile,
+    user=Depends(require_chef_api),
+    language: str = Depends(get_language),
+):
     try:
         data = await file.read(MAX_UPLOAD_BYTES + 1)
         if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(413, "Die PDF-Datei darf höchstens 20 MB gross sein.")
+            raise HTTPException(413, translate("errors.preview.file_too_large", language))
         try:
-            result = await run_in_threadpool(parse_invoice, data)
+            result = await run_in_threadpool(parse_invoice, data, language)
         except InvoiceParseError as exc:
             raise HTTPException(422, str(exc)) from exc
         return {
@@ -45,15 +50,16 @@ async def confirm_import(
     confirmed: bool = Form(False),
     corrections: str = Form("{}", max_length=500000),
     user=Depends(require_chef_api),
+    language: str = Depends(get_language),
 ):
     try:
         if not confirmed:
             raise HTTPException(
-                400, "Bitte zuerst die Vorschau prüfen und den Import bestätigen."
+                400, translate("errors.preview.confirm_required", language)
             )
         data = await file.read(MAX_UPLOAD_BYTES + 1)
         if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(413, "Die PDF-Datei darf höchstens 20 MB gross sein.")
+            raise HTTPException(413, translate("errors.preview.file_too_large", language))
         from ..core.database import SessionLocal
         from ..services.importer import import_invoice, ImportRejected
         from sqlalchemy.exc import SQLAlchemyError
@@ -66,27 +72,27 @@ async def confirm_import(
                 expected_hash,
                 SessionLocal,
                 {"kassennummer": user.kassennummer, "name": user.name},
-                decode_corrections(corrections),
+                decode_corrections(corrections, language),
+                language,
             )
         except (ImportRejected, InvoiceParseError) as exc:
             raise HTTPException(409, str(exc)) from exc
         except SQLAlchemyError as exc:
             raise HTTPException(
-                503,
-                "Datenbankfehler. Es wurde kein Teilimport gespeichert. Bitte erneut versuchen.",
+                503, translate("errors.preview.import_db_error", language)
             ) from exc
     finally:
         await file.close()
 
 
-def decode_corrections(value):
+def decode_corrections(value, language: str = "de"):
     try:
         result = json.loads(value)
         if not isinstance(result, dict):
             raise ValueError()
         return result
     except ValueError as exc:
-        raise HTTPException(422, "Ungültige Korrekturdaten.") from exc
+        raise HTTPException(422, translate("errors.preview.invalid_corrections", language)) from exc
 
 
 @router.post("/validate-preview")
@@ -95,17 +101,18 @@ async def validate_preview(
     expected_hash: str = Form(...),
     corrections: str = Form("{}", max_length=500000),
     user=Depends(require_chef_api),
+    language: str = Depends(get_language),
 ):
     try:
         data = await file.read(MAX_UPLOAD_BYTES + 1)
         if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(413, "PDF zu gross.")
+            raise HTTPException(413, translate("errors.preview.file_too_large_short", language))
         if hashlib.sha256(data).hexdigest() != expected_hash:
-            raise HTTPException(409, "Datei stimmt nicht mit der Vorschau überein.")
-        patches = decode_corrections(corrections)
+            raise HTTPException(409, translate("errors.preview.file_mismatch", language))
+        patches = decode_corrections(corrections, language)
         try:
-            parsed = await run_in_threadpool(parse_invoice, data)
-            result = apply_corrections(parsed, patches)
+            parsed = await run_in_threadpool(parse_invoice, data, language)
+            result = apply_corrections(parsed, patches, None, language)
         except (InvoiceParseError, CorrectionError) as exc:
             raise HTTPException(422, str(exc)) from exc
         return {"filename": file.filename, "file_hash": expected_hash, **result}
@@ -115,7 +122,10 @@ async def validate_preview(
 
 @router.get("/invoice-import-status")
 def invoice_import_status(
-    file_hash: str, invoice_number: str = "", user=Depends(require_chef_api)
+    file_hash: str,
+    invoice_number: str = "",
+    user=Depends(require_chef_api),
+    language: str = Depends(get_language),
 ):
     from ..core.database import SessionLocal
     from ..core.models import Invoice
@@ -138,5 +148,5 @@ def invoice_import_status(
             }
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Duplikatprüfung nicht verfügbar. Bitte erneut versuchen."
+            503, translate("errors.preview.duplicate_check_unavailable", language)
         ) from exc

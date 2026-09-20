@@ -1,13 +1,14 @@
 from fastapi import HTTPException
 from sqlalchemy import select, func
+from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Product
 
 
-def article_group(session, product_id):
+def article_group(session, product_id, language: str = DEFAULT_LANGUAGE):
     """Group variants by brand and supplier number; missing numbers stay separate."""
     product = session.get(Product, product_id)
     if product is None:
-        raise HTTPException(404, "Artikel nicht gefunden.")
+        raise HTTPException(404, translate("errors.article_details.product_not_found", language))
     number = (product.supplier_article_no or "").strip()
     if not number:
         return product, select(Product.id).where(Product.id == product_id)

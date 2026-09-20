@@ -10,6 +10,7 @@ import re
 import pymupdf
 
 from . import ocr
+from ..core.i18n import DEFAULT_LANGUAGE, translate
 
 
 class InvoiceParseError(ValueError):
@@ -62,7 +63,7 @@ def _collapsed(word):
 _IGNORABLE_ROWS = {"mwst", "inkl mwst"}
 
 
-def page_content(page):
+def page_content(page, language: str = DEFAULT_LANGUAGE):
     """Return (words, text, height, ocr_used) for a page.
 
     Falls back to OCR when a page has no extractable text at all - a paper
@@ -74,13 +75,13 @@ def page_content(page):
     if words:
         return words, page.get_text(), page.rect.height, False
     try:
-        result = ocr.ocr_page(page)
+        result = ocr.ocr_page(page, language=language)
     except ocr.OcrUnavailableError as exc:
         raise InvoiceParseError(str(exc)) from exc
     return result["words"], result["text"], result["height"], True
 
 
-def parse_invoice(pdf_data: bytes) -> dict:
+def parse_invoice(pdf_data: bytes, language: str = DEFAULT_LANGUAGE) -> dict:
     """Return all occurrences, identifiers as text and exact decimals as strings.
 
     No database imports, file writes or silent deduplication. Uncertain rows
@@ -92,23 +93,23 @@ def parse_invoice(pdf_data: bytes) -> dict:
     try:
         document = pymupdf.open(stream=pdf_data, filetype="pdf")
     except Exception as exc:
-        raise InvoiceParseError("Die Datei ist keine lesbare PDF-Datei.") from exc
+        raise InvoiceParseError(translate("errors.parser.unreadable_pdf", language)) from exc
     with document:
         if document.needs_pass:
-            raise InvoiceParseError("Passwortgeschützte PDFs werden nicht unterstützt.")
+            raise InvoiceParseError(translate("errors.parser.password_protected", language))
         if not 1 <= len(document) <= 200:
-            raise InvoiceParseError("Erlaubt sind 1 bis 200 Seiten.")
+            raise InvoiceParseError(translate("errors.parser.page_count_limit", language))
         items, warnings, counts, ocr_pages = [], [], [], []
         invoice_number = None
         for page_index, page in enumerate(document):
-            words, text, page_height, page_ocr_used = page_content(page)
+            words, text, page_height, page_ocr_used = page_content(page, language)
             if page_ocr_used:
                 ocr_pages.append(page_index + 1)
             match = re.search(r"Rechnung\s+Nr\.\s*(\d+)", text)
             if match:
                 if invoice_number and invoice_number != match[1]:
                     raise InvoiceParseError(
-                        "Das PDF enthält unterschiedliche Rechnungsnummern."
+                        translate("errors.parser.mixed_invoice_numbers", language)
                     )
                 invoice_number = match[1]
             rows = lines(words)
@@ -128,13 +129,17 @@ def parse_invoice(pdf_data: bytes) -> dict:
                 <= {w[4] for w in r}
             ]
             if len(headers) != 1:
-                hint = (
-                    " (Scan per OCR gelesen; bitte Bildqualität/Ausrichtung prüfen)"
-                    if page_ocr_used
-                    else " (Scan/anderes Layout)"
+                hint = translate(
+                    "errors.parser.hint_ocr" if page_ocr_used else "errors.parser.hint_other_layout",
+                    language,
                 )
                 raise InvoiceParseError(
-                    f"Seite {page_index + 1}: INTERSPORT-Tabellenkopf fehlt oder ist mehrdeutig{hint}."
+                    translate(
+                        "errors.parser.missing_table_header",
+                        language,
+                        page=page_index + 1,
+                        hint=hint,
+                    )
                 )
             header = headers[0]
             h = {w[4]: w for w in header}
@@ -143,7 +148,9 @@ def parse_invoice(pdf_data: bytes) -> dict:
             lief = next((w[0] for w in header if w[4] == "Lief."), None)
             arts = [w[0] for w in header if w[4] == "Art."]
             if lief is None or len(arts) != 2:
-                raise InvoiceParseError("Artikelspalten konnten nicht erkannt werden.")
+                raise InvoiceParseError(
+                    translate("errors.parser.article_columns_not_detected", language)
+                )
             # Marke has no column to its left, so its start gets extra left
             # margin (unlike the others, widening it can't bleed into a
             # neighbouring column): a leading quote character in the brand
@@ -218,7 +225,12 @@ def parse_invoice(pdf_data: bytes) -> dict:
                     row_text = joined(row)
                     if " ".join(_collapsed(w[4]) for w in row) not in _IGNORABLE_ROWS:
                         warnings.append(
-                            f"Seite {page_index+1}: nicht zugeordnete Zeile: {row_text}"
+                            translate(
+                                "errors.parser.unassigned_row",
+                                language,
+                                page=page_index + 1,
+                                row_text=row_text,
+                            )
                         )
             for item in page_items:
                 item["ocr_used"] = page_ocr_used
@@ -237,7 +249,7 @@ def parse_invoice(pdf_data: bytes) -> dict:
                         item["color_label"] = m[1].strip() or None
                     else:
                         item["warnings"].append(
-                            "Farbe/Grösse nicht eindeutig erkannt; Originaltext beachten."
+                            translate("errors.parser.color_size_ambiguous", language)
                         )
                     desc = desc[:variant_index]
                 item["description"] = re.sub(r"-\s+", "-", " ".join(desc))
@@ -252,24 +264,43 @@ def parse_invoice(pdf_data: bytes) -> dict:
                     "uvp",
                 ):
                     if not item[key]:
-                        item["warnings"].append(f"Pflichtfeld fehlt: {key}")
+                        item["warnings"].append(
+                            translate(
+                                "errors.parser.required_field_missing",
+                                language,
+                                field=translate(f"fields.{key}", language),
+                            )
+                        )
                 if not re.fullmatch(r"\d{8}|\d{12,14}", item["ean"]):
-                    item["warnings"].append("EAN hat ein unerwartetes Format.")
+                    item["warnings"].append(
+                        translate("errors.parser.ean_unexpected_format", language)
+                    )
                 for key in ("quantity", "uvp"):
                     try:
                         item[key] = decimal_value(item[key])
                     except (ValueError, InvalidOperation):
                         item["warnings"].append(
-                            f"Ungültiger Wert für {key}: {item[key]!r}"
+                            translate(
+                                "errors.parser.invalid_value",
+                                language,
+                                field=translate(f"fields.{key}", language),
+                                value=item[key],
+                            )
                         )
                         item[key] = None
                 item["row_number"] = len(items) + 1
                 items.append(item)
             counts.append(len(page_items))
             if not page_items:
-                warnings.append(f"Seite {page_index+1}: keine Positionen erkannt.")
+                warnings.append(
+                    translate(
+                        "errors.parser.no_positions_on_page",
+                        language,
+                        page=page_index + 1,
+                    )
+                )
         if not items:
-            raise InvoiceParseError("Keine Rechnungspositionen erkannt.")
+            raise InvoiceParseError(translate("errors.parser.no_positions_detected", language))
         duplicates = {
             ean: count
             for ean, count in Counter(i["ean"] for i in items if i["ean"]).items()

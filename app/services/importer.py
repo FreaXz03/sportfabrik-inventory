@@ -10,6 +10,7 @@ import pymupdf
 from sqlalchemy import delete, func, select, or_, text
 from sqlalchemy.exc import IntegrityError
 
+from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Invoice, InvoiceItem, InvoiceItemSource, Product
 from .parser import page_content, parse_invoice
 from .corrections import apply_corrections, CorrectionError
@@ -23,22 +24,25 @@ class DeleteRejected(ValueError):
     pass
 
 
-def invoice_dates(pdf):
+def invoice_dates(pdf, language: str = DEFAULT_LANGUAGE):
     # Uses the same native-text-or-OCR fallback as parse_invoice, so dates are
     # still found on scanned (paper) invoices - see parser.py. All pages are
     # searched, not just the first: a scanned invoice's pages are not always
     # in the order a digital export always uses (the header block with these
     # dates can end up scanned onto a later page).
     with pymupdf.open(stream=pdf, filetype="pdf") as doc:
-        pages_words = [page_content(page)[0] for page in doc]
+        pages_words = [page_content(page, language)[0] for page in doc]
     result = {}
+    # "Rechnungsdatum"/"Belegdatum" sind feste Textanker im INTERSPORT-Layout
+    # (immer Deutsch, unabhängig von der UI-Sprache) - nur die Fehlermeldung
+    # bei fehlendem/mehrdeutigem Datum wird übersetzt.
     for label, key in [
         ("Rechnungsdatum", "invoice_date"),
         ("Belegdatum", "document_date"),
     ]:
         anchors = [(words, w) for words in pages_words for w in words if w[4] == label]
         if len(anchors) != 1:
-            raise ImportRejected(f"{label} nicht eindeutig erkannt.")
+            raise ImportRejected(translate(f"errors.importer.{key}_not_unique", language))
         words, anchor = anchors[0]
         candidates = [
             w[4]
@@ -48,26 +52,32 @@ def invoice_dates(pdf):
             and re.fullmatch(r"\d{2}\.\d{2}\.\d{4}", w[4])
         ]
         if len(candidates) != 1:
-            raise ImportRejected(f"{label} fehlt oder ist mehrdeutig.")
+            raise ImportRejected(
+                translate(f"errors.importer.{key}_missing_or_ambiguous", language)
+            )
         try:
             result[key] = datetime.strptime(candidates[0], "%d.%m.%Y").date()
         except ValueError as exc:
-            raise ImportRejected(f"{label} ist ungültig.") from exc
+            raise ImportRejected(translate(f"errors.importer.{key}_invalid", language)) from exc
     return result
 
 
 def import_invoice(
-    pdf, filename, expected_hash, session_factory, imported_by=None, corrections=None
+    pdf,
+    filename,
+    expected_hash,
+    session_factory,
+    imported_by=None,
+    corrections=None,
+    language: str = DEFAULT_LANGUAGE,
 ):
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
-        raise ImportRejected(
-            "Die Datei stimmt nicht mit der geprüften Vorschau überein. Bitte Vorschau neu erstellen."
-        )
-    parsed = parse_invoice(pdf)
+        raise ImportRejected(translate("errors.importer.hash_mismatch", language))
+    parsed = parse_invoice(pdf, language)
     if corrections:
         try:
-            parsed = apply_corrections(parsed, corrections, imported_by)
+            parsed = apply_corrections(parsed, corrections, imported_by, language)
         except CorrectionError as exc:
             raise ImportRejected(str(exc)) from exc
     if (
@@ -75,10 +85,8 @@ def import_invoice(
         or parsed["warnings"]
         or parsed["rows_with_warnings"]
     ):
-        raise ImportRejected(
-            "Import gesperrt: Rechnungsnummer fehlt oder die Vorschau enthält Warnungen."
-        )
-    dates = invoice_dates(pdf)
+        raise ImportRejected(translate("errors.importer.locked_warnings", language))
+    dates = invoice_dates(pdf, language)
     for item in parsed["items"]:
         for key, limit in [
             ("brand", 100),
@@ -92,7 +100,12 @@ def import_invoice(
         ]:
             if len(item.get(key) or "") > limit:
                 raise ImportRejected(
-                    f'Position {item["row_number"]}: {key} ist zu lang.'
+                    translate(
+                        "errors.importer.field_too_long",
+                        language,
+                        row=item["row_number"],
+                        field=translate(f"fields.{key}", language),
+                    )
                 )
         for key in ("quantity", "uvp"):
             value = Decimal(item[key])
@@ -100,7 +113,12 @@ def import_invoice(
                 Decimal(".01")
             ):
                 raise ImportRejected(
-                    f'Position {item["row_number"]}: {key} passt nicht in das Datenbankformat.'
+                    translate(
+                        "errors.importer.field_invalid_format",
+                        language,
+                        row=item["row_number"],
+                        field=translate(f"fields.{key}", language),
+                    )
                 )
     try:
         with session_factory() as session, session.begin():
@@ -118,7 +136,12 @@ def import_invoice(
             )
             if existing:
                 raise ImportRejected(
-                    f"Rechnung {existing.invoice_number} wurde bereits importiert (ID {existing.id})."
+                    translate(
+                        "errors.importer.already_imported",
+                        language,
+                        number=existing.invoice_number,
+                        id=existing.id,
+                    )
                 )
             invoice = Invoice(
                 invoice_number=parsed["invoice_number"],
@@ -187,11 +210,11 @@ def import_invoice(
         return result
     except IntegrityError as exc:
         raise ImportRejected(
-            "Datenkonflikt: Der Import wurde vollständig zurückgerollt. Bitte Vorschau erneut prüfen."
+            translate("errors.importer.integrity_conflict", language)
         ) from exc
 
 
-def delete_invoice(invoice_id: int, session_factory) -> dict:
+def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LANGUAGE) -> dict:
     """Löscht eine Rechnung samt Positionen und Originaltexten unwiderruflich.
 
     Betroffene Artikel (first_seen/last_seen) werden aus den verbleibenden
@@ -204,7 +227,9 @@ def delete_invoice(invoice_id: int, session_factory) -> dict:
             session.execute(text("SELECT pg_advisory_xact_lock(73421061)"))
         invoice = session.get(Invoice, invoice_id)
         if invoice is None:
-            raise DeleteRejected(f"Rechnung {invoice_id} wurde nicht gefunden.")
+            raise DeleteRejected(
+                translate("errors.importer.invoice_not_found", language, id=invoice_id)
+            )
         invoice_number = invoice.invoice_number
         item_rows = session.execute(
             select(InvoiceItem.id, InvoiceItem.product_id).where(

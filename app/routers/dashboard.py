@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import require_login_api
+from .auth import get_language, require_login_api
 from ..core.database import get_session
+from ..core.i18n import translate
 from ..core.models import Product, Invoice, InvoiceItem
 from .history import invoice_data
 
@@ -10,7 +11,11 @@ router = APIRouter()
 
 
 @router.get("/api/dashboard")
-def dashboard(user=Depends(require_login_api), session=Depends(get_session)):
+def dashboard(
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
     try:
         counts = {
             key: session.scalar(select(func.count()).select_from(model))
@@ -37,6 +42,5 @@ def dashboard(user=Depends(require_login_api), session=Depends(get_session)):
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503,
-            "Übersicht konnte nicht geladen werden. Bitte Datenbankverbindung prüfen.",
+            503, translate("errors.dashboard.load_failed", language)
         ) from exc

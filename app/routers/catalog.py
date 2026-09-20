@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import require_login_api, require_login_page
+from .auth import get_language, require_login_api, require_login_page
 from ..core.database import get_session
+from ..core.i18n import translate
 from ..core.models import Product, Invoice, InvoiceItem
 
 router = APIRouter()
@@ -44,7 +45,11 @@ def contains(column, value):
 
 
 @router.get("/api/brands")
-def brands(user=Depends(require_login_api), session=Depends(get_session)):
+def brands(
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
     try:
         return session.scalars(
             select(Product.brand)
@@ -54,7 +59,7 @@ def brands(user=Depends(require_login_api), session=Depends(get_session)):
         ).all()
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Datenbank nicht erreichbar. Bitte erneut versuchen."
+            503, translate("errors.catalog.database_unreachable", language)
         ) from exc
 
 
@@ -85,14 +90,17 @@ def articles(
     sort_dir: Literal["asc", "desc"] = Query("asc"),
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
         last_delivery_from = date.fromisoformat(last_delivery_from) if last_delivery_from else None
         last_delivery_to = date.fromisoformat(last_delivery_to) if last_delivery_to else None
     except ValueError as exc:
-        raise HTTPException(422, 'Bitte ein gültiges Lieferdatum eingeben.') from exc
+        raise HTTPException(
+            422, translate("errors.catalog.invalid_delivery_date", language)
+        ) from exc
     if last_delivery_from and last_delivery_to and last_delivery_from > last_delivery_to:
-        raise HTTPException(422, 'Das Von-Datum darf nicht nach dem Bis-Datum liegen.')
+        raise HTTPException(422, translate("errors.catalog.delivery_date_range", language))
     conditions = []
     if last_delivery_from:
         conditions.append(Product.last_seen >= last_delivery_from)
@@ -225,5 +233,5 @@ def articles(
         }
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Artikelsuche fehlgeschlagen. Bitte die Datenbankverbindung prüfen."
+            503, translate("errors.catalog.search_failed", language)
         ) from exc

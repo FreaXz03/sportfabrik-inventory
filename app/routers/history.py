@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import require_chef_api, require_login_api, require_login_page
+from .auth import get_language, require_chef_api, require_login_api, require_login_page
 from .catalog import contains
 from ..services.article_groups import article_group
 from ..core.database import SessionLocal, get_session
+from ..core.i18n import translate
 from ..services.importer import delete_invoice, DeleteRejected
 from ..core.models import Product, Invoice, InvoiceItem, InvoiceItemSource
 
@@ -50,6 +51,7 @@ def invoices(
     page_size: int = Query(25, ge=1, le=100),
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
         condition = [contains(Invoice.invoice_number, q)] if q.strip() else []
@@ -76,7 +78,7 @@ def invoices(
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Rechnungen konnten nicht geladen werden. Bitte erneut versuchen."
+            503, translate("errors.history.invoices_failed", language)
         ) from exc
 
 
@@ -210,11 +212,12 @@ def invoice_detail(
     sort_dir: Literal["asc", "desc"] = Query("asc"),
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
         invoice = session.get(Invoice, invoice_id)
         if invoice is None:
-            raise HTTPException(404, "Rechnung nicht gefunden.")
+            raise HTTPException(404, translate("errors.history.invoice_not_found", language))
         return dict(
             invoice=invoice_data(invoice),
             **positions(
@@ -228,7 +231,7 @@ def invoice_detail(
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Rechnungspositionen konnten nicht geladen werden."
+            503, translate("errors.history.positions_failed", language)
         ) from exc
 
 
@@ -241,9 +244,10 @@ def article_history(
     sort_dir: Literal["asc", "desc"] = Query("asc"),
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
-        product, group_ids = article_group(session, product_id)
+        product, group_ids = article_group(session, product_id, language)
         return dict(
             product={
                 key: getattr(product, key)
@@ -261,17 +265,21 @@ def article_history(
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Artikelhistorie konnte nicht geladen werden."
+            503, translate("errors.history.article_history_failed", language)
         ) from exc
 
 
 @router.delete("/api/invoices/{invoice_id}")
-def remove_invoice(invoice_id: int, user=Depends(require_chef_api)):
+def remove_invoice(
+    invoice_id: int,
+    user=Depends(require_chef_api),
+    language: str = Depends(get_language),
+):
     try:
-        return delete_invoice(invoice_id, SessionLocal)
+        return delete_invoice(invoice_id, SessionLocal, language)
     except DeleteRejected as exc:
         raise HTTPException(404, str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Rechnung konnte nicht gelöscht werden. Bitte erneut versuchen."
+            503, translate("errors.history.invoice_delete_failed", language)
         ) from exc
