@@ -7,12 +7,14 @@
     var btn=document.createElement('button');
     btn.type='button';
     btn.className='theme-toggle secondary';
+    function t(key){return window.SportfabrikI18n?window.SportfabrikI18n.t(key):key;}
     function refresh(){
       var dark=currentTheme()==='dark';
-      btn.textContent=dark?'☀️ Hell':'🌙 Dunkel';
-      btn.setAttribute('aria-label',dark?'Helles Farbschema aktivieren':'Dunkles Farbschema aktivieren');
+      btn.textContent=(dark?'☀️ ':'🌙 ')+t(dark?'theme.light_mode':'theme.dark_mode');
+      btn.setAttribute('aria-label',t(dark?'theme.enable_light':'theme.enable_dark'));
     }
     refresh();
+    if(window.SportfabrikI18n)document.addEventListener('sportfabrik:i18n-ready',refresh);
     btn.addEventListener('click',function(){
       var next=currentTheme()==='dark'?'light':'dark';
       try{localStorage.setItem(STORAGE_KEY,next);}catch(e){}

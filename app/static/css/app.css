@@ -53,6 +53,10 @@ h1{font-weight:750;font-size:38px}h2{font-weight:650}.panel{box-shadow:none;bord
 .session-bar{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--text-muted)}.session-bar button{padding:8px 16px;font-size:12px}
 .lagerort-select{padding:7px 12px;font-size:12px;border-radius:20px;background:var(--surface);color:var(--text);border:1px solid var(--border-input)}
 .lagerort-label{font-weight:600;color:var(--text)}
+.lang-switch{display:flex;gap:6px;margin-top:14px}
+.lang-switch .lang-option{padding:6px 12px;font-size:12px}
+.lang-switch .lang-option.active{background:var(--accent);border-color:var(--accent);color:var(--accent-on)}
+.settings-panel .lang-switch{margin-top:0}
 @media(max-width:1050px){.session-bar{font-size:12px;gap:8px}}
 main.wide{max-width:none}
 th.sortable{cursor:pointer;user-select:none}
