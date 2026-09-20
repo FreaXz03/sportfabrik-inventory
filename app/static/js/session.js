@@ -6,11 +6,41 @@
     var bar=document.createElement('div');
     bar.className='session-bar';
     var label=document.createElement('span');
-    label.textContent=(me.name?me.name+' \u00b7 ':'')+'Kassennummer '+me.kassennummer+' \u00b7 '+(me.role==='chef'?'Filialleiter':'Mitarbeiter');
+    label.textContent=(me.name?me.name+' \u00b7 ':'')+'Kassennummer '+me.kassennummer+' \u00b7 '+(me.role_label||me.role);
     var logout=document.createElement('button');
     logout.type='button';logout.className='secondary';logout.textContent='Abmelden';
     logout.addEventListener('click',function(){fetch('/logout',{method:'POST'}).then(function(){location.href='/login';});});
-    bar.append(label,logout);
+    bar.append(label);
+    if(me.lagerorte&&(me.lagerorte.length>1||me.kann_alle_filialen_waehlen)){
+      var lagerortSelect=document.createElement('select');
+      lagerortSelect.className='secondary lagerort-select';
+      lagerortSelect.setAttribute('aria-label','Filiale wechseln');
+      if(me.kann_alle_filialen_waehlen){
+        var allOption=document.createElement('option');
+        allOption.value='';allOption.textContent='Alle Filialen';
+        lagerortSelect.append(allOption);
+      }
+      me.lagerorte.forEach(function(lo){
+        var option=document.createElement('option');
+        option.value=String(lo.id);option.textContent=lo.code+' \u00b7 '+lo.name;
+        lagerortSelect.append(option);
+      });
+      lagerortSelect.value=me.lagerort?String(me.lagerort.id):'';
+      lagerortSelect.addEventListener('change',function(){
+        fetch('/api/active-lagerort',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({lagerort_id:lagerortSelect.value?Number(lagerortSelect.value):null})
+        }).then(function(){location.reload();});
+      });
+      bar.append(lagerortSelect);
+    }else if(me.lagerort){
+      var lagerortLabel=document.createElement('span');
+      lagerortLabel.className='lagerort-label';
+      lagerortLabel.textContent=me.lagerort.code+' \u00b7 '+me.lagerort.name;
+      bar.append(lagerortLabel);
+    }
+    bar.append(logout);
     if(window.SportfabrikTheme){
       var settingsWrap=document.createElement('div');
       settingsWrap.className='settings-menu';

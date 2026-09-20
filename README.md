@@ -7,10 +7,15 @@ durchsuchen, ihre komplette Lieferhistorie inklusive Original-Rechnungstext
 und Preisverlauf nachvollziehen, Freitext-Notizen hinterlegen und die
 Artikelliste als Excel-Datei exportieren.
 
-Läuft auf einem Linux-Server im Geschäft; vier Laden-PCs greifen im internen
-Netz über den Browser darauf zu. Anmeldung nach Kassensystem-Muster:
-Mitarbeiter mit blosser Kassennummer, Filialleiter zusätzlich mit Passwort.
-Nur Filialleiter dürfen Rechnungen hochladen, importieren und löschen.
+Läuft auf einem zentralen Server (Volketswil); die 4 Filialen (SF1 Volketswil,
+SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey) sowie das externe Aufbereitungslager
+GEWA greifen im internen Netz über den Browser darauf zu. Anmeldung nach
+Kassensystem-Muster: Mitarbeiter mit blosser Kassennummer, Filialleiter und
+Admin/Zentrale zusätzlich mit Passwort. Mitarbeiter dürfen alles ausser
+Dokumente hochladen/bearbeiten/löschen; das bleibt Filialleitern und der
+Zentrale vorbehalten. Admin/Zentrale-Konten sind filialübergreifend, alle
+anderen Benutzer sind einer oder mehreren Filialen zugeordnet und können in
+der Oberfläche zwischen ihren Filialen wechseln.
 
 ## Funktionsumfang
 
@@ -40,7 +45,7 @@ Nur Filialleiter dürfen Rechnungen hochladen, importieren und löschen.
   Papierrechnungen ohne Textebene
 - **Excel-Export**: openpyxl
 - **Frontend**: Vanilla HTML/CSS/JS, kein Framework, keine Build-Pipeline
-- **Tests**: pytest (70 bestanden, 19 übersprungen ohne optionale
+- **Tests**: pytest (86 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -74,8 +79,9 @@ app/
     database.py
     models.py
     security.py
+    lagerorte.py       Seed-Daten SF1-SF4 + GEWA (siehe app/services/lagerorte.py für Lesezugriffe)
   routers/           HTTP-Endpunkte (Seiten + JSON-API), gruppiert nach Thema
-    auth.py            Anmeldung/Abmeldung, RBAC-Dependencies
+    auth.py            Anmeldung/Abmeldung, RBAC-Dependencies, Filialwechsel (/api/me, /api/active-lagerort)
     catalog.py         Artikelsuche, Excel-Export
     dashboard.py       Übersichtsseite
     history.py         Rechnungsliste, -details, Artikelhistorie, Löschen
@@ -88,6 +94,7 @@ app/
     corrections.py      Manuelle Korrekturen in der Vorschau validieren
     article_groups.py  Farb-/Grössenvarianten desselben Artikels gruppieren
     article_export.py  Artikelliste als formatierte .xlsx-Datei
+    lagerorte.py        Lagerort-Zuordnung eines Benutzers lesen (Filialwechsel)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, Vorschau, Artikeldetails)
@@ -96,7 +103,7 @@ app/
 
 migrations/          Alembic-Migrationen (siehe docs/SERVER-SETUP.md für den Ablauf)
 scripts/
-  manage_users.py    CLI zum Anlegen/Entfernen von Kassennummern und Filialleiter-Konten
+  manage_users.py    CLI zum Anlegen/Entfernen von Benutzern (Mitarbeiter/Filialleiter/Admin) und ihrer Filialzuordnung
   backup_inventory.py Geprüftes Backup von Datenbank und Original-PDFs (siehe docs/BACKUPS.md)
 docs/                Ausführliche Dokumentation (siehe oben) und Deployment-Anleitungen
 tests/               pytest-Suite, ein Testmodul je Fachbereich
@@ -140,14 +147,18 @@ Datenbankschema anlegen bzw. aktuell halten:
 alembic upgrade head
 ```
 
-Erstes Filialleiter-Konto anlegen, damit überhaupt eine Anmeldung möglich ist:
+Erstes Filialleiter-Konto anlegen, damit überhaupt eine Anmeldung möglich ist
+(Lagerort-Codes: SF1-SF4 für die Filialen, GEWA fürs externe Lager; der erste
+angegebene Code wird als primäre Filiale gesetzt):
 
 ```powershell
-python scripts/manage_users.py add-chef <kassennummer> "<Name>"
+python scripts/manage_users.py add-chef <kassennummer> "<Name>" SF1
 ```
 
 (Der CLI-Befehl und die interne Rollenbezeichnung heissen weiterhin
-`chef`/`add-chef` — nur die Oberfläche zeigt dafür „Filialleiter" an.)
+`chef`/`add-chef` — nur die Oberfläche zeigt dafür „Filialleiter" an. Für ein
+filialübergreifendes Admin-/Zentrale-Konto `add-admin <kassennummer> "<Name>"`
+ohne Lagerort-Angabe verwenden.)
 
 App starten:
 

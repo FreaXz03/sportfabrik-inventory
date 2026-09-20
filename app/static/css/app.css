@@ -51,6 +51,8 @@ h1{font-weight:750;font-size:38px}h2{font-weight:650}.panel{box-shadow:none;bord
 @media(max-width:600px){header{padding:20px 4%}.hero{padding:24px}.hero h1{font-size:32px}h1{font-size:30px}nav a[href='/preview']{padding:10px 12px}.brand img{width:210px}.hero .button{white-space:normal}}
 
 .session-bar{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--text-muted)}.session-bar button{padding:8px 16px;font-size:12px}
+.lagerort-select{padding:7px 12px;font-size:12px;border-radius:20px;background:var(--surface);color:var(--text);border:1px solid var(--border-input)}
+.lagerort-label{font-weight:600;color:var(--text)}
 @media(max-width:1050px){.session-bar{font-size:12px;gap:8px}}
 main.wide{max-width:none}
 th.sortable{cursor:pointer;user-select:none}

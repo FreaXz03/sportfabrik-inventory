@@ -57,27 +57,49 @@ Anmeldung läuft über ein signiertes Session-Cookie (`SessionMiddleware`,
 FastAPI-Dependencies in `app/routers/auth.py` setzen die Zugriffsregeln
 konsequent auf jedem Endpunkt durch:
 
-| Dependency | Für | Verhalten ohne gültige Anmeldung | Verhalten ohne Filialleiter-Rolle |
+| Dependency | Für | Verhalten ohne gültige Anmeldung | Verhalten ohne Filialleiter-/Admin-Rolle |
 |---|---|---|---|
 | `require_login_page` | Seiten (HTML) | Redirect zu `/login?next=…` | — |
 | `require_login_api` | JSON-Endpunkte | HTTP 401 | — |
-| `require_chef_page` | Seiten, nur Filialleiter | Redirect zu `/login?next=…` | Redirect zu `/` |
-| `require_chef_api` | JSON-Endpunkte, nur Filialleiter | HTTP 401 | HTTP 403 |
+| `require_chef_page` | Seiten, Dokumente hochladen/bearbeiten/löschen | Redirect zu `/login?next=…` | Redirect zu `/` |
+| `require_chef_api` | JSON-Endpunkte, Dokumente hochladen/bearbeiten/löschen | HTTP 401 | HTTP 403 |
 
-(Intern heisst die Rolle weiterhin `chef` — Datenbankwert, Funktionsnamen
-und CLI-Befehl `add-chef` sind unverändert; nur die Oberfläche zeigt dafür
-„Filialleiter" an, siehe `app/routers/auth.py`.)
+(Intern heisst die Rolle weiterhin `chef` — Datenbankwert, Funktionsnamen und
+CLI-Befehl `add-chef` sind unverändert; nur die Oberfläche zeigt dafür
+„Filialleiter" an. `require_chef_page`/`require_chef_api` lassen zusätzlich
+die Rolle `admin` durch, siehe `app/routers/auth.py`.)
 
-Rollen und ihre Rechte:
+Rollen und ihre Rechte (Regel 9):
 
-| Rolle | Anmeldung | Ansehen/Suchen | Notizen | Hochladen/Importieren | Löschen |
+| Rolle | Anmeldung | Ansehen/Suchen | Notizen | Dokumente hochladen/löschen | Filialzugriff |
 |---|---|---|---|---|---|
-| Mitarbeiter | Kassennummer | ✅ | nur eigene bearbeiten/löschen | ❌ | ❌ |
-| Filialleiter | Kassennummer + Passwort | ✅ | alle bearbeiten/löschen | ✅ | ✅ |
+| Mitarbeiter | Kassennummer | ✅ | nur eigene bearbeiten/löschen | ❌ | eine oder mehrere zugewiesene Filialen |
+| Filialleiter (`chef`) | Kassennummer + Passwort | ✅ | alle bearbeiten/löschen | ✅ | eine oder mehrere zugewiesene Filialen |
+| Admin/Zentrale (`admin`) | Kassennummer + Passwort | ✅ | alle bearbeiten/löschen | ✅ | filialübergreifend (alle Filialen + „Alle Filialen") |
 
 Passwörter werden mit PBKDF2-HMAC-SHA256 (600'000 Iterationen, zufälliges
 Salt je Konto) gehasht — siehe `app/core/security.py`. Es existiert kein
 Klartext-Passwort in der Datenbank.
+
+### Filialzuordnung und Filialwechsel
+
+Welche Filiale(n) ein Benutzer sehen/bedienen darf, liegt in der m:n-Tabelle
+`benutzer_lagerorte` (`app/core/models.py`, `app/services/lagerorte.py`) —
+nicht in der `users`-Tabelle selbst, da ein Benutzer (z. B. eine Aushilfe)
+mehreren Filialen zugeordnet sein kann. `ist_primaer` markiert die nach dem
+Login vorausgewählte Filiale. Admin-Konten haben keinen Eintrag und gelten
+als filialübergreifend.
+
+Die aktuell aktive Filiale liegt in der Session (`active_lagerort_id`) und
+wird über `POST /api/active-lagerort` gewechselt — die Auswahl dafür zeigt
+`GET /api/me` (`lagerort` = aktiv, `lagerorte` = wählbar). Die Oberfläche
+rendert dafür ein `<select>` in der Session-Leiste
+(`app/static/js/session.js`), sichtbar sobald mehr als eine Filiale zur Wahl
+steht oder der Benutzer Admin ist (dann zusätzlich „Alle Filialen“, also
+kein aktiver Lagerort). Serverseitig wird bei jedem Wechsel geprüft, dass
+die Ziel-Filiale dem Benutzer tatsächlich zugewiesen ist (sonst HTTP 403).
+Bestand, Wareneingänge und Reduktionen sind noch nicht an die aktive Filiale
+angebunden — das folgt mit dem neuen Datenmodell in den Phasen B–D.
 
 Der `next`-Parameter beim Login (`/login?next=/artikel/...`) wird im Browser
 gegen eine feste Whitelist bekannter Routen geprüft
@@ -174,7 +196,8 @@ Bestellung. Bearbeiten/Löschen verlangt die zuletzt gelesene `version`
 (optimistisches Sperren): Hat eine andere Person die Notiz inzwischen
 geändert, schlägt die Anfrage mit HTTP 409 fehl, statt die fremde Änderung
 stillschweigend zu überschreiben. Mitarbeiter dürfen nur eigene Notizen
-bearbeiten/löschen, Filialleiter alle.
+bearbeiten/löschen, Filialleiter und Admin/Zentrale alle
+(`_may_edit_any_note()` in `app/routers/article_details.py`).
 
 ## Artikelliste als Excel-Export
 
@@ -187,7 +210,7 @@ eine Bestellliste.
 
 ## Ablauf: Rechnung löschen
 
-Nur Filialleiter (`require_chef_api`). `delete_invoice()` läuft unter
+Nur Filialleiter und Admin/Zentrale (`require_chef_api`). `delete_invoice()` läuft unter
 derselben Advisory Lock wie der Import, entfernt die Rechnung samt
 Positionen und Original-Snapshots und berechnet `first_seen`/`last_seen` der
 betroffenen Artikel anschliessend aus den verbleibenden Lieferungen neu,
@@ -247,7 +270,8 @@ zwei Skripte werden aber seitenübergreifend eingebunden:
   umschaltbar, per `localStorage` gemerkt) und liefert den Umschalt-Knopf
   als Factory-Funktion.
 - `session.js` baut daraus auf jeder Seite mit aktiver Anmeldung die
-  Kopfzeile (Name/Kassennummer, „Abmelden", Einstellungen-Menü mit dem
+  Kopfzeile (Name/Kassennummer, Rolle, Filial-Umschalter sofern mehr als
+  eine Filiale wählbar ist, „Abmelden", Einstellungen-Menü mit dem
   Hell/Dunkel-Umschalter) und blendet für Mitarbeiter die Upload-Funktionen
   aus.
 

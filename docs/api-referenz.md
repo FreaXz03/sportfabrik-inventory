@@ -2,18 +2,19 @@
 
 Alle Endpunkte ausser `/login`, `/logout`, `/static/*` und `/db-test`
 verlangen eine gültige Anmeldung; die mit 🔒 markierten zusätzlich eine
-Filialleiter-Rolle (intern weiterhin `chef`). Seiten-Endpunkte (HTML) leiten
-bei fehlender Anmeldung zu `/login` um, JSON-Endpunkte antworten mit
-HTTP 401 bzw. 403 — siehe `architektur.md`, Abschnitt „Sicherheitsmodell".
+Filialleiter- oder Admin-Rolle (intern weiterhin `chef`/`admin`). Seiten-Endpunkte
+(HTML) leiten bei fehlender Anmeldung zu `/login` um, JSON-Endpunkte antworten
+mit HTTP 401 bzw. 403 — siehe `architektur.md`, Abschnitt „Sicherheitsmodell".
 
 ## Anmeldung
 
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/login` | Login-Seite |
-| POST | `/login` | Kassennummer (+ Passwort bei Filialleitern) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-Kassennummer ohne Passwort gesendet wurde |
+| POST | `/login` | Kassennummer (+ Passwort bei Filialleitern/Admin) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-/Admin-Kassennummer ohne Passwort gesendet wurde |
 | POST | `/logout` | Session beenden, Redirect zu `/login` |
-| GET | `/api/me` | Angemeldete Person: `{kassennummer, name, role}` |
+| GET | `/api/me` | Angemeldete Person: `{kassennummer, name, role, role_label, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `lagerort` ist die aktive Filiale (`{id, code, name}` oder `null` = „alle Filialen", nur für Admin möglich), `lagerorte` die Filialen, zwischen denen gewechselt werden darf (Admin: alle) |
+| POST | `/api/active-lagerort` | Aktive Filiale für die Session wechseln. Body `{"lagerort_id": <id oder null>}`; `null` nur für Admin erlaubt (= „alle Filialen"), sonst muss die Filiale dem Benutzer zugewiesen sein (sonst 403) |
 
 Der `next`-Parameter von `/login?next=…` (wohin nach dem Login weitergeleitet
 wird) wird clientseitig gegen eine Whitelist bekannter Routen geprüft
