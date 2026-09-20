@@ -16,8 +16,8 @@ class Element {
  append(...nodes){this.children.push(...nodes);} replaceChildren(...nodes){this.children=nodes;}
  scrollIntoView(){} addEventListener(){} setAttribute(){} add(node){this.children.push(node);} querySelector(){return new Element();}
 }
-const elements=new Map();global.document={getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(){return new Element();},createDocumentFragment(){return new Element();},querySelector(){return new Element();},querySelectorAll(){return [];}};
-global.window={addEventListener(){}};global.Option=class extends Element{};
+const elements=new Map();global.document={getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(){return new Element();},createDocumentFragment(){return new Element();},querySelector(){return new Element();},querySelectorAll(){return [];},addEventListener(){}};
+global.window={addEventListener(){},SportfabrikI18n:{t(key){return key;}}};global.Option=class extends Element{};
 const parsed=(hash,num)=>({file_hash:hash,invoice_number:num,items:[{row_number:1,brand:'Original',ean:'0012345678901',warnings:[],raw_lines:[]}],pages:1,item_count:1,warnings:[],rows_with_warnings:0,duplicate_eans:{}});
 let replies=[];global.fetch=async()=>{const item=replies.shift();if(item instanceof Error)throw item;return {ok:item.ok!==false,status:item.status||200,json:async()=>item.data};};
 """
