@@ -7,7 +7,7 @@ from .auth import get_language, require_login_api
 from ..services.article_groups import article_group
 from ..core.database import get_session
 from ..core.i18n import translate
-from ..core.models import ArticleNote, Dokument, Variante, Wareneingang, WareneingangPosition
+from ..core.models import ArticleNote, Dokument, Wareneingang, WareneingangPosition
 
 router = APIRouter()
 
@@ -64,11 +64,6 @@ def delete_note(
         raise HTTPException(
             503, translate("errors.article_details.note_delete_failed", language)
         ) from exc
-
-
-def product_exists(session, product_id, language):
-    if session.get(Variante, product_id) is None:
-        raise HTTPException(404, translate("errors.article_details.product_not_found", language))
 
 
 @router.get("/api/articles/{product_id}/prices")

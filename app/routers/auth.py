@@ -125,16 +125,15 @@ def _resolve_active_lagerort(
     """Aktive Filiale für die Session: der zuletzt per Filialwechsel gewählte
     Lagerort, sofern der Benutzer noch Zugriff darauf hat, sonst die primäre
     Zuordnung. None bedeutet „alle Filialen" (nur für Admin möglich)."""
+    # list_user_lagerorte() liefert Admins bereits alle Lagerorte, deshalb
+    # genuegt die Suche in `allowed` - ein Sonderzweig fuer Admin waere hier
+    # nie erreichbar.
     allowed = list_user_lagerorte(session, user)
     active_id = request.session.get("active_lagerort_id")
     if active_id is not None:
         match = next((lo for lo in allowed if lo.id == active_id), None)
         if match is not None:
             return match
-        if user.role == "admin":
-            match = session.get(Lagerort, active_id)
-            if match is not None:
-                return match
     return get_primary_lagerort(session, user)
 
 
