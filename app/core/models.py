@@ -111,6 +111,7 @@ class User(Base):
             "(role = 'mitarbeiter' AND password_hash IS NULL)",
             name="ck_users_chef_has_password",
         ),
+        CheckConstraint("language IN ('de', 'fr', 'en')", name="ck_users_language"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -122,6 +123,12 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20))
 
     password_hash: Mapped[str | None] = mapped_column(String(200))
+
+    # Regel 7: Deutsch ist Standard, jederzeit pro Benutzer umstellbar
+    # (siehe app/core/i18n.py, POST /api/language).
+    language: Mapped[str] = mapped_column(
+        String(2), default="de", server_default=text("'de'")
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
