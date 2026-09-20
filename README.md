@@ -83,6 +83,10 @@ Dieses README ist der Schnelleinstieg. Ausführlichere Dokumentation liegt in
 - [`docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx`](docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx) —
   kurze, nicht-technische Zusammenfassung für die Geschäftsleitung (kein
   Ersatz für die obigen technischen Dokumente)
+- `docs/Sportfabrik-Inventory-Dokumentation.docx` — dieselben Inhalte wie
+  oben als ein zusammenhängendes Word-Dokument; bewusst **nicht** im Repo
+  (siehe `.gitignore`), da es bei jeder grösseren Änderung neu aus den
+  Markdown-Dokumenten oben generiert statt manuell gepflegt wird
 
 ## Ordnerstruktur
 
