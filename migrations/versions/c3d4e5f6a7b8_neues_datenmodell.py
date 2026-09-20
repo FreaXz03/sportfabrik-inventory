@@ -75,7 +75,18 @@ def upgrade():
     # (`alembic ... --sql`, reine DDL-Vorschau ohne DB) - siehe a1b2c3d4e5f6
     # fuer dasselbe Muster.
     if not context.is_offline_mode():
-        _migrate_existing_data(op.get_bind())
+        connection = op.get_bind()
+        migrierte_tabellen = _migrate_existing_data(connection)
+        # Die Seed-Daten oben wurden mit expliziten Ids eingefuegt, was eine
+        # Postgres-Sequenz NICHT mitzieht - ohne diesen Schritt schlaegt der
+        # erste id-lose Insert (z.B. seed_lieferanten/seed_kategorien oder ein
+        # weiterer Lieferant) mit "duplicate key" fehl. Muss auch auf einer
+        # frischen Datenbank ohne Altdaten laufen.
+        _advance_sequences(connection, [
+            ("lieferanten", _LIEFERANTEN_SEED),
+            ("kategorien", _KATEGORIEN_SEED),
+            *migrierte_tabellen,
+        ])
 
     with op.batch_alter_table('article_notes') as batch_op:
         batch_op.alter_column('artikel_id', nullable=False)
@@ -290,7 +301,7 @@ def _migrate_existing_data(connection):
 
     product_rows = connection.execute(sa.select(products)).mappings().all()
     if not product_rows:
-        return  # frische/leere Datenbank (z.B. Tests) - nichts zu migrieren
+        return []  # frische/leere Datenbank (z.B. Tests) - nichts zu migrieren
 
     sf1_id = connection.execute(
         sa.text("SELECT id FROM lagerorte WHERE code = 'SF1'")
@@ -529,24 +540,33 @@ def _migrate_existing_data(connection):
             {"artikel_id": artikel_id, "note_id": note["id"]},
         )
 
-    # --- Sequenzen (Postgres) auf den naechsten freien Wert vorziehen -----
-    if connection.dialect.name == "postgresql":
-        for table_name, rows in [
-            ("lieferanten", _LIEFERANTEN_SEED), ("kategorien", _KATEGORIEN_SEED),
-            ("artikel", artikel_rows), ("varianten", varianten_rows),
-            ("dokumente", dokument_rows), ("wareneingaenge", wareneingang_rows),
-            ("wareneingang_positionen", position_rows), ("preise", preis_rows),
-            ("lagerbewegungen", bewegung_rows),
-        ]:
-            if not rows:
-                continue
-            max_id = max(r["id"] for r in rows)
-            connection.execute(
-                sa.text(
-                    "SELECT setval(pg_get_serial_sequence(:table, 'id'), :max_id)"
-                ),
-                {"table": table_name, "max_id": max_id},
-            )
+    # Die Sequenzen zieht der Aufrufer nach (auch fuer die Seed-Tabellen, die
+    # es unabhaengig von Altdaten immer gibt) - siehe _advance_sequences().
+    return [
+        ("artikel", artikel_rows), ("varianten", varianten_rows),
+        ("dokumente", dokument_rows), ("wareneingaenge", wareneingang_rows),
+        ("wareneingang_positionen", position_rows), ("preise", preis_rows),
+        ("lagerbewegungen", bewegung_rows),
+    ]
+
+
+def _advance_sequences(connection, tabellen_mit_zeilen):
+    """Setzt die Id-Sequenz jeder Tabelle auf die hoechste eingefuegte Id.
+
+    `op.bulk_insert()` mit expliziten Ids laesst die Postgres-Sequenz auf 1
+    stehen; der naechste id-lose Insert wuerde sonst mit "duplicate key"
+    scheitern. SQLite vergibt Ids aus MAX(id)+1 und braucht das nicht.
+    """
+    if connection.dialect.name != "postgresql":
+        return
+    for table_name, rows in tabellen_mit_zeilen:
+        if not rows:
+            continue
+        max_id = max(r["id"] for r in rows)
+        connection.execute(
+            sa.text("SELECT setval(pg_get_serial_sequence(:table, 'id'), :max_id)"),
+            {"table": table_name, "max_id": max_id},
+        )
 
 
 def _bulk_insert_with_id_column(connection, table_name, columns, rows):
