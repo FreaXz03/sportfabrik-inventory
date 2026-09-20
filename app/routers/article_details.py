@@ -11,6 +11,12 @@ from ..core.models import Product, Invoice, InvoiceItem, ArticleNote
 router = APIRouter()
 
 
+def _may_edit_any_note(user) -> bool:
+    """Filialleiter und Admin/Zentrale dürfen alle Notizen bearbeiten/löschen,
+    Mitarbeiter nur eigene (siehe CLAUDE.md Regel 9)."""
+    return user.role in ("chef", "admin")
+
+
 @router.delete("/api/articles/{product_id}/notes/{note_id}", status_code=204)
 def delete_note(
     product_id: int,
@@ -28,7 +34,7 @@ def delete_note(
         )
         if note is None:
             raise HTTPException(404, "Notiz nicht gefunden.")
-        if user.role != "chef" and note.author_user_id != user.id:
+        if not _may_edit_any_note(user) and note.author_user_id != user.id:
             raise HTTPException(
                 403, "Nur eigene Notizen oder als Filialleiter löschen."
             )
@@ -138,7 +144,7 @@ def note_data(note, user):
     for key in ("created_at", "updated_at"):
         if result[key].tzinfo is None:
             result[key] = result[key].replace(tzinfo=timezone.utc)
-    result["can_edit"] = user.role == "chef" or user.id == note.author_user_id
+    result["can_edit"] = _may_edit_any_note(user) or user.id == note.author_user_id
     return result
 
 
@@ -217,7 +223,7 @@ def edit_note(
         )
         if note is None:
             raise HTTPException(404, "Notiz nicht gefunden.")
-        if user.role != "chef" and note.author_user_id != user.id:
+        if not _may_edit_any_note(user) and note.author_user_id != user.id:
             raise HTTPException(
                 403, "Nur eigene Notizen oder als Filialleiter bearbeiten."
             )
