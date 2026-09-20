@@ -98,13 +98,16 @@ class InvoiceItemSource(Base):
 
 class User(Base):
     """Anmeldung übers Kassensystem-Muster: Mitarbeiter nur mit Kassennummer,
-    Chefs zusätzlich mit Passwort. Rollen steuern Zugriff (siehe app/auth.py)."""
+    Filialleiter/Admin zusätzlich mit Passwort. Rollen steuern Zugriff gemäss
+    Regel 9 (siehe app/routers/auth.py): Mitarbeiter alles ausser Dokumente,
+    Filialleiter (`chef`) zusätzlich Dokumente, Admin/Zentrale filialübergreifend.
+    Die Filialzuordnung liegt in `benutzer_lagerorte` (m:n, Admin braucht keine)."""
 
     __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint("role IN ('mitarbeiter', 'chef')", name="ck_users_role"),
+        CheckConstraint("role IN ('mitarbeiter', 'chef', 'admin')", name="ck_users_role"),
         CheckConstraint(
-            "(role = 'chef' AND password_hash IS NOT NULL) OR "
+            "(role IN ('chef', 'admin') AND password_hash IS NOT NULL) OR "
             "(role = 'mitarbeiter' AND password_hash IS NULL)",
             name="ck_users_chef_has_password",
         ),
@@ -122,6 +125,43 @@ class User(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class Lagerort(Base):
+    """Filiale (SF1-SF4, Verkauf) oder externes Aufbereitungslager (GEWA, kein
+    Verkauf). Seed-Daten in app/core/lagerorte.py, Adresse dient später auch
+    der automatischen Filial-Erkennung aus der Lieferadresse eines Dokuments."""
+
+    __tablename__ = "lagerorte"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    code: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100))
+
+    strasse: Mapped[str | None] = mapped_column(String(200))
+    plz: Mapped[str | None] = mapped_column(String(10))
+    ort: Mapped[str | None] = mapped_column(String(100))
+    telefon: Mapped[str | None] = mapped_column(String(30))
+    email: Mapped[str | None] = mapped_column(String(200))
+
+    verkauf: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class BenutzerLagerort(Base):
+    """Ordnet einen Benutzer einer oder mehreren Filialen zu (m:n, z.B. Aushilfe
+    an mehreren Standorten). `ist_primaer` markiert die Filiale, die nach dem
+    Login vorausgewählt ist. Admin-Konten brauchen keinen Eintrag hier."""
+
+    __tablename__ = "benutzer_lagerorte"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    lagerort_id: Mapped[int] = mapped_column(
+        ForeignKey("lagerorte.id"), primary_key=True
+    )
+    ist_primaer: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
     )
 
 
