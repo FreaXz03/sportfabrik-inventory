@@ -98,8 +98,12 @@ rendert dafür ein `<select>` in der Session-Leiste
 steht oder der Benutzer Admin ist (dann zusätzlich „Alle Filialen“, also
 kein aktiver Lagerort). Serverseitig wird bei jedem Wechsel geprüft, dass
 die Ziel-Filiale dem Benutzer tatsächlich zugewiesen ist (sonst HTTP 403).
-Bestand, Wareneingänge und Reduktionen sind noch nicht an die aktive Filiale
-angebunden — das folgt mit dem neuen Datenmodell in den Phasen B–D.
+Wareneingänge und Bestand sind seit dem neuen Datenmodell (Phase A Punkt 3)
+an die aktive Filiale angebunden: ein Import bucht gegen die beim Upload
+aktive Filiale des hochladenden Kontos (`require_active_lagerort` in
+`app/routers/auth.py`); ohne gewählte Filiale (nur für Admin möglich, „Alle
+Filialen") schlägt der Import mit HTTP 400 fehl. Reduktionsstufen (18-/36-
+Monats-Hinweise je Filiale) folgen erst in Phase D.
 
 Der `next`-Parameter beim Login (`/login?next=/artikel/...`) wird im Browser
 gegen eine feste Whitelist bekannter Routen geprüft
@@ -159,8 +163,8 @@ serverseitig auf die frisch geparsten Daten an (nie auf clientseitig
 mitgeschickte Rohdaten) und validiert jede Position komplett neu:
 Pflichtfelder, EAN-Format (8/12/13/14 Ziffern), Zahlenformat für Menge/UVP.
 Jede tatsächliche Änderung wird als `correction_audit`
-(Ausgangswert, neuer Wert, wer, wann) in `invoice_item_sources` gespeichert
-— nachvollziehbar, auch nachdem die Rechnung importiert wurde. `/validate-preview`
+(Ausgangswert, neuer Wert, wer, wann) in `wareneingang_positionen_quelle`
+gespeichert — nachvollziehbar, auch nachdem die Rechnung importiert wurde. `/validate-preview`
 lässt eine Korrektur vor dem eigentlichen Import gegenprüfen;
 `/import-invoice` wendet dieselbe Validierung noch einmal serverseitig an,
 bevor irgendetwas gespeichert wird.
@@ -255,7 +259,7 @@ Seite zuerst `page.get_text("words")`; liefert das nichts, übernimmt
    ganz gleich ob die Wörter aus der Textebene oder per OCR stammen.
 
 OCR-Seiten und die daraus gelesenen Positionen werden mit `ocr_used`
-markiert (bis in die Datenbank, `Invoice.ocr_used`); die Vorschau zeigt
+markiert (bis in die Datenbank, `Dokument.ocr_verwendet`); die Vorschau zeigt
 dafür einen eigenen Hinweis, der zu besonders sorgfältiger Kontrolle rät,
 blockiert den Import über diese Markierung allein aber nicht — nur
 echte Datenprobleme (fehlende Pflichtfelder, uneindeutige Farbe/Grösse

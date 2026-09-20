@@ -77,7 +77,7 @@ unveränderten Original-Snapshot der Position.
 | GET | `/preview` | 🔒 Upload-Seite (unterstützt mehrere PDFs gleichzeitig, siehe „Stapel-Import" unten) |
 | POST | `/upload-preview` | 🔒 Eine PDF hochladen, Positionen als Vorschau zurückgeben (max. 20 MB, keine DB-Änderung) |
 | POST | `/validate-preview` | 🔒 Manuell korrigierte Positionen (siehe `corrections`) gegen dieselbe Datei erneut validieren, bevor importiert wird; verlangt `expected_hash` |
-| POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true` und optional `corrections` (JSON, siehe unten) |
+| POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true` und optional `corrections` (JSON, siehe unten). Bucht Wareneingang und Bestand gegen die aktive Filiale des Kontos (`GET /api/me`, `lagerort`) — ohne gewählte Filiale (nur für Admin möglich, „alle Filialen") HTTP 400 |
 | GET | `/invoice-import-status` | 🔒 Prüft per Datei-Hash oder Rechnungsnummer, ob eine Rechnung bereits importiert ist — wird von der Stapel-Import-Warteschlange genutzt, um bereits importierte Dateien zu überspringen |
 
 **Korrekturen (`corrections`)**: JSON-Objekt `{"<Positionsnummer>": {"<Feld>": "<neuer Wert>"}}`.
@@ -107,7 +107,8 @@ Upload/Validierungs-/Import-Ablauf wie ein Einzel-Upload.
 ## Fehlerformat
 
 JSON-Fehlerantworten folgen dem FastAPI-Standard `{"detail": "<deutsche Meldung>"}`.
-Typische Statuscodes: `401` (nicht angemeldet), `403` (falsche Rolle),
+Typische Statuscodes: `400` (z. B. Import ohne gewählte Filiale), `401`
+(nicht angemeldet), `403` (falsche Rolle oder keine Filialzuweisung),
 `404` (Rechnung/Artikel/Notiz nicht gefunden), `409` (Import abgelehnt, z. B.
 Duplikat oder Hash-Konflikt; oder Notiz wurde zwischenzeitlich geändert),
 `413` (Datei zu gross), `422` (PDF konnte nicht gelesen/geparst werden, oder
