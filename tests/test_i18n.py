@@ -1,13 +1,22 @@
 """i18n-Grundgerüst (Regel 7): Katalog/translate(), Spracherkennung pro
 Request (Konto-Sprache bzw. Accept-Language für /login) und Sprachwahl."""
 
+import json
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.i18n import DEFAULT_LANGUAGE, LANGUAGES, normalize_language, translate
+from app.core.i18n import (
+    DEFAULT_LANGUAGE,
+    LANGUAGES,
+    _CATALOG_DIR,
+    normalize_language,
+    translate,
+)
 from app.main import app
 from app.core.database import get_session
 from app.core.lagerorte import seed_lagerorte
@@ -61,6 +70,36 @@ def test_translate_falls_back_to_default_language_when_key_missing_elsewhere(mon
 
 def test_translate_unknown_key_returns_key_itself():
     assert translate("does.not.exist", "de") == "does.not.exist"
+
+
+def _catalog_file(language):
+    with open(_CATALOG_DIR / f"{language}.json", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _placeholders(text):
+    return set(re.findall(r"\{([^{}]*)\}", text))
+
+
+@pytest.mark.parametrize("language", [l for l in LANGUAGES if l != DEFAULT_LANGUAGE])
+def test_all_catalogs_have_the_same_keys(language):
+    """Ein Key nur auf Deutsch faellt im Betrieb nicht auf (translate() faellt
+    still auf DE zurueck), ein Key nur in FR/EN dagegen wird nie gefunden."""
+    assert sorted(_catalog_file(language)) == sorted(_catalog_file(DEFAULT_LANGUAGE))
+
+
+@pytest.mark.parametrize("language", [l for l in LANGUAGES if l != DEFAULT_LANGUAGE])
+def test_placeholders_match_across_catalogs(language):
+    """translate() ruft str.format(**params) auf: ein umbenannter oder
+    vergessener Platzhalter in einer Uebersetzung wuerde dort mit KeyError
+    abbrechen - ausgerechnet beim Anzeigen einer Fehlermeldung."""
+    deutsch, uebersetzt = _catalog_file(DEFAULT_LANGUAGE), _catalog_file(language)
+    abweichungen = {
+        key: (sorted(_placeholders(text)), sorted(_placeholders(uebersetzt[key])))
+        for key, text in deutsch.items()
+        if key in uebersetzt and _placeholders(text) != _placeholders(uebersetzt[key])
+    }
+    assert abweichungen == {}
 
 
 @pytest.fixture
