@@ -493,14 +493,18 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
 
         all_varianten_ids = {v for ids in varianten_by_lagerort.values() for v in ids}
         for varianten_id in all_varianten_ids:
+            # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
+            # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an GEWA leer
+            #   (Regel 6) und wuerde die Werte hier auf NULL zuruecksetzen.
             first_seen, last_seen = session.execute(
                 select(
-                    func.min(Wareneingang.eingangsdatum), func.max(Wareneingang.eingangsdatum)
+                    func.min(Dokument.dokumentdatum), func.max(Dokument.dokumentdatum)
                 )
                 .select_from(WareneingangPosition)
                 .join(
                     Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
                 )
+                .join(Dokument, Dokument.id == Wareneingang.dokument_id)
                 .where(WareneingangPosition.varianten_id == varianten_id)
             ).one()
             variante = session.get(Variante, varianten_id)
