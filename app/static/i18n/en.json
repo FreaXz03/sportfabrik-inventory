@@ -17,6 +17,7 @@
   "nav.articles": "Articles",
   "nav.invoices": "Invoices",
   "nav.upload": "Upload invoice",
+  "nav.main_aria": "Main navigation",
   "common.retry": "Try again",
   "common.connection_lost": "No connection to the app. Please try again.",
 
@@ -192,6 +193,7 @@
   "article_details.price_status.multiple": "{count} dated prices. Points show the RRP; connecting lines are for orientation only.",
   "article_details.price_status.undated_suffix": "Values without a date are shown only in the table.",
   "article_details.chart_aria_label": "RRP history in CHF. Exact values are in the table below.",
+  "article_details.chart_point_title": "{date}: CHF {uvp} · Invoice {invoice}",
   "article_details.unit_unknown": "Unit unknown",
   "article_details.loading_prices": "Loading prices …",
   "article_details.note_edit_label": "Edit note",

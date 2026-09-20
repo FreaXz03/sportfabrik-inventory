@@ -25,7 +25,7 @@
     const svg=svgNode('svg',{viewBox:'0 0 900 270',role:'img','aria-label':t('article_details.chart_aria_label')});
     for(let val=ymin;val<=ymax;val+=step){svg.append(svgNode('line',{x1:115,x2:825,y1:y(val),y2:y(val),stroke:'var(--border)'}),svgNode('text',{x:105,y:y(val)+4,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},val.toFixed(2)+' CHF'));}
     svg.append(svgNode('polyline',{points:points.map(p=>`${x(p.x)},${y(p.y)}`).join(' '),fill:'none',stroke:'var(--accent)','stroke-width':2}));
-    for(const p of points){const c=svgNode('circle',{cx:x(p.x),cy:y(p.y),r:5,fill:'var(--accent)',tabindex:0});c.append(svgNode('title',{},`${date(p.date)}: CHF ${p.uvp} · Rechnung ${p.invoice_number}`));svg.append(c);}
+    for(const p of points){const c=svgNode('circle',{cx:x(p.x),cy:y(p.y),r:5,fill:'var(--accent)',tabindex:0});c.append(svgNode('title',{},t('article_details.chart_point_title',{date:date(p.date),uvp:p.uvp,invoice:p.invoice_number})));svg.append(c);}
     svg.append(svgNode('text',{x:115,y:245,fill:'var(--text-muted)','font-size':12},date(points[0].date)),svgNode('text',{x:825,y:245,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},date(points[points.length-1].date)));
     $('priceChart').append(svg);
   }

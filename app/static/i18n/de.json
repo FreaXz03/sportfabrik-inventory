@@ -17,6 +17,7 @@
   "nav.articles": "Artikel",
   "nav.invoices": "Rechnungen",
   "nav.upload": "Rechnung hochladen",
+  "nav.main_aria": "Hauptnavigation",
   "common.retry": "Erneut versuchen",
   "common.connection_lost": "Keine Verbindung zur App. Bitte erneut versuchen.",
 
@@ -192,6 +193,7 @@
   "article_details.price_status.multiple": "{count} Preisangaben mit Datum. Punkte zeigen den UVP; Verbindungslinien dienen der Orientierung.",
   "article_details.price_status.undated_suffix": "Werte ohne Datum stehen nur in der Tabelle.",
   "article_details.chart_aria_label": "UVP-Verlauf in CHF. Genaue Werte in der anschliessenden Tabelle.",
+  "article_details.chart_point_title": "{date}: CHF {uvp} · Rechnung {invoice}",
   "article_details.unit_unknown": "Einheit unbekannt",
   "article_details.loading_prices": "Preise werden geladen …",
   "article_details.note_edit_label": "Notiz bearbeiten",

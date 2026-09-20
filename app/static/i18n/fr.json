@@ -17,6 +17,7 @@
   "nav.articles": "Articles",
   "nav.invoices": "Factures",
   "nav.upload": "Charger une facture",
+  "nav.main_aria": "Navigation principale",
   "common.retry": "Réessayer",
   "common.connection_lost": "Aucune connexion à l'application. Veuillez réessayer.",
 
@@ -192,6 +193,7 @@
   "article_details.price_status.multiple": "{count} prix datés. Les points indiquent le PPR ; les lignes de liaison servent uniquement de repère.",
   "article_details.price_status.undated_suffix": "Les valeurs sans date figurent uniquement dans le tableau.",
   "article_details.chart_aria_label": "Historique du PPR en CHF. Valeurs exactes dans le tableau ci-dessous.",
+  "article_details.chart_point_title": "{date} : CHF {uvp} · Facture {invoice}",
   "article_details.unit_unknown": "Unité inconnue",
   "article_details.loading_prices": "Chargement des prix …",
   "article_details.note_edit_label": "Modifier la note",
