@@ -12,7 +12,15 @@ from ..services.article_groups import article_group
 from ..core.database import SessionLocal, get_session
 from ..core.i18n import translate
 from ..services.importer import delete_invoice, DeleteRejected
-from ..core.models import Product, Invoice, InvoiceItem, InvoiceItemSource
+from ..core.models import (
+    Artikel,
+    Dokument,
+    Lieferant,
+    Variante,
+    Wareneingang,
+    WareneingangPosition,
+    WareneingangPositionQuelle,
+)
 
 router = APIRouter()
 
@@ -26,21 +34,18 @@ def history_page(record_id: int = 0, user=Depends(require_login_page)):
     )
 
 
-def invoice_data(invoice):
+def invoice_data(dokument, supplier=None):
     return {
-        key: getattr(invoice, key)
-        for key in (
-            "id",
-            "invoice_number",
-            "invoice_date",
-            "document_date",
-            "supplier",
-            "filename",
-            "uploaded_at",
-            "imported_by_kassennummer",
-            "imported_by_name",
-            "ocr_used",
-        )
+        "id": dokument.id,
+        "invoice_number": dokument.dokumentnummer,
+        "invoice_date": dokument.dokumentdatum,
+        "document_date": dokument.belegdatum,
+        "supplier": supplier,
+        "filename": dokument.dateiname,
+        "uploaded_at": dokument.hochgeladen_am,
+        "imported_by_kassennummer": dokument.hochgeladen_von_kassennummer,
+        "imported_by_name": dokument.hochgeladen_von_name,
+        "ocr_used": dokument.ocr_verwendet,
     }
 
 
@@ -54,19 +59,22 @@ def invoices(
     language: str = Depends(get_language),
 ):
     try:
-        condition = [contains(Invoice.invoice_number, q)] if q.strip() else []
+        condition = [contains(Dokument.dokumentnummer, q)] if q.strip() else []
         total = session.scalar(
-            select(func.count()).select_from(Invoice).where(*condition)
+            select(func.count()).select_from(Dokument).where(*condition)
         )
         count = (
-            select(func.count(InvoiceItem.id))
-            .where(InvoiceItem.invoice_id == Invoice.id)
+            select(func.count(WareneingangPosition.id))
+            .select_from(WareneingangPosition)
+            .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+            .where(Wareneingang.dokument_id == Dokument.id)
             .scalar_subquery()
         )
         rows = session.execute(
-            select(Invoice, count)
+            select(Dokument, Lieferant.name, count)
+            .outerjoin(Lieferant, Lieferant.id == Dokument.lieferant_id)
             .where(*condition)
-            .order_by(Invoice.invoice_date.desc().nulls_last(), Invoice.id.desc())
+            .order_by(Dokument.dokumentdatum.desc().nulls_last(), Dokument.id.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -74,7 +82,7 @@ def invoices(
             total=total,
             page=page,
             page_size=page_size,
-            items=[dict(**invoice_data(i), item_count=n) for i, n in rows],
+            items=[dict(**invoice_data(d, supplier), item_count=n) for d, supplier, n in rows],
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
@@ -141,19 +149,27 @@ def positions(
     sort_dir="asc",
 ):
     total = session.scalar(
-        select(func.count()).select_from(InvoiceItem).where(condition)
+        select(func.count())
+        .select_from(WareneingangPosition)
+        .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+        .where(condition)
     )
     stmt = (
-        select(InvoiceItem, Product, Invoice, InvoiceItemSource)
-        .join(Product, Product.id == InvoiceItem.product_id)
-        .join(Invoice, Invoice.id == InvoiceItem.invoice_id)
-        .outerjoin(InvoiceItemSource, InvoiceItemSource.item_id == InvoiceItem.id)
+        select(WareneingangPosition, Variante, Artikel, Wareneingang, Dokument, WareneingangPositionQuelle)
+        .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+        .join(Dokument, Dokument.id == Wareneingang.dokument_id)
+        .join(Variante, Variante.id == WareneingangPosition.varianten_id)
+        .join(Artikel, Artikel.id == Variante.artikel_id)
+        .outerjoin(
+            WareneingangPositionQuelle,
+            WareneingangPositionQuelle.position_id == WareneingangPosition.id,
+        )
         .where(condition)
     )
     ordering = (
-        (Invoice.invoice_date.desc().nulls_last(), Invoice.id.desc(), InvoiceItem.id)
+        (Dokument.dokumentdatum.desc().nulls_last(), Dokument.id.desc(), WareneingangPosition.id)
         if chronological
-        else (InvoiceItem.id,)
+        else (WareneingangPosition.id,)
     )
     rows = session.execute(
         stmt.order_by(*ordering)
@@ -161,29 +177,30 @@ def positions(
         else stmt.order_by(*ordering).offset((page - 1) * page_size).limit(page_size)
     )
     items = []
-    for item, product, invoice, source in rows:
+    for position, variante, artikel, _wareneingang, dokument, source in rows:
         snapshot = source.data if source else {}
-        data = {
-            key: snapshot.get(key, getattr(product, key))
-            for key in (
-                "brand",
-                "description",
-                "ean",
-                "article_no",
-                "supplier_article_no",
-                "color",
-                "size",
-            )
+        fallback = {
+            "brand": artikel.marke,
+            "description": artikel.bezeichnung,
+            "ean": variante.ean,
+            # Die frühere INTERSPORT-eigene Artikelnummer wird nicht mehr als
+            # eigene Spalte geführt (siehe docs/projekt-kontext.md 8.2) - nur
+            # noch im unveränderten Original-Snapshot vorhanden, falls dort da.
+            "article_no": None,
+            "supplier_article_no": artikel.lieferanten_artikelnr,
+            "color": variante.farbe,
+            "size": variante.groesse,
         }
+        data = {key: snapshot.get(key, fallback[key]) for key in fallback}
         data.update(
-            id=item.id,
-            product_id=product.id,
-            invoice_id=invoice.id,
-            invoice_number=invoice.invoice_number,
-            invoice_date=invoice.invoice_date,
-            quantity=format(item.quantity, "f") if item.quantity is not None else None,
-            unit=item.unit,
-            uvp=format(item.uvp, "f") if item.uvp is not None else None,
+            id=position.id,
+            product_id=variante.id,
+            invoice_id=dokument.id,
+            invoice_number=dokument.dokumentnummer,
+            invoice_date=dokument.dokumentdatum,
+            quantity=format(position.menge, "f") if position.menge is not None else None,
+            unit=position.einheit,
+            uvp=format(position.uvp, "f") if position.uvp is not None else None,
             source_available=bool(source),
             row_number=snapshot.get("row_number"),
             page=snapshot.get("page"),
@@ -215,14 +232,19 @@ def invoice_detail(
     language: str = Depends(get_language),
 ):
     try:
-        invoice = session.get(Invoice, invoice_id)
-        if invoice is None:
+        dokument = session.get(Dokument, invoice_id)
+        if dokument is None:
             raise HTTPException(404, translate("errors.history.invoice_not_found", language))
+        supplier = None
+        if dokument.lieferant_id is not None:
+            supplier = session.scalar(
+                select(Lieferant.name).where(Lieferant.id == dokument.lieferant_id)
+            )
         return dict(
-            invoice=invoice_data(invoice),
+            invoice=invoice_data(dokument, supplier),
             **positions(
                 session,
-                InvoiceItem.invoice_id == invoice_id,
+                Wareneingang.dokument_id == invoice_id,
                 page,
                 page_size,
                 sort_by=sort_by,
@@ -247,15 +269,19 @@ def article_history(
     language: str = Depends(get_language),
 ):
     try:
-        product, group_ids = article_group(session, product_id, language)
+        variante, group_ids = article_group(session, product_id, language)
+        artikel = session.get(Artikel, variante.artikel_id)
         return dict(
             product={
-                key: getattr(product, key)
-                for key in ("id", "brand", "description", "ean", "supplier_article_no")
+                "id": variante.id,
+                "brand": artikel.marke,
+                "description": artikel.bezeichnung,
+                "ean": variante.ean,
+                "supplier_article_no": artikel.lieferanten_artikelnr,
             },
             **positions(
                 session,
-                InvoiceItem.product_id.in_(group_ids),
+                WareneingangPosition.varianten_id.in_(group_ids),
                 page,
                 page_size,
                 True,

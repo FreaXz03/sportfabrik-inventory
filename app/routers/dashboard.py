@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .auth import get_language, require_login_api
 from ..core.database import get_session
 from ..core.i18n import translate
-from ..core.models import Product, Invoice, InvoiceItem
+from ..core.models import Dokument, Lieferant, Variante, WareneingangPosition
 from .history import invoice_data
 
 router = APIRouter()
@@ -20,17 +20,18 @@ def dashboard(
         counts = {
             key: session.scalar(select(func.count()).select_from(model))
             for key, model in [
-                ("products", Product),
-                ("invoices", Invoice),
-                ("positions", InvoiceItem),
+                ("products", Variante),
+                ("invoices", Dokument),
+                ("positions", WareneingangPosition),
             ]
         }
-        rows = session.scalars(
-            select(Invoice)
-            .order_by(Invoice.uploaded_at.desc(), Invoice.id.desc())
+        rows = session.execute(
+            select(Dokument, Lieferant.name)
+            .outerjoin(Lieferant, Lieferant.id == Dokument.lieferant_id)
+            .order_by(Dokument.hochgeladen_am.desc(), Dokument.id.desc())
             .limit(5)
         ).all()
-        delivered_quantity = session.scalar(select(func.sum(InvoiceItem.quantity)))
+        delivered_quantity = session.scalar(select(func.sum(WareneingangPosition.menge)))
         return dict(
             **counts,
             delivered_quantity=(
@@ -38,7 +39,7 @@ def dashboard(
                 if delivered_quantity is not None
                 else "0"
             ),
-            recent_invoices=[invoice_data(i) for i in rows],
+            recent_invoices=[invoice_data(d, supplier) for d, supplier in rows],
         )
     except SQLAlchemyError as exc:
         raise HTTPException(

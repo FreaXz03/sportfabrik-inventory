@@ -249,7 +249,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 | Konzept (D1–D17) | ✅ abgeschlossen (20.09.2026) |
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
-| A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Tests/Doku) | ⏳ als nächstes |
+| A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | B–G | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
@@ -267,5 +267,15 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 - Sprachwahl: `POST /api/language` (Konto), Umschalter DE/FR/EN in der Session-Leiste bzw. auf der Login-Seite (`localStorage` vor dem Login).
 - Bewusst nicht übersetzt: Artikeldaten aus Lieferantendokumenten (Regel 7), feste deutsche Textanker im INTERSPORT-Layout (Parser sucht z. B. immer „Rechnungsdatum" im PDF), Excel-Export-Spaltenüberschriften (eigenes Dokumentformat, offener Punkt).
 - Tests: `tests/test_i18n.py` (Katalog/`translate()`, Spracherkennung, `/api/language`); Gesamtsuite jetzt 108 bestandene Tests (vorher 86).
+
+**Details zu Phase A, Punkte 3–4** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
+- Neues Datenmodell gemäss Abschnitt 8.2 vollständig umgesetzt: `lieferanten`, `kategorien` (35 Kassenkategorien), `artikel`, `varianten`, `preise`, `dokumente`, `wareneingaenge`, `wareneingang_positionen` (+`_quelle`), `lagerbewegungen`, `bestand` via Alembic-Migration `c3d4e5f6a7b8`. Bestand wird jetzt append-only über `lagerbewegungen` geführt (Regel 2), nicht mehr implizit über `invoice_items`.
+- Bestehende Daten (`products`/`invoices`/`invoice_items`/`invoice_item_sources`/`article_notes`) vollständig und verlustfrei migriert (alte Tabellen bleiben unangetastet, „nie verwerfen") — einzige bewusste Lücke: die frühere INTERSPORT-eigene Artikelnummer (`products.article_no`) wird nicht übernommen, nur noch die Lieferanten-Artikelnummer als Artikel-Schlüssel (Regel 5), der Altwert bleibt in `products` einsehbar.
+- **Live-Import umgestellt**: `app/services/importer.py` schreibt neu importierte Rechnungen direkt ins neue Schema (Artikel-Gruppierung, Varianten mit/ohne EAN, Preise, Lagerbewegungen, Bestand); Wareneingänge werden gegen die **aktive Filiale** des hochladenden Kontos gebucht (`require_active_lagerort` in `app/routers/auth.py`) statt fest gegen SF1. `delete_invoice()` räumt Lagerbewegungen/Bestand/Preise konsistent mit auf.
+- `app/services/parser.py` erfasst jetzt zusätzlich den FEDAS-Code je Position (`artikel.fedas_code`) — die automatische Kategorie-Vorschlagslogik daraus folgt in Phase B.
+- `app/services/article_groups.py` nutzt die echte Fremdschlüsselbeziehung (`varianten.artikel_id`) statt einer Laufzeit-Query über Marke + Lieferanten-Artikelnummer.
+- Alle betroffenen Router (`catalog.py`, `history.py`, `article_details.py`, `dashboard.py`) sowie `article_export.py` auf das neue Schema umgestellt. Die frühere separate Spalte „Art. Nr." (INTERSPORT-eigene Nummer) ist aus Artikelsuche, Excel-Export und Filtern entfernt (siehe oben); `/api/articles` filtert jetzt über `supplier_article_no` statt `article_no`.
+- Tests vollständig an das neue Schema angepasst (u. a. `test_importer.py`, `test_catalog.py`, `test_history.py`, `test_article_details.py`, `test_article_export.py`, `test_corrections.py`); Migration zusätzlich gegen echtes PostgreSQL verifiziert (leere DB, DB mit repräsentativen Altdaten, Downgrade/Upgrade-Rundlauf) sowie der komplette Live-Import- und Router-Pfad per Smoke-Test gegen PostgreSQL durchgespielt.
+- Bekannte Einschränkung: `bestand` nach der Migration entspricht der kumulierten historischen Wareneingänge (das alte System kannte keine Verkäufe/Ausbuchungen) — kein exakter physischer Bestand, bis Phase C (manuelles Ausbuchen) bzw. eine Inventur das korrigiert.
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*

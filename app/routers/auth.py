@@ -104,6 +104,21 @@ def require_chef_api(
     return user
 
 
+def require_active_lagerort(
+    request: Request,
+    user: User = Depends(require_chef_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+) -> Lagerort:
+    """Konkrete Filiale für Aktionen, die eine Filiale brauchen (z.B. Wareneingang
+    buchen) - Admin ohne gewählte Filiale ("alle Filialen") kann nicht buchen,
+    muss vorher eine Filiale wählen (siehe /api/active-lagerort)."""
+    lagerort = _resolve_active_lagerort(request, session, user)
+    if lagerort is None:
+        raise HTTPException(400, translate("errors.auth.lagerort_required", language))
+    return lagerort
+
+
 def _resolve_active_lagerort(
     request: Request, session, user: User
 ) -> Lagerort | None:

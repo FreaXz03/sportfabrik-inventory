@@ -147,7 +147,6 @@
   "articles.filter.all_brands": "All brands",
   "articles.filter.ean": "EAN · exact",
   "articles.filter.ean_placeholder": "Also with leading zero",
-  "articles.filter.article_no": "Item no. / supplier item no.",
   "articles.filter.last_delivery_from": "Last delivery from",
   "articles.filter.last_delivery_to": "Last delivery to",
   "articles.filter.search": "Search",
@@ -156,7 +155,6 @@
   "articles.columns.summary": "Show columns",
   "articles.columns.brand": "Brand",
   "articles.columns.description": "Description",
-  "articles.columns.article_no": "Item no.",
   "articles.columns.supplier_article_no": "Supplier item no.",
   "articles.columns.ean": "EAN",
   "articles.columns.color": "Colour",
@@ -284,6 +282,7 @@
   "errors.auth.admin_required_all_lagerorte": "Only head office can view all stores at once.",
   "errors.auth.no_lagerort_access": "No access to this store.",
   "errors.auth.invalid_language": "Invalid language.",
+  "errors.auth.lagerort_required": "Please select a store first.",
 
   "errors.article_details.note_not_found": "Note not found.",
   "errors.article_details.note_delete_forbidden": "Only your own notes, or as a store manager, can be deleted.",
@@ -346,6 +345,7 @@
   "errors.importer.field_too_long": "Line {row}: {field} is too long.",
   "errors.importer.field_invalid_format": "Line {row}: {field} does not fit the database format.",
   "errors.importer.already_imported": "Invoice {number} has already been imported (ID {id}).",
+  "errors.importer.supplier_not_configured": "No supplier configured for this parser.",
   "errors.importer.integrity_conflict": "Data conflict: the import was fully rolled back. Please check the preview again.",
   "errors.importer.invoice_not_found": "Invoice {id} was not found.",
 

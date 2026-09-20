@@ -3,8 +3,9 @@ import hashlib
 import json
 from ..services.corrections import apply_corrections, CorrectionError
 from starlette.concurrency import run_in_threadpool
-from .auth import get_language, require_chef_api, require_chef_page
+from .auth import get_language, require_active_lagerort, require_chef_api, require_chef_page
 from ..core.i18n import translate
+from ..core.models import Lagerort
 from ..services.parser import InvoiceParseError, parse_invoice
 from pathlib import Path
 from fastapi.responses import FileResponse
@@ -50,6 +51,7 @@ async def confirm_import(
     confirmed: bool = Form(False),
     corrections: str = Form("{}", max_length=500000),
     user=Depends(require_chef_api),
+    lagerort: Lagerort = Depends(require_active_lagerort),
     language: str = Depends(get_language),
 ):
     try:
@@ -71,6 +73,7 @@ async def confirm_import(
                 file.filename,
                 expected_hash,
                 SessionLocal,
+                lagerort.id,
                 {"kassennummer": user.kassennummer, "name": user.name},
                 decode_corrections(corrections, language),
                 language,
@@ -128,17 +131,17 @@ def invoice_import_status(
     language: str = Depends(get_language),
 ):
     from ..core.database import SessionLocal
-    from ..core.models import Invoice
+    from ..core.models import Dokument
     from sqlalchemy import select, or_
     from sqlalchemy.exc import SQLAlchemyError
 
     try:
         with SessionLocal() as session:
             invoice = session.scalar(
-                select(Invoice).where(
+                select(Dokument).where(
                     or_(
-                        Invoice.file_hash == file_hash,
-                        Invoice.invoice_number == invoice_number,
+                        Dokument.datei_hash == file_hash,
+                        Dokument.dokumentnummer == invoice_number,
                     )
                 )
             )

@@ -40,7 +40,7 @@ nach dem Login auf eine fremde Seite weiterleitet (offener Redirect).
 |---|---|---|
 | GET | `/articles` | Artikelsuche-Seite |
 | GET | `/api/brands` | Liste aller vorkommenden Marken |
-| GET | `/api/articles` | Artikelsuche; Filter: `q`, `brand`, `ean`, `article_no`, `description`, `last_delivery_from`/`last_delivery_to` (Datumsbereich auf die letzte Lieferung); Sortierung `sort_by` (`brand`, `description`, `article_no`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); Paginierung `page`/`page_size` (max. 100) |
+| GET | `/api/articles` | Artikelsuche; Filter: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `last_delivery_from`/`last_delivery_to` (Datumsbereich auf die letzte Lieferung); Sortierung `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); Paginierung `page`/`page_size` (max. 100) |
 | GET | `/api/articles/export` | Dieselben Filter wie `/api/articles`, aber **ohne** Paginierung: liefert eine fertig formatierte Excel-Datei (`.xlsx`) mit allen Treffern zum Download |
 | GET | `/api/articles/{product_id}/history` | Vollständige Lieferhistorie eines Artikels **inkl. aller Farb-/Grössenvarianten mit gleicher Marke + Lieferanten-Artikelnummer**, neueste Rechnung zuerst; sortierbar (`sort_by`/`sort_dir`, siehe unten) |
 | GET | `/api/articles/{product_id}/prices` | Preisverlauf (UVP je Rechnung/Einheit) für die Artikelgruppe |
@@ -54,7 +54,10 @@ unten) akzeptiert: `position`, `invoice_date`, `description`, `ean`,
 `article_no`, `color`, `size`, `quantity`, `unit`, `uvp`. Fehlende Werte
 werden ans Ende sortiert; `size` erkennt gängige Kleidergrössen (`XS`…`5XL`)
 sowie gemischte Zahlen/Text (z. B. Schuhgrössen) und sortiert sie sinnvoll
-statt rein alphabetisch.
+statt rein alphabetisch. `article_no` (die frühere INTERSPORT-eigene
+Artikelnummer) wird seit dem neuen Datenmodell (Phase A Punkt 3) nicht mehr
+als eigene Spalte geführt — der Wert kommt hier, sofern vorhanden, aus dem
+unveränderten Original-Snapshot der Position.
 
 ## Rechnungen
 

@@ -147,7 +147,6 @@
   "articles.filter.all_brands": "Alle Marken",
   "articles.filter.ean": "EAN · exakt",
   "articles.filter.ean_placeholder": "Auch mit führender Null",
-  "articles.filter.article_no": "Art.-Nr. / Lief. Art.-Nr.",
   "articles.filter.last_delivery_from": "Letzte Lieferung von",
   "articles.filter.last_delivery_to": "Letzte Lieferung bis",
   "articles.filter.search": "Suchen",
@@ -156,7 +155,6 @@
   "articles.columns.summary": "Spalten anzeigen",
   "articles.columns.brand": "Marke",
   "articles.columns.description": "Bezeichnung",
-  "articles.columns.article_no": "Art. Nr.",
   "articles.columns.supplier_article_no": "Lief. Art. Nr.",
   "articles.columns.ean": "EAN",
   "articles.columns.color": "Farbe",
@@ -284,6 +282,7 @@
   "errors.auth.admin_required_all_lagerorte": "Nur die Zentrale kann alle Filialen zugleich sehen.",
   "errors.auth.no_lagerort_access": "Kein Zugriff auf diese Filiale.",
   "errors.auth.invalid_language": "Ungültige Sprache.",
+  "errors.auth.lagerort_required": "Bitte zuerst eine Filiale auswählen.",
 
   "errors.article_details.note_not_found": "Notiz nicht gefunden.",
   "errors.article_details.note_delete_forbidden": "Nur eigene Notizen oder als Filialleiter löschen.",
@@ -346,6 +345,7 @@
   "errors.importer.field_too_long": "Position {row}: {field} ist zu lang.",
   "errors.importer.field_invalid_format": "Position {row}: {field} passt nicht in das Datenbankformat.",
   "errors.importer.already_imported": "Rechnung {number} wurde bereits importiert (ID {id}).",
+  "errors.importer.supplier_not_configured": "Kein Lieferant für diesen Parser hinterlegt.",
   "errors.importer.integrity_conflict": "Datenkonflikt: Der Import wurde vollständig zurückgerollt. Bitte Vorschau erneut prüfen.",
   "errors.importer.invoice_not_found": "Rechnung {id} wurde nicht gefunden.",
 

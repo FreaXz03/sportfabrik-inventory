@@ -62,7 +62,12 @@ def upgrade():
 
     with op.batch_alter_table('article_notes') as batch_op:
         batch_op.add_column(
-            sa.Column('artikel_id', sa.Integer(), sa.ForeignKey('artikel.id'), nullable=True)
+            sa.Column(
+                'artikel_id',
+                sa.Integer(),
+                sa.ForeignKey('artikel.id', name='fk_article_notes_artikel_id'),
+                nullable=True,
+            )
         )
 
     # Die eigentliche Datenmigration braucht eine echte Verbindung (bestehende
@@ -74,10 +79,12 @@ def upgrade():
 
     with op.batch_alter_table('article_notes') as batch_op:
         batch_op.alter_column('artikel_id', nullable=False)
+        # Der Index muss innerhalb desselben Batches VOR dem Column-Drop weg,
+        # sonst versucht SQLites Batch-Modus beim Neuaufbau der Tabelle, ihn
+        # aus der reflektierten Alt-Struktur auf der (dann fehlenden) Spalte
+        # wiederherzustellen ("no such column: product_id").
+        batch_op.drop_index('ix_article_notes_product_id')
         batch_op.drop_column('product_id')
-    # DROP COLUMN product_id hat den darauf liegenden Index bereits mitgeloescht
-    # (Postgres: automatisch per CASCADE; SQLite-Batch-Modus: Tabelle wird ohne
-    # den alten Index neu aufgebaut) - ihn hier nochmal droppen wuerde fehlschlagen.
     op.create_index('ix_article_notes_artikel_id', 'article_notes', ['artikel_id'])
 
 
@@ -565,10 +572,17 @@ def downgrade():
     - im Zweifel stattdessen aus Backup wiederherstellen."""
     with op.batch_alter_table('article_notes') as batch_op:
         batch_op.add_column(
-            sa.Column('product_id', sa.Integer(), sa.ForeignKey('products.id'), nullable=True)
+            sa.Column(
+                'product_id',
+                sa.Integer(),
+                sa.ForeignKey('products.id', name='fk_article_notes_product_id'),
+                nullable=True,
+            )
         )
+        # Siehe upgrade(): Index-Drop muss im selben Batch vor dem Column-Drop
+        # stehen, sonst schlaegt SQLites Tabellen-Neuaufbau fehl.
+        batch_op.drop_index('ix_article_notes_artikel_id')
         batch_op.drop_column('artikel_id')
-    # siehe upgrade(): DROP COLUMN artikel_id hat den Index bereits mitgeloescht.
     op.create_index('ix_article_notes_product_id', 'article_notes', ['product_id'])
 
     op.drop_table('bestand')

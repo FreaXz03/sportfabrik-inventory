@@ -199,6 +199,7 @@ def parse_invoice(pdf_data: bytes, language: str = DEFAULT_LANGUAGE) -> dict:
                 if anchor:
                     current = dict(
                         brand=cells[0],
+                        fedas_code=cells[1],
                         supplier_article_no=cells[2],
                         article_no=cells[3],
                         ean=cells[4],

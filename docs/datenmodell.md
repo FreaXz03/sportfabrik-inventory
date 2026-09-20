@@ -1,57 +1,142 @@
 # Datenmodell
 
-Acht Tabellen, verwaltet über SQLAlchemy 2.0 (`app/core/models.py`) und
-Alembic-Migrationen (`migrations/`).
+Verwaltet über SQLAlchemy 2.0 (`app/core/models.py`) und Alembic-Migrationen
+(`migrations/`). Seit Migration `c3d4e5f6a7b8` (Phase A Punkt 3) gilt das
+Datenmodell aus `projekt-kontext.md` Abschnitt 8.2: Artikelstamm
+filialübergreifend, Bestand/Wareneingänge/Reduktionen filialbezogen, Bestand
+nie direkt überschrieben, sondern als `lagerbewegungen`-Journal geführt
+(Regel 2).
+
+## Alte Tabellen (`products`, `invoices`, `invoice_items`,
+`invoice_item_sources`)
+
+Bleiben unangetastet in der Datenbank (kein `DROP`, „nie verwerfen"), sind
+aber **nicht mehr gemappt** — die App liest/schreibt sie seit
+`c3d4e5f6a7b8` nicht mehr. Ihre Daten wurden vollständig in die neuen
+Tabellen migriert (siehe „Migration der Altdaten" unten). Eine Ausnahme:
+`products.article_no` (INTERSPORT-eigene Artikelnummer je Variante) wird
+**nicht** übernommen — das neue Modell führt nur noch die
+Lieferanten-Artikelnummer (`artikel.lieferanten_artikelnr`) als
+Artikel-Schlüssel (Regel 5); der historische Wert bleibt in der alten,
+unangetasteten `products`-Tabelle einsehbar.
+
+## Neue Tabellen
 
 ```mermaid
 erDiagram
-    PRODUCTS ||--o{ INVOICE_ITEMS : "wird geliefert in"
-    INVOICES ||--o{ INVOICE_ITEMS : "enthält"
-    INVOICE_ITEMS ||--o| INVOICE_ITEM_SOURCES : "Original-Snapshot"
-    PRODUCTS ||--o{ ARTICLE_NOTES : "hat"
-    USERS ||--o{ BENUTZER_LAGERORTE : "zugeordnet zu"
-    LAGERORTE ||--o{ BENUTZER_LAGERORTE : "hat Benutzer"
+    LIEFERANTEN ||--o{ ARTIKEL : "liefert"
+    KATEGORIEN ||--o{ ARTIKEL : "kategorisiert"
+    ARTIKEL ||--o{ VARIANTEN : "hat"
+    VARIANTEN ||--o{ PREISE : "Preisverlauf"
+    VARIANTEN ||--o{ WARENEINGANG_POSITIONEN : "Position in"
+    VARIANTEN ||--o{ LAGERBEWEGUNGEN : "betrifft"
+    VARIANTEN ||--o{ BESTAND : "Bestand je Filiale"
+    ARTIKEL ||--o{ ARTICLE_NOTES : "hat Notizen"
+    LIEFERANTEN ||--o{ DOKUMENTE : "Absender"
+    LAGERORTE ||--o{ DOKUMENTE : "Zielfiliale"
+    DOKUMENTE ||--o{ WARENEINGAENGE : "erzeugt"
+    LAGERORTE ||--o{ WARENEINGAENGE : "Filiale"
+    WARENEINGAENGE ||--o{ WARENEINGANG_POSITIONEN : "enthält"
+    WARENEINGANG_POSITIONEN ||--o| WARENEINGANG_POSITIONEN_QUELLE : "Original-Snapshot"
+    DOKUMENTE ||--o{ PREISE : "Quelle"
+    LAGERORTE ||--o{ LAGERBEWEGUNGEN : "Filiale"
+    LAGERORTE ||--o{ BESTAND : "Filiale"
+    WARENEINGANG_POSITIONEN ||--o| LAGERBEWEGUNGEN : "erzeugt Zugang"
 
-    PRODUCTS {
+    LIEFERANTEN {
         int id PK
-        string brand
-        string supplier_article_no
-        string article_no
+        string name UK
+        string typ
+        string parser_key
+    }
+    KATEGORIEN {
+        int id PK
+        string hauptgruppe
+        string sportbereich
+    }
+    ARTIKEL {
+        int id PK
+        int lieferant_id FK
+        string marke
+        string lieferanten_artikelnr
+        string bezeichnung
+        int kategorie_id FK
+        string fedas_code
+    }
+    VARIANTEN {
+        int id PK
+        int artikel_id FK
+        string farbe
+        string groesse
         string ean UK
-        string description
-        string color
-        string size
+        boolean ean_intern
         date first_seen
         date last_seen
     }
-    INVOICES {
+    PREISE {
         int id PK
-        string invoice_number UK
-        date invoice_date
-        date document_date
-        string supplier
-        string filename
-        string file_hash UK
-        datetime uploaded_at
-        string imported_by_kassennummer
-        string imported_by_name
-        boolean ocr_used
-    }
-    INVOICE_ITEMS {
-        int id PK
-        int invoice_id FK
-        int product_id FK
-        numeric quantity
-        string unit
+        int varianten_id FK
         numeric uvp
+        numeric ek
+        date datum
+        int dokument_id FK
     }
-    INVOICE_ITEM_SOURCES {
-        int item_id PK_FK
+    DOKUMENTE {
+        int id PK
+        int lieferant_id FK
+        int lagerort_id FK
+        string typ
+        string dokumentnummer UK
+        date dokumentdatum
+        date belegdatum
+        string dateiname
+        string datei_hash UK
+        datetime hochgeladen_am
+        string hochgeladen_von_kassennummer
+        string hochgeladen_von_name
+        boolean ocr_verwendet
+    }
+    WARENEINGAENGE {
+        int id PK
+        int dokument_id FK
+        int lagerort_id FK
+        string status
+        date eingangsdatum
+    }
+    WARENEINGANG_POSITIONEN {
+        int id PK
+        int wareneingang_id FK
+        int varianten_id FK
+        numeric menge
+        string einheit
+        numeric uvp
+        numeric ek
+    }
+    WARENEINGANG_POSITIONEN_QUELLE {
+        int position_id PK_FK
         json data
+    }
+    LAGERBEWEGUNGEN {
+        int id PK
+        int lagerort_id FK
+        int varianten_id FK
+        string typ
+        numeric menge
+        string grund
+        int wareneingang_position_id FK
+        string benutzer_kassennummer
+        string benutzer_name
+        datetime zeitpunkt
+    }
+    BESTAND {
+        int varianten_id PK_FK
+        int lagerort_id PK_FK
+        numeric menge
+        date aeltestes_eingangsdatum
     }
     ARTICLE_NOTES {
         int id PK
-        int product_id FK
+        int artikel_id FK
         string body
         int author_user_id
         string author_name
@@ -61,121 +146,121 @@ erDiagram
         datetime updated_at
         int version
     }
-    USERS {
-        int id PK
-        string kassennummer UK
-        string name
-        string role
-        string password_hash
-        string language
-        datetime created_at
-    }
-    LAGERORTE {
-        int id PK
-        string code UK
-        string name
-        string strasse
-        string plz
-        string ort
-        string telefon
-        string email
-        boolean verkauf
-    }
-    BENUTZER_LAGERORTE {
-        int user_id PK_FK
-        int lagerort_id PK_FK
-        boolean ist_primaer
-    }
 ```
 
-`USERS` steht bewusst ohne Verknüpfungslinie zu `INVOICES` oder
-`ARTICLE_NOTES`: wer eine Rechnung importiert bzw. eine Notiz verfasst hat,
-wird als Momentaufnahme (`imported_by_*` bzw. `author_name`/`author_number`)
-direkt gespeichert, nicht als Fremdschlüssel — siehe Entscheidung E5 in
-`planung.md`. `article_notes.author_user_id` ist zwar eine Nutzer-ID, aber
-absichtlich ohne Fremdschlüssel-Constraint auf `users.id`: eine Notiz bleibt
-so lesbar und ihrem ursprünglichen Autor zuordenbar, selbst wenn das
-zugehörige Benutzerkonto später entfernt wird.
+`article_notes.artikel_id` (bis `c3d4e5f6a7b8`: `product_id`) steht wie
+`dokumente`/`lagerbewegungen` absichtlich ohne Fremdschlüssel auf
+`users.id` für den Autor — siehe Begründung weiter unten bei `users`.
 
 ## Tabellen im Detail
 
-### `products`
-Ein Datensatz je eindeutigem Artikel (Schlüssel: `ean`). Wird bei jedem
-Import wiederverwendet, wenn die EAN bereits bekannt ist — Marke,
-Artikelnummer usw. stammen dann von der ersten Lieferung, spätere
-Lieferungen liefern nur neue Mengen/Preise. `first_seen`/`last_seen` werden
-bei jedem Import und jeder Löschung neu berechnet.
+### `lieferanten`
+Ein Datensatz je Lieferant. `typ` (`intersport`/`ecom`/`drittanbieter`/
+`extern`) und `parser_key` (verweist auf das passende Parser-Modul in
+`app/services/parsers/`, aktuell nur `intersport`) steuern die automatische
+Lieferanten-Erkennung beim Dokumenten-Upload (Phase B). Seed-Daten in
+`app/core/lieferanten.py`.
 
-Für Notizen, Preisverlauf und Lieferhistorie werden **Varianten desselben
-Artikels** (gleiche Marke + gleiche Lieferanten-Artikelnummer, z. B.
-verschiedene Farben/Grössen) serverseitig zu einer Gruppe zusammengefasst
-(`app/services/article_groups.py`) — Artikel ohne Lieferanten-Artikelnummer
-bleiben einzeln. Das ist eine reine Abfrage-Gruppierung zur Anzeige; in der
-Tabelle bleibt jede EAN-Variante ein eigener `products`-Datensatz.
+### `kategorien`
+Kassenkategorien: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) ×
+Sportbereich (Regel 8) — Velo und Food ohne Sportbereich. 35 fixe
+Kombinationen, Seed-Daten in `app/core/kategorien.py`. Ein FEDAS→Kategorie-
+Mapping für automatische Vorschläge folgt in Phase B.
 
-### `invoices`
-Ein Datensatz je importierter Rechnung. `invoice_number` und `file_hash`
-sind eindeutig — verhindert Doppelimporte derselben Rechnung. `supplier`
-ist aktuell immer `"INTERSPORT Schweiz AG"` (siehe offener Punkt: weitere
-Lieferanten). `imported_by_kassennummer`/`imported_by_name` sind nullable,
-weil sie erst nachträglich eingeführt wurden — vor September 2026
-importierte Rechnungen zeigen hier „—". `ocr_used` markiert Rechnungen, die
-mangels Textebene per Tesseract-OCR statt direkt aus dem PDF gelesen wurden
-(siehe `architektur.md`, Abschnitt OCR-Fallback).
+### `artikel`
+Modell-Ebene, filialübergreifend (Regel 4): Marke + Lieferanten-Artikelnummer
+identifizieren ein Modell über alle Farben/Grössen hinweg. Fehlt die
+Lieferanten-Artikelnummer, bleibt jedes Vorkommen ein eigener Artikel (echte
+Fremdschlüsselbeziehung statt der früheren Laufzeit-Gruppierung in
+`app/services/article_groups.py`, die jetzt nur noch `varianten.artikel_id`
+abfragt). `fedas_code` wird beim Import mitgeschrieben, sofern die Rechnung
+ihn liefert (aktuell nur zur Anzeige — die automatische Kategorie-Ableitung
+folgt in Phase B).
 
-### `invoice_items`
-Eine Zeile je Position einer Rechnung (kann mehrfach dieselbe `product_id`
-referenzieren, z. B. Farbvarianten oder Nachlieferungen). `quantity` und
-`uvp` als `Numeric(10, 2)` für exakte Dezimalwerte statt Fliesskomma.
+### `varianten`
+Farbe/Grösse/EAN eines Artikels (Regel 5: EAN optional — Schlüssel ohne EAN
+ist Lieferant + Artikelnummer + Farbe + Grösse über `artikel_id`).
+`ean_intern` markiert vom System generierte EANs (EAN-13 im GS1-Bereich
+20–29, Phase B, noch ungenutzt). `first_seen`/`last_seen` wie früher auf
+`products`, bei jedem Import/jeder Löschung neu berechnet.
 
-### `invoice_item_sources`
-Ein optionaler 1:1-Datensatz je `invoice_items`-Zeile mit den kompletten,
-unveränderten Originaldaten der Position (inkl. Rohtext, Seiten-/Zeilennummer,
-etwaige Parser-Warnungen sowie ein `correction_audit`-Feld, falls die Position
-vor dem Import manuell korrigiert wurde — siehe `architektur.md`, Abschnitt
-„Korrekturen in der Vorschau") als JSON. Bleibt erhalten, auch wenn sich die
-`products`-Stammdaten später ändern — Grundlage des Audit-Trails.
+### `preise`
+UVP/EK-Verlauf je Variante (Regel 10: EK optional, nie Pflicht), mit Datum
+und verweisendem Dokument. Ersetzt die frühere implizite Preishistorie über
+`invoice_items.uvp` + `invoices.invoice_date`.
+
+### `dokumente`
+Verallgemeinert die frühere `invoices`-Tabelle auf alle Dokumenttypen aus D6
+(Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `dokumentnummer`
+und `datei_hash` sind eindeutig — verhindert Doppelimporte. `lagerort_id` ist
+die Zielfiliale (aktuell: die beim Upload aktive Filiale des hochladenden
+Kontos — automatische Erkennung aus der Lieferadresse folgt in Phase B).
+`ocr_verwendet` markiert Dokumente, die mangels Textebene per Tesseract-OCR
+gelesen wurden.
+
+### `wareneingaenge`
+Ein Wareneingang je Dokument (aktuell 1:1, das Schema erlaubt später mehrere
+je Dokument z. B. bei Teillieferungen). `status` unterscheidet `erwartet`
+(nur bei Auftragsbestätigungen — noch keine Bestandsbuchung, Regel 3) von
+`eingetroffen` (Ware ist da, `lagerbewegungen`/`bestand` werden geschrieben).
+INTERSPORT-Rechnungen sind immer `eingetroffen`.
+
+### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
+Eine Zeile je Position eines Wareneingangs — verallgemeinert die frühere
+`invoice_items`-Tabelle. `wareneingang_positionen_quelle` ist der optionale
+1:1-Original-Snapshot (Rohtext, Seiten-/Zeilennummer, Parser-Warnungen,
+`correction_audit`) als JSON, genau wie früher `invoice_item_sources` —
+bleibt auch erhalten, wenn sich `varianten`/`artikel` später ändern.
+
+### `lagerbewegungen`
+Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
+`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Jede importierte
+Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`. Benutzer wird
+als Momentaufnahme gespeichert (wie bei `dokumente`/`article_notes`), nicht
+als Fremdschlüssel.
+
+### `bestand`
+Aktueller Bestand je Variante × Filiale (zusammengesetzter Primärschlüssel),
+aus `lagerbewegungen` abgeleitet und dort auch aktuell gehalten (nie direkt
+geschrieben ausser beim Nachführen der Summe). `aeltestes_eingangsdatum`
+dient später der Reduktionslogik (Phase D, 18/36 Monate ab letztem
+Wareneingang derselben Lieferanten-Artikelnummer in dieser Filiale).
+
+**Bekannte Einschränkung nach der Migration:** Da das alte System nie
+Verkäufe/Ausbuchungen erfasst hat, entspricht der migrierte `bestand` der
+kumulierten historischen Wareneingänge, nicht dem tatsächlichen physischen
+Bestand — wird erst mit dem manuellen Ausbuchen (Phase C) bzw. einer
+Inventur korrigiert.
 
 ### `article_notes`
-Freitext-Notizen zu einem Artikel bzw. einer Artikelgruppe (z. B. „Grösse M
-läuft schlecht, wenig nachbestellen"). Jede Notiz trägt eine Autor-Momentaufnahme
-(`author_name`, `author_number`) und ein `version`-Feld für optimistisches
-Sperren: Bearbeiten/Löschen verlangt die zuletzt gelesene `version`, sonst
-schlägt die Anfrage mit HTTP 409 fehl (verhindert, dass zwei Personen
-gleichzeitig dieselbe Notiz widersprüchlich ändern). Mitarbeiter dürfen nur
-eigene Notizen bearbeiten/löschen, Filialleiter alle.
+Wie zuvor, jetzt an `artikel_id` statt `product_id` — eine Notiz gilt für das
+ganze Modell (alle Farben/Grössen), nicht mehr nur für die beim Erstellen
+angezeigte Variante. Optimistisches Sperren über `version` unverändert.
 
-### `users`
-Ein Datensatz je Kassennummer. Drei Check-Constraints erzwingen auf
-Datenbankebene, dass `role` nur `mitarbeiter`, `chef` oder `admin` sein kann,
-dass ausschliesslich Chefs/Admins (intern weiterhin als Rolle `chef`
-gespeichert, in der Oberfläche als „Filialleiter" beschriftet, bzw. `admin`
-als „Zentrale") einen `password_hash` besitzen (Mitarbeiter: immer `NULL`),
-und dass `language` nur `de`, `fr` oder `en` sein kann (Default `de`, Regel 7:
-Deutsch ist Standard, jederzeit pro Benutzer umstellbar über
-`POST /api/language` — siehe `app/core/i18n.py`, `app/static/js/i18n.js`).
-Rechte gemäss CLAUDE.md Regel 9: Mitarbeiter alles ausser Dokumente
-hochladen/bearbeiten/löschen, Filialleiter zusätzlich Dokumente,
-Admin/Zentrale filialübergreifend (siehe `app/routers/auth.py`).
+### `users`, `lagerorte`, `benutzer_lagerorte`
+Unverändert seit Phase A Punkt 1/2 (siehe Migrationshistorie unten).
 
-### `lagerorte`
-Die 4 Filialen (SF1 Volketswil, SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey,
-`verkauf = true`) sowie das externe Aufbereitungslager GEWA (`verkauf =
-false`, kein Verkauf). Seed-Daten in `app/core/lagerorte.py`, per
-Alembic-Migration `a1b2c3d4e5f6` eingefügt. `strasse`/`plz`/`ort` dienen
-später auch der automatischen Filial-Erkennung aus der Lieferadresse eines
-hochgeladenen Dokuments (Phase B).
+## Migration der Altdaten (`c3d4e5f6a7b8`)
 
-### `benutzer_lagerorte`
-Ordnet einen Benutzer einer oder mehreren Filialen zu (m:n, z. B. Aushilfe an
-mehreren Standorten). `ist_primaer` markiert die nach dem Login vorausgewählte
-Filiale; darüber hinaus kann in der Oberfläche jederzeit zwischen den
-zugewiesenen Filialen gewechselt werden (`/api/active-lagerort`,
-Session-Feld `active_lagerort_id`). Admin-Konten (Rolle `admin`) haben
-keinen Eintrag hier — sie gelten als filialübergreifend und können
-zusätzlich „Alle Filialen" wählen (kein aktiver Lagerort). Bestehende
-Benutzer wurden bei der Migration auf SF1 (Volketswil) als primäre Filiale
-gesetzt.
+Läuft automatisch beim `alembic upgrade head` (nicht im Offline-`--sql`-
+Modus, siehe unten) und ist verlustfrei bis auf `products.article_no` (siehe
+oben):
+
+1. **Lieferanten/Kategorien**: Seed-Daten wie oben.
+2. **`products` → `artikel` + `varianten`**: gleiche Gruppierung wie zuvor
+   `article_groups.py` — gleiche Marke (getrimmt, ohne Gross-/
+   Kleinschreibung) + gleiche, nicht-leere Lieferanten-Artikelnummer
+   (getrimmt) = ein Artikel; fehlt die Nummer, bleibt jedes Produkt ein
+   eigener Artikel.
+3. **`invoices` → `dokumente` + `wareneingaenge`**: `typ = 'rechnung'`,
+   `status` immer `'eingetroffen'` (altes System kannte nur eingetroffene
+   Ware), Lagerort SF1 (Altdaten-Regel aus CLAUDE.md).
+4. **`invoice_items` + `invoice_item_sources` → `wareneingang_positionen`
+   (+ `_quelle`) + `preise` (falls UVP vorhanden) + `lagerbewegungen`**
+   (Typ `zugang`, falls Menge vorhanden).
+5. **`bestand`**: aus den neu erzeugten `lagerbewegungen` aggregiert.
+6. **`article_notes.product_id` → `artikel_id`**: über die in Schritt 2
+   gebildete Zuordnung.
 
 ## Migrationshistorie
 
@@ -188,6 +273,7 @@ gesetzt.
 | `e901abc23456` | Neue Tabelle `article_notes` inkl. Autor-Snapshot und Versionsfeld |
 | `a1b2c3d4e5f6` | Neue Tabellen `lagerorte` (SF1-SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n); `users.role` um `admin` erweitert; bestehende Benutzer auf SF1 zugeordnet |
 | `b2c3d4e5f6a7` | `users.language` (DE/FR/EN, Default `de`) inkl. Check-Constraint |
+| `c3d4e5f6a7b8` | Neues Datenmodell (Phase A Punkt 3): `lieferanten`, `kategorien`, `artikel`, `varianten`, `preise`, `dokumente`, `wareneingaenge`, `wareneingang_positionen` (+`_quelle`), `lagerbewegungen`, `bestand`; vollständige Datenmigration der Altdaten; `article_notes.product_id` → `artikel_id` |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

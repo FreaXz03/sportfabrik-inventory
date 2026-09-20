@@ -24,7 +24,7 @@
             maxlength="200"></label><label data-i18n="articles.columns.brand">Marke<select name="brand" id="brands">
             <option value="" data-i18n="articles.filter.all_brands">Alle Marken</option>
           </select></label><label data-i18n="articles.filter.ean">EAN · exakt<input name="ean" inputmode="numeric" maxlength="30"
-            data-i18n-placeholder="articles.filter.ean_placeholder" placeholder="Auch mit führender Null"></label><label data-i18n="articles.filter.article_no">Art.-Nr. / Lief. Art.-Nr.<input name="article_no"
+            data-i18n-placeholder="articles.filter.ean_placeholder" placeholder="Auch mit führender Null"></label><label data-i18n="articles.columns.supplier_article_no">Lief. Art.-Nr.<input name="supplier_article_no"
             maxlength="100"></label><label data-i18n="articles.columns.description">Bezeichnung<input name="description"
             maxlength="500"></label><label data-i18n="articles.filter.last_delivery_from">Letzte Lieferung von<input type="date" name="last_delivery_from"></label><label data-i18n="articles.filter.last_delivery_to">Letzte Lieferung bis<input type="date" name="last_delivery_to"></label><button data-i18n="articles.filter.search">Suchen</button><button type="button" class="secondary"
           id="resetBtn" data-i18n="articles.filter.reset">Zurücksetzen</button></form>
@@ -35,13 +35,13 @@
         <summary data-i18n="articles.columns.summary">Spalten anzeigen</summary>
         <div class="column-picker-body"><label><input type="checkbox" data-col="1" checked><span data-i18n="articles.columns.brand">Marke</span></label><label><input
               type="checkbox" data-col="2" checked><span data-i18n="articles.columns.description">Bezeichnung</span></label><label><input type="checkbox" data-col="3"
-              checked><span data-i18n="articles.columns.article_no">Art. Nr.</span></label><label><input type="checkbox" data-col="4" checked><span data-i18n="articles.columns.supplier_article_no">Lief. Art.
-            Nr.</span></label><label><input type="checkbox" data-col="5" checked><span data-i18n="articles.columns.ean">EAN</span></label><label><input type="checkbox"
-              data-col="6" checked><span data-i18n="articles.columns.color">Farbe</span></label><label><input type="checkbox" data-col="7"
-              checked><span data-i18n="articles.columns.size">Grösse</span></label><label><input type="checkbox" data-col="8" checked><span data-i18n="articles.columns.delivered_total">Geliefert
-            gesamt</span></label><label><input type="checkbox" data-col="9" checked><span data-i18n="articles.columns.latest_uvp">Letzter UVP</span></label><label><input
-              type="checkbox" data-col="10" checked><span data-i18n="articles.columns.uvp_date">UVP vom</span></label><label><input type="checkbox" data-col="11"
-              checked><span data-i18n="articles.columns.first_seen">Erste Lieferung</span></label><label><input type="checkbox" data-col="12" checked><span data-i18n="articles.columns.last_seen">Letzte
+              checked><span data-i18n="articles.columns.supplier_article_no">Lief. Art.
+            Nr.</span></label><label><input type="checkbox" data-col="4" checked><span data-i18n="articles.columns.ean">EAN</span></label><label><input type="checkbox"
+              data-col="5" checked><span data-i18n="articles.columns.color">Farbe</span></label><label><input type="checkbox" data-col="6"
+              checked><span data-i18n="articles.columns.size">Grösse</span></label><label><input type="checkbox" data-col="7" checked><span data-i18n="articles.columns.delivered_total">Geliefert
+            gesamt</span></label><label><input type="checkbox" data-col="8" checked><span data-i18n="articles.columns.latest_uvp">Letzter UVP</span></label><label><input
+              type="checkbox" data-col="9" checked><span data-i18n="articles.columns.uvp_date">UVP vom</span></label><label><input type="checkbox" data-col="10"
+              checked><span data-i18n="articles.columns.first_seen">Erste Lieferung</span></label><label><input type="checkbox" data-col="11" checked><span data-i18n="articles.columns.last_seen">Letzte
             Lieferung</span></label></div>
       </details>
       <div id="table" class="tablewrap" hidden>
@@ -51,7 +51,6 @@
 
               <th class="sortable" data-sort="brand" data-i18n="articles.columns.brand">Marke</th>
               <th class="sortable" data-sort="description" data-i18n="articles.columns.description">Bezeichnung</th>
-              <th class="sortable" data-sort="article_no" data-i18n="articles.columns.article_no">Art. Nr.</th>
               <th class="sortable" data-sort="supplier_article_no" data-i18n="articles.columns.supplier_article_no">Lief. Art. Nr.</th>
               <th class="sortable" data-sort="ean" data-i18n="articles.columns.ean">EAN</th>
               <th class="sortable" data-sort="color" data-i18n="articles.columns.color">Farbe</th>
@@ -133,7 +132,6 @@
           tr.append(cell(item.brand), td);
 
           for (const value of [
-            item.article_no,
             item.supplier_article_no,
             item.ean,
             item.color,

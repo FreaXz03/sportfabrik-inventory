@@ -1,7 +1,7 @@
 """Atomic, duplicate-safe imports and deletions. Import: call only after explicit
 preview confirmation. Deletion: chef-only, see app/auth.py."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 import hashlib
 import re
@@ -11,9 +11,22 @@ from sqlalchemy import delete, func, select, or_, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
-from ..core.models import Invoice, InvoiceItem, InvoiceItemSource, Product
+from ..core.models import (
+    Artikel,
+    Bestand,
+    Dokument,
+    Lagerbewegung,
+    Lieferant,
+    Preis,
+    Variante,
+    Wareneingang,
+    WareneingangPosition,
+    WareneingangPositionQuelle,
+)
 from .parser import page_content, parse_invoice
 from .corrections import apply_corrections, CorrectionError
+
+INTERSPORT_PARSER_KEY = "intersport"
 
 
 class ImportRejected(ValueError):
@@ -62,11 +75,24 @@ def invoice_dates(pdf, language: str = DEFAULT_LANGUAGE):
     return result
 
 
+def _artikel_group_key(brand: str | None, supplier_article_no: str | None):
+    """Gleiche Gruppierung wie die Alembic-Migration c3d4e5f6a7b8 und (bis zur
+    Umstellung) app/services/article_groups.py: gleiche Marke (ohne Gross-/
+    Kleinschreibung, getrimmt) UND gleiche, nicht-leere Lieferanten-
+    Artikelnummer (getrimmt) = ein Artikel. Fehlt die Nummer, bleibt jedes
+    Produkt ein eigener Artikel (None = immer neu anlegen)."""
+    number = (supplier_article_no or "").strip()
+    if not number:
+        return None
+    return ((brand or "").strip().lower(), number)
+
+
 def import_invoice(
     pdf,
     filename,
     expected_hash,
     session_factory,
+    lagerort_id,
     imported_by=None,
     corrections=None,
     language: str = DEFAULT_LANGUAGE,
@@ -91,7 +117,6 @@ def import_invoice(
         for key, limit in [
             ("brand", 100),
             ("supplier_article_no", 100),
-            ("article_no", 100),
             ("ean", 30),
             ("description", 500),
             ("color", 250),
@@ -127,10 +152,10 @@ def import_invoice(
             if session.bind.dialect.name == "postgresql":
                 session.execute(text("SELECT pg_advisory_xact_lock(73421061)"))
             existing = session.scalar(
-                select(Invoice).where(
+                select(Dokument).where(
                     or_(
-                        Invoice.file_hash == digest,
-                        Invoice.invoice_number == parsed["invoice_number"],
+                        Dokument.datei_hash == digest,
+                        Dokument.dokumentnummer == parsed["invoice_number"],
                     )
                 )
             )
@@ -139,73 +164,170 @@ def import_invoice(
                     translate(
                         "errors.importer.already_imported",
                         language,
-                        number=existing.invoice_number,
+                        number=existing.dokumentnummer,
                         id=existing.id,
                     )
                 )
-            invoice = Invoice(
-                invoice_number=parsed["invoice_number"],
-                file_hash=digest,
-                filename=(filename or "rechnung.pdf")[:500],
-                supplier="INTERSPORT Schweiz AG",
-                imported_by_kassennummer=(imported_by or {}).get("kassennummer"),
-                imported_by_name=(imported_by or {}).get("name"),
-                ocr_used=bool(parsed.get("ocr_used")),
-                **dates,
+            lieferant = session.scalar(
+                select(Lieferant).where(Lieferant.parser_key == INTERSPORT_PARSER_KEY)
             )
-            session.add(invoice)
+            if lieferant is None:
+                raise ImportRejected(
+                    translate("errors.importer.supplier_not_configured", language)
+                )
+            now = datetime.now(timezone.utc)
+            dokument = Dokument(
+                lieferant_id=lieferant.id,
+                lagerort_id=lagerort_id,
+                typ="rechnung",
+                dokumentnummer=parsed["invoice_number"],
+                dokumentdatum=dates["invoice_date"],
+                belegdatum=dates["document_date"],
+                dateiname=(filename or "rechnung.pdf")[:500],
+                datei_hash=digest,
+                hochgeladen_am=now,
+                hochgeladen_von_kassennummer=(imported_by or {}).get("kassennummer"),
+                hochgeladen_von_name=(imported_by or {}).get("name"),
+                ocr_verwendet=bool(parsed.get("ocr_used")),
+            )
+            session.add(dokument)
             session.flush()
-            new_products, reused = 0, set()
-            cache = {}
+            wareneingang = Wareneingang(
+                dokument_id=dokument.id,
+                lagerort_id=lagerort_id,
+                status="eingetroffen",
+                eingangsdatum=dates["invoice_date"],
+            )
+            session.add(wareneingang)
+            session.flush()
+
+            new_artikel, new_varianten, reused_varianten = 0, 0, set()
+            artikel_cache = {}
+            variante_cache = {}
+            seen = dates["invoice_date"]
             for item in parsed["items"]:
-                ean = item["ean"]
-                product = cache.get(ean)
-                if product is None:
-                    product = session.scalar(select(Product).where(Product.ean == ean))
-                    if product is None:
-                        product = Product(
-                            **{
-                                key: item.get(key)
-                                for key in (
-                                    "brand",
-                                    "supplier_article_no",
-                                    "article_no",
-                                    "ean",
-                                    "description",
-                                    "color",
-                                    "size",
-                                )
-                            }
+                ean = item["ean"] or None
+                variante = variante_cache.get(ean) if ean else None
+                if variante is None and ean:
+                    variante = session.scalar(select(Variante).where(Variante.ean == ean))
+
+                if variante is None:
+                    group_key = _artikel_group_key(item.get("brand"), item.get("supplier_article_no"))
+                    artikel = artikel_cache.get(group_key) if group_key else None
+                    if artikel is None and group_key:
+                        artikel = session.scalar(
+                            select(Artikel).where(
+                                Artikel.lieferant_id == lieferant.id,
+                                func.lower(func.trim(func.coalesce(Artikel.marke, "")))
+                                == group_key[0],
+                                func.trim(Artikel.lieferanten_artikelnr) == group_key[1],
+                            )
                         )
-                        session.add(product)
+                    if artikel is None:
+                        artikel = Artikel(
+                            lieferant_id=lieferant.id,
+                            marke=item.get("brand"),
+                            lieferanten_artikelnr=item.get("supplier_article_no"),
+                            bezeichnung=item.get("description"),
+                            fedas_code=item.get("fedas_code") or None,
+                        )
+                        session.add(artikel)
                         session.flush()
-                        new_products += 1
+                        new_artikel += 1
+                    elif not artikel.fedas_code and item.get("fedas_code"):
+                        artikel.fedas_code = item["fedas_code"]
+                    if group_key:
+                        artikel_cache[group_key] = artikel
+
+                    variante = None
+                    if not ean:
+                        variante = session.scalar(
+                            select(Variante).where(
+                                Variante.artikel_id == artikel.id,
+                                func.coalesce(Variante.farbe, "") == (item.get("color") or ""),
+                                func.coalesce(Variante.groesse, "") == (item.get("size") or ""),
+                            )
+                        )
+                    if variante is None:
+                        variante = Variante(
+                            artikel_id=artikel.id,
+                            farbe=item.get("color"),
+                            groesse=item.get("size"),
+                            ean=ean,
+                            ean_intern=False,
+                        )
+                        session.add(variante)
+                        session.flush()
+                        new_varianten += 1
                     else:
-                        reused.add(product.id)
-                    cache[ean] = product
-                seen = dates["invoice_date"]
-                product.first_seen = (
-                    min(product.first_seen, seen) if product.first_seen else seen
+                        reused_varianten.add(variante.id)
+                else:
+                    reused_varianten.add(variante.id)
+                if ean:
+                    variante_cache[ean] = variante
+
+                variante.first_seen = (
+                    min(variante.first_seen, seen) if variante.first_seen else seen
                 )
-                product.last_seen = (
-                    max(product.last_seen, seen) if product.last_seen else seen
+                variante.last_seen = (
+                    max(variante.last_seen, seen) if variante.last_seen else seen
                 )
-                position = InvoiceItem(
-                    invoice_id=invoice.id,
-                    product_id=product.id,
-                    quantity=Decimal(item["quantity"]),
-                    unit=item["unit"],
-                    uvp=Decimal(item["uvp"]),
+
+                quantity = Decimal(item["quantity"])
+                uvp = Decimal(item["uvp"])
+                position = WareneingangPosition(
+                    wareneingang_id=wareneingang.id,
+                    varianten_id=variante.id,
+                    menge=quantity,
+                    einheit=item["unit"],
+                    uvp=uvp,
                 )
                 session.add(position)
                 session.flush()
-                session.add(InvoiceItemSource(item_id=position.id, data=item))
+                session.add(WareneingangPositionQuelle(position_id=position.id, data=item))
+                session.add(
+                    Preis(
+                        varianten_id=variante.id,
+                        uvp=uvp,
+                        datum=dates["invoice_date"],
+                        dokument_id=dokument.id,
+                    )
+                )
+                session.add(
+                    Lagerbewegung(
+                        lagerort_id=lagerort_id,
+                        varianten_id=variante.id,
+                        typ="zugang",
+                        menge=quantity,
+                        wareneingang_position_id=position.id,
+                        benutzer_kassennummer=(imported_by or {}).get("kassennummer"),
+                        benutzer_name=(imported_by or {}).get("name"),
+                        zeitpunkt=now,
+                    )
+                )
+                bestand = session.get(Bestand, (variante.id, lagerort_id))
+                if bestand is None:
+                    bestand = Bestand(
+                        varianten_id=variante.id,
+                        lagerort_id=lagerort_id,
+                        menge=quantity,
+                        aeltestes_eingangsdatum=dates["invoice_date"],
+                    )
+                    session.add(bestand)
+                else:
+                    bestand.menge += quantity
+                    if dates["invoice_date"] and (
+                        bestand.aeltestes_eingangsdatum is None
+                        or dates["invoice_date"] < bestand.aeltestes_eingangsdatum
+                    ):
+                        bestand.aeltestes_eingangsdatum = dates["invoice_date"]
+
             result = dict(
-                invoice_id=invoice.id,
-                invoice_number=invoice.invoice_number,
+                invoice_id=dokument.id,
+                invoice_number=dokument.dokumentnummer,
                 item_count=parsed["item_count"],
-                new_products=new_products,
-                reused_products=len(reused),
+                new_products=new_varianten,
+                reused_products=len(reused_varianten),
             )
         return result
     except IntegrityError as exc:
@@ -215,50 +337,116 @@ def import_invoice(
 
 
 def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LANGUAGE) -> dict:
-    """Löscht eine Rechnung samt Positionen und Originaltexten unwiderruflich.
-
-    Betroffene Artikel (first_seen/last_seen) werden aus den verbleibenden
-    Lieferungen neu berechnet, statt veraltete Werte stehen zu lassen.
+    """Löscht ein importiertes Dokument samt Wareneingang, Positionen und
+    Originaltexten unwiderruflich - inklusive der dadurch entstandenen
+    Lagerbewegungen und Preiseinträge, damit `bestand` (Regel 2) konsistent
+    bleibt. `varianten`/`artikel` selbst bleiben bestehen (Artikelstamm gilt
+    für immer, Regel 4), nur first_seen/last_seen werden aus den verbleibenden
+    Wareneingängen neu berechnet.
     """
     with session_factory() as session, session.begin():
         # Dieselbe Sperre wie beim Import: verhindert, dass ein gleichzeitiger
-        # Import/Löschvorgang mit denselben Artikeln first_seen/last_seen falsch berechnet.
+        # Import/Löschvorgang mit denselben Varianten first_seen/last_seen
+        # oder bestand falsch berechnet.
         if session.bind.dialect.name == "postgresql":
             session.execute(text("SELECT pg_advisory_xact_lock(73421061)"))
-        invoice = session.get(Invoice, invoice_id)
-        if invoice is None:
+        dokument = session.get(Dokument, invoice_id)
+        if dokument is None:
             raise DeleteRejected(
                 translate("errors.importer.invoice_not_found", language, id=invoice_id)
             )
-        invoice_number = invoice.invoice_number
-        item_rows = session.execute(
-            select(InvoiceItem.id, InvoiceItem.product_id).where(
-                InvoiceItem.invoice_id == invoice_id
-            )
+        dokumentnummer = dokument.dokumentnummer
+        wareneingaenge = session.scalars(
+            select(Wareneingang).where(Wareneingang.dokument_id == invoice_id)
         ).all()
-        item_ids = [item_id for item_id, _ in item_rows]
-        product_ids = {product_id for _, product_id in item_rows}
-        if item_ids:
+        wareneingang_ids = [w.id for w in wareneingaenge]
+        position_rows = session.execute(
+            select(
+                WareneingangPosition.id,
+                WareneingangPosition.varianten_id,
+                WareneingangPosition.wareneingang_id,
+            ).where(WareneingangPosition.wareneingang_id.in_(wareneingang_ids))
+        ).all()
+        position_ids = [p.id for p in position_rows]
+        varianten_by_lagerort = {}
+        for _, varianten_id, wareneingang_id in position_rows:
+            wareneingang = next(w for w in wareneingaenge if w.id == wareneingang_id)
+            varianten_by_lagerort.setdefault(wareneingang.lagerort_id, set()).add(varianten_id)
+
+        if position_ids:
             session.execute(
-                delete(InvoiceItemSource).where(InvoiceItemSource.item_id.in_(item_ids))
+                delete(WareneingangPositionQuelle).where(
+                    WareneingangPositionQuelle.position_id.in_(position_ids)
+                )
             )
             session.execute(
-                delete(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
+                delete(Lagerbewegung).where(
+                    Lagerbewegung.wareneingang_position_id.in_(position_ids)
+                )
             )
-        session.delete(invoice)
+        session.execute(delete(Preis).where(Preis.dokument_id == invoice_id))
+        session.execute(
+            delete(WareneingangPosition).where(
+                WareneingangPosition.wareneingang_id.in_(wareneingang_ids)
+            )
+        )
+        session.execute(delete(Wareneingang).where(Wareneingang.dokument_id == invoice_id))
+        session.delete(dokument)
         session.flush()
-        for product_id in product_ids:
+
+        for lagerort_id, varianten_ids in varianten_by_lagerort.items():
+            for varianten_id in varianten_ids:
+                menge = session.scalar(
+                    select(func.coalesce(func.sum(Lagerbewegung.menge), 0)).where(
+                        Lagerbewegung.varianten_id == varianten_id,
+                        Lagerbewegung.lagerort_id == lagerort_id,
+                    )
+                )
+                bestand = session.get(Bestand, (varianten_id, lagerort_id))
+                aeltestes = session.scalar(
+                    select(func.min(Wareneingang.eingangsdatum))
+                    .select_from(WareneingangPosition)
+                    .join(
+                        Wareneingang,
+                        Wareneingang.id == WareneingangPosition.wareneingang_id,
+                    )
+                    .where(
+                        WareneingangPosition.varianten_id == varianten_id,
+                        Wareneingang.lagerort_id == lagerort_id,
+                    )
+                )
+                if menge:
+                    if bestand is None:
+                        bestand = Bestand(
+                            varianten_id=varianten_id,
+                            lagerort_id=lagerort_id,
+                            menge=menge,
+                            aeltestes_eingangsdatum=aeltestes,
+                        )
+                        session.add(bestand)
+                    else:
+                        bestand.menge = menge
+                        bestand.aeltestes_eingangsdatum = aeltestes
+                elif bestand is not None:
+                    session.delete(bestand)
+
+        all_varianten_ids = {v for ids in varianten_by_lagerort.values() for v in ids}
+        for varianten_id in all_varianten_ids:
             first_seen, last_seen = session.execute(
-                select(func.min(Invoice.invoice_date), func.max(Invoice.invoice_date))
-                .select_from(InvoiceItem)
-                .join(Invoice, Invoice.id == InvoiceItem.invoice_id)
-                .where(InvoiceItem.product_id == product_id)
+                select(
+                    func.min(Wareneingang.eingangsdatum), func.max(Wareneingang.eingangsdatum)
+                )
+                .select_from(WareneingangPosition)
+                .join(
+                    Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
+                )
+                .where(WareneingangPosition.varianten_id == varianten_id)
             ).one()
-            product = session.get(Product, product_id)
-            product.first_seen, product.last_seen = first_seen, last_seen
+            variante = session.get(Variante, varianten_id)
+            variante.first_seen, variante.last_seen = first_seen, last_seen
         return dict(
             invoice_id=invoice_id,
-            invoice_number=invoice_number,
-            item_count=len(item_ids),
-            affected_products=len(product_ids),
+            invoice_number=dokumentnummer,
+            item_count=len(position_ids),
+            affected_products=len(all_varianten_ids),
         )

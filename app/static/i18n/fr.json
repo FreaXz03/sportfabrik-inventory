@@ -147,7 +147,6 @@
   "articles.filter.all_brands": "Toutes les marques",
   "articles.filter.ean": "EAN · exact",
   "articles.filter.ean_placeholder": "Aussi avec zéro initial",
-  "articles.filter.article_no": "N° d'article / n° art. fournisseur",
   "articles.filter.last_delivery_from": "Dernière livraison depuis",
   "articles.filter.last_delivery_to": "Dernière livraison jusqu'à",
   "articles.filter.search": "Rechercher",
@@ -156,7 +155,6 @@
   "articles.columns.summary": "Afficher les colonnes",
   "articles.columns.brand": "Marque",
   "articles.columns.description": "Désignation",
-  "articles.columns.article_no": "N° d'article",
   "articles.columns.supplier_article_no": "N° art. fournisseur",
   "articles.columns.ean": "EAN",
   "articles.columns.color": "Couleur",
@@ -284,6 +282,7 @@
   "errors.auth.admin_required_all_lagerorte": "Seule la centrale peut afficher toutes les filiales à la fois.",
   "errors.auth.no_lagerort_access": "Aucun accès à cette filiale.",
   "errors.auth.invalid_language": "Langue invalide.",
+  "errors.auth.lagerort_required": "Veuillez d'abord choisir une filiale.",
 
   "errors.article_details.note_not_found": "Note introuvable.",
   "errors.article_details.note_delete_forbidden": "Seules vos propres notes, ou en tant que responsable de filiale, peuvent être supprimées.",
@@ -346,6 +345,7 @@
   "errors.importer.field_too_long": "Position {row} : {field} est trop long.",
   "errors.importer.field_invalid_format": "Position {row} : {field} ne correspond pas au format de la base de données.",
   "errors.importer.already_imported": "La facture {number} a déjà été importée (ID {id}).",
+  "errors.importer.supplier_not_configured": "Aucun fournisseur configuré pour ce parser.",
   "errors.importer.integrity_conflict": "Conflit de données : l'import a été entièrement annulé. Veuillez vérifier l'aperçu à nouveau.",
   "errors.importer.invoice_not_found": "La facture {id} est introuvable.",
 

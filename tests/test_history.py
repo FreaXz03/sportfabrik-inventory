@@ -48,17 +48,17 @@ def test_not_found_and_validation(client):
 
 def test_snapshot_preserved(client):
     from app.core.database import get_session
-    from app.core.models import InvoiceItemSource, InvoiceItem
+    from app.core.models import WareneingangPositionQuelle, WareneingangPosition, Wareneingang
     from sqlalchemy import select
 
     dependency = client.app.dependency_overrides[get_session]
     generator = dependency()
     session = next(generator)
     try:
-        item = session.scalar(select(InvoiceItem).order_by(InvoiceItem.id))
+        item = session.scalar(select(WareneingangPosition).order_by(WareneingangPosition.id))
         session.add(
-            InvoiceItemSource(
-                item_id=item.id,
+            WareneingangPositionQuelle(
+                position_id=item.id,
                 data={
                     "description": "Originalbezeichnung",
                     "row_number": 7,
@@ -68,7 +68,8 @@ def test_snapshot_preserved(client):
             )
         )
         session.commit()
-        data = client.get(f"/api/invoices/{item.invoice_id}").json()["items"][0]
+        dokument_id = session.get(Wareneingang, item.wareneingang_id).dokument_id
+        data = client.get(f"/api/invoices/{dokument_id}").json()["items"][0]
         assert data["description"] == "Originalbezeichnung"
         assert data["source_available"] is True
         assert data["row_number"] == 7 and data["page"] == 2

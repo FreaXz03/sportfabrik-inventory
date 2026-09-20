@@ -181,14 +181,18 @@ einzeln denselben Vorschau-/Validierungs-/Import-Ablauf wie ein Einzel-Upload
 ## Artikelgruppierung, Notizen und Preisverlauf
 
 Verschiedene Farben/Grössen eines Artikels haben unterschiedliche EANs und
-damit unterschiedliche `products`-Datensätze. Für Historie, Notizen und
-Preisverlauf werden diese Varianten serverseitig zu einer Gruppe
-zusammengefasst (`app/services/article_groups.py`): gleiche Marke **und**
-gleiche Lieferanten-Artikelnummer zählen als eine Gruppe; fehlt die
-Lieferanten-Artikelnummer, bleibt der Artikel allein. So zeigt die
-Artikeldetailseite (`/articles/{id}/history`) automatisch die Lieferhistorie,
-den Preisverlauf und die Notizen aller Varianten eines Artikels an einem
-Ort, ohne dass jemand die Gruppierung manuell pflegen muss.
+damit unterschiedliche `varianten`-Datensätze. Seit dem neuen Datenmodell
+(Phase A Punkt 3, siehe `datenmodell.md`) ist die Gruppierung eine echte
+Fremdschlüsselbeziehung: alle Varianten eines Modells teilen sich dieselbe
+`artikel_id`. `app/services/article_groups.py` liest diese Beziehung nur noch
+aus, statt sie zur Laufzeit über Marke + Lieferanten-Artikelnummer
+nachzubilden — die Gruppierungsregel selbst (gleiche Marke **und** gleiche,
+nicht-leere Lieferanten-Artikelnummer; fehlt sie, bleibt der Artikel allein)
+gilt unverändert und wird jetzt beim Import (`app/services/importer.py`)
+angewendet. So zeigt die Artikeldetailseite (`/articles/{id}/history`)
+automatisch die Lieferhistorie, den Preisverlauf und die Notizen aller
+Varianten eines Artikels an einem Ort, ohne dass jemand die Gruppierung
+manuell pflegen muss.
 
 Notizen (`article_notes`, siehe `datenmodell.md`) sind Freitext zu einer
 Artikelgruppe, z. B. Beobachtungen zum Verkauf oder Hinweise für die nächste
