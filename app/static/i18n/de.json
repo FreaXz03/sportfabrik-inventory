@@ -44,6 +44,7 @@
 
   "fields.brand": "Marke",
   "fields.supplier_article_no": "Lief. Art. Nr.",
+  "fields.fedas_code": "FEDAS-Code",
   "fields.article_no": "Art. Nr.",
   "fields.ean": "EAN",
   "fields.description": "Bezeichnung",

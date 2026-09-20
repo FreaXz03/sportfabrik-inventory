@@ -18,6 +18,7 @@ from ..core.models import (
     Dokument,
     Kategorie,
     Lagerbewegung,
+    Lagerort,
     Lieferant,
     Preis,
     Variante,
@@ -89,6 +90,22 @@ def _artikel_group_key(brand: str | None, supplier_article_no: str | None):
     return ((brand or "").strip().lower(), number)
 
 
+def _backfill_artikel(session, kategorie_cache, artikel, item):
+    """Fehlenden FEDAS-Code und die daraus abgeleitete Kategorie nachtragen.
+
+    Läuft für jeden Artikel einer Rechnungsposition - auch wenn die Variante
+    über ihre EAN gefunden wurde, denn genau die migrierten Altartikel haben
+    noch keinen FEDAS-Code. Ein bereits gesetzter Wert wird nie überschrieben
+    („einmal pro Artikel, danach gemerkt").
+    """
+    if not artikel.fedas_code and item.get("fedas_code"):
+        artikel.fedas_code = item["fedas_code"]
+    if artikel.kategorie_id is None:
+        artikel.kategorie_id = _resolve_kategorie_id(
+            session, kategorie_cache, artikel.fedas_code
+        )
+
+
 def _resolve_kategorie_id(session, cache, fedas_code):
     """Kategorie-Vorschlag aus dem FEDAS-Code (siehe app/core/fedas.py), oder
     None, wenn der Code (noch) nicht zugeordnet ist bzw. fehlt - dann bleibt
@@ -134,9 +151,13 @@ def import_invoice(
         raise ImportRejected(translate("errors.importer.locked_warnings", language))
     dates = invoice_dates(pdf, language)
     for item in parsed["items"]:
+        # Jedes Feld, das in eine begrenzte Spalte geschrieben wird - sonst
+        # scheitert erst PostgreSQL mit einem DataError (der nicht als
+        # ImportRejected, sondern als 503 beim Benutzer landet).
         for key, limit in [
             ("brand", 100),
             ("supplier_article_no", 100),
+            ("fedas_code", 10),
             ("ean", 30),
             ("description", 500),
             ("color", 250),
@@ -195,6 +216,14 @@ def import_invoice(
                 raise ImportRejected(
                     translate("errors.importer.supplier_not_configured", language)
                 )
+            # Regel 6: Ware an ein externes Lager (GEWA, `verkauf = False`)
+            # bekommt noch KEIN Eingangsdatum - das wird erst bei Ankunft in
+            # einer Filiale gesetzt, damit die Reduktionsuhr (18/36 Monate)
+            # nicht schon im Zwischenlager zu laufen beginnt.
+            lagerort_verkauft = session.scalar(
+                select(Lagerort.verkauf).where(Lagerort.id == lagerort_id)
+            )
+            eingangsdatum = dates["invoice_date"] if lagerort_verkauft else None
             now = datetime.now(timezone.utc)
             dokument = Dokument(
                 lieferant_id=lieferant.id,
@@ -216,21 +245,25 @@ def import_invoice(
                 dokument_id=dokument.id,
                 lagerort_id=lagerort_id,
                 status="eingetroffen",
-                eingangsdatum=dates["invoice_date"],
+                eingangsdatum=eingangsdatum,
             )
             session.add(wareneingang)
             session.flush()
 
-            new_artikel, new_varianten, reused_varianten = 0, 0, set()
+            new_varianten, reused_varianten = 0, set()
             artikel_cache = {}
             variante_cache = {}
             kategorie_cache = {}
             seen = dates["invoice_date"]
             for item in parsed["items"]:
                 ean = item["ean"] or None
+                # Cache-Treffer = in dieser Rechnung selbst angelegt; nur ein
+                # Treffer in der Datenbank ist echte Wiederverwendung.
                 variante = variante_cache.get(ean) if ean else None
                 if variante is None and ean:
                     variante = session.scalar(select(Variante).where(Variante.ean == ean))
+                    if variante is not None:
+                        reused_varianten.add(variante.id)
 
                 if variante is None:
                     group_key = _artikel_group_key(item.get("brand"), item.get("supplier_article_no"))
@@ -256,14 +289,8 @@ def import_invoice(
                         )
                         session.add(artikel)
                         session.flush()
-                        new_artikel += 1
                     else:
-                        if not artikel.fedas_code and item.get("fedas_code"):
-                            artikel.fedas_code = item["fedas_code"]
-                        if artikel.kategorie_id is None:
-                            artikel.kategorie_id = _resolve_kategorie_id(
-                                session, kategorie_cache, artikel.fedas_code
-                            )
+                        _backfill_artikel(session, kategorie_cache, artikel, item)
                     if group_key:
                         artikel_cache[group_key] = artikel
 
@@ -290,7 +317,13 @@ def import_invoice(
                     else:
                         reused_varianten.add(variante.id)
                 else:
-                    reused_varianten.add(variante.id)
+                    # Variante schon bekannt (EAN-Treffer): der zugehörige
+                    # Artikel bekommt trotzdem FEDAS-Code/Kategorie nachgetragen
+                    # - sonst bliebe genau der migrierte Altbestand für immer
+                    # ohne Kategorie.
+                    _backfill_artikel(
+                        session, kategorie_cache, session.get(Artikel, variante.artikel_id), item
+                    )
                 if ean:
                     variante_cache[ean] = variante
 
@@ -339,16 +372,16 @@ def import_invoice(
                         varianten_id=variante.id,
                         lagerort_id=lagerort_id,
                         menge=quantity,
-                        aeltestes_eingangsdatum=dates["invoice_date"],
+                        aeltestes_eingangsdatum=eingangsdatum,
                     )
                     session.add(bestand)
                 else:
                     bestand.menge += quantity
-                    if dates["invoice_date"] and (
+                    if eingangsdatum and (
                         bestand.aeltestes_eingangsdatum is None
-                        or dates["invoice_date"] < bestand.aeltestes_eingangsdatum
+                        or eingangsdatum < bestand.aeltestes_eingangsdatum
                     ):
-                        bestand.aeltestes_eingangsdatum = dates["invoice_date"]
+                        bestand.aeltestes_eingangsdatum = eingangsdatum
 
             result = dict(
                 invoice_id=dokument.id,

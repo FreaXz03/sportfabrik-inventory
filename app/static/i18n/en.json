@@ -44,6 +44,7 @@
 
   "fields.brand": "Brand",
   "fields.supplier_article_no": "Supplier item no.",
+  "fields.fedas_code": "FEDAS code",
   "fields.article_no": "Item no.",
   "fields.ean": "EAN",
   "fields.description": "Description",
