@@ -165,7 +165,8 @@ Lieferanten-Erkennung beim Dokumenten-Upload (Phase B). Seed-Daten in
 Kassenkategorien: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) ×
 Sportbereich (Regel 8) — Velo und Food ohne Sportbereich. 35 fixe
 Kombinationen, Seed-Daten in `app/core/kategorien.py`. Ein FEDAS→Kategorie-
-Mapping für automatische Vorschläge folgt in Phase B.
+Mapping: `app/core/fedas.py` (Phase B, siehe `projekt-kontext.md` Details zu
+Phase B), aktuell nur die aus echten Rechnungen bestätigten Codes.
 
 ### `artikel`
 Modell-Ebene, filialübergreifend (Regel 4): Marke + Lieferanten-Artikelnummer
@@ -174,8 +175,12 @@ Lieferanten-Artikelnummer, bleibt jedes Vorkommen ein eigener Artikel (echte
 Fremdschlüsselbeziehung statt der früheren Laufzeit-Gruppierung in
 `app/services/article_groups.py`, die jetzt nur noch `varianten.artikel_id`
 abfragt). `fedas_code` wird beim Import mitgeschrieben, sofern die Rechnung
-ihn liefert (aktuell nur zur Anzeige — die automatische Kategorie-Ableitung
-folgt in Phase B).
+ihn liefert. `kategorie_id` wird beim Anlegen eines neuen Artikels automatisch
+aus dem FEDAS-Code vorgeschlagen (`app/core/fedas.py` + `app/services/
+importer.py`), sofern die Kombination bekannt ist - sonst bleibt sie leer
+(eine manuelle Auswahl-Oberfläche dafür ist noch nicht gebaut). Ein einmal
+gesetzter Wert wird nie überschrieben, ein noch leerer aber bei einer
+späteren Rechnung mit bekanntem Code nachträglich befüllt.
 
 ### `varianten`
 Farbe/Grösse/EAN eines Artikels (Regel 5: EAN optional — Schlüssel ohne EAN

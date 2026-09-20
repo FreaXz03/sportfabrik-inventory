@@ -250,7 +250,8 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
-| B–G | offen |
+| B — Wareneingang v2: FEDAS-Kategorievorschlag | ⏳ Infrastruktur fertig, restliche Codes offen (siehe unten) |
+| B (übrige Punkte), C–G | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (SF1–SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet.
@@ -272,10 +273,16 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 - Neues Datenmodell gemäss Abschnitt 8.2 vollständig umgesetzt: `lieferanten`, `kategorien` (35 Kassenkategorien), `artikel`, `varianten`, `preise`, `dokumente`, `wareneingaenge`, `wareneingang_positionen` (+`_quelle`), `lagerbewegungen`, `bestand` via Alembic-Migration `c3d4e5f6a7b8`. Bestand wird jetzt append-only über `lagerbewegungen` geführt (Regel 2), nicht mehr implizit über `invoice_items`.
 - Bestehende Daten (`products`/`invoices`/`invoice_items`/`invoice_item_sources`/`article_notes`) vollständig und verlustfrei migriert (alte Tabellen bleiben unangetastet, „nie verwerfen") — einzige bewusste Lücke: die frühere INTERSPORT-eigene Artikelnummer (`products.article_no`) wird nicht übernommen, nur noch die Lieferanten-Artikelnummer als Artikel-Schlüssel (Regel 5), der Altwert bleibt in `products` einsehbar.
 - **Live-Import umgestellt**: `app/services/importer.py` schreibt neu importierte Rechnungen direkt ins neue Schema (Artikel-Gruppierung, Varianten mit/ohne EAN, Preise, Lagerbewegungen, Bestand); Wareneingänge werden gegen die **aktive Filiale** des hochladenden Kontos gebucht (`require_active_lagerort` in `app/routers/auth.py`) statt fest gegen SF1. `delete_invoice()` räumt Lagerbewegungen/Bestand/Preise konsistent mit auf.
-- `app/services/parser.py` erfasst jetzt zusätzlich den FEDAS-Code je Position (`artikel.fedas_code`) — die automatische Kategorie-Vorschlagslogik daraus folgt in Phase B.
+- `app/services/parser.py` erfasst jetzt zusätzlich den FEDAS-Code je Position (`artikel.fedas_code`) — die automatische Kategorie-Vorschlagslogik daraus ist Teil von Phase B (siehe unten).
 - `app/services/article_groups.py` nutzt die echte Fremdschlüsselbeziehung (`varianten.artikel_id`) statt einer Laufzeit-Query über Marke + Lieferanten-Artikelnummer.
 - Alle betroffenen Router (`catalog.py`, `history.py`, `article_details.py`, `dashboard.py`) sowie `article_export.py` auf das neue Schema umgestellt. Die frühere separate Spalte „Art. Nr." (INTERSPORT-eigene Nummer) ist aus Artikelsuche, Excel-Export und Filtern entfernt (siehe oben); `/api/articles` filtert jetzt über `supplier_article_no` statt `article_no`.
 - Tests vollständig an das neue Schema angepasst (u. a. `test_importer.py`, `test_catalog.py`, `test_history.py`, `test_article_details.py`, `test_article_export.py`, `test_corrections.py`); Migration zusätzlich gegen echtes PostgreSQL verifiziert (leere DB, DB mit repräsentativen Altdaten, Downgrade/Upgrade-Rundlauf) sowie der komplette Live-Import- und Router-Pfad per Smoke-Test gegen PostgreSQL durchgespielt.
 - Bekannte Einschränkung: `bestand` nach der Migration entspricht der kumulierten historischen Wareneingänge (das alte System kannte keine Verkäufe/Ausbuchungen) — kein exakter physischer Bestand, bis Phase C (manuelles Ausbuchen) bzw. eine Inventur das korrigiert.
+
+**Details zu Phase B, FEDAS-Kategorievorschlag** (erster Teilschritt, siehe Roadmap Abschnitt 9):
+- `app/core/fedas.py`: feste Zuordnung 1. FEDAS-Ziffer → Hauptgruppe (`1`=Hartware, `2`=Textil, `3`=Schuhe) sowie Ziffern 2–3 → Sportbereich, aktuell nur die aus echten Rechnungen bestätigten Codes (`24`=Tennis, `32`=Fussball, `60`=Velo, `64`=Outdoor, `75`=Freizeit — 6 der 11 Sportbereiche fehlen noch: Winter, Kids, Baden, Indoor, Running, Rollsport, ebenso die Produktart-Ziffer(n) für die Hauptgruppen Velo/Food selbst).
+- `app/services/importer.py` setzt `artikel.kategorie_id` automatisch beim Anlegen eines neuen Artikels, sofern der FEDAS-Code eine bekannte Kombination ergibt; ist der Code (noch) nicht zugeordnet, bleibt `kategorie_id` leer. Ein bereits gesetzter Wert wird von späteren Rechnungen nie überschrieben („einmal pro Artikel, danach gemerkt"); fehlt er noch, wird er bei einer späteren Rechnung mit bekanntem Code nachträglich gesetzt.
+- Bewusst noch nicht gebaut: eine Oberfläche zur manuellen Kategorie-Wahl, wenn der FEDAS-Code fehlt oder unbekannt ist (nächster Teilschritt) — bis dahin bleibt `kategorie_id` in diesem Fall einfach leer, ohne Auswirkung auf den restlichen Import.
+- Tests: `tests/test_fedas.py` (reine Zuordnungslogik), `tests/test_importer_fedas.py` (Zusammenspiel mit dem Import: neuer Artikel, unbekannter/fehlender Code, nachträgliches Befüllen, kein Überschreiben) — zusätzlich per Smoke-Test gegen echtes PostgreSQL verifiziert.
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*

@@ -10,11 +10,13 @@ import pymupdf
 from sqlalchemy import delete, func, select, or_, text
 from sqlalchemy.exc import IntegrityError
 
+from ..core.fedas import suggest_kategorie
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import (
     Artikel,
     Bestand,
     Dokument,
+    Kategorie,
     Lagerbewegung,
     Lieferant,
     Preis,
@@ -85,6 +87,24 @@ def _artikel_group_key(brand: str | None, supplier_article_no: str | None):
     if not number:
         return None
     return ((brand or "").strip().lower(), number)
+
+
+def _resolve_kategorie_id(session, cache, fedas_code):
+    """Kategorie-Vorschlag aus dem FEDAS-Code (siehe app/core/fedas.py), oder
+    None, wenn der Code (noch) nicht zugeordnet ist bzw. fehlt - dann bleibt
+    artikel.kategorie_id leer (manuelle Auswahl folgt in einem späteren
+    Schritt von Phase B)."""
+    suggestion = suggest_kategorie(fedas_code)
+    if suggestion is None:
+        return None
+    if suggestion not in cache:
+        hauptgruppe, sportbereich = suggestion
+        cache[suggestion] = session.scalar(
+            select(Kategorie.id).where(
+                Kategorie.hauptgruppe == hauptgruppe, Kategorie.sportbereich == sportbereich
+            )
+        )
+    return cache[suggestion]
 
 
 def import_invoice(
@@ -204,6 +224,7 @@ def import_invoice(
             new_artikel, new_varianten, reused_varianten = 0, 0, set()
             artikel_cache = {}
             variante_cache = {}
+            kategorie_cache = {}
             seen = dates["invoice_date"]
             for item in parsed["items"]:
                 ean = item["ean"] or None
@@ -224,18 +245,25 @@ def import_invoice(
                             )
                         )
                     if artikel is None:
+                        fedas_code = item.get("fedas_code") or None
                         artikel = Artikel(
                             lieferant_id=lieferant.id,
                             marke=item.get("brand"),
                             lieferanten_artikelnr=item.get("supplier_article_no"),
                             bezeichnung=item.get("description"),
-                            fedas_code=item.get("fedas_code") or None,
+                            fedas_code=fedas_code,
+                            kategorie_id=_resolve_kategorie_id(session, kategorie_cache, fedas_code),
                         )
                         session.add(artikel)
                         session.flush()
                         new_artikel += 1
-                    elif not artikel.fedas_code and item.get("fedas_code"):
-                        artikel.fedas_code = item["fedas_code"]
+                    else:
+                        if not artikel.fedas_code and item.get("fedas_code"):
+                            artikel.fedas_code = item["fedas_code"]
+                        if artikel.kategorie_id is None:
+                            artikel.kategorie_id = _resolve_kategorie_id(
+                                session, kategorie_cache, artikel.fedas_code
+                            )
                     if group_key:
                         artikel_cache[group_key] = artikel
 
