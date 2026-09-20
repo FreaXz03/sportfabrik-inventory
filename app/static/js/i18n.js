@@ -65,18 +65,34 @@
     }).catch(function () { });
   }
 
+  var loading = null;
+
   function setLanguage(lang, opts) {
     opts = opts || {};
     if (LANGUAGES.indexOf(lang) === -1) lang = 'de';
     var changed = lang !== currentLang;
+    // Gleiche Sprache: Katalog nicht erneut holen und kein zweites
+    // i18n-ready senden. session.js meldet direkt nach dem Laden die
+    // Kontosprache - meist dieselbe, die hier schon aktiv ist. Ohne diese
+    // Abkuerzung holte jede Seite ihren Katalog doppelt und ihre Daten
+    // (z.B. /api/articles) ein drittes Mal, im Ladennetz spuerbar.
+    if (!changed) {
+      if (loading) return loading;
+      if (Object.keys(catalog).length) return Promise.resolve();
+    }
     currentLang = lang;
     storeLanguage(lang);
-    return loadCatalog(lang).then(function (data) {
+    loading = loadCatalog(lang).then(function (data) {
+      // Ein zwischenzeitlicher Wechsel gewinnt - eine spaet eintreffende
+      // Antwort darf den neueren Katalog nicht ueberschreiben.
+      if (lang !== currentLang) return;
+      loading = null;
       catalog = data;
       applyTranslations();
       if (opts.persist && changed) persistToAccount(lang);
       document.dispatchEvent(new CustomEvent('sportfabrik:i18n-ready', { detail: { lang: lang } }));
     });
+    return loading;
   }
 
   var ready = setLanguage(storedLanguage() || 'de', { persist: false });
