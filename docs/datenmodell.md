@@ -1,6 +1,6 @@
 # Datenmodell
 
-Sechs Tabellen, verwaltet über SQLAlchemy 2.0 (`app/core/models.py`) und
+Acht Tabellen, verwaltet über SQLAlchemy 2.0 (`app/core/models.py`) und
 Alembic-Migrationen (`migrations/`).
 
 ```mermaid
@@ -9,6 +9,8 @@ erDiagram
     INVOICES ||--o{ INVOICE_ITEMS : "enthält"
     INVOICE_ITEMS ||--o| INVOICE_ITEM_SOURCES : "Original-Snapshot"
     PRODUCTS ||--o{ ARTICLE_NOTES : "hat"
+    USERS ||--o{ BENUTZER_LAGERORTE : "zugeordnet zu"
+    LAGERORTE ||--o{ BENUTZER_LAGERORTE : "hat Benutzer"
 
     PRODUCTS {
         int id PK
@@ -66,6 +68,22 @@ erDiagram
         string role
         string password_hash
         datetime created_at
+    }
+    LAGERORTE {
+        int id PK
+        string code UK
+        string name
+        string strasse
+        string plz
+        string ort
+        string telefon
+        string email
+        boolean verkauf
+    }
+    BENUTZER_LAGERORTE {
+        int user_id PK_FK
+        int lagerort_id PK_FK
+        boolean ist_primaer
     }
 ```
 
@@ -128,10 +146,32 @@ eigene Notizen bearbeiten/löschen, Filialleiter alle.
 
 ### `users`
 Ein Datensatz je Kassennummer. Zwei Check-Constraints erzwingen auf
-Datenbankebene, dass `role` nur `mitarbeiter` oder `chef` sein kann und dass
-ausschliesslich Chefs (intern weiterhin als Rolle `chef` gespeichert, in der
-Oberfläche als „Filialleiter" beschriftet) einen `password_hash` besitzen
-(Mitarbeiter: immer `NULL`).
+Datenbankebene, dass `role` nur `mitarbeiter`, `chef` oder `admin` sein kann
+und dass ausschliesslich Chefs/Admins (intern weiterhin als Rolle `chef`
+gespeichert, in der Oberfläche als „Filialleiter" beschriftet, bzw. `admin`
+als „Zentrale") einen `password_hash` besitzen (Mitarbeiter: immer `NULL`).
+Rechte gemäss CLAUDE.md Regel 9: Mitarbeiter alles ausser Dokumente
+hochladen/bearbeiten/löschen, Filialleiter zusätzlich Dokumente,
+Admin/Zentrale filialübergreifend (siehe `app/routers/auth.py`).
+
+### `lagerorte`
+Die 4 Filialen (SF1 Volketswil, SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey,
+`verkauf = true`) sowie das externe Aufbereitungslager GEWA (`verkauf =
+false`, kein Verkauf). Seed-Daten in `app/core/lagerorte.py`, per
+Alembic-Migration `a1b2c3d4e5f6` eingefügt. `strasse`/`plz`/`ort` dienen
+später auch der automatischen Filial-Erkennung aus der Lieferadresse eines
+hochgeladenen Dokuments (Phase B).
+
+### `benutzer_lagerorte`
+Ordnet einen Benutzer einer oder mehreren Filialen zu (m:n, z. B. Aushilfe an
+mehreren Standorten). `ist_primaer` markiert die nach dem Login vorausgewählte
+Filiale; darüber hinaus kann in der Oberfläche jederzeit zwischen den
+zugewiesenen Filialen gewechselt werden (`/api/active-lagerort`,
+Session-Feld `active_lagerort_id`). Admin-Konten (Rolle `admin`) haben
+keinen Eintrag hier — sie gelten als filialübergreifend und können
+zusätzlich „Alle Filialen" wählen (kein aktiver Lagerort). Bestehende
+Benutzer wurden bei der Migration auf SF1 (Volketswil) als primäre Filiale
+gesetzt.
 
 ## Migrationshistorie
 
@@ -142,6 +182,7 @@ Oberfläche als „Filialleiter" beschriftet) einen `password_hash` besitzen
 | `246c67c1d45e` | `imported_by_kassennummer`/`imported_by_name` auf `invoices` |
 | `d567ef887517` | `ocr_used` (Boolean, Default `false`) auf `invoices` |
 | `e901abc23456` | Neue Tabelle `article_notes` inkl. Autor-Snapshot und Versionsfeld |
+| `a1b2c3d4e5f6` | Neue Tabellen `lagerorte` (SF1-SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n); `users.role` um `admin` erweitert; bestehende Benutzer auf SF1 zugeordnet |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start
