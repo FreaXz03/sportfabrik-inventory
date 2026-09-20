@@ -49,6 +49,6 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 ## Aktuelle Phase: A — Fundament
 
 1. Lagerorte SF1–SF4 + GEWA (Seed-Daten), Benutzer ↔ Lagerort, Rollen gemäss Regel 9, Filialwechsel in der Oberfläche. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.
-2. i18n-Grundgerüst (DE/FR/EN), Sprachwahl pro Benutzer, bestehende Seiten auf Keys umstellen.
+2. i18n-Grundgerüst (DE/FR/EN), Sprachwahl pro Benutzer, bestehende Seiten auf Keys umstellen. ✅ abgeschlossen (inkl. Backend-Fehlermeldungen) — siehe `docs/projekt-kontext.md` Abschnitt 11 und `docs/architektur.md` Abschnitt „Mehrsprachigkeit (i18n)".
 3. Neues Datenmodell gemäss `docs/projekt-kontext.md` Abschnitt 8.2 (Lieferanten, Kategorien, Artikel/Varianten, Preise, Dokumente, Wareneingänge, Lagerbewegungen, Bestand) + Alembic-Migration der bestehenden Daten.
 4. Tests + Doku nachführen.

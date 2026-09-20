@@ -33,6 +33,8 @@ der Oberfläche zwischen ihren Filialen wechseln.
   korrekter Neuberechnung der Artikel-Kennzahlen) durch Filialleiter.
 - **Hell-/Dunkelmodus** seitenübergreifend, grössere Schrift und
   Spalten-Auswahl für Mitarbeitende mit eingeschränktem Sehvermögen.
+- **Mehrsprachig DE/FR/EN**: Oberfläche und Fehlermeldungen vollständig
+  übersetzt (Deutsch Standard), Sprache jederzeit pro Benutzer umstellbar.
 - **Rollenbasierte Anmeldung** nach Kassensystem-Muster, automatisierte
   geprüfte Backups (Datenbank + Original-PDFs).
 
@@ -45,7 +47,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
   Papierrechnungen ohne Textebene
 - **Excel-Export**: openpyxl
 - **Frontend**: Vanilla HTML/CSS/JS, kein Framework, keine Build-Pipeline
-- **Tests**: pytest (86 bestanden, 19 übersprungen ohne optionale
+- **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
+  siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
+  Abhängigkeit
+- **Tests**: pytest (108 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -80,8 +85,9 @@ app/
     models.py
     security.py
     lagerorte.py       Seed-Daten SF1-SF4 + GEWA (siehe app/services/lagerorte.py für Lesezugriffe)
+    i18n.py            translate()/normalize_language(): Katalog aus app/static/i18n/*.json lesen
   routers/           HTTP-Endpunkte (Seiten + JSON-API), gruppiert nach Thema
-    auth.py            Anmeldung/Abmeldung, RBAC-Dependencies, Filialwechsel (/api/me, /api/active-lagerort)
+    auth.py            Anmeldung/Abmeldung, RBAC-Dependencies, Filialwechsel, Sprachwahl (/api/me, /api/active-lagerort, /api/language)
     catalog.py         Artikelsuche, Excel-Export
     dashboard.py       Übersichtsseite
     history.py         Rechnungsliste, -details, Artikelhistorie, Löschen
@@ -97,7 +103,9 @@ app/
     lagerorte.py        Lagerort-Zuordnung eines Benutzers lesen (Filialwechsel)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
-    css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, Vorschau, Artikeldetails)
+    css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)
+    js/i18n.js           Katalog laden, data-i18n anwenden, window.SportfabrikI18n.t()
+    i18n/{de,fr,en}.json Übersetzungs-Katalog (einzige Quelle, auch vom Backend gelesen)
     fonts/, img/        Selbst gehostete Schriftart, Logo
     BRAND-SOURCES.md    Herkunft von Logo/Schriftart, Markenfarben
 

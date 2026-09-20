@@ -67,6 +67,7 @@ erDiagram
         string name
         string role
         string password_hash
+        string language
         datetime created_at
     }
     LAGERORTE {
@@ -145,11 +146,14 @@ gleichzeitig dieselbe Notiz widersprüchlich ändern). Mitarbeiter dürfen nur
 eigene Notizen bearbeiten/löschen, Filialleiter alle.
 
 ### `users`
-Ein Datensatz je Kassennummer. Zwei Check-Constraints erzwingen auf
-Datenbankebene, dass `role` nur `mitarbeiter`, `chef` oder `admin` sein kann
-und dass ausschliesslich Chefs/Admins (intern weiterhin als Rolle `chef`
+Ein Datensatz je Kassennummer. Drei Check-Constraints erzwingen auf
+Datenbankebene, dass `role` nur `mitarbeiter`, `chef` oder `admin` sein kann,
+dass ausschliesslich Chefs/Admins (intern weiterhin als Rolle `chef`
 gespeichert, in der Oberfläche als „Filialleiter" beschriftet, bzw. `admin`
-als „Zentrale") einen `password_hash` besitzen (Mitarbeiter: immer `NULL`).
+als „Zentrale") einen `password_hash` besitzen (Mitarbeiter: immer `NULL`),
+und dass `language` nur `de`, `fr` oder `en` sein kann (Default `de`, Regel 7:
+Deutsch ist Standard, jederzeit pro Benutzer umstellbar über
+`POST /api/language` — siehe `app/core/i18n.py`, `app/static/js/i18n.js`).
 Rechte gemäss CLAUDE.md Regel 9: Mitarbeiter alles ausser Dokumente
 hochladen/bearbeiten/löschen, Filialleiter zusätzlich Dokumente,
 Admin/Zentrale filialübergreifend (siehe `app/routers/auth.py`).
@@ -183,6 +187,7 @@ gesetzt.
 | `d567ef887517` | `ocr_used` (Boolean, Default `false`) auf `invoices` |
 | `e901abc23456` | Neue Tabelle `article_notes` inkl. Autor-Snapshot und Versionsfeld |
 | `a1b2c3d4e5f6` | Neue Tabellen `lagerorte` (SF1-SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n); `users.role` um `admin` erweitert; bestehende Benutzer auf SF1 zugeordnet |
+| `b2c3d4e5f6a7` | `users.language` (DE/FR/EN, Default `de`) inkl. Check-Constraint |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

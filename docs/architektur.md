@@ -281,11 +281,69 @@ Schrift in der Ergebnistabelle, ebenfalls per `localStorage` gemerkt.
 
 ## Fehlerbehandlung
 
-Durchgängiges Prinzip: lieber explizit fehlschlagen mit einer klaren
-deutschen Meldung als eine Annahme treffen, die sich später als falsch
-herausstellt. Beispiele: unbekanntes Rechnungslayout, passwortgeschützte
-PDFs, zu grosse Dateien (> 20 MB), uneindeutige Farbe/Grösse-Angaben, nicht
-eindeutig erkanntes Rechnungs-/Belegdatum, widersprüchliche Korrekturwerte,
-gleichzeitig bearbeitete Notizen (HTTP 409). Datenbankfehler während eines
-Imports oder einer Löschung führen zum vollständigen Rollback der
-Transaktion (nie ein Teilimport).
+Durchgängiges Prinzip: lieber explizit fehlschlagen mit einer klaren, in der
+Kontosprache übersetzten Meldung (siehe „Mehrsprachigkeit (i18n)" unten) als
+eine Annahme treffen, die sich später als falsch herausstellt. Beispiele:
+unbekanntes Rechnungslayout, passwortgeschützte PDFs, zu grosse Dateien
+(> 20 MB), uneindeutige Farbe/Grösse-Angaben, nicht eindeutig erkanntes
+Rechnungs-/Belegdatum, widersprüchliche Korrekturwerte, gleichzeitig
+bearbeitete Notizen (HTTP 409). Datenbankfehler während eines Imports oder
+einer Löschung führen zum vollständigen Rollback der Transaktion (nie ein
+Teilimport).
+
+## Mehrsprachigkeit (i18n)
+
+Regel 7: Deutsch ist Standard, DE/FR/EN sind vollständig unterstützt, keine
+hartcodierten UI-Texte oder Fehlermeldungen (Templates, JS **und** Backend).
+
+**Katalog.** Einzige Quelle sind drei flache JSON-Dateien
+`app/static/i18n/{de,fr,en}.json` (Key → übersetzter Text, `{platzhalter}`
+per `str.format`). Sie sind direkt unter `/static/i18n/<sprache>.json`
+abrufbar (fürs Frontend) und werden vom Backend über `app/core/i18n.py`
+gelesen (`translate(key, language, **params)`, `template()` für den
+unformatierten Text, `normalize_language()`). Ein fehlender Key fällt auf
+Deutsch, dann auf den Key selbst zurück (macht einen vergessenen
+Katalog-Eintrag sofort sichtbar statt einen kryptischen Fehler zu werfen).
+
+**Spracherkennung pro Request** (`app/routers/auth.py`): eingeloggt die
+Kontosprache (`users.language`, per `Depends(get_language)` — nutzt den von
+`require_login_api` bereits geladenen Benutzer, keine zusätzliche
+DB-Abfrage); anonym (z. B. `/login`) der `Accept-Language`-Header
+(`get_language_optional`), sonst Deutsch. Alle Router, die Fehler werfen,
+hängen `language: str = Depends(get_language)` an und übersetzen jede
+`HTTPException`-Meldung mit `translate(key, language, ...)`. Das gilt auch
+für die Service-Schicht (`parser.py`, `ocr.py`, `corrections.py`,
+`importer.py`): `language` wird von den Routern bis zu `parse_invoice()`,
+`apply_corrections()`, `import_invoice()`, `delete_invoice()` durchgereicht,
+damit auch Parser-Warnungen (in der Vorschau angezeigt) und
+Korrektur-Fehlermeldungen übersetzt sind. Eine Besonderheit:
+`corrections.py` muss beim erneuten Validieren alte Parser-Warnungen
+sprachunabhängig wiedererkennen (z. B. „Pflichtfeld fehlt: …" vs. „Required
+field missing: …") — dafür liefert `template()` die unformatierte
+Vorlage, deren fester Teil vor dem ersten `{` als Präfix dient.
+
+**Frontend** (`app/static/js/i18n.js`, IIFE, exponiert `window.SportfabrikI18n`):
+lädt beim Start den Katalog der zuletzt gewählten Sprache (`localStorage`
+`sportfabrikLanguage`, vor dem Login gesetzt) und wendet ihn auf alle
+Elemente mit `data-i18n`/`data-i18n-placeholder`/`data-i18n-aria-label`/
+`data-i18n-title` an (`textContent` bzw. das jeweilige Attribut). Der
+deutsche Text steht weiterhin direkt im HTML (Fallback vor dem ersten
+Katalog-Fetch, matcht Deutsch als Standard). Dynamisch von JavaScript
+erzeugter Text nutzt `window.SportfabrikI18n.t(key, vars)`; nach einem
+Sprachwechsel feuert ein `sportfabrik:i18n-ready`-Event, auf das jede Seite
+mit dynamischem Inhalt lauscht, um neu zu rendern (z. B. `load()` in
+`history.html`/`articles.html`, `renderQueue()`/`render()` in `preview.js`).
+`session.js` gleicht nach dem Login die Konto-Sprache aus `/api/me` mit
+`localStorage` ab (`syncFromAccount`, kein erneutes `POST`); der
+Sprach-Umschalter im Einstellungen-Menü bzw. auf der Login-Seite ruft
+`setLanguage()` auf, was den Katalog neu lädt **und** (eingeloggt)
+`POST /api/language` aufruft.
+
+**Was (bewusst) nicht übersetzt wird:** Artikeldaten aus Lieferantendokumenten
+(Regel 7), feste Textanker im INTERSPORT-Layout, mit denen der Parser das
+PDF durchsucht (z. B. „Rechnungsdatum"/„Belegdatum" — das PDF ist immer
+deutsch, unabhängig von der UI-Sprache), Pydantic-Feldvalidierungsfehler
+(z. B. leere Notiz) — deren JSON-Form (`detail` als Liste statt String)
+wird vom Frontend ohnehin nie direkt anzeigt, sondern durch eine generische
+übersetzte Meldung ersetzt —, sowie die Spaltenüberschriften im
+Excel-Export (`article_export.py`, eigenes Dokumentformat, noch offen).

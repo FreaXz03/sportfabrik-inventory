@@ -147,7 +147,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 | Preise | ✅ UVP je Rechnungsposition | EK optional, Reduktionsstufen fehlen |
 | Lagerbestand | ❌ | neu (Lagerbewegungen, Lagerdauer, Lagerort GEWA) |
 | Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche | Bestand/Wareneingänge/Reduktionen noch nicht filialbezogen (Phase B/C) |
-| Sprache | ❌ Deutsch hartcodiert | i18n DE/EN/FR |
+| Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
 | Deployment | Docker, 1 Laden-Server | Zentraler Server Volketswil, Zugriff aus 4 Filialen |
 
@@ -248,7 +248,8 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 |---|---|
 | Konzept (D1–D17) | ✅ abgeschlossen (20.09.2026) |
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
-| A — Fundament, Punkte 2–4 (i18n, neues Datenmodell, Migration Altdaten, Tests/Doku) | ⏳ als nächstes |
+| A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
+| A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Tests/Doku) | ⏳ als nächstes |
 | B–G | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
@@ -257,5 +258,14 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 - Filialwechsel in der Oberfläche: `/api/me` liefert aktive Filiale + wählbare Filialen, `POST /api/active-lagerort` wechselt sie (Admin zusätzlich „Alle Filialen“); UI-Auswahl in der Session-Leiste (`app/static/js/session.js`).
 - `scripts/manage_users.py` erweitert um Filialzuordnung (`add-mitarbeiter`/`add-chef <kassennummer> <name> <lagerort-codes...>`) und `add-admin`.
 - Bestand/Wareneingänge/Reduktionen sind noch nicht filialbezogen — das kommt mit dem neuen Datenmodell in Phase A Punkt 3 bzw. den Phasen B–D.
+
+**Details zu Phase A, Punkt 2** (siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit (i18n)"):
+- `users.language` (DE/FR/EN, Default `de`) via Alembic-Migration `b2c3d4e5f6a7`.
+- Katalog als einzige Quelle: `app/static/i18n/{de,fr,en}.json` (327 Keys), gelesen von Backend (`app/core/i18n.py`, `translate()`) und Frontend (`app/static/js/i18n.js`, `data-i18n`-Attribute + `window.SportfabrikI18n.t()`).
+- Spracherkennung pro Request: eingeloggt die Kontosprache, anonym (`/login`) der `Accept-Language`-Header (`app/routers/auth.py`, `get_language`/`get_language_optional`).
+- Alle bestehenden Templates (`login.html`, `dashboard.html`, `preview.html`, `articles.html`, `history.html`) und JS-Dateien auf Keys umgestellt; **alle** `HTTPException`-Fehlermeldungen im Backend (Router **und** Services: `parser.py`, `ocr.py`, `corrections.py`, `importer.py`) laufen über `translate()`.
+- Sprachwahl: `POST /api/language` (Konto), Umschalter DE/FR/EN in der Session-Leiste bzw. auf der Login-Seite (`localStorage` vor dem Login).
+- Bewusst nicht übersetzt: Artikeldaten aus Lieferantendokumenten (Regel 7), feste deutsche Textanker im INTERSPORT-Layout (Parser sucht z. B. immer „Rechnungsdatum" im PDF), Excel-Export-Spaltenüberschriften (eigenes Dokumentformat, offener Punkt).
+- Tests: `tests/test_i18n.py` (Katalog/`translate()`, Spracherkennung, `/api/language`); Gesamtsuite jetzt 108 bestandene Tests (vorher 86).
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*

@@ -6,6 +6,11 @@ Filialleiter- oder Admin-Rolle (intern weiterhin `chef`/`admin`). Seiten-Endpunk
 (HTML) leiten bei fehlender Anmeldung zu `/login` um, JSON-Endpunkte antworten
 mit HTTP 401 bzw. 403 — siehe `architektur.md`, Abschnitt „Sicherheitsmodell".
 
+Fehlermeldungen (`detail`) sind serverseitig lokalisiert: eingeloggt in der
+Kontosprache des Benutzers, sonst (z. B. `/login`) nach dem
+`Accept-Language`-Header — siehe `architektur.md`, Abschnitt „Mehrsprachigkeit
+(i18n)".
+
 ## Anmeldung
 
 | Methode | Pfad | Zweck |
@@ -13,8 +18,9 @@ mit HTTP 401 bzw. 403 — siehe `architektur.md`, Abschnitt „Sicherheitsmodell
 | GET | `/login` | Login-Seite |
 | POST | `/login` | Kassennummer (+ Passwort bei Filialleitern/Admin) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-/Admin-Kassennummer ohne Passwort gesendet wurde |
 | POST | `/logout` | Session beenden, Redirect zu `/login` |
-| GET | `/api/me` | Angemeldete Person: `{kassennummer, name, role, role_label, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `lagerort` ist die aktive Filiale (`{id, code, name}` oder `null` = „alle Filialen", nur für Admin möglich), `lagerorte` die Filialen, zwischen denen gewechselt werden darf (Admin: alle) |
+| GET | `/api/me` | Angemeldete Person: `{kassennummer, name, role, role_label, language, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `role_label` und Fehlermeldungen sind in `language` (`de`/`fr`/`en`) übersetzt. `lagerort` ist die aktive Filiale (`{id, code, name}` oder `null` = „alle Filialen", nur für Admin möglich), `lagerorte` die Filialen, zwischen denen gewechselt werden darf (Admin: alle) |
 | POST | `/api/active-lagerort` | Aktive Filiale für die Session wechseln. Body `{"lagerort_id": <id oder null>}`; `null` nur für Admin erlaubt (= „alle Filialen"), sonst muss die Filiale dem Benutzer zugewiesen sein (sonst 403) |
+| POST | `/api/language` | Sprache des angemeldeten Kontos setzen. Body `{"language": "de"｜"fr"｜"en"}`, sonst HTTP 422. Antwort `{"language": "..."}` |
 
 Der `next`-Parameter von `/login?next=…` (wohin nach dem Login weitergeleitet
 wird) wird clientseitig gegen eine Whitelist bekannter Routen geprüft
