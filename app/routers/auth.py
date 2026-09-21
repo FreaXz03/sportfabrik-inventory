@@ -17,7 +17,11 @@ from ..core.database import get_session
 from ..core.i18n import LANGUAGES, normalize_language, translate
 from ..core.models import Lagerort, User
 from ..core.security import verify_password
-from ..services.lagerorte import get_primary_lagerort, list_user_lagerorte
+from ..services.lagerorte import (
+    get_primary_lagerort,
+    list_user_lagerorte,
+    list_wareneingang_lagerorte,
+)
 
 load_dotenv()
 
@@ -117,6 +121,28 @@ def require_active_lagerort(
     if lagerort is None:
         raise HTTPException(400, translate("errors.auth.lagerort_required", language))
     return lagerort
+
+
+def resolve_wareneingang_lagerort(
+    request: Request, session, user: User, lagerort_id: int | None, language: str
+) -> Lagerort:
+    """Ziel-Lagerort für einen Wareneingang.
+
+    Ohne ausdrückliche Wahl gilt die aktive Filiale (wie bisher). Wird ein
+    Lagerort mitgegeben - die Oberfläche schickt den aus der Lieferadresse
+    vorgeschlagenen, D19 -, muss der Benutzer darauf buchen dürfen; geprüft
+    wird das hier serverseitig, nie nur im Browser.
+    """
+    if lagerort_id is None:
+        lagerort = _resolve_active_lagerort(request, session, user)
+        if lagerort is None:
+            raise HTTPException(400, translate("errors.auth.lagerort_required", language))
+        return lagerort
+    erlaubt = list_wareneingang_lagerorte(session, user)
+    match = next((lo for lo in erlaubt if lo.id == lagerort_id), None)
+    if match is None:
+        raise HTTPException(403, translate("errors.auth.no_lagerort_access", language))
+    return match
 
 
 def _resolve_active_lagerort(

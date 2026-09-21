@@ -9,20 +9,12 @@ import re
 
 import pymupdf
 import pytest
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
-from app.routers.auth import get_language, require_chef_api, require_chef_page
-from app.routers.preview import router
+from preview_app import build_client
+
 from app.services.parsers import DocumentParseError, decimal_value, parse_document
 
-app = FastAPI()
-app.include_router(router)
-# Diese Tests prüfen die Parser-Logik, nicht die Zugriffsrechte (siehe tests/test_auth.py).
-app.dependency_overrides[require_chef_api] = lambda: None
-app.dependency_overrides[require_chef_page] = lambda: None
-# get_language haengt normalerweise an require_login_api (Session), die hier
-# nicht eingerichtet ist (kein SessionMiddleware in dieser Test-App).
-app.dependency_overrides[get_language] = lambda: "de"
+# Diese Tests prüfen die Parser-Logik, nicht die Zugriffsrechte (siehe
+# tests/test_auth.py) - die Test-App dafür liegt in tests/preview_app.py.
 
 
 @pytest.fixture
@@ -82,7 +74,7 @@ def test_missing_ean_is_retained(invoice):
 
 
 def test_api_preview(invoice):
-    response = TestClient(app).post(
+    response = build_client().post(
         "/upload-preview", files={"file": ("invoice.pdf", invoice, "application/pdf")}
     )
     assert response.status_code == 200
@@ -95,7 +87,7 @@ def test_invalid_pdf(data):
     with pytest.raises(DocumentParseError):
         parse_document(data)
     assert (
-        TestClient(app)
+        build_client()
         .post("/upload-preview", files={"file": ("bad.pdf", data)})
         .status_code
         == 422
@@ -120,7 +112,7 @@ def test_decimal(value, expected):
 def test_upload_limit(monkeypatch):
     monkeypatch.setattr("app.routers.preview.MAX_UPLOAD_BYTES", 4)
     assert (
-        TestClient(app)
+        build_client()
         .post("/upload-preview", files={"file": ("large.pdf", b"12345")})
         .status_code
         == 413

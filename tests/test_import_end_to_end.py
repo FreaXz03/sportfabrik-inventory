@@ -13,12 +13,11 @@ import hashlib
 import re
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from preview_app import build_client
 from test_parser_registry import _invoice_pdf, _text_pdf
 
 from app.core.kategorien import seed_kategorien
@@ -37,8 +36,6 @@ from app.core.models import (
     Wareneingang,
     WareneingangPosition,
 )
-from app.routers.auth import get_language, require_chef_api, require_chef_page
-from app.routers.preview import router
 from app.services import importer
 from app.services.importer import ImportRejected, import_invoice
 from app.services.parsers import UnknownLayoutError, intersport
@@ -190,18 +187,8 @@ def test_import_rejects_a_document_without_a_recognised_type(
         assert session.scalar(select(func.count()).select_from(Dokument)) == 0
 
 
-def _client():
-    app = FastAPI()
-    app.include_router(router)
-    # Diese Tests prüfen den Upload-Weg, nicht die Rechte (siehe test_auth.py).
-    app.dependency_overrides[require_chef_api] = lambda: None
-    app.dependency_overrides[require_chef_page] = lambda: None
-    app.dependency_overrides[get_language] = lambda: "de"
-    return TestClient(app)
-
-
-def test_preview_endpoint_reports_the_detected_supplier(rechnung):
-    response = _client().post(
+def test_preview_endpoint_reports_the_detected_supplier(rechnung, sessions):
+    response = build_client(sessions).post(
         "/upload-preview", files={"file": ("rechnung.pdf", rechnung, "application/pdf")}
     )
     assert response.status_code == 200
@@ -213,9 +200,9 @@ def test_preview_endpoint_reports_the_detected_supplier(rechnung):
     assert body["rows_with_warnings"] == 0
 
 
-def test_preview_endpoint_rejects_an_unknown_layout():
+def test_preview_endpoint_rejects_an_unknown_layout(sessions):
     fremd = _text_pdf("CMP Bestellung 22065", "Grösse 92 104 116 128")
-    response = _client().post(
+    response = build_client(sessions).post(
         "/upload-preview", files={"file": ("cmp.pdf", fremd, "application/pdf")}
     )
     assert response.status_code == 422
@@ -337,7 +324,7 @@ def test_import_status_needs_the_supplier_for_a_number_match(
     lagerort_id = _sf1(sessions)
     _import(rechnung, sessions, lagerort_id)
     monkeypatch.setattr(database, "SessionLocal", sessions)
-    client = _client()
+    client = build_client(sessions)
 
     def status(**params):
         return client.get("/invoice-import-status", params=params).json()

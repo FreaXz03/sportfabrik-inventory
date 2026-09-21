@@ -19,6 +19,7 @@ Ablauf:
 
 from . import intersport
 from .base import Document, DocumentParseError, decimal_value, read_document
+from ..lieferadresse import erkenne_lagerort
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
 # Reihenfolge ohne Bedeutung - es gewinnt die höchste Punktzahl aus detect().
@@ -64,13 +65,34 @@ def detect_parser(document: Document, language: str = DEFAULT_LANGUAGE):
     return ranked[0][1]
 
 
-def parse_with_parser(parser, document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
+def parse_with_parser(
+    parser, document: Document, language: str = DEFAULT_LANGUAGE, lagerorte=()
+) -> dict:
     """Positionen des erkannten Layouts, ergänzt um Lieferant und Parser-Key
-    (`lieferanten.parser_key`, den der Import zum Nachschlagen braucht)."""
+    (`lieferanten.parser_key`, den der Import zum Nachschlagen braucht).
+
+    Sind `lagerorte` (Adressdaten, siehe `app/services/lagerorte.py`)
+    mitgegeben, kommt zusätzlich der aus der Lieferadresse erkannte Lagerort
+    dazu - als **Vorschlag** (D19), den der Benutzer beim Import ändern kann.
+    Die Parser-Module selbst sehen die Lagerorte nicht und bleiben damit frei
+    von Datenbankwissen.
+    """
+    treffer = erkenne_lagerort(document.text, lagerorte)
     return {
         **parser.parse(document, language),
         "parser_key": parser.KEY,
         "supplier_name": parser.LIEFERANT_NAME,
+        "lagerort_suggestion": (
+            None
+            if treffer is None
+            else {
+                "id": treffer.lagerort.id,
+                "code": treffer.lagerort.code,
+                "name": treffer.lagerort.name,
+                "from_delivery_address": treffer.aus_lieferadresse,
+                "matched": list(treffer.merkmale),
+            }
+        ),
     }
 
 
@@ -80,10 +102,12 @@ def read_and_detect(pdf_data: bytes, language: str = DEFAULT_LANGUAGE):
     return document, detect_parser(document, language)
 
 
-def parse_document(pdf_data: bytes, language: str = DEFAULT_LANGUAGE) -> dict:
+def parse_document(
+    pdf_data: bytes, language: str = DEFAULT_LANGUAGE, lagerorte=()
+) -> dict:
     """Dokument lesen, Layout erkennen und Positionen auslesen (Vorschau)."""
     document, parser = read_and_detect(pdf_data, language)
-    return parse_with_parser(parser, document, language)
+    return parse_with_parser(parser, document, language, lagerorte)
 
 
 __all__ = [

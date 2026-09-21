@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..core.models import BenutzerLagerort, Lagerort, User
+from .lieferadresse import LagerortAdresse
 
 _CODE_ORDER = {"SF1": 0, "SF2": 1, "SF3": 2, "SF4": 3, "GEWA": 4}
 
@@ -41,3 +42,45 @@ def get_primary_lagerort(session: Session, user: User) -> Lagerort | None:
         return None
     assigned = list_user_lagerorte(session, user)
     return assigned[0] if assigned else None
+
+
+def list_wareneingang_lagerorte(session: Session, user: User) -> list[Lagerort]:
+    """Lagerorte, auf die ein Wareneingang gebucht werden darf: **alle** -
+    eigene Filialen zuerst.
+
+    Begründung (D19/D20): das Ziel bestimmt der Beleg über seine Lieferadresse,
+    nicht die gerade aktive Filiale. Eine Lieferung an eine andere Filiale oder
+    an die GEWA (die kein eigenes Personal hat, D11) liesse sich sonst gar nicht
+    erfassen - genau der Fall „Rechnung an Volketswil, Lieferadresse Conthey"
+    aus projekt-kontext.md Abschnitt 6. Wer hier überhaupt hinkommt, darf
+    Dokumente hochladen (Filialleiter oder Admin, Regel 9); eine falsch
+    gewählte Filiale ist über eine Umlagerung korrigierbar und im Dokument
+    nachvollziehbar.
+
+    Nur fürs Buchen eines Wareneingangs - der Filialwechsel in der Oberfläche
+    und alle Leseansichten bleiben bei `list_user_lagerorte()`.
+    """
+    eigene = list_user_lagerorte(session, user)
+    eigene_ids = {lagerort.id for lagerort in eigene}
+    return eigene + [
+        lagerort
+        for lagerort in list_all_lagerorte(session)
+        if lagerort.id not in eigene_ids
+    ]
+
+
+def lade_adressen(session: Session) -> list[LagerortAdresse]:
+    """Adressdaten aller Lagerorte für die Lieferadress-Erkennung
+    (`app/services/lieferadresse.py`) - als einfache Werte, damit die Erkennung
+    ohne Datenbank und ohne offene Session arbeiten kann."""
+    return [
+        LagerortAdresse(
+            id=lagerort.id,
+            code=lagerort.code,
+            name=lagerort.name,
+            strasse=lagerort.strasse,
+            plz=lagerort.plz,
+            ort=lagerort.ort,
+        )
+        for lagerort in list_all_lagerorte(session)
+    ]

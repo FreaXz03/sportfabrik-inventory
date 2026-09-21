@@ -896,6 +896,12 @@ input[type=checkbox]:focus-visible,
   margin-bottom: 22px;
 }
 
+/* Ziel-Lagerort eines Wareneingangs (Vorschlag aus der Lieferadresse, D19):
+   nutzt die Anordnung der Filterzeile, steht aber fuer sich. */
+.lagerort-choice { margin-bottom: 22px; }
+.lagerort-choice > label { flex: 0 1 320px; }
+.lagerort-choice > p { flex: 1 1 260px; margin: 0 0 6px; }
+
 .stat {
   min-width: 150px;
   padding: 16px 20px;
