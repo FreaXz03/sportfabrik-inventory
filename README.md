@@ -26,6 +26,9 @@ der Oberfläche zwischen ihren Filialen wechseln.
   im Dokument (ein Parser-Modul je Lieferanten-Layout, siehe
   `app/services/parsers/`); ein noch unbekanntes Layout wird als solches
   gemeldet, statt mit einer irreführenden Fehlermeldung abzubrechen.
+- **Ziel-Filiale erkennt das System aus der Lieferadresse** des Belegs und
+  schlägt sie beim Import vor (änderbar) — auch Lieferungen an eine andere
+  Filiale oder an das externe Lager GEWA landen so am richtigen Ort.
 - **Artikel ohne Barcode** sind kein Sonderfall: eine Position ohne EAN läuft
   mit Hinweis durch (Schlüssel ist dann Lieferant + Artikelnummer + Farbe +
   Grösse); eine unleserliche EAN blockiert den Import dagegen weiterhin.
@@ -67,7 +70,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (182 bestanden, 19 übersprungen ohne optionale
+- **Tests**: pytest (213 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -128,7 +131,8 @@ app/
     corrections.py      Manuelle Korrekturen in der Vorschau validieren
     article_groups.py  Farb-/Grössenvarianten desselben Artikels über die echte artikel_id-Beziehung gruppieren
     article_export.py  Artikelliste als formatierte .xlsx-Datei
-    lagerorte.py        Lagerort-Zuordnung eines Benutzers lesen (Filialwechsel)
+    lagerorte.py        Lagerort-Zuordnung eines Benutzers lesen (Filialwechsel, Ziel eines Wareneingangs)
+    lieferadresse.py    Lagerort aus der Lieferadresse eines Dokuments erkennen (Vorschlag)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)

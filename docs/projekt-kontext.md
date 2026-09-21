@@ -266,7 +266,8 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D25). Noch offen:
 | B — Wareneingang v2, Teilaufgabe 1 (Parser-Registry, Lieferanten- und Dokumenttyp-Erkennung) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 2 (Belegnummer je Lieferant eindeutig) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 3 (EAN wirklich optional) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
-| B — Wareneingang v2, Teilaufgaben 4–8 | offen (Aufteilung siehe unten) |
+| B — Wareneingang v2, Teilaufgabe 4 (Lagerort aus der Lieferadresse) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
+| B — Wareneingang v2, Teilaufgaben 5–8 | offen (Aufteilung siehe unten) |
 | C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -279,7 +280,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B1 | **Parser-Registry**: ein Modul je Lieferanten-Layout mit gemeinsamer Schnittstelle, automatische Lieferanten- und Dokumenttyp-Erkennung, unbekanntes Layout klar melden | ✅ abgeschlossen |
 | B2 | Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id, dokumentnummer)`) inkl. Duplikatsprüfung im Importer — offener Punkt aus dem Review, Voraussetzung für den zweiten Lieferanten | ✅ abgeschlossen |
 | B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | ✅ abgeschlossen |
-| B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload **vorschlagen**, änderbar (D19); ein Beleg = ein Lagerort (D20) | offen |
+| B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload **vorschlagen**, änderbar (D19); ein Beleg = ein Lagerort (D20) | ✅ abgeschlossen |
 | B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | offen |
 | B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23) | offen |
 | B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | offen |
@@ -410,6 +411,45 @@ ein Modul je Lieferanten-Layout"):
   UNIQUE-Index `ix_varianten_ean`) — fachlich harmlos, aber unnötig.
 - Der `downgrade` scheitert absichtlich, sobald zwei Lieferanten dieselbe
   Nummer verwenden: dann gibt es keine global eindeutige Nummer mehr.
+
+**Details zu Phase B, Teilaufgabe B4 — Lagerort aus der Lieferadresse**
+(D19/D20, siehe `docs/architektur.md`, Abschnitt „Lagerort aus der
+Lieferadresse"):
+- Bisher buchte jeder Import gegen die aktive Filiale des Kontos, obwohl auf
+  dem Beleg steht, wohin die Ware ging — beim externen Händler geht die
+  Rechnung nach Volketswil und die Ware nach Conthey, CMP liefert an die GEWA.
+- Neues Modul `app/services/lieferadresse.py`: erkennt den Lagerort aus dem
+  Dokumenttext. Reine Textlogik ohne Datenbank und ohne Layout-Wissen, damit
+  sie bei jedem Lieferanten gleich funktioniert. Merkmale mit Punkten
+  (PLZ 3, Ort 2, eigener Name wie „GEWA" 2, Strasse 1), Mindestpunktzahl und
+  Umlaut-Toleranz („Hägendorf"/„Haegendorf").
+- Zwei Durchgänge: zuerst im Umfeld eines Lieferadress-Ankers
+  („Lieferadresse", „Lieferung an", „Warenempfänger", „Ship to" …), sonst im
+  ganzen Text. **Bei Gleichstand gibt es keinen Vorschlag** — stehen
+  Rechnungs- und Lieferadresse gleichberechtigt im Text, wäre jede Wahl
+  geraten; dann bleibt es bei der aktiven Filiale.
+- D19 in der Oberfläche: die Vorschau zeigt „Wareneingang buchen auf" als
+  Auswahl, vorbelegt mit dem Vorschlag, daneben die Begründung („Aus der
+  Lieferadresse erkannt: SF4 · Conthey") oder der Hinweis, dass nichts erkannt
+  wurde. `/import-invoice` nimmt den gewählten Lagerort entgegen und prüft ihn
+  serverseitig; ohne Angabe bleibt alles wie bisher.
+- Buchbar sind **alle** Lagerorte (eigene Filiale zuerst). Sonst liesse sich
+  eine Lieferung an eine andere Filiale oder an die GEWA gar nicht erfassen —
+  D19 wäre für genau die Fälle wirkungslos, für die es gedacht ist. Wer hier
+  hinkommt, darf ohnehin Dokumente hochladen (Regel 9); eine falsch gewählte
+  Filiale ist über eine Umlagerung korrigierbar. **Zu bestätigen:** ob das so
+  bleiben soll oder ob nur Admin/Zentrale fremde Filialen buchen darf.
+  Filialwechsel und Leseansichten bleiben unverändert bei den zugewiesenen
+  Filialen.
+- Tests: `tests/test_lieferadresse.py` (24 Tests: jede Seed-Adresse,
+  Lieferadresse schlägt Rechnungsadresse, Gleichstand ohne Vorschlag,
+  Schreibweisen, „Lieferschein" ist kein Anker) und
+  `tests/test_wareneingang_lagerort.py` (7 Tests über die echte App **mit
+  Anmeldung**, also inklusive Rechteweg). Gesamtsuite: 213 bestandene Tests
+  (vorher 182).
+- Gegen echtes PostgreSQL 16 im Browser durchgespielt: Anmeldung, Upload einer
+  Rechnung mit Lieferadresse Conthey, Vorauswahl SF4 mit Begründung,
+  vollständige Auswahlliste.
 
 **Details zu Phase B, Teilaufgabe B3 — EAN wirklich optional** (Entscheid D18,
 siehe `docs/architektur.md`, Abschnitt „PDF-Parsing" → „Warnung oder Hinweis?"):

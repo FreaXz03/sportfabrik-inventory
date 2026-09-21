@@ -216,9 +216,10 @@ Duplikat gegolten, weil INTERSPORT die Nummer schon verwendet hatte. Ist
 verschieden); der Import weist ein Dokument ohne erkannten Lieferanten aber ab,
 darum kommt das nicht vor. Die verständliche Meldung („Rechnung … wurde bereits
 importiert") kommt aus dem Importer, der Constraint ist der Rückfall für zwei
-gleichzeitige Importe. `lagerort_id` ist die Zielfiliale (aktuell: die beim
-Upload aktive Filiale des hochladenden Kontos — automatische Erkennung aus der
-Lieferadresse ist Teilaufgabe B4).
+gleichzeitige Importe. `lagerort_id` ist die Zielfiliale: seit Teilaufgabe B4 der beim Import
+gewählte Lagerort, vorgeschlagen aus der Lieferadresse des Dokuments
+(`app/services/lieferadresse.py`, D19) und sonst die aktive Filiale. Ein
+Dokument hat genau einen Lagerort (D20).
 `ocr_verwendet` markiert Dokumente, die mangels Textebene per Tesseract-OCR
 gelesen wurden.
 

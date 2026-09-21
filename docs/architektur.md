@@ -18,6 +18,7 @@ flowchart TB
     end
     subgraph services["app/services/ — Fachlogik"]
         importer["importer.py<br/>Import/Löschung"]
+        lieferadresse["lieferadresse.py<br/>Lagerort aus der Lieferadresse"]
         parser["parsers/<br/>Layout-Erkennung, PDF → Positionen"]
         ocr["ocr.py<br/>OCR-Fallback für Scans ohne Textebene"]
         corrections["corrections.py<br/>Manuelle Korrekturen validieren"]
@@ -38,6 +39,7 @@ flowchart TB
     preview --> importer
     preview --> parser
     preview --> corrections
+    preview --> lieferadresse
     importer --> corrections
     parser --> ocr
     history --> importer
@@ -153,6 +155,44 @@ eines Artikels nie inkonsistent werden; bei einem Datenbankfehler wird die
 gesamte Transaktion zurückgerollt (kein Teilimport); der Import bleibt
 gesperrt, solange irgendeine Warnung offen ist — das gilt serverseitig,
 nicht nur als Browser-Prüfung.
+
+## Lagerort aus der Lieferadresse
+
+Wohin ein Wareneingang gebucht wird, steht auf dem Beleg: der externe Händler
+schickt die Rechnung nach Volketswil und die Ware nach Conthey, CMP liefert an
+die GEWA. `app/services/lieferadresse.py` liest das aus dem Dokumenttext —
+reine Textlogik, ohne Datenbank und ohne Layout-Wissen, damit sie bei jedem
+Lieferanten gleich funktioniert. Die Adressen kommen als Werte herein
+(`lagerorte.lade_adressen()`), nicht als ORM-Objekte.
+
+| Merkmal | Punkte | Warum |
+|---|---|---|
+| Postleitzahl | 3 | eindeutig je Ort, kurz, überlebt OCR am besten |
+| Ortsname | 2 | bestätigt die PLZ, steht auch ohne sie oft da |
+| Name des Lagerorts (z. B. „GEWA“) | 2 | auf der CMP-Auftragsbestätigung steht als Ziel nur „GEWA“ |
+| Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF3 |
+
+Gesucht wird in zwei Durchgängen: zuerst im Umfeld eines Lieferadress-Ankers
+(„Lieferadresse“, „Lieferanschrift“, „Lieferung an“, „Warenempfänger“,
+„Adresse de livraison“, „Ship to“ …), sonst im ganzen Text. Zwei Sicherungen
+gegen falsche Vorschläge: eine **Mindestpunktzahl** (eine Strasse allein
+genügt nie) und **kein Vorschlag bei Gleichstand** — stehen Rechnungs- und
+Lieferadresse gleichberechtigt im Text, wäre jede Wahl geraten. Umlaute werden
+in beiden Schreibweisen gefunden („Hägendorf“ und „Haegendorf“).
+
+**Der Vorschlag entscheidet nichts** (D19). `/upload-preview` liefert ihn
+zusammen mit der Auswahlliste und der aktiven Filiale; die Vorschau zeigt
+„Wareneingang buchen auf“ mit Begründung; `/import-invoice` nimmt den
+gewählten Lagerort als Formularfeld und prüft ihn serverseitig
+(`resolve_wareneingang_lagerort` in `app/routers/auth.py`). Schickt die
+Oberfläche nichts, bleibt es bei der aktiven Filiale — wie vorher.
+
+Buchbar sind **alle** Lagerorte, die eigene Filiale zuerst
+(`list_wareneingang_lagerorte`). Sonst liesse sich eine Lieferung an eine
+andere Filiale oder an die GEWA gar nicht erfassen, und D19 wäre genau für die
+Fälle wirkungslos, für die es gedacht ist. Filialwechsel und Leseansichten
+bleiben unverändert bei den zugewiesenen Filialen. Ein Beleg hat dabei genau
+einen Lagerort (D20); verteilt wird die Ware danach über eine Umlagerung.
 
 ## Doppelimporte erkennen
 

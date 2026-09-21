@@ -77,7 +77,7 @@ unveränderten Original-Snapshot der Position.
 | GET | `/preview` | 🔒 Upload-Seite (unterstützt mehrere PDFs gleichzeitig, siehe „Stapel-Import" unten) |
 | POST | `/upload-preview` | 🔒 Eine PDF hochladen, Lieferant/Dokumenttyp erkennen und Positionen als Vorschau zurückgeben (max. 20 MB, keine DB-Änderung) |
 | POST | `/validate-preview` | 🔒 Manuell korrigierte Positionen (siehe `corrections`) gegen dieselbe Datei erneut validieren, bevor importiert wird; verlangt `expected_hash` |
-| POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true` und optional `corrections` (JSON, siehe unten). Bucht Wareneingang und Bestand gegen die aktive Filiale des Kontos (`GET /api/me`, `lagerort`) — ohne gewählte Filiale (nur für Admin möglich, „alle Filialen") HTTP 400 |
+| POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true`, optional `corrections` (JSON, siehe unten) und optional `lagerort_id` (Ziel des Wareneingangs, siehe unten). Ohne `lagerort_id` wird gegen die aktive Filiale des Kontos gebucht (`GET /api/me`, `lagerort`) — ohne gewählte Filiale (nur für Admin möglich, alle Filialen) HTTP 400 |
 | GET | `/invoice-import-status` | 🔒 Prüft per Datei-Hash (`file_hash`) oder per Belegnummer **beim erkannten Lieferanten** (`invoice_number` **und** `parser_key`, beide aus der Vorschau-Antwort), ob eine Rechnung bereits importiert ist — wird von der Stapel-Import-Warteschlange genutzt, um bereits importierte Dateien zu überspringen. Ohne `parser_key` zählt nur der Datei-Hash: dieselbe Belegnummer kann bei einem anderen Lieferanten eine völlig andere Rechnung sein |
 
 **Warnungen und Hinweise je Position**: Jede Position der Antwort hat zwei
@@ -85,6 +85,15 @@ Listen — `warnings` (blockiert den Import, bis geprüft/korrigiert) und `hints
 (nicht blockierend, aktuell: Position ohne EAN, Regel 5). Dazu die Zähler
 `rows_with_warnings` und `rows_with_hints`. `/import-invoice` weist ein
 Dokument nur wegen `warnings` ab, nie wegen `hints`.
+
+**Ziel-Lagerort (`/upload-preview`, `/validate-preview`, `/import-invoice`)**:
+Die Vorschau liefert `lagerort_suggestion` (aus der Lieferadresse erkannt, mit
+`code`, `name`, `from_delivery_address` und den getroffenen Merkmalen — `null`,
+wenn nichts Eindeutiges gefunden wurde), `lagerort_options` (worauf dieses
+Konto buchen darf, eigene Filiale zuerst) und `lagerort_active` (aktive
+Filiale). `/import-invoice` nimmt dazu das Formularfeld `lagerort_id`; fehlt
+es, wird gegen die aktive Filiale gebucht. Ein unbekannter Lagerort ergibt
+HTTP 403 (D19, siehe docs/architektur.md).
 
 **Erkannter Lieferant (`/upload-preview`, `/validate-preview`)**: Die Antwort
 enthält neben den Positionen `parser_key` (zuständiges Parser-Modul, =
