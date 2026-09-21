@@ -39,6 +39,12 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Artikel ohne Barcode** sind kein Sonderfall: eine Position ohne EAN läuft
   mit Hinweis durch (Schlüssel ist dann Lieferant + Artikelnummer + Farbe +
   Grösse); eine unleserliche EAN blockiert den Import dagegen weiterhin.
+- **Interne EAN auf Knopfdruck**: Artikel ohne Hersteller-Barcode bekommen
+  eine hauseigene EAN-13 (GS1-Bereich 20–29, mit Prüfziffer) und werden damit
+  an der Kasse scannbar.
+- **Preisetikett als PDF** in Etikettengrösse für den Etikettendrucker: mit
+  Jahrgang, Lieferant, UVP, Reduktionsstufe und EAN-Strichcode — einzeln oder
+  für einen ganzen Wareneingang auf einmal.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
 - **Artikelsuche** über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung,
@@ -130,6 +136,7 @@ app/
     preview.py         Upload-Vorschau, Korrekturvalidierung, Importbestätigung
     wareneingang.py    Erwartete Lieferungen ansehen und ihre Ankunft bestätigen
     erfassung.py       Ware von Hand erfassen (Scanner-Nachschlag über die EAN, Buchen ohne Beleg)
+    etiketten.py       EAN nachtragen/erzeugen und Etiketten als PDF drucken
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
@@ -145,6 +152,10 @@ app/
     wareneingang.py     Erwartete Lieferungen, Ankunft bestaetigen, Zugang buchen
     manuelle_erfassung.py Ware ohne Beleg direkt einbuchen (D23/D27)
     artikel.py          Artikel- und Variantenregeln (Regel 4/5) fuer Import und Erfassung gemeinsam
+    ean.py              Pruefziffer, Pruefung und interne EAN-13 (GS1 20-29)
+    barcode.py          EAN-13/EAN-8 als Strichmuster (ohne Zusatzbibliothek)
+    etikett.py          Etikett als PDF in Etikettengroesse (PyMuPDF)
+    reduktion.py        Lagerdauer und Reduktionsstufe nach Regel 6
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)

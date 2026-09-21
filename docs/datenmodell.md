@@ -198,8 +198,11 @@ ist Lieferant + Artikelnummer + Farbe + Grösse über `artikel_id`). Seit
 Teilaufgabe B3 gilt das auch beim Upload: eine Position ohne EAN läuft mit
 Hinweis durch und landet als Variante mit leerer EAN. Mehrere solche Varianten
 stören sich nicht, weil NULL im Unique-Index nicht kollidiert.
-`ean_intern` markiert vom System generierte EANs (EAN-13 im GS1-Bereich
-20–29, Phase B, noch ungenutzt). `first_seen`/`last_seen` wie früher auf
+`ean_intern` markiert vom System erzeugte EANs (EAN-13 im GS1-Bereich
+20–29, D10). Seit Teilaufgabe B7 wird das gesetzt: fehlt die Hersteller-EAN,
+erzeugt `app/services/ean.py` auf Knopfdruck eine interne Nummer nach dem
+Muster `20` + zehnstellige Varianten-Id + Prüfziffer. Eine bestehende EAN
+wird nie überschrieben. `first_seen`/`last_seen` wie früher auf
 `products`, bei jedem Import/jeder Löschung neu berechnet.
 
 ### `preise`

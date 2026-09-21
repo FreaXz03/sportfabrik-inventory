@@ -234,6 +234,59 @@ Eingabe in `wareneingang_positionen_quelle` (mit Benutzer und Zeitpunkt) und
 die Lagerbewegung den Grund `manuelle-erfassung` — ein fester Schlüssel, kein
 UI-Text.
 
+## Interne EAN und Etikett
+
+Regel 5/D10: Die EAN ist optional, viele Lieferanten liefern keine. Damit ein
+solcher Artikel an der Kasse trotzdem scannbar wird, erzeugt das System auf
+Knopfdruck (D24) eine **interne EAN-13 im GS1-Bereich 20-29**
+(`app/services/ean.py`). Aufbau: `20` + zehnstellige Varianten-Id +
+Prüfziffer. Das braucht keinen Zähler, ist für dieselbe Variante immer
+dieselbe Nummer und trägt ihre Herkunft in sich; `varianten.ean_intern`
+markiert sie.
+
+Zwei Regeln dazu:
+
+* Eine **bestehende EAN wird nie überschrieben** — der Artikelstamm bleibt
+  (Regel 4), und eine gedruckte Nummer klebt bereits auf der Ware.
+* Eine **von Hand nachgetragene** EAN wird streng geprüft, Format *und*
+  Prüfziffer. Beim Import bleibt es bewusst beim Formatcheck (Teilaufgabe
+  B3): dort steht die Nummer so im Lieferantendokument, hier tippt sie
+  jemand, und ein Zahlendreher bliebe für immer im Stamm.
+
+Das **Etikett** (D25) kommt als PDF in Etikettengrösse, damit der Sato CL4NX
+Plus (D14) es 1:1 druckt — eine Seite je Etikett, `anzahl` wiederholt sie.
+Darauf stehen Jahrgang, Lieferant, UVP und Reduktionsstufe, dazu Marke,
+Bezeichnung, Farbe/Grösse und der **EAN-Strichcode**: ohne ihn bliebe genau
+der Artikel unscannbar, für den die interne EAN gedacht ist.
+
+| Angabe | Woher |
+|---|---|
+| Jahrgang | Jahr des letzten Wareneingangs dieses Artikels **in dieser Filiale** (Regel 6) |
+| Lieferant | `artikel.lieferant_id`, leer bei von Hand erfasster Ware (D23) |
+| UVP | neuester Eintrag im Preisverlauf der Variante |
+| Reduktion | Vorschlag nach Regel 6 (18 Monate → 50 %, 36 → 70 %), überschreibbar — die 30 % aus D25 sind eine Entscheidung des Ladens, keine Zeitregel |
+| Strichcode | EAN-13/EAN-8, UPC-12 als EAN-13 mit führender Null |
+
+Gezeichnet wird mit PyMuPDF (ohnehin für das Lesen der Rechnungen im
+Einsatz) und den im PDF eingebauten Schriften — keine zusätzliche
+Abhängigkeit, kein Internet, keine Schriftinstallation auf dem Drucker
+(Regel 1). Das Strichmuster rechnet `app/services/barcode.py` selbst aus;
+eine EAN-14 (Umkarton) ist ITF-14 und wird deshalb nur als Zahl gedruckt,
+ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
+einer, den die Kasse nicht annimmt.
+
+**Etikettengrösse:** einstellbar (`GROESSEN` in `app/services/etikett.py`),
+Voreinstellung 50 × 30 mm. Welche Rollen im Laden laufen, ist noch nicht
+bestätigt; sobald es feststeht, wird das die Voreinstellung. Die Modulbreite
+des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
+masslos in die Breite gezogen wird.
+
+Bedient wird das an zwei Stellen: auf der **Artikelseite** (EAN ansehen,
+erzeugen, nachtragen, Etikett drucken) und direkt nach der **manuellen
+Erfassung** — dort druckt ein Knopf die Etiketten des ganzen Wareneingangs,
+ein Etikett je Stück. Beides dürfen auch **Mitarbeiter** (Regel 9): es ist
+Lagerarbeit, kein Dokument.
+
 ## Lagerort aus der Lieferadresse
 
 Wohin ein Wareneingang gebucht wird, steht auf dem Beleg: der externe Händler
