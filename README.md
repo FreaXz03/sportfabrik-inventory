@@ -54,7 +54,9 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **OCR**: Tesseract (über `pytesseract`) als Fallback für eingescannte
   Papierrechnungen ohne Textebene
 - **Excel-Export**: openpyxl
-- **Frontend**: Vanilla HTML/CSS/JS, kein Framework, keine Build-Pipeline
+- **Frontend**: Vanilla HTML/CSS/JS, kein Framework, keine Build-Pipeline;
+  eine Stildatei (`app/static/css/app.css`) mit Design-Tokens für Hell- und
+  Dunkelmodus, lokal eingebundene Schrift, keine externen CDNs
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit

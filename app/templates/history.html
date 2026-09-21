@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="history.page_title">Rechnungen & Historie · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=i18n-1">
+     <link rel="stylesheet" href="/static/css/app.css?v=premium-1">
 </head>
 
 <body>
@@ -308,6 +308,7 @@
                               add(row, invoice);
 
                               add(row, link(`${item.brand ?? ''} ${item.description ?? ''}`, '/articles/' + item.product_id + '/history'));
+                              row.lastElementChild.className = 'description';
                               if (!article) add(row, item.ean);
                               add(row, `${item.article_no ?? '—'} / ${item.supplier_article_no ?? '—'}`);
                               add(row, item.color);
@@ -389,7 +390,7 @@
           document.addEventListener('sportfabrik:i18n-ready', load);
      </script>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/session.js?v=i18n-1"></script>
+     <script src="/static/js/session.js?v=premium-1"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>
      <script src="/static/js/article-details.js?v=i18n-1"></script>
 </body>

@@ -287,6 +287,38 @@ Für ältere oder sehbeeinträchtigte Mitarbeitende bietet die Artikelsuche
 zusätzlich eine Spalten-Auswahl (einzelne Spalten ausblenden) und grössere
 Schrift in der Ergebnistabelle, ebenfalls per `localStorage` gemerkt.
 
+### Gestaltung: ein Token-Satz für alle Seiten
+
+`app/static/css/app.css` ist die einzige Stilquelle (keine Inline-Styles in
+den Templates, keine externen CDNs — Regel 1). Der Aufbau ist in nummerierte
+Abschnitte gegliedert; Farben, Abstände, Radien, Schatten und Übergänge
+stehen ausschliesslich als Custom Properties in `:root`:
+
+- **Farben/Flächen**: `--bg`, `--surface`, `--surface-soft`, `--surface-alt`,
+  `--text`, `--text-muted`, `--text-faint`, `--border`, `--border-strong`,
+  `--accent` (Sport-Fabrik-Orange) und die Statusfarben `--danger-*`.
+- **Form**: `--radius-xs` … `--radius-xl` plus `--radius-pill` für Knöpfe,
+  `--shadow-sm/md/lg` für die Abstufung Karte → Panel → Overlay.
+- **Bewegung**: `--ease`, `--fast`, `--slow`; ein Block unter
+  `@media (prefers-reduced-motion: reduce)` schaltet alle Übergänge ab.
+- **Raster**: `--page-pad` und `--content-max` (1280 px, auf breiten Seiten
+  1680 px). Kopf- und Fusszeile rechnen ihren Innenabstand aus
+  `--content-max`, damit Navigation, Inhalt und Fusszeile auf derselben
+  Kante sitzen.
+
+Der Dunkelmodus definiert **nur** diese Tokens neu (zweimal: einmal für
+`prefers-color-scheme: dark`, einmal für die manuelle Wahl
+`:root[data-theme="dark"]`) — kein einziger Baustein hat eigene
+Dunkelmodus-Regeln. Wer eine Farbe ändern will, ändert sie an genau einer
+Stelle. `color-scheme` ist mitgesetzt, damit auch native Bedienelemente
+(Datumsfelder, Bildlaufleisten) zum Modus passen.
+
+Die Kopfzeile ist zweizeilig und bleibt beim Scrollen stehen (`sticky` mit
+`backdrop-filter`): Zeile 1 Marke + Navigation, Zeile 2 die von `session.js`
+erzeugte Sitzungsleiste. Ändert sich die Datei, muss der Cache-Parameter
+(`?v=…`) in den Templates mitgezogen werden — sonst sehen Filialrechner noch
+die alte Fassung.
+
 ## Fehlerbehandlung
 
 Durchgängiges Prinzip: lieber explizit fehlschlagen mit einer klaren, in der

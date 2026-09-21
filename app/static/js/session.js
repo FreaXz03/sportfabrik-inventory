@@ -54,7 +54,7 @@
       var settingsToggle=document.createElement('button');
       settingsToggle.type='button';
       settingsToggle.className='secondary settings-toggle';
-      settingsToggle.textContent='\u2699\ufe0f';
+      settingsToggle.textContent='\u2699';
       settingsToggle.title=t('common.settings');
       settingsToggle.setAttribute('aria-label',t('common.settings'));
       settingsToggle.setAttribute('aria-haspopup','true');

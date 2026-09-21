@@ -252,6 +252,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | B — Wareneingang v2: FEDAS-Kategorievorschlag | ⏳ Infrastruktur fertig, restliche Codes offen (siehe unten) |
 | B (übrige Punkte), C–G | offen |
+| Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (SF1–SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet.
@@ -315,6 +316,29 @@ mit neuen Tests belegt:
   ältestes Eingangsdatum, GEWA-Regel, Neuberechnung beim Löschen — diese Kernlogik aus Regel 2
   hatte bis dahin keinen einzigen Test) und zwei Katalogtests in `tests/test_i18n.py`, die Keys
   und Platzhalter aller drei Sprachen vergleichen. Gesamtsuite: 145 bestandene Tests.
+
+**Details zur Überarbeitung der Oberfläche** (siehe `docs/architektur.md`, Abschnitt
+„Gestaltung: ein Token-Satz für alle Seiten"):
+- `app/static/css/app.css` vollständig neu aufgebaut: nummerierte Abschnitte, alle Farben,
+  Abstände, Radien, Schatten und Übergänge als Custom Properties in `:root`. Der Dunkelmodus
+  definiert nur noch diese Tokens neu, kein Baustein hat eigene Dunkelmodus-Regeln.
+- Ruhigere Grundfläche, klarere Schriftstufen, feine Trennlinien statt Zebrastreifen in den
+  Tabellen, weiche Schatten statt farbiger Rahmen; das Orange bleibt Akzent für die
+  Hauptaktion, Verweise und Warnungen. Die Marke selbst ist unverändert.
+- Zweizeilige, beim Scrollen stehende Kopfzeile (Marke + Navigation, darunter die
+  Sitzungsleiste); Kopf- und Fusszeile richten sich über `--content-max` an derselben Kante
+  aus wie der Inhalt. Vorher lief die Navigation über die Inhaltsbreite hinaus.
+- Bedienelemente vereinheitlicht: Knöpfe mit Zustandsfarben und Drück-Rückmeldung, Felder mit
+  weichem Fokusring statt dickem Rahmen, `<select>` mit eigenem Pfeil, Sprachwahl als
+  segmentierte Steuerung, „Werte bearbeiten" als sauberer Schalter, Zahnrad einfarbig.
+- Zugänglichkeit: sichtbarer Tastaturfokus bleibt erhalten, `color-scheme` für native
+  Bedienelemente, `@media (prefers-reduced-motion: reduce)` schaltet alle Übergänge ab,
+  Mobilansicht ohne waagrechten Überlauf (vorher 428 px Inhalt auf 390 px Bildschirm).
+- Nebenbei behoben: In der Artikelsuche liess sich die Spalte „Marke" (`data-col="1"`) nicht
+  ausblenden — für sie fehlte die passende `hide-col-*`-Regel, das Häkchen blieb wirkungslos.
+- Keine neuen UI-Texte (Regel 7): die Änderung ist rein gestalterisch, alle Zeichenketten
+  laufen unverändert über die bestehenden Übersetzungs-Keys. Cache-Parameter der Templates
+  auf `?v=premium-1` gezogen, damit Filialrechner die neue Datei laden.
 
 **Offene Punkte aus dem Review** (bewusst nicht im Review-Commit geändert, siehe Abschnitt 9):
 - `dokumente.dokumentnummer` ist **global** eindeutig. Zwei verschiedene Lieferanten dürfen
