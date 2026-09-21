@@ -32,6 +32,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Erwartete Lieferungen**: Auftragsbestätigungen und Bestellungen kündigen
   Ware nur an — Bestand entsteht erst, wenn jemand die Ankunft bestätigt.
   Kommt weniger an, bleibt die Restmenge sichtbar offen.
+- **Ware von Hand erfassen** (Seite „Erfassen"): scannen oder eintippen,
+  ohne Beleg und ohne Parser — für Ware ohne Dokument und für Lieferanten,
+  deren Layout noch nicht erkannt wird. Pflicht sind nur Marke, Bezeichnung,
+  Menge und UVP; gebucht wird alles auf einmal als ein Wareneingang.
 - **Artikel ohne Barcode** sind kein Sonderfall: eine Position ohne EAN läuft
   mit Hinweis durch (Schlüssel ist dann Lieferant + Artikelnummer + Farbe +
   Grösse); eine unleserliche EAN blockiert den Import dagegen weiterhin.
@@ -125,6 +129,7 @@ app/
     article_details.py Notizen und Preisverlauf je Artikel
     preview.py         Upload-Vorschau, Korrekturvalidierung, Importbestätigung
     wareneingang.py    Erwartete Lieferungen ansehen und ihre Ankunft bestätigen
+    erfassung.py       Ware von Hand erfassen (Scanner-Nachschlag über die EAN, Buchen ohne Beleg)
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
@@ -138,6 +143,8 @@ app/
     lagerorte.py        Lagerort-Zuordnung eines Benutzers lesen (Filialwechsel, Ziel eines Wareneingangs)
     lieferadresse.py    Lagerort aus der Lieferadresse eines Dokuments erkennen (Vorschlag)
     wareneingang.py     Erwartete Lieferungen, Ankunft bestaetigen, Zugang buchen
+    manuelle_erfassung.py Ware ohne Beleg direkt einbuchen (D23/D27)
+    artikel.py          Artikel- und Variantenregeln (Regel 4/5) fuer Import und Erfassung gemeinsam
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)

@@ -271,7 +271,8 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 | B — Wareneingang v2, Teilaufgabe 3 (EAN wirklich optional) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 4 (Lagerort aus der Lieferadresse) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 5 (erwartet → eingetroffen) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
-| B — Wareneingang v2, Teilaufgaben 6–8 | offen (Aufteilung siehe unten) |
+| B — Wareneingang v2, Teilaufgabe 6 (manuelle Erfassung mit Scanner) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
+| B — Wareneingang v2, Teilaufgaben 7–8 | offen (Aufteilung siehe unten) |
 | C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -286,7 +287,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | ✅ abgeschlossen |
 | B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload **vorschlagen**, änderbar (D19); ein Beleg = ein Lagerort (D20) | ✅ abgeschlossen |
 | B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | ✅ abgeschlossen |
-| B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); ohne Beleg (D27) | offen |
+| B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); ohne Beleg (D27) | ✅ abgeschlossen |
 | B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | offen |
 | B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
 
@@ -495,6 +496,66 @@ D21, D22; siehe `docs/architektur.md`, Abschnitt „Erwartet → eingetroffen"):
 - **Offen geblieben:** Kommt *mehr* an als bestellt, bucht das System es
   (Bestand = was physisch da ist). Ob das so bleiben oder eine Warnung geben
   soll, ist mit Fabian zu klären.
+
+**Details zu Phase B, Teilaufgabe B6 — manuelle Erfassung mit Scanner**
+(D23, D27, Regel 3/5/6/9/10; siehe `docs/architektur.md`, Abschnitt „Ware von
+Hand erfassen"):
+- Zweiter Weg, auf dem Ware ins System kommt: ohne PDF, ohne Parser
+  (`app/services/manuelle_erfassung.py`, Seite `/erfassen`, Navigation
+  „Erfassen"). Gedacht für Ware ohne Dokument **und** für Lieferanten, deren
+  Layout noch kein Parser kennt — der Weg, der B5 und die Registry im Alltag
+  überhaupt erst benutzbar macht, solange nur ein Layout erkannt wird.
+- Migration `a7b8c9d0e1f2`: `wareneingaenge.dokument_id` und
+  `artikel.lieferant_id` dürfen leer bleiben. Ware ohne Dokument ist ein
+  direkter Wareneingang **ohne Beleg** (D27), ein Artikel braucht keinen
+  Lieferanten (D23). Bestehende Daten bleiben unberührt.
+- Pflicht sind nur **Marke, Bezeichnung, Menge und UVP** (D23). EAN, Farbe,
+  Grösse, Einheit, Lieferanten-Artikelnummer, EK und Lieferant sind
+  freiwillig (Regel 5 und Regel 10).
+- Gebucht wird sofort (Regel 3 — von Hand erfasst wird nur, was man in den
+  Händen hält), über **dieselbe** `buche_zugang()` und dieselbe Datenbank-
+  Sperre wie Import und Ankunftsbestätigung. Ein Aufruf = ein Wareneingang mit
+  allen Positionen, in einer Transaktion: entweder alles oder nichts.
+- Neues Modul `app/services/artikel.py`: die Artikel- und Variantenregeln
+  (Regel 4/5) stehen jetzt **einmal** da und werden von Import und Erfassung
+  gemeinsam benutzt — sonst wären die beiden Wege früher oder später
+  auseinandergelaufen. Dasselbe gilt für das EAN-Format, das sich die Vorschau
+  jetzt von dort holt.
+- Eingangsdatum: heute oder rückwirkend (D13); ein Lager ohne Verkauf (GEWA)
+  bekommt keines (Regel 6), das Datumsfeld verschwindet dann auch in der
+  Oberfläche.
+- Bedienung auf den Scanner zugeschnitten: Barcode scannen → bekannte EAN
+  füllt das Formular (Marke, Bezeichnung, Farbe, Grösse, Einheit, letzter
+  UVP/EK) → Menge tippen → Enter legt die Position in eine Liste → nächster
+  Artikel. Ein Knopf am Ende bucht alles. Unbekannte EAN wird übernommen, ohne
+  EAN geht es auch.
+- **Rechte:** Erfassen dürfen auch **Mitarbeiter** (Regel 9/D21) — es entsteht
+  kein Dokument, also greift das Dokumentrecht nicht. Der Ziel-Lagerort läuft
+  über dieselbe serverseitige Prüfung wie der Import (D26): vorgewählt ist die
+  aktive Filiale, buchbar sind alle Lagerorte. Im Browser bestätigt: die
+  Mitarbeiterin sieht „Erfassen", aber weiterhin kein „Rechnung hochladen".
+- Audit wie beim Import: je Position ein unveränderter Schnappschuss der
+  Eingabe in `wareneingang_positionen_quelle` (mit Benutzer und Zeitpunkt), die
+  Lagerbewegung trägt den Grund `manuelle-erfassung` (fester Schlüssel, kein
+  UI-Text).
+- Tests: `tests/test_manuelle_erfassung.py` (55 Tests: Pflichtfelder, Komma als
+  Dezimaltrennzeichen, eine falsche Position bucht nichts, Varianten mit und
+  ohne EAN, Bestand je Filiale, GEWA ohne Eingangsdatum, rückwirkendes und
+  zukünftiges Datum, Lieferant optional, EAN-Nachschlag, kompletter Weg über
+  die API als angemeldete Mitarbeiterin). Gesamtsuite: 288 bestandene Tests
+  (vorher 232).
+- Gegen echtes PostgreSQL 16 geprüft: Migration vor und zurück sowie im
+  Offline-Modus (`--sql`), Erfassung auf SF1/SF2/GEWA inkl. Bestand,
+  Lagerbewegungen, Preisverlauf und Quellen-Snapshot. Danach der ganze Ablauf
+  im Browser als Mitarbeiterin, auch auf Französisch.
+- Nebenbefund behoben: Die Seite `/wareneingaenge` hing ihren i18n-Listener an
+  `window`, das Ereignis wird aber auf `document` ausgelöst — ein Sprachwechsel
+  liess die vom Skript erzeugten Texte (Spaltenköpfe, Meldungen) stehen. Beide
+  Seiten warten jetzt auf den fertigen Katalog und zeichnen bei jedem
+  Sprachwechsel neu.
+- **Offen geblieben:** Kategorie (B8) und interne EAN samt Etikett (B7) fehlen
+  auch hier noch — ein von Hand erfasster Artikel ohne Hersteller-EAN ist an
+  der Kasse noch nicht scannbar.
 
 **Details zu Phase B, Teilaufgabe B3 — EAN wirklich optional** (Entscheid D18,
 siehe `docs/architektur.md`, Abschnitt „PDF-Parsing" → „Warnung oder Hinweis?"):

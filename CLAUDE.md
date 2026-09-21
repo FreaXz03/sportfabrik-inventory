@@ -79,9 +79,10 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
    ✅ abgeschlossen — Seite `/wareneingaenge`, Migration `f6a7b8c9d0e1`.
 6. **Manuelle Erfassung** mit Scanner (Z2), auch als Weg für unbekannte Layouts.
    Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); es entsteht **kein
-   Beleg** — direkter Wareneingang (D27).
-   ⬅ **nächster Schritt**
+   Beleg** — direkter Wareneingang (D27). ✅ abgeschlossen — Seite `/erfassen`,
+   Migration `a7b8c9d0e1f2`; erfassen dürfen auch Mitarbeiter (Regel 9/D21).
 7. **EAN nachtragen/generieren** (interne EAN-13, GS1 20–29) + Etikett als PDF.
+   ⬅ **nächster Schritt**
 8. **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist.
 
 Der FEDAS-Kategorievorschlag selbst ist als Infrastruktur fertig (Abschnitt 11);

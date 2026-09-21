@@ -133,6 +133,44 @@ Dokumentrecht. Unplausible Mengen, fremde Positionen oder eine bereits
 vollständig eingetroffene Lieferung ergeben HTTP 409, ein ungültiges Datum
 HTTP 422; gebucht wird in beiden Fällen nichts.
 
+## Ware von Hand erfassen (ohne Beleg)
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/erfassen` | Seite „Ware erfassen" (jede Anmeldung) |
+| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), bekannte Lieferanten, heutiges Datum vom Server |
+| GET | `/api/erfassen/variante?ean=<ean>` | Nachschlag für den Scanner: `{"gefunden": true, "variante": {…}}` mit Marke, Bezeichnung, Farbe, Grösse, Einheit und letztem UVP/EK als Vorschlag; unbekannte EAN ergibt `{"gefunden": false, "variante": null}` |
+| POST | `/api/erfassen` | Alle Positionen als **einen** Wareneingang ohne Beleg buchen (D27) |
+
+Rumpf von `POST /api/erfassen`:
+
+```json
+{
+  "positionen": [
+    {"marke": "Nike", "bezeichnung": "Poloshirt Court", "menge": "3", "uvp": "39.90",
+     "ean": "4006632041234", "farbe": "Weiss", "groesse": "M", "einheit": "Stk",
+     "lieferanten_artikelnr": "A1", "ek": "19.95"}
+  ],
+  "lagerort_id": 1,
+  "lieferant_id": null,
+  "eingangsdatum": "2026-09-21"
+}
+```
+
+Pflicht sind nur `marke`, `bezeichnung`, `menge` und `uvp` (D23); alles andere
+darf fehlen (Regel 5/10). Mengen und Preise sind **Text**, damit nichts über
+`float` läuft (Komma wird akzeptiert). Unbekannte Felder werden abgewiesen
+(HTTP 422). Ohne `lagerort_id` gilt die aktive Filiale, `eingangsdatum` ist
+ohne Angabe heute — in einem Lager ohne Verkauf bleibt es leer (Regel 6).
+
+Antwort: `{"wareneingang_id": …, "lagerort": {…}, "positionen": 2,
+"neue_varianten": 1, "bekannte_varianten": 1, "eingangsdatum": "2026-09-21"}`.
+
+Auch **Mitarbeiter** dürfen erfassen (Regel 9/D21) — es entsteht kein
+Dokument. Unplausible Eingaben (fehlendes Pflichtfeld, Menge ≤ 0, ungültige
+EAN, Datum in der Zukunft) ergeben HTTP 409 und buchen **nichts**; ein
+Lagerort ohne Zugriff ergibt HTTP 403, ein ungültiges Datumsformat HTTP 422.
+
 ## Sonstiges
 
 | Methode | Pfad | Zweck |

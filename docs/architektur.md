@@ -190,6 +190,50 @@ die offenen Lieferungen der aktiven Filiale, je Position erwartet / bereits da
 / offen und ein Feld für die jetzt eingetroffene Menge. Das dürfen auch
 **Mitarbeiter** (D21) — Ankunft bestätigen ist Lagerarbeit, kein Dokumentrecht.
 
+## Ware von Hand erfassen
+
+Der zweite Weg, auf dem Ware ins System kommt: **ohne PDF, ohne Parser**
+(`app/services/manuelle_erfassung.py`, Seite `/erfassen`). Gedacht für Ware
+ohne Dokument und für Lieferanten, deren Layout noch kein Parser kennt.
+
+D27: Ware ohne Dokument ist ein **direkter Wareneingang ohne Beleg** — es
+entsteht kein Eintrag in `dokumente`, `wareneingaenge.dokument_id` bleibt leer
+(Migration `a7b8c9d0e1f2`, dort auch `artikel.lieferant_id`). Gebucht wird
+sofort (Regel 3: von Hand erfasst wird nur, was man in den Händen hält), über
+**dieselbe** `buche_zugang()` und dieselbe Sperre wie Import und
+Ankunftsbestätigung.
+
+| Feld | Pflicht? | Bemerkung |
+|---|---|---|
+| Marke, Bezeichnung, Menge, UVP | ja (D23) | mehr wird nicht verlangt |
+| EAN | nein (Regel 5) | bekannte EAN füllt das Formular aus, unbekannte wird übernommen |
+| Farbe, Grösse | nein | zusammen mit Artikelnummer der Schlüssel ohne EAN |
+| Einheit, Lieferanten-Artikelnummer, EK | nein | EK nur speichern, wenn vorhanden (Regel 10) |
+| Lieferant | nein | gilt für den ganzen Wareneingang, nicht je Position |
+| Eingangsdatum | nein | heute oder rückwirkend (D13); Lager ohne Verkauf bekommt keines (Regel 6) |
+
+Artikel und Varianten werden über `app/services/artikel.py` gefunden — nach
+genau derselben Regel wie beim Import: bekannte EAN → bekannte Variante, sonst
+Lieferant + Artikelnummer + Farbe + Grösse. Das Modul gibt es, damit die
+beiden Wege nicht auseinanderlaufen. Ohne Lieferant wird unter den Artikeln
+ohne Lieferant gesucht; ein Artikel „Nike A1" mit Lieferant und einer ohne
+bleiben also getrennt.
+
+Ablauf in der Oberfläche (auf Scanner zugeschnitten): Barcode scannen →
+Formular ist ausgefüllt → Menge tippen → Enter legt die Position in eine Liste
+→ nächster Artikel. Erst **ein** Knopf am Ende bucht alle Positionen als einen
+Wareneingang, in einer Transaktion: entweder alles oder nichts. Geprüft wird
+serverseitig; der Browser prüft nur vorab, damit die Rückmeldung sofort kommt.
+
+Erfassen dürfen auch **Mitarbeiter** (Regel 9/D21) — es entsteht kein
+Dokument, also greift das Dokumentrecht nicht. Der Ziel-Lagerort läuft über
+dieselbe serverseitige Prüfung wie der Import (`resolve_wareneingang_lagerort`,
+D26), gebucht wird also auf jeden Lagerort, vorgewählt ist die aktive Filiale.
+Jede Position hinterlässt ausserdem einen unveränderten Schnappschuss der
+Eingabe in `wareneingang_positionen_quelle` (mit Benutzer und Zeitpunkt) und
+die Lagerbewegung den Grund `manuelle-erfassung` — ein fester Schlüssel, kein
+UI-Text.
+
 ## Lagerort aus der Lieferadresse
 
 Wohin ein Wareneingang gebucht wird, steht auf dem Beleg: der externe Händler
