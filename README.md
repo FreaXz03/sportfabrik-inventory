@@ -106,6 +106,9 @@ Dieses README ist der Schnelleinstieg. Ausführlichere Dokumentation liegt in
 - [`docs/SERVER-SETUP.md`](docs/SERVER-SETUP.md) — Docker-Build,
   Server-Einrichtung, Datenumzug, Betrieb
 - [`docs/BACKUPS.md`](docs/BACKUPS.md) — automatisierte, geprüfte Backups
+- [`docs/obsidian-graphify.md`](docs/obsidian-graphify.md) — Wissensgraph
+  des Codes mit Graphify erzeugen und in Obsidian öffnen; warum
+  `graphify-out/` nicht ins Repo gehört
 - [`docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx`](docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx) —
   kurze, nicht-technische Zusammenfassung für die Geschäftsleitung (kein
   Ersatz für die obigen technischen Dokumente)

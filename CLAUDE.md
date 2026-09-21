@@ -11,7 +11,7 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 
 ## Harte Regeln
 
-1. **Keine KI, keine externen Dienste.** Dokumenterkennung läuft vollständig lokal (PyMuPDF, Tesseract, OpenCV o. ä.). Keine Cloud-APIs, keine Daten verlassen den Server. Frontend ohne externe CDNs (muss im Ladennetz ohne Internet laufen).
+1. **Keine KI, keine externen Dienste.** Dokumenterkennung läuft vollständig lokal (PyMuPDF, Tesseract, OpenCV o. ä.). Keine Cloud-APIs, keine Daten verlassen den Server. Frontend ohne externe CDNs (muss im Ladennetz ohne Internet laufen). Gilt auch für Entwicklungswerkzeuge: Graphify nur mit `--code-only` laufen lassen, sonst gehen Rechnungen aus `uploads/` bzw. `Rechnungen/` an ein Sprachmodell (siehe `docs/obsidian-graphify.md`).
 2. **Bestand nie direkt überschreiben** — jede Änderung ist eine Zeile in `lagerbewegungen` (Zugang, Verkauf, Ausbuchung, Korrektur, Umlagerung). Bestand wird daraus abgeleitet bzw. konsistent mitgeführt.
 3. **Bestand erst buchen, wenn Ware eingetroffen ist** — Auftragsbestätigungen erzeugen nur einen *erwarteten* Wareneingang.
 4. **Artikelstamm ist filialübergreifend**, Bestand / Wareneingänge / Reduktionen sind filialbezogen (`lagerort_id`).
@@ -33,6 +33,19 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 - Serverseitig validieren — Client-Werten nie vertrauen (siehe `app/services/corrections.py`).
 - Struktur beibehalten: `app/core/` (DB, Modelle, Security), `app/routers/` (Endpunkte), `app/services/` (Logik), `app/static/`, `app/templates/`. Neue Lieferanten-Parser als eigene Module (z. B. `app/services/parsers/<lieferant>.py`) mit gemeinsamer Schnittstelle + automatischer Lieferanten-Erkennung.
 - Code und Bezeichner Englisch oder Deutsch wie im bestehenden Code; UI-Texte über i18n; Commit-Messages kurz und aussagekräftig.
+
+## Wissensgraph (Graphify)
+
+Liegt lokal ein `graphify-out/graph.json`, zuerst dort nachschlagen (Module,
+Funktionen, Aufrufbeziehungen), dann `docs/projekt-kontext.md` /
+`docs/architektur.md` für das Warum, und erst zuletzt einzelne Quelldateien
+öffnen. Der Graph ist eine Momentaufnahme — **bei Widerspruch gilt der
+Quellcode**.
+
+`graphify-out/` ist bewusst gitignored: das Repo ist öffentlich, und ein ohne
+`--code-only` gebauter Graph enthält Inhalte aus Lieferantenrechnungen.
+Cloud-Sessions haben den Graphen deshalb nicht. Details:
+`docs/obsidian-graphify.md`.
 
 ## Tests
 
