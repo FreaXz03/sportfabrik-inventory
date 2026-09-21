@@ -158,8 +158,12 @@ erDiagram
 Ein Datensatz je Lieferant. `typ` (`intersport`/`ecom`/`drittanbieter`/
 `extern`) und `parser_key` (verweist auf das passende Parser-Modul in
 `app/services/parsers/`, aktuell nur `intersport`) steuern die automatische
-Lieferanten-Erkennung beim Dokumenten-Upload (Phase B). Seed-Daten in
-`app/core/lieferanten.py`.
+Lieferanten-Erkennung beim Dokumenten-Upload: die Registry erkennt das Layout
+und der Import schlägt den Lieferanten über denselben `parser_key` nach
+(Phase B, Teilaufgabe B1 — siehe `docs/architektur.md`, „PDF-Parsing"). Ein
+Lieferant ohne passendes Parser-Modul (bzw. umgekehrt) lässt den Import
+scheitern, darum prüft `tests/test_parser_registry.py` beide Seiten
+gegeneinander. Seed-Daten in `app/core/lieferanten.py`.
 
 ### `kategorien`
 Kassenkategorien: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) ×
@@ -182,9 +186,18 @@ importer.py`), sofern die Kombination bekannt ist - sonst bleibt sie leer
 gesetzter Wert wird nie überschrieben, ein noch leerer aber bei einer
 späteren Rechnung mit bekanntem Code nachträglich befüllt.
 
+`lieferant_id` darf seit Migration `a7b8c9d0e1f2` **leer** sein: von Hand
+erfasste Ware braucht keinen Lieferanten (D23) — aus einem Lieferantendokument
+kommt er dagegen immer mit. Artikel ohne Lieferant werden untereinander
+zusammengeführt, aber nie mit den Artikeln eines Lieferanten vermischt
+(gemeinsame Regeln: `app/services/artikel.py`).
+
 ### `varianten`
 Farbe/Grösse/EAN eines Artikels (Regel 5: EAN optional — Schlüssel ohne EAN
-ist Lieferant + Artikelnummer + Farbe + Grösse über `artikel_id`).
+ist Lieferant + Artikelnummer + Farbe + Grösse über `artikel_id`). Seit
+Teilaufgabe B3 gilt das auch beim Upload: eine Position ohne EAN läuft mit
+Hinweis durch und landet als Variante mit leerer EAN. Mehrere solche Varianten
+stören sich nicht, weil NULL im Unique-Index nicht kollidiert.
 `ean_intern` markiert vom System generierte EANs (EAN-13 im GS1-Bereich
 20–29, Phase B, noch ungenutzt). `first_seen`/`last_seen` wie früher auf
 `products`, bei jedem Import/jeder Löschung neu berechnet.
@@ -196,23 +209,38 @@ und verweisendem Dokument. Ersetzt die frühere implizite Preishistorie über
 
 ### `dokumente`
 Verallgemeinert die frühere `invoices`-Tabelle auf alle Dokumenttypen aus D6
-(Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `dokumentnummer`
-und `datei_hash` sind eindeutig — verhindert Doppelimporte. **Offener Punkt:**
-`dokumentnummer` ist *global* eindeutig, nicht je Lieferant. Solange nur
-INTERSPORT liefert, ist das folgenlos; mit dem zweiten Lieferanten (Phase B)
-muss daraus `UNIQUE (lieferant_id, dokumentnummer)` werden, sonst lehnt der
-Import eine fremde Rechnung mit zufällig gleicher Belegnummer ab. `lagerort_id` ist
-die Zielfiliale (aktuell: die beim Upload aktive Filiale des hochladenden
-Kontos — automatische Erkennung aus der Lieferadresse folgt in Phase B).
+(Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `typ` kommt seit
+Teilaufgabe B1 aus dem Dokument selbst (das erkannte Parser-Modul liefert ihn
+mit) statt fest als `rechnung`; ohne erkannten Typ wird nicht importiert.
+`datei_hash` ist global eindeutig (dieselbe Datei ist dasselbe Dokument, egal
+von wem), die Belegnummer dagegen nur **je Lieferant**:
+`UNIQUE (lieferant_id, dokumentnummer)` seit Migration e5f6a7b8c9d0 (Phase B,
+Teilaufgabe B2). Belegnummern sind Lieferantensache und überschneiden sich
+zwangslos — vorher hätte die Rechnung eines neuen Lieferanten nur deshalb als
+Duplikat gegolten, weil INTERSPORT die Nummer schon verwendet hatte. Ist
+`lieferant_id` leer, greift die Eindeutigkeit nicht (NULL gilt als von allem
+verschieden); der Import weist ein Dokument ohne erkannten Lieferanten aber ab,
+darum kommt das nicht vor. Die verständliche Meldung („Rechnung … wurde bereits
+importiert") kommt aus dem Importer, der Constraint ist der Rückfall für zwei
+gleichzeitige Importe. `lagerort_id` ist die Zielfiliale: seit Teilaufgabe B4 der beim Import
+gewählte Lagerort, vorgeschlagen aus der Lieferadresse des Dokuments
+(`app/services/lieferadresse.py`, D19) und sonst die aktive Filiale. Ein
+Dokument hat genau einen Lagerort (D20).
 `ocr_verwendet` markiert Dokumente, die mangels Textebene per Tesseract-OCR
 gelesen wurden.
 
 ### `wareneingaenge`
 Ein Wareneingang je Dokument (aktuell 1:1, das Schema erlaubt später mehrere
-je Dokument z. B. bei Teillieferungen). `status` unterscheidet `erwartet`
+je Dokument z. B. bei Teillieferungen) — oder **ohne** Dokument: von Hand
+erfasste Ware ist ein direkter Wareneingang ohne Beleg (D27), `dokument_id`
+bleibt dann leer (Migration `a7b8c9d0e1f2`, Teilaufgabe B6). Ein solcher
+Wareneingang ist sofort `eingetroffen`. `status` unterscheidet `erwartet`
 (nur bei Auftragsbestätigungen — noch keine Bestandsbuchung, Regel 3) von
 `eingetroffen` (Ware ist da, `lagerbewegungen`/`bestand` werden geschrieben).
-INTERSPORT-Rechnungen sind immer `eingetroffen`.
+Rechnungen und Lieferscheine sind sofort `eingetroffen`, Auftragsbestätigungen
+und Bestellungen erst `erwartet` (Teilaufgabe B5). `eingangsdatum` wird beim
+ersten Zugang gesetzt — rückwirkend möglich (D13), in einem Lager ohne Verkauf
+gar nicht (Regel 6).
 
 `eingangsdatum` folgt Regel 6: Bei einer Filiale (`lagerorte.verkauf = true`)
 ist es das Rechnungsdatum, bei einem Lager ohne Verkauf (GEWA) bleibt es
@@ -225,12 +253,19 @@ Eine Zeile je Position eines Wareneingangs — verallgemeinert die frühere
 `invoice_items`-Tabelle. `wareneingang_positionen_quelle` ist der optionale
 1:1-Original-Snapshot (Rohtext, Seiten-/Zeilennummer, Parser-Warnungen,
 `correction_audit`) als JSON, genau wie früher `invoice_item_sources` —
-bleibt auch erhalten, wenn sich `varianten`/`artikel` später ändern.
+bleibt auch erhalten, wenn sich `varianten`/`artikel` später ändern. Bei
+manueller Erfassung steht dort die unveränderte Eingabe samt erfassender
+Person und Zeitpunkt (`quelle: "manuelle-erfassung"`). `menge` ist die Menge laut Beleg (erwartet),
+`menge_eingetroffen` die davon tatsächlich angekommene; die Differenz ist die
+offene Restmenge (D22, Migration `f6a7b8c9d0e1`). Bei Rechnung/Lieferschein
+sind beide von Anfang an gleich.
 
 ### `lagerbewegungen`
 Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
 `verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Jede importierte
-Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`. Benutzer wird
+Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`; von Hand
+erfasste Ware ebenso, dort mit `grund = 'manuelle-erfassung'` (ein fester
+Schlüssel, kein UI-Text — übersetzt wird erst bei der Anzeige). Benutzer wird
 als Momentaufnahme gespeichert (wie bei `dokumente`/`article_notes`), nicht
 als Fremdschlüssel.
 
@@ -290,6 +325,9 @@ oben):
 | `b2c3d4e5f6a7` | `users.language` (DE/FR/EN, Default `de`) inkl. Check-Constraint |
 | `c3d4e5f6a7b8` | Neues Datenmodell (Phase A Punkt 3): `lieferanten`, `kategorien`, `artikel`, `varianten`, `preise`, `dokumente`, `wareneingaenge`, `wareneingang_positionen` (+`_quelle`), `lagerbewegungen`, `bestand`; vollständige Datenmigration der Altdaten; `article_notes.product_id` → `artikel_id` |
 | `d4e5f6a7b8c9` | Reparatur: Id-Sequenzen der neuen Tabellen auf `MAX(id)` setzen. `c3d4e5f6a7b8` hat sie in seiner ersten Fassung nur nachgezogen, wenn es Altdaten gab — auf einer frischen Datenbank scheiterte dadurch der erste Insert ohne explizite Id. Idempotent, nur PostgreSQL, auf einer korrekten Datenbank ein No-Op |
+| `e5f6a7b8c9d0` | Belegnummer nur je Lieferant eindeutig (Teilaufgabe B2): `UNIQUE (lieferant_id, dokumentnummer)` statt global eindeutiger `dokumentnummer` |
+| `f6a7b8c9d0e1` | `wareneingang_positionen.menge_eingetroffen` (Teilaufgabe B5) inkl. Auffüllen der Altdaten — die Differenz zu `menge` ist die offene Restmenge (D22) |
+| `a7b8c9d0e1f2` | Manuelle Erfassung (Teilaufgabe B6): `wareneingaenge.dokument_id` und `artikel.lieferant_id` dürfen leer bleiben (Wareneingang ohne Beleg, D27; Artikel ohne Lieferant, D23) |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

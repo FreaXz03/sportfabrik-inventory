@@ -8,7 +8,7 @@
 * Regel 4 - Artikelstamm bleibt für immer; nur Bestand/Bewegungen gehen.
 
 Wie test_importer_fedas.py mit einem synthetischen Rechnungs-Payload
-(monkeypatch auf parse_invoice/invoice_dates), damit kein PDF nötig ist.
+(monkeypatch auf Layout-Erkennung und Parser), damit kein PDF nötig ist.
 """
 
 import hashlib
@@ -36,6 +36,7 @@ from app.core.models import (
     WareneingangPositionQuelle,
 )
 from app.services import importer
+from app.services.parsers import intersport
 from app.services.importer import delete_invoice, import_invoice
 
 
@@ -82,8 +83,11 @@ def setup(monkeypatch):
         "document_date": date(2026, 1, 9),
     }
 
-    def fake_parse_invoice(pdf, language="de"):
+    def fake_parse_with_parser(parser, document, language="de"):
         return {
+            "parser_key": intersport.KEY,
+            "supplier_name": intersport.LIEFERANT_NAME,
+            "document_type": "rechnung",
             "invoice_number": state["invoice_number"],
             "warnings": [],
             "rows_with_warnings": 0,
@@ -92,14 +96,19 @@ def setup(monkeypatch):
             "items": state["items"],
         }
 
-    def fake_invoice_dates(pdf, language="de"):
-        return {
-            "invoice_date": state["invoice_date"],
-            "document_date": state["document_date"],
-        }
+    class FakeParser:
+        KEY = intersport.KEY
+        LIEFERANT_NAME = intersport.LIEFERANT_NAME
 
-    monkeypatch.setattr(importer, "parse_invoice", fake_parse_invoice)
-    monkeypatch.setattr(importer, "invoice_dates", fake_invoice_dates)
+        @staticmethod
+        def dates(document, language="de"):
+            return {
+                "invoice_date": state["invoice_date"],
+                "document_date": state["document_date"],
+            }
+
+    monkeypatch.setattr(importer, "read_and_detect", lambda pdf, language="de": (None, FakeParser))
+    monkeypatch.setattr(importer, "parse_with_parser", fake_parse_with_parser)
     return sessions, lagerorte, state
 
 

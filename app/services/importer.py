@@ -4,10 +4,8 @@ preview confirmation. Deletion: chef-only, see app/auth.py."""
 from datetime import datetime, timezone
 from decimal import Decimal
 import hashlib
-import re
 
-import pymupdf
-from sqlalchemy import delete, func, select, or_, text
+from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.fedas import suggest_kategorie
@@ -26,10 +24,21 @@ from ..core.models import (
     WareneingangPosition,
     WareneingangPositionQuelle,
 )
-from .parser import page_content, parse_invoice
+from .artikel import (
+    artikel_group_key,
+    finde_artikel,
+    finde_variante_ohne_ean,
+    finde_variante_per_ean,
+)
+from .parsers import parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
+from .wareneingang import buche_zugang
 
-INTERSPORT_PARSER_KEY = "intersport"
+
+# D6/Regel 3: Rechnung und Lieferschein begleiten die Ware - sie ist da.
+# Auftragsbestätigung und Bestellung kündigen sie nur an; daraus wird ein
+# *erwarteter* Wareneingang ohne Bestand (siehe app/services/wareneingang.py).
+TYPEN_MIT_WARE = frozenset({"rechnung", "lieferschein"})
 
 
 class ImportRejected(ValueError):
@@ -38,56 +47,6 @@ class ImportRejected(ValueError):
 
 class DeleteRejected(ValueError):
     pass
-
-
-def invoice_dates(pdf, language: str = DEFAULT_LANGUAGE):
-    # Uses the same native-text-or-OCR fallback as parse_invoice, so dates are
-    # still found on scanned (paper) invoices - see parser.py. All pages are
-    # searched, not just the first: a scanned invoice's pages are not always
-    # in the order a digital export always uses (the header block with these
-    # dates can end up scanned onto a later page).
-    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
-        pages_words = [page_content(page, language)[0] for page in doc]
-    result = {}
-    # "Rechnungsdatum"/"Belegdatum" sind feste Textanker im INTERSPORT-Layout
-    # (immer Deutsch, unabhängig von der UI-Sprache) - nur die Fehlermeldung
-    # bei fehlendem/mehrdeutigem Datum wird übersetzt.
-    for label, key in [
-        ("Rechnungsdatum", "invoice_date"),
-        ("Belegdatum", "document_date"),
-    ]:
-        anchors = [(words, w) for words in pages_words for w in words if w[4] == label]
-        if len(anchors) != 1:
-            raise ImportRejected(translate(f"errors.importer.{key}_not_unique", language))
-        words, anchor = anchors[0]
-        candidates = [
-            w[4]
-            for w in words
-            if w[0] > anchor[2]
-            and abs(w[1] - anchor[1]) < 2
-            and re.fullmatch(r"\d{2}\.\d{2}\.\d{4}", w[4])
-        ]
-        if len(candidates) != 1:
-            raise ImportRejected(
-                translate(f"errors.importer.{key}_missing_or_ambiguous", language)
-            )
-        try:
-            result[key] = datetime.strptime(candidates[0], "%d.%m.%Y").date()
-        except ValueError as exc:
-            raise ImportRejected(translate(f"errors.importer.{key}_invalid", language)) from exc
-    return result
-
-
-def _artikel_group_key(brand: str | None, supplier_article_no: str | None):
-    """Gleiche Gruppierung wie die Alembic-Migration c3d4e5f6a7b8 und (bis zur
-    Umstellung) app/services/article_groups.py: gleiche Marke (ohne Gross-/
-    Kleinschreibung, getrimmt) UND gleiche, nicht-leere Lieferanten-
-    Artikelnummer (getrimmt) = ein Artikel. Fehlt die Nummer, bleibt jedes
-    Produkt ein eigener Artikel (None = immer neu anlegen)."""
-    number = (supplier_article_no or "").strip()
-    if not number:
-        return None
-    return ((brand or "").strip().lower(), number)
 
 
 def _backfill_artikel(session, kategorie_cache, artikel, item):
@@ -137,7 +96,11 @@ def import_invoice(
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
         raise ImportRejected(translate("errors.importer.hash_mismatch", language))
-    parsed = parse_invoice(pdf, language)
+    # Ein Lese-/OCR-Durchgang für alles: Lieferanten-Erkennung, Positionen und
+    # Datumsfelder arbeiten auf demselben eingelesenen Dokument (siehe
+    # app/services/parsers/).
+    document, parser = read_and_detect(pdf, language)
+    parsed = parse_with_parser(parser, document, language)
     if corrections:
         try:
             parsed = apply_corrections(parsed, corrections, imported_by, language)
@@ -149,7 +112,11 @@ def import_invoice(
         or parsed["rows_with_warnings"]
     ):
         raise ImportRejected(translate("errors.importer.locked_warnings", language))
-    dates = invoice_dates(pdf, language)
+    if not parsed.get("document_type"):
+        raise ImportRejected(
+            translate("errors.importer.document_type_unknown", language)
+        )
+    dates = parser.dates(document, language)
     for item in parsed["items"]:
         # Jedes Feld, das in eine begrenzte Spalte geschrieben wird - sonst
         # scheitert erst PostgreSQL mit einem DataError (der nicht als
@@ -192,11 +159,28 @@ def import_invoice(
             # different invoices that introduce the same EAN concurrently.
             if session.bind.dialect.name == "postgresql":
                 session.execute(text("SELECT pg_advisory_xact_lock(73421061)"))
+            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT):
+            # `parser_key` verbindet Parser-Modul und Lieferanten-Stammdaten.
+            # Muss vor der Duplikatsprüfung stehen, weil die Belegnummer nur
+            # beim jeweiligen Lieferanten eindeutig ist.
+            lieferant = session.scalar(
+                select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
+            )
+            if lieferant is None:
+                raise ImportRejected(
+                    translate("errors.importer.supplier_not_configured", language)
+                )
+            # Duplikat ist entweder dieselbe Datei (`datei_hash`, global) oder
+            # dieselbe Belegnummer **beim selben Lieferanten** - zwei Lieferanten
+            # dürfen dieselbe Nummer verwenden (siehe Migration e5f6a7b8c9d0).
             existing = session.scalar(
                 select(Dokument).where(
                     or_(
                         Dokument.datei_hash == digest,
-                        Dokument.dokumentnummer == parsed["invoice_number"],
+                        and_(
+                            Dokument.lieferant_id == lieferant.id,
+                            Dokument.dokumentnummer == parsed["invoice_number"],
+                        ),
                     )
                 )
             )
@@ -209,13 +193,6 @@ def import_invoice(
                         id=existing.id,
                     )
                 )
-            lieferant = session.scalar(
-                select(Lieferant).where(Lieferant.parser_key == INTERSPORT_PARSER_KEY)
-            )
-            if lieferant is None:
-                raise ImportRejected(
-                    translate("errors.importer.supplier_not_configured", language)
-                )
             # Regel 6: Ware an ein externes Lager (GEWA, `verkauf = False`)
             # bekommt noch KEIN Eingangsdatum - das wird erst bei Ankunft in
             # einer Filiale gesetzt, damit die Reduktionsuhr (18/36 Monate)
@@ -223,12 +200,15 @@ def import_invoice(
             lagerort_verkauft = session.scalar(
                 select(Lagerort.verkauf).where(Lagerort.id == lagerort_id)
             )
-            eingangsdatum = dates["invoice_date"] if lagerort_verkauft else None
+            ware_ist_da = parsed["document_type"] in TYPEN_MIT_WARE
+            eingangsdatum = (
+                dates["invoice_date"] if ware_ist_da and lagerort_verkauft else None
+            )
             now = datetime.now(timezone.utc)
             dokument = Dokument(
                 lieferant_id=lieferant.id,
                 lagerort_id=lagerort_id,
-                typ="rechnung",
+                typ=parsed["document_type"],
                 dokumentnummer=parsed["invoice_number"],
                 dokumentdatum=dates["invoice_date"],
                 belegdatum=dates["document_date"],
@@ -241,10 +221,14 @@ def import_invoice(
             )
             session.add(dokument)
             session.flush()
+            # Regel 3/D6: Nur Dokumente über tatsächlich gelieferte Ware buchen
+            # Bestand. Eine Auftragsbestätigung/Bestellung erzeugt einen
+            # *erwarteten* Wareneingang; gebucht wird erst bei bestätigter
+            # Ankunft (app/services/wareneingang.py).
             wareneingang = Wareneingang(
                 dokument_id=dokument.id,
                 lagerort_id=lagerort_id,
-                status="eingetroffen",
+                status="eingetroffen" if ware_ist_da else "erwartet",
                 eingangsdatum=eingangsdatum,
             )
             session.add(wareneingang)
@@ -261,22 +245,17 @@ def import_invoice(
                 # Treffer in der Datenbank ist echte Wiederverwendung.
                 variante = variante_cache.get(ean) if ean else None
                 if variante is None and ean:
-                    variante = session.scalar(select(Variante).where(Variante.ean == ean))
+                    variante = finde_variante_per_ean(session, ean)
                     if variante is not None:
                         reused_varianten.add(variante.id)
 
                 if variante is None:
-                    group_key = _artikel_group_key(item.get("brand"), item.get("supplier_article_no"))
+                    group_key = artikel_group_key(
+                        item.get("brand"), item.get("supplier_article_no")
+                    )
                     artikel = artikel_cache.get(group_key) if group_key else None
-                    if artikel is None and group_key:
-                        artikel = session.scalar(
-                            select(Artikel).where(
-                                Artikel.lieferant_id == lieferant.id,
-                                func.lower(func.trim(func.coalesce(Artikel.marke, "")))
-                                == group_key[0],
-                                func.trim(Artikel.lieferanten_artikelnr) == group_key[1],
-                            )
-                        )
+                    if artikel is None:
+                        artikel = finde_artikel(session, lieferant.id, group_key)
                     if artikel is None:
                         fedas_code = item.get("fedas_code") or None
                         artikel = Artikel(
@@ -296,12 +275,8 @@ def import_invoice(
 
                     variante = None
                     if not ean:
-                        variante = session.scalar(
-                            select(Variante).where(
-                                Variante.artikel_id == artikel.id,
-                                func.coalesce(Variante.farbe, "") == (item.get("color") or ""),
-                                func.coalesce(Variante.groesse, "") == (item.get("size") or ""),
-                            )
+                        variante = finde_variante_ohne_ean(
+                            session, artikel.id, item.get("color"), item.get("size")
                         )
                     if variante is None:
                         variante = Variante(
@@ -327,12 +302,15 @@ def import_invoice(
                 if ean:
                     variante_cache[ean] = variante
 
-                variante.first_seen = (
-                    min(variante.first_seen, seen) if variante.first_seen else seen
-                )
-                variante.last_seen = (
-                    max(variante.last_seen, seen) if variante.last_seen else seen
-                )
+                # „Erste/letzte Lieferung" zählt nur angekommene Ware - eine
+                # Ankündigung ist keine Lieferung (siehe wareneingang.py).
+                if ware_ist_da:
+                    variante.first_seen = (
+                        min(variante.first_seen, seen) if variante.first_seen else seen
+                    )
+                    variante.last_seen = (
+                        max(variante.last_seen, seen) if variante.last_seen else seen
+                    )
 
                 quantity = Decimal(item["quantity"])
                 uvp = Decimal(item["uvp"])
@@ -340,6 +318,7 @@ def import_invoice(
                     wareneingang_id=wareneingang.id,
                     varianten_id=variante.id,
                     menge=quantity,
+                    menge_eingetroffen=quantity if ware_ist_da else Decimal(0),
                     einheit=item["unit"],
                     uvp=uvp,
                 )
@@ -354,34 +333,17 @@ def import_invoice(
                         dokument_id=dokument.id,
                     )
                 )
-                session.add(
-                    Lagerbewegung(
+                if ware_ist_da:
+                    buche_zugang(
+                        session,
                         lagerort_id=lagerort_id,
                         varianten_id=variante.id,
-                        typ="zugang",
+                        position_id=position.id,
                         menge=quantity,
-                        wareneingang_position_id=position.id,
-                        benutzer_kassennummer=(imported_by or {}).get("kassennummer"),
-                        benutzer_name=(imported_by or {}).get("name"),
+                        eingangsdatum=eingangsdatum,
+                        benutzer=imported_by,
                         zeitpunkt=now,
                     )
-                )
-                bestand = session.get(Bestand, (variante.id, lagerort_id))
-                if bestand is None:
-                    bestand = Bestand(
-                        varianten_id=variante.id,
-                        lagerort_id=lagerort_id,
-                        menge=quantity,
-                        aeltestes_eingangsdatum=eingangsdatum,
-                    )
-                    session.add(bestand)
-                else:
-                    bestand.menge += quantity
-                    if eingangsdatum and (
-                        bestand.aeltestes_eingangsdatum is None
-                        or eingangsdatum < bestand.aeltestes_eingangsdatum
-                    ):
-                        bestand.aeltestes_eingangsdatum = eingangsdatum
 
             result = dict(
                 invoice_id=dokument.id,
@@ -496,16 +458,26 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
             # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
             # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an GEWA leer
             #   (Regel 6) und wuerde die Werte hier auf NULL zuruecksetzen.
+            # Datum der Lieferung: das Dokumentdatum, und bei manuell
+            # erfasster Ware (ohne Beleg, D27) das Eingangsdatum. Darum ein
+            # LEFT JOIN auf `dokumente` - sonst fielen genau diese
+            # Wareneingänge aus der Berechnung. Bleibt beides leer (von Hand
+            # an die GEWA erfasst, Regel 6), zählt dieser Wareneingang hier
+            # nicht mit - first_seen/last_seen sind reine Anzeigewerte, die
+            # Reduktionsuhr hängt an `bestand.aeltestes_eingangsdatum`.
+            datum = func.coalesce(Dokument.dokumentdatum, Wareneingang.eingangsdatum)
             first_seen, last_seen = session.execute(
-                select(
-                    func.min(Dokument.dokumentdatum), func.max(Dokument.dokumentdatum)
-                )
+                select(func.min(datum), func.max(datum))
                 .select_from(WareneingangPosition)
                 .join(
                     Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
                 )
-                .join(Dokument, Dokument.id == Wareneingang.dokument_id)
-                .where(WareneingangPosition.varianten_id == varianten_id)
+                .join(Dokument, Dokument.id == Wareneingang.dokument_id, isouter=True)
+                .where(
+                    WareneingangPosition.varianten_id == varianten_id,
+                    # Nur angekommene Ware zählt als Lieferung (Teilaufgabe B5).
+                    WareneingangPosition.menge_eingetroffen > 0,
+                )
             ).one()
             variante = session.get(Variante, varianten_id)
             variante.first_seen, variante.last_seen = first_seen, last_seen

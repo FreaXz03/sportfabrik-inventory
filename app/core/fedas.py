@@ -1,7 +1,7 @@
 """FEDAS-Code → Kassenkategorie-Vorschlag (Phase B, siehe projekt-kontext.md
 Abschnitt 6). FEDAS ist ein europäischer 6-stelliger Code für Sportartikel,
 der auf INTERSPORT-Rechnungen je Position mitgeliefert wird
-(`app/services/parser.py` erfasst ihn als `fedas_code`). 1. Ziffer =
+(`app/services/parsers/intersport.py` erfasst ihn als `fedas_code`). 1. Ziffer =
 Produktart (Hauptgruppe), Ziffern 2–3 = Sportart (Sportbereich) - beide
 offenbar unabhängig voneinander kombinierbar, siehe die beiden Tabellen
 unten.

@@ -96,14 +96,14 @@ def test_reuse_products_on_next_invoice(setup_import, monkeypatch):
 
     pdf, digest, sessions, _, sf1_id = setup_import
     import_invoice(pdf, "rechnung.pdf", digest, sessions, sf1_id)
-    original_parse = importer.parse_invoice
+    original_parse = importer.parse_with_parser
 
-    def another_invoice(data, language="de"):
-        parsed = original_parse(data, language)
+    def another_invoice(parser, document, language="de"):
+        parsed = original_parse(parser, document, language)
         parsed["invoice_number"] = "test-next-invoice"
         return parsed
 
-    monkeypatch.setattr(importer, "parse_invoice", another_invoice)
+    monkeypatch.setattr(importer, "parse_with_parser", another_invoice)
     changed = pdf + b"\n"
     result = import_invoice(
         changed, "next.pdf", hashlib.sha256(changed).hexdigest(), sessions, sf1_id
