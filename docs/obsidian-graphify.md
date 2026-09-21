@@ -53,9 +53,12 @@ Der Graph wird also immer lokal gebaut und bleibt vorerst auch lokal.
    vollständig ändern.
 
 Ein rein mit `--code-only` gebauter Graph wäre inhaltlich unbedenklich — er
-beschreibt nur Code, der ohnehin öffentlich im Repo steht. Ob ein solcher
-Graph künftig mitversioniert wird, damit auch Cloud-Sessions ihn lesen können,
-ist noch **offen**. Bis dahin gilt: nichts aus `graphify-out/` einchecken.
+beschreibt nur Code, der ohnehin öffentlich im Repo steht. Trotzdem **bleibt
+der Graph bewusst lokal** (Entscheid Fabian, 22.09.2026): der Nutzen in
+Cloud-Sessions wiegt den Aufwand und das Restrisiko nicht auf, jedes Mal an
+`--code-only` denken zu müssen. Cloud-Sessions lesen den Code direkt.
+
+Es wird also nichts aus `graphify-out/` eingecheckt.
 
 ## Einrichtung (lokaler Rechner)
 
@@ -93,6 +96,11 @@ Optional führt ein post-commit-Hook den Graphen automatisch nach:
 ```bash
 graphify hook install
 ```
+
+**Vorsicht:** vor dem Einrichten prüfen, ob der Hook ebenfalls mit
+`--code-only` läuft — sonst liest er bei jedem Commit stillschweigend die
+Rechnungen aus `uploads/` und `Rechnungen/` mit. Im Zweifel keinen Hook
+installieren und den Graphen von Hand nachführen.
 
 ## Obsidian
 
