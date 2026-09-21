@@ -247,7 +247,7 @@ Lieferanten gleich funktioniert. Die Adressen kommen als Werte herein
 |---|---|---|
 | Postleitzahl | 3 | eindeutig je Ort, kurz, überlebt OCR am besten |
 | Ortsname | 2 | bestätigt die PLZ, steht auch ohne sie oft da |
-| Name des Lagerorts (z. B. „GEWA“) | 2 | auf der CMP-Auftragsbestätigung steht als Ziel nur „GEWA“ |
+| Name des Lagerorts (z. B. „GEWA“, „VEBO“) | 2 | auf der CMP-Auftragsbestätigung steht als Ziel nur „GEWA“. Nur *unterscheidende* Wörter zählen: „Lager Dietikon“ liefert kein Kennwort, sonst schlüge jeder Beleg mit dem Wort „Lager“ an — dort trägt der Ortsname |
 | Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF3 |
 
 Gesucht wird in zwei Durchgängen: zuerst im Umfeld eines Lieferadress-Ankers
@@ -267,7 +267,7 @@ Oberfläche nichts, bleibt es bei der aktiven Filiale — wie vorher.
 
 Buchbar sind **alle** Lagerorte, die eigene Filiale zuerst
 (`list_wareneingang_lagerorte`). Sonst liesse sich eine Lieferung an eine
-andere Filiale oder an die GEWA gar nicht erfassen, und D19 wäre genau für die
+andere Filiale oder an einen externen Standort gar nicht erfassen, und D19 wäre genau für die
 Fälle wirkungslos, für die es gedacht ist. Filialwechsel und Leseansichten
 bleiben unverändert bei den zugewiesenen Filialen. Ein Beleg hat dabei genau
 einen Lagerort (D20); verteilt wird die Ware danach über eine Umlagerung.

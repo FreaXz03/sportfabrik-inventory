@@ -51,7 +51,7 @@ ANKER = (
 ANKER_FENSTER = 200
 
 # Punkte je Merkmal: die Postleitzahl ist das schärfste Signal (eindeutig je
-# Ort), Ortsname und ein eigener Lagerort-Name („GEWA") sind fast so gut, der
+# Ort), Ortsname und ein eigener Lagerort-Name („GEWA", „VEBO") sind fast so gut, der
 # Strassenname ist nur eine Bestätigung. MINDESTPUNKTE sorgt dafür, dass eine
 # Strasse allein nie genügt: „Industriestrasse" steht bei SF1 *und* SF3 im
 # Adressfeld - und auf dem Briefkopf vieler Lieferanten.
@@ -132,14 +132,30 @@ def _strassenname(strasse: str) -> str:
     return ohne_nummer.strip(" ,.-")
 
 
+# Wörter, die im Namen eines Lagerorts stehen können, ihn aber nicht
+# unterscheiden - „Lager Dietikon" darf nicht dazu führen, dass jeder Beleg mit
+# dem Wort „Lager" dort landet.
+_ALLERWELTSWOERTER = frozenset(
+    {"lager", "filiale", "externes", "externe", "extern", "verarbeitung", "sportfabrik"}
+)
+
+
 def _kennwort(lagerort: LagerortAdresse) -> str:
-    """Erstes Wort des Lagerort-Namens, sofern es nicht einfach der Ort ist:
-    bei der GEWA steht auf Belegen oft nur „GEWA" ohne Adresse, bei den
-    Filialen ist der Name gleich dem Ort und bringt nichts Neues."""
-    erstes = re.split(r"[\s(,/]", lagerort.name.strip(), maxsplit=1)[0] if lagerort.name else ""
-    if len(erstes) < 3 or _normalisiert(erstes) == _normalisiert(lagerort.ort or ""):
+    """Das erste unterscheidende Wort des Lagerort-Namens, sonst „".
+
+    Bei GEWA und VEBO steht auf Belegen oft nur der Name ohne Adresse - der ist
+    dann das einzige Signal. Bei den Filialen ist der Name gleich dem Ort und
+    bringt nichts Neues, bei „Lager Dietikon" ebenso (nur eben ein Wort
+    später). Allerweltswörter zählen nie, sonst erzeugen sie Fehltreffer."""
+    if not lagerort.name:
         return ""
-    return erstes
+    ort = _normalisiert(lagerort.ort or "")
+    for wort in re.split(r"[\s(,/]+", lagerort.name.strip()):
+        normalisiert = _normalisiert(wort)
+        if len(wort) < 3 or normalisiert == ort or normalisiert in _ALLERWELTSWOERTER:
+            continue
+        return wort
+    return ""
 
 
 def _merkmale(text: str, lagerort: LagerortAdresse) -> tuple[str, ...]:

@@ -54,7 +54,8 @@ def list_wareneingang_lagerorte(session: Session, user: User) -> list[Lagerort]:
 
     Begründung (D19/D20): das Ziel bestimmt der Beleg über seine Lieferadresse,
     nicht die gerade aktive Filiale. Eine Lieferung an eine andere Filiale oder
-    an die GEWA (die kein eigenes Personal hat, D11) liesse sich sonst gar nicht
+    an einen externen Standort (GEWA, VEBO, Dietikon - ohne eigenes Personal,
+    D11) liesse sich sonst gar nicht
     erfassen - genau der Fall „Rechnung an Volketswil, Lieferadresse Conthey"
     aus projekt-kontext.md Abschnitt 6. Wer hier überhaupt hinkommt, darf
     Dokumente hochladen (Filialleiter oder Admin, Regel 9); eine falsch

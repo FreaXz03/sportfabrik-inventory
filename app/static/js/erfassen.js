@@ -35,8 +35,8 @@
   }
 
   function datumUmschalten() {
-    // Regel 6/D13: Ein Lager ohne Verkauf (GEWA) bekommt kein Eingangsdatum -
-    // die Reduktionsuhr startet erst in der Filiale.
+    // Regel 6/D13: Ein Standort ohne Verkauf (GEWA, VEBO, Dietikon) bekommt
+    // kein Eingangsdatum - die Reduktionsuhr startet erst in der Filiale.
     const lagerort = gewaehlterLagerort();
     const verkauf = !lagerort || lagerort.verkauf;
     $('datumFeld').hidden = !verkauf;

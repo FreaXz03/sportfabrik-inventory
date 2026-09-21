@@ -136,8 +136,9 @@ def test_preview_without_a_delivery_address_makes_no_suggestion(umgebung):
 
 def test_preview_offers_every_lagerort_with_the_own_branch_first(umgebung):
     """Das Ziel bestimmt der Beleg (D19/D20), nicht die aktive Filiale: auch
-    eine Lieferung an eine andere Filiale oder an die GEWA muss buchbar sein.
-    Die eigene Filiale steht vorn, weil sie der Normalfall ist."""
+    eine Lieferung an eine andere Filiale oder an einen externen Standort muss
+    buchbar sein. Die eigene Filiale steht vorn, weil sie der Normalfall ist,
+    die externen Standorte hinten."""
     client, _, _ = umgebung
     body = _upload(client, _invoice_pdf(header_lines=KOPF)).json()
     assert [o["code"] for o in body["lagerort_options"]] == [
@@ -146,6 +147,8 @@ def test_preview_offers_every_lagerort_with_the_own_branch_first(umgebung):
         "SF3",
         "SF4",
         "GEWA",
+        "VEBO",
+        "DIETIKON",
     ]
 
 

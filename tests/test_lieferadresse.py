@@ -36,8 +36,13 @@ def code(text):
 # --- Volladresse je Lagerort ----------------------------------------------
 
 
+# VEBO hat (noch) keine Adresse in den Seed-Daten und wird deshalb hier
+# ausgelassen - erkannt wird es über seinen Namen, siehe weiter unten.
+MIT_ADRESSE = [e for e in LAGERORTE_SEED if e["plz"] or e["ort"]]
+
+
 @pytest.mark.parametrize(
-    "eintrag", LAGERORTE_SEED, ids=[e["code"] for e in LAGERORTE_SEED]
+    "eintrag", MIT_ADRESSE, ids=[e["code"] for e in MIT_ADRESSE]
 )
 def test_every_lagerort_is_recognised_by_its_own_address(eintrag):
     text = (
@@ -105,6 +110,20 @@ def test_umlauts_written_either_way(schreibweise):
     """Belege schreiben Umlaute mal als „ä", mal als „ae" (die Sportfabrik
     selbst benutzt haegendorf@sportfabrik.ch)."""
     assert code(f"Lieferadresse Sportfabrik {schreibweise}") == "SF3"
+
+
+def test_vebo_is_recognised_by_its_name_alone():
+    """VEBO ist die zweite Verarbeitungsstelle und hat in den Seed-Daten noch
+    keine Adresse - der Name muss deshalb allein genügen."""
+    assert code("Lieferung an VEBO") == "VEBO"
+
+
+def test_generic_word_in_a_lagerort_name_is_not_a_match():
+    """„Lager Dietikon" darf nicht dazu führen, dass jeder Beleg, auf dem das
+    Wort „Lager" steht, dort gebucht wird - nur unterscheidende Wörter zählen
+    (siehe _kennwort). Über den Ortsnamen wird Dietikon trotzdem gefunden."""
+    assert code("Lieferung ab Lager, Ware folgt") is None
+    assert code("Lieferadresse: Sport Fabrik AG, Dietikon") == "DIETIKON"
 
 
 def test_gewa_is_recognised_by_its_name_alone():

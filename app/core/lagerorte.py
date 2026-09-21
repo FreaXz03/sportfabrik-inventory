@@ -67,7 +67,7 @@ LAGERORTE_SEED = [
     },
     {
         # Adresse noch offen - sobald sie da ist hier und in der Migration
-        # e5f6a7b8c9d0 nachtragen (nötig für die Lagerort-Erkennung aus der
+        # b8c9d0e1f2a3 nachtragen (nötig für die Lagerort-Erkennung aus der
         # Lieferadresse, Phase B).
         "code": "VEBO",
         "name": "VEBO (externe Verarbeitung)",

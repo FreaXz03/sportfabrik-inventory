@@ -16,8 +16,8 @@ Die Regeln dahinter:
 * **Ware ist da** (Regel 3): Von Hand erfasst wird nur, was man in den Händen
   hält. Der Wareneingang ist deshalb sofort `eingetroffen` und wird gebucht;
   ein *erwarteter* Eingang entsteht hier nie.
-* **Eingangsdatum** (Regel 6/D13): heute oder rückwirkend; ein Lager ohne
-  Verkauf (GEWA) bekommt keines.
+* **Eingangsdatum** (Regel 6/D13): heute oder rückwirkend; ein Standort ohne
+  Verkauf (GEWA, VEBO, Dietikon) bekommt keines.
 * **Bestand** (Regel 2): nie direkt schreiben, sondern über dieselbe
   `buche_zugang()` wie Import und Ankunftsbestätigung.
 * **Rechte** (Regel 9/D21): Erfassen ist Lagerarbeit und kein
@@ -270,8 +270,9 @@ def erfasse_wareneingang(
                 )
 
             gesehen = eingangsdatum or heute
-            # Regel 6/D13: Im Lager ohne Verkauf (GEWA) startet die
-            # Reduktionsuhr nicht - also kein Eingangsdatum.
+            # Regel 6/D13: An einem Standort ohne Verkauf (GEWA, VEBO,
+            # Dietikon) startet die Reduktionsuhr nicht - also kein
+            # Eingangsdatum.
             datum = gesehen if lagerort.verkauf else None
             jetzt = datetime.now(timezone.utc)
 

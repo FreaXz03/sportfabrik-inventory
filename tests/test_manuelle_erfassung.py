@@ -533,6 +533,8 @@ def test_api_stammdaten_liefert_lagerorte_und_lieferanten(client):
         "SF3",
         "SF4",
         "GEWA",
+        "VEBO",
+        "DIETIKON",
     }
     assert daten["lagerort_aktiv"] == codes["SF1"]
     assert daten["lieferanten"][0]["name"] == "INTERSPORT Schweiz AG"

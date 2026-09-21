@@ -298,7 +298,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
-- Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `e5f6a7b8c9d0` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
+- Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
 - `users.role` um `admin` erweitert (Rollen: `mitarbeiter`, `chef` = Filialleiter, `admin` = Zentrale), Rechte gemäss Regel 9 in `app/routers/auth.py` und `app/routers/article_details.py` umgesetzt.
 - Filialwechsel in der Oberfläche: `/api/me` liefert aktive Filiale + wählbare Filialen, `POST /api/active-lagerort` wechselt sie (Admin zusätzlich „Alle Filialen“); UI-Auswahl in der Session-Leiste (`app/static/js/session.js`).
 - `scripts/manage_users.py` erweitert um Filialzuordnung (`add-mitarbeiter`/`add-chef <kassennummer> <name> <lagerort-codes...>`) und `add-admin`.
@@ -659,5 +659,29 @@ mit neuen Tests belegt:
 - Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
   angemeldeten Konto die Dokumente **aller** Filialen. Ob Regel 9 („Admin/Zentrale
   filialübergreifend") auch das Lesen einschränken soll, ist eine fachliche Frage an Fabian.
+
+**Konzeptänderung Rev. 6** (21.09.2026): zwei externe Verarbeitungsstellen statt
+einer, plus ein externes Lager.
+- Neu neben GEWA: **VEBO** (fachlich gleichwertige Verarbeitungsstelle) und das
+  **Lager Dietikon**. Alle drei mit `verkauf = false`, Migration `b8c9d0e1f2a3`
+  (idempotent; der Downgrade löscht einen neuen Lagerort nur, solange nichts
+  daran hängt). GEWA heisst jetzt „GEWA (externe Verarbeitung)“, damit der
+  Unterschied zum reinen Lager im Namen sichtbar ist.
+- Regel 6 gilt unverändert für alle drei: kein Eingangsdatum, die Reduktionsuhr
+  startet erst in einer Filiale SF1–SF4. Der Code fragt dafür immer
+  `lagerorte.verkauf` ab und nie einen einzelnen Code — ein weiterer externer
+  Standort greift dadurch automatisch. Verarbeitungsstelle und Lager
+  unterscheidet das Schema bewusst nicht (bestätigt am 21.09.2026).
+- `app/services/lieferadresse.py`: Das Kennwort für die Lagerort-Erkennung ist
+  jetzt das erste **unterscheidende** Wort des Namens. „Lager Dietikon“ hätte
+  sonst „Lager“ als Kennwort bekommen und jeden Beleg mit diesem Wort dorthin
+  gebucht; erkannt wird Dietikon über den Ortsnamen, VEBO über seinen Namen.
+- Tests für Eingangsdatum und Bestand über alle drei Standorte parametrisiert
+  (`tests/test_lagerbewegungen.py`: 10 → 16), dazu zwei neue Fälle in
+  `tests/test_lieferadresse.py` (VEBO über den Namen, „Lager“ darf nicht
+  treffen). Gesamtsuite: 297 bestandene Tests.
+- **Offen**: die Adressen von VEBO und Dietikon fehlen noch und sind in
+  `app/core/lagerorte.py` als offen markiert. Bis sie da sind, wird VEBO nur
+  über seinen Namen erkannt und Dietikon nur über den Ortsnamen.
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*

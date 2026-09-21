@@ -15,8 +15,8 @@ Die Regeln dazu:
 * **Rechte** (D21): Ankunft bestätigen ist Lagerarbeit, das dürfen auch
   Mitarbeiter - anders als das Hochladen von Dokumenten (Regel 9).
 * **Eingangsdatum** (Regel 6 / D13): Wird beim ersten Zugang gesetzt, auf
-  Wunsch rückwirkend. Ware in einem Lager ohne Verkauf (GEWA) bekommt keines -
-  die Reduktionsuhr startet erst in der Filiale.
+  Wunsch rückwirkend. Ware an einem Standort ohne Verkauf (GEWA, VEBO,
+  Dietikon) bekommt keines - die Reduktionsuhr startet erst in der Filiale.
 * **Bestand** (Regel 2): nie direkt schreiben, sondern als Lagerbewegung
   buchen - dieselbe Funktion wie beim Import (`buche_zugang`).
 """
@@ -236,7 +236,8 @@ def bestaetige_ankunft(
         if not gebucht:
             raise AnkunftRejected(translate("errors.wareneingang.nothing_to_book", language))
 
-        # Regel 6/D13: Ein Lager ohne Verkauf (GEWA) bekommt kein Eingangsdatum.
+        # Regel 6/D13: Ein Standort ohne Verkauf (GEWA, VEBO, Dietikon)
+        # bekommt kein Eingangsdatum - massgeblich ist `verkauf`, nie der Code.
         lagerort_verkauft = session.scalar(
             select(Lagerort.verkauf).where(Lagerort.id == wareneingang.lagerort_id)
         )
