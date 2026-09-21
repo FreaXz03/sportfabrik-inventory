@@ -273,8 +273,15 @@ class Preis(Base):
 
 
 class Wareneingang(Base):
-    """Wareneingang: erwartet → eingetroffen (Regel 3, D6). Bestand wird erst
-    gebucht, wenn `status = 'eingetroffen'` ist (siehe `lagerbewegungen`)."""
+    """Wareneingang: erwartet → eingetroffen (Regel 3, D6).
+
+    `erwartet` kommt von Auftragsbestätigungen und Bestellungen: die Ware ist
+    angekündigt, aber noch nicht da - es gibt keine Lagerbewegung, keinen
+    Bestand und kein Eingangsdatum. Erst die bestätigte Ankunft bucht
+    (`app/services/wareneingang.py`). Kommt nur ein Teil an, bleibt der
+    Wareneingang `erwartet`, bis keine Position mehr offen ist (D22); der
+    bereits gebuchte Teil steht in `wareneingang_positionen.menge_eingetroffen`.
+    """
 
     __tablename__ = "wareneingaenge"
     __table_args__ = (
@@ -293,7 +300,13 @@ class Wareneingang(Base):
 
 class WareneingangPosition(Base):
     """Eine Position (Zeile) eines Wareneingangs - verallgemeinert die frühere
-    invoice_items-Tabelle."""
+    invoice_items-Tabelle.
+
+    `menge` ist die Menge laut Beleg (erwartet), `menge_eingetroffen` die
+    davon tatsächlich angekommene. Die Differenz ist die offene Restmenge
+    (D22). Bei einer Rechnung/einem Lieferschein sind beide von Anfang an
+    gleich, weil die Ware mit dem Beleg kommt.
+    """
 
     __tablename__ = "wareneingang_positionen"
 
@@ -305,6 +318,9 @@ class WareneingangPosition(Base):
     varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
 
     menge: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    menge_eingetroffen: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=0, server_default=text("0")
+    )
     einheit: Mapped[str | None] = mapped_column(String(30))
     uvp: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     ek: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))

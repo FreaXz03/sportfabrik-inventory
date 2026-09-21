@@ -123,6 +123,17 @@ def require_active_lagerort(
     return lagerort
 
 
+def get_active_lagerort(
+    request: Request,
+    user: User = Depends(require_login_api),
+    session=Depends(get_session),
+) -> Lagerort | None:
+    """Aktive Filiale für Ansichten, die ohne sie auskommen (dann eben
+    filialübergreifend) - im Gegensatz zu `require_active_lagerort`, das eine
+    Filiale erzwingt, weil gebucht wird."""
+    return _resolve_active_lagerort(request, session, user)
+
+
 def resolve_wareneingang_lagerort(
     request: Request, session, user: User, lagerort_id: int | None, language: str
 ) -> Lagerort:

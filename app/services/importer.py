@@ -26,6 +26,13 @@ from ..core.models import (
 )
 from .parsers import parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
+from .wareneingang import buche_zugang
+
+
+# D6/Regel 3: Rechnung und Lieferschein begleiten die Ware - sie ist da.
+# Auftragsbestätigung und Bestellung kündigen sie nur an; daraus wird ein
+# *erwarteter* Wareneingang ohne Bestand (siehe app/services/wareneingang.py).
+TYPEN_MIT_WARE = frozenset({"rechnung", "lieferschein"})
 
 
 class ImportRejected(ValueError):
@@ -199,7 +206,10 @@ def import_invoice(
             lagerort_verkauft = session.scalar(
                 select(Lagerort.verkauf).where(Lagerort.id == lagerort_id)
             )
-            eingangsdatum = dates["invoice_date"] if lagerort_verkauft else None
+            ware_ist_da = parsed["document_type"] in TYPEN_MIT_WARE
+            eingangsdatum = (
+                dates["invoice_date"] if ware_ist_da and lagerort_verkauft else None
+            )
             now = datetime.now(timezone.utc)
             dokument = Dokument(
                 lieferant_id=lieferant.id,
@@ -218,14 +228,13 @@ def import_invoice(
             session.add(dokument)
             session.flush()
             # Regel 3/D6: Nur Dokumente über tatsächlich gelieferte Ware buchen
-            # Bestand. Bisher erkennt die Registry ausschliesslich Rechnungen
-            # (siehe app/services/parsers/), darum immer „eingetroffen"; mit
-            # Auftragsbestätigungen/Bestellungen kommt hier der Status
-            # „erwartet" dazu (nächster Teilschritt von Phase B).
+            # Bestand. Eine Auftragsbestätigung/Bestellung erzeugt einen
+            # *erwarteten* Wareneingang; gebucht wird erst bei bestätigter
+            # Ankunft (app/services/wareneingang.py).
             wareneingang = Wareneingang(
                 dokument_id=dokument.id,
                 lagerort_id=lagerort_id,
-                status="eingetroffen",
+                status="eingetroffen" if ware_ist_da else "erwartet",
                 eingangsdatum=eingangsdatum,
             )
             session.add(wareneingang)
@@ -308,12 +317,15 @@ def import_invoice(
                 if ean:
                     variante_cache[ean] = variante
 
-                variante.first_seen = (
-                    min(variante.first_seen, seen) if variante.first_seen else seen
-                )
-                variante.last_seen = (
-                    max(variante.last_seen, seen) if variante.last_seen else seen
-                )
+                # „Erste/letzte Lieferung" zählt nur angekommene Ware - eine
+                # Ankündigung ist keine Lieferung (siehe wareneingang.py).
+                if ware_ist_da:
+                    variante.first_seen = (
+                        min(variante.first_seen, seen) if variante.first_seen else seen
+                    )
+                    variante.last_seen = (
+                        max(variante.last_seen, seen) if variante.last_seen else seen
+                    )
 
                 quantity = Decimal(item["quantity"])
                 uvp = Decimal(item["uvp"])
@@ -321,6 +333,7 @@ def import_invoice(
                     wareneingang_id=wareneingang.id,
                     varianten_id=variante.id,
                     menge=quantity,
+                    menge_eingetroffen=quantity if ware_ist_da else Decimal(0),
                     einheit=item["unit"],
                     uvp=uvp,
                 )
@@ -335,34 +348,17 @@ def import_invoice(
                         dokument_id=dokument.id,
                     )
                 )
-                session.add(
-                    Lagerbewegung(
+                if ware_ist_da:
+                    buche_zugang(
+                        session,
                         lagerort_id=lagerort_id,
                         varianten_id=variante.id,
-                        typ="zugang",
+                        position_id=position.id,
                         menge=quantity,
-                        wareneingang_position_id=position.id,
-                        benutzer_kassennummer=(imported_by or {}).get("kassennummer"),
-                        benutzer_name=(imported_by or {}).get("name"),
+                        eingangsdatum=eingangsdatum,
+                        benutzer=imported_by,
                         zeitpunkt=now,
                     )
-                )
-                bestand = session.get(Bestand, (variante.id, lagerort_id))
-                if bestand is None:
-                    bestand = Bestand(
-                        varianten_id=variante.id,
-                        lagerort_id=lagerort_id,
-                        menge=quantity,
-                        aeltestes_eingangsdatum=eingangsdatum,
-                    )
-                    session.add(bestand)
-                else:
-                    bestand.menge += quantity
-                    if eingangsdatum and (
-                        bestand.aeltestes_eingangsdatum is None
-                        or eingangsdatum < bestand.aeltestes_eingangsdatum
-                    ):
-                        bestand.aeltestes_eingangsdatum = eingangsdatum
 
             result = dict(
                 invoice_id=dokument.id,
@@ -486,7 +482,11 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                     Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
                 )
                 .join(Dokument, Dokument.id == Wareneingang.dokument_id)
-                .where(WareneingangPosition.varianten_id == varianten_id)
+                .where(
+                    WareneingangPosition.varianten_id == varianten_id,
+                    # Nur angekommene Ware zählt als Lieferung (Teilaufgabe B5).
+                    WareneingangPosition.menge_eingetroffen > 0,
+                )
             ).one()
             variante = session.get(Variante, varianten_id)
             variante.first_seen, variante.last_seen = first_seen, last_seen
