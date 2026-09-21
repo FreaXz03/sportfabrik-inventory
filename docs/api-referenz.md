@@ -120,6 +120,19 @@ sichtbar (Zustände: wartend, bereit, Duplikat, Fehler, importiert). Serverseiti
 ist das keine Sonderfunktion — jede Datei läuft durch denselben
 Upload/Validierungs-/Import-Ablauf wie ein Einzel-Upload.
 
+## Erwartete Lieferungen (Wareneingang)
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/wareneingaenge` | Seite „Erwartete Lieferungen" (jede Anmeldung) |
+| GET | `/api/wareneingaenge` | Offene (erwartete) Lieferungen der aktiven Filiale samt Positionen; ohne aktive Filiale (Admin) alle |
+| POST | `/api/wareneingaenge/{id}/ankunft` | Ankunft bestätigen: `{"mengen": {"<positions-id>": "<menge>"}, "eingangsdatum": "YYYY-MM-DD"}`. Bucht den Zugang, setzt das Eingangsdatum (rückwirkend möglich) und schliesst die Lieferung, sobald keine Position mehr offen ist |
+
+Auch **Mitarbeiter** dürfen bestätigen (D21) — das ist Lagerarbeit, kein
+Dokumentrecht. Unplausible Mengen, fremde Positionen oder eine bereits
+vollständig eingetroffene Lieferung ergeben HTTP 409, ein ungültiges Datum
+HTTP 422; gebucht wird in beiden Fällen nichts.
+
 ## Sonstiges
 
 | Methode | Pfad | Zweck |

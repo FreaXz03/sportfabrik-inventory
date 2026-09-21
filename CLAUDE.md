@@ -76,8 +76,10 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
 5. **Erwartet → eingetroffen** (Regel 3, D6): Auftragsbestätigung/Bestellung
    erzeugen nur einen erwarteten Wareneingang; auch Mitarbeiter dürfen die
    Ankunft bestätigen (D21), Restmengen bleiben offen (D22).
-   ⬅ **nächster Schritt**
+   ✅ abgeschlossen — Seite `/wareneingaenge`, Migration `f6a7b8c9d0e1`.
 6. **Manuelle Erfassung** mit Scanner (Z2), auch als Weg für unbekannte Layouts.
+   Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23).
+   ⬅ **nächster Schritt**
 7. **EAN nachtragen/generieren** (interne EAN-13, GS1 20–29) + Etikett als PDF.
 8. **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist.
 

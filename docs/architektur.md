@@ -19,6 +19,7 @@ flowchart TB
     subgraph services["app/services/ — Fachlogik"]
         importer["importer.py<br/>Import/Löschung"]
         lieferadresse["lieferadresse.py<br/>Lagerort aus der Lieferadresse"]
+        wareneingang["wareneingang.py<br/>Erwartet → eingetroffen, Zugang buchen"]
         parser["parsers/<br/>Layout-Erkennung, PDF → Positionen"]
         ocr["ocr.py<br/>OCR-Fallback für Scans ohne Textebene"]
         corrections["corrections.py<br/>Manuelle Korrekturen validieren"]
@@ -41,6 +42,7 @@ flowchart TB
     preview --> corrections
     preview --> lieferadresse
     importer --> corrections
+    importer --> wareneingang
     parser --> ocr
     history --> importer
     history --> article_groups
@@ -155,6 +157,38 @@ eines Artikels nie inkonsistent werden; bei einem Datenbankfehler wird die
 gesamte Transaktion zurückgerollt (kein Teilimport); der Import bleibt
 gesperrt, solange irgendeine Warnung offen ist — das gilt serverseitig,
 nicht nur als Browser-Prüfung.
+
+## Erwartet → eingetroffen
+
+Regel 3 / D6: Eine **Auftragsbestätigung** oder **Bestellung** kündigt Ware nur
+an. Der Import legt dafür einen Wareneingang mit Status `erwartet` an — ohne
+Lagerbewegung, ohne Bestand, ohne Eingangsdatum. Artikel, Varianten und Preise
+entstehen trotzdem, damit angekündigte Ware im Stamm auffindbar ist.
+**Rechnung** und **Lieferschein** begleiten die Ware, sie buchen wie bisher
+sofort (`TYPEN_MIT_WARE` in `app/services/importer.py`).
+
+Gebucht wird beim Bestätigen der Ankunft (`app/services/wareneingang.py`):
+
+| Eingabe | Wirkung |
+|---|---|
+| Menge je Position | Zugang als Lagerbewegung + Bestand (Regel 2), `menge_eingetroffen` wächst |
+| Eingangsdatum | wird beim ersten Zugang gesetzt, rückwirkend möglich (D13) — in einem Lager ohne Verkauf gar nicht (Regel 6) |
+
+Kommt weniger an als erwartet, bleibt die Restmenge offen und der Wareneingang
+weiter `erwartet` (D22) — so ist fehlende Ware sichtbar; eine Nachlieferung
+wird einfach nochmals bestätigt. Erst wenn keine Position mehr offen ist,
+wechselt der Status auf `eingetroffen`.
+
+Zwei Dinge sind bewusst gleich gehalten: Import und Ankunft buchen über
+**dieselbe** Funktion (`buche_zugang`), und beide nehmen dieselbe
+`pg_advisory_xact_lock`, damit sich Zugänge zwischen Arbeitsplätzen nicht
+überholen. „Erste/letzte Lieferung" (`varianten.first_seen`/`last_seen`)
+zählen nur angekommene Ware — eine Ankündigung ist keine Lieferung.
+
+Bedient wird das auf der Seite **/wareneingaenge** (Navigation „Lieferungen"):
+die offenen Lieferungen der aktiven Filiale, je Position erwartet / bereits da
+/ offen und ein Feld für die jetzt eingetroffene Menge. Das dürfen auch
+**Mitarbeiter** (D21) — Ankunft bestätigen ist Lagerarbeit, kein Dokumentrecht.
 
 ## Lagerort aus der Lieferadresse
 

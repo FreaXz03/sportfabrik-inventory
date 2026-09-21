@@ -250,6 +250,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D26). Noch offen:
 4. **Filialbezug beim Lesen:** Sollen Übersicht, Rechnungsliste und Artikeldetails nur die eigene Filiale zeigen? (Heute zeigen sie allen Konten alle Filialen; Regel 9 regelt nur das Schreiben.)
 5. **Ausbuchen per Scan** (Phase C): blockieren, wenn der Bestand dadurch negativ würde, oder mit Warnung zulassen?
 6. **Umlagerung GEWA → Filiale** (Phase C): bucht die abholende Filiale selbst, oder die GEWA/Zentrale?
+7. **Mehr geliefert als bestellt:** einfach buchen (heutiges Verhalten) oder warnen?
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
@@ -268,7 +269,8 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D26). Noch offen:
 | B — Wareneingang v2, Teilaufgabe 2 (Belegnummer je Lieferant eindeutig) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 3 (EAN wirklich optional) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 4 (Lagerort aus der Lieferadresse) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
-| B — Wareneingang v2, Teilaufgaben 5–8 | offen (Aufteilung siehe unten) |
+| B — Wareneingang v2, Teilaufgabe 5 (erwartet → eingetroffen) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
+| B — Wareneingang v2, Teilaufgaben 6–8 | offen (Aufteilung siehe unten) |
 | C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -282,7 +284,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B2 | Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id, dokumentnummer)`) inkl. Duplikatsprüfung im Importer — offener Punkt aus dem Review, Voraussetzung für den zweiten Lieferanten | ✅ abgeschlossen |
 | B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | ✅ abgeschlossen |
 | B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload **vorschlagen**, änderbar (D19); ein Beleg = ein Lagerort (D20) | ✅ abgeschlossen |
-| B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | offen |
+| B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | ✅ abgeschlossen |
 | B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23) | offen |
 | B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | offen |
 | B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
@@ -450,6 +452,48 @@ Lieferadresse"):
 - Gegen echtes PostgreSQL 16 im Browser durchgespielt: Anmeldung, Upload einer
   Rechnung mit Lieferadresse Conthey, Vorauswahl SF4 mit Begründung,
   vollständige Auswahlliste.
+
+**Details zu Phase B, Teilaufgabe B5 — erwartet → eingetroffen** (Regel 3, D6,
+D21, D22; siehe `docs/architektur.md`, Abschnitt „Erwartet → eingetroffen"):
+- Der Import unterscheidet jetzt nach Dokumenttyp: **Rechnung/Lieferschein**
+  begleiten die Ware und buchen sofort, **Auftragsbestätigung/Bestellung**
+  erzeugen einen Wareneingang mit Status `erwartet` — ohne Lagerbewegung, ohne
+  Bestand, ohne Eingangsdatum. Artikel, Varianten und Preise entstehen
+  trotzdem, damit angekündigte Ware im Stamm auffindbar ist.
+- Migration `f6a7b8c9d0e1`: `wareneingang_positionen.menge_eingetroffen`.
+  `menge` ist die Menge laut Beleg, die neue Spalte die davon angekommene, die
+  Differenz die offene Restmenge. Altdaten werden aufgefüllt (alle bisherigen
+  Wareneingänge stammen aus Rechnungen).
+- Teillieferung (D22): Was ankommt, wird gebucht; der Rest bleibt offen und der
+  Wareneingang weiter `erwartet`. Eine Nachlieferung wird einfach nochmals
+  bestätigt. Erst wenn keine Position mehr offen ist, wechselt der Status.
+- Eingangsdatum: beim ersten Zugang gesetzt, rückwirkend eintragbar (D13); in
+  einem Lager ohne Verkauf (GEWA) gar nicht (Regel 6).
+- `varianten.first_seen`/`last_seen` („Erste/letzte Lieferung") zählen nur noch
+  **angekommene** Ware — eine Ankündigung ist keine Lieferung. Das gilt auch
+  beim Neuberechnen nach dem Löschen eines Dokuments.
+- Import und Ankunft buchen über **dieselbe** Funktion (`buche_zugang`) und
+  nehmen dieselbe Datenbank-Sperre — beide Wege tun damit garantiert dasselbe.
+- Neue Seite `/wareneingaenge` („Lieferungen" in der Navigation): offene
+  Lieferungen der aktiven Filiale, je Position erwartet / bereits da / offen,
+  Feld für die jetzt eingetroffene Menge und ein Eingangsdatum. Bedienbar auch
+  von **Mitarbeitern** (D21). Übersetzungen DE/FR/EN.
+- Tests: `tests/test_wareneingang_ankunft.py` (18 Tests, u. a. kein Bestand vor
+  der Ankunft, vollständige und Teillieferung, Nachlieferung schliesst,
+  GEWA ohne Eingangsdatum, unplausible Mengen, fremde Position, kompletter Weg
+  über die API als angemeldete Mitarbeiterin). Gesamtsuite: 232 bestandene
+  Tests (vorher 213).
+- Gegen echtes PostgreSQL 16 geprüft: Migration auf einer Datenbank mit
+  Altdaten (`menge_eingetroffen` korrekt aufgefüllt) und der ganze Ablauf im
+  Browser als Mitarbeiterin — Teillieferung, sichtbare Restmenge, Abschluss.
+- **Noch nicht erreichbar im Alltag:** Eine Auftragsbestätigung kann bisher
+  nicht hochgeladen werden, weil die Parser-Registry nur das
+  INTERSPORT-Rechnungslayout kennt (weitere Layouts: Phase E). Der Weg
+  funktioniert also erst mit den nächsten Parsern oder mit der manuellen
+  Erfassung (B6) vollständig.
+- **Offen geblieben:** Kommt *mehr* an als bestellt, bucht das System es
+  (Bestand = was physisch da ist). Ob das so bleiben oder eine Warnung geben
+  soll, ist mit Fabian zu klären.
 
 **Details zu Phase B, Teilaufgabe B3 — EAN wirklich optional** (Entscheid D18,
 siehe `docs/architektur.md`, Abschnitt „PDF-Parsing" → „Warnung oder Hinweis?"):

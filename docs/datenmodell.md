@@ -228,9 +228,10 @@ Ein Wareneingang je Dokument (aktuell 1:1, das Schema erlaubt später mehrere
 je Dokument z. B. bei Teillieferungen). `status` unterscheidet `erwartet`
 (nur bei Auftragsbestätigungen — noch keine Bestandsbuchung, Regel 3) von
 `eingetroffen` (Ware ist da, `lagerbewegungen`/`bestand` werden geschrieben).
-INTERSPORT-Rechnungen sind immer `eingetroffen`; den Weg „erwartet →
-eingetroffen" baut Teilaufgabe B5 (bisher erkennt die Parser-Registry nur
-Rechnungen).
+Rechnungen und Lieferscheine sind sofort `eingetroffen`, Auftragsbestätigungen
+und Bestellungen erst `erwartet` (Teilaufgabe B5). `eingangsdatum` wird beim
+ersten Zugang gesetzt — rückwirkend möglich (D13), in einem Lager ohne Verkauf
+gar nicht (Regel 6).
 
 `eingangsdatum` folgt Regel 6: Bei einer Filiale (`lagerorte.verkauf = true`)
 ist es das Rechnungsdatum, bei einem Lager ohne Verkauf (GEWA) bleibt es
@@ -243,7 +244,10 @@ Eine Zeile je Position eines Wareneingangs — verallgemeinert die frühere
 `invoice_items`-Tabelle. `wareneingang_positionen_quelle` ist der optionale
 1:1-Original-Snapshot (Rohtext, Seiten-/Zeilennummer, Parser-Warnungen,
 `correction_audit`) als JSON, genau wie früher `invoice_item_sources` —
-bleibt auch erhalten, wenn sich `varianten`/`artikel` später ändern.
+bleibt auch erhalten, wenn sich `varianten`/`artikel` später ändern. `menge` ist die Menge laut Beleg (erwartet),
+`menge_eingetroffen` die davon tatsächlich angekommene; die Differenz ist die
+offene Restmenge (D22, Migration `f6a7b8c9d0e1`). Bei Rechnung/Lieferschein
+sind beide von Anfang an gleich.
 
 ### `lagerbewegungen`
 Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
