@@ -1,7 +1,12 @@
-"""Seed-Daten für die Lagerorte: SF1-SF4 (Filialen mit Verkauf) und GEWA
-(externes Aufbereitungslager, kein Verkauf). Adressen aus docs/projekt-kontext.md
+"""Seed-Daten für die Lagerorte: SF1-SF4 (Filialen mit Verkauf) sowie die
+externen Standorte ohne Verkauf - die beiden Verarbeitungsstellen GEWA und VEBO
+und das externe Lager in Dietikon. Adressen aus docs/projekt-kontext.md
 Abschnitt 1. Einzige Quelle für diese Daten - Migration und Tests nutzen sie,
 damit beide garantiert übereinstimmen.
+
+`verkauf = False` ist das Unterscheidungsmerkmal, an dem die Eingangsdatum-Regel
+hängt (Regel 6): An keinem dieser drei Standorte startet die Reduktionsuhr - das
+passiert erst bei Ankunft in einer Filiale.
 """
 
 from sqlalchemy import select
@@ -52,10 +57,34 @@ LAGERORTE_SEED = [
     },
     {
         "code": "GEWA",
-        "name": "GEWA (externes Lager)",
+        "name": "GEWA (externe Verarbeitung)",
         "strasse": "Grubenstrasse 22",
         "plz": "3322",
         "ort": "Urtenen-Schönbühl",
+        "telefon": None,
+        "email": None,
+        "verkauf": False,
+    },
+    {
+        # Adresse noch offen - sobald sie da ist hier und in der Migration
+        # e5f6a7b8c9d0 nachtragen (nötig für die Lagerort-Erkennung aus der
+        # Lieferadresse, Phase B).
+        "code": "VEBO",
+        "name": "VEBO (externe Verarbeitung)",
+        "strasse": None,
+        "plz": None,
+        "ort": None,
+        "telefon": None,
+        "email": None,
+        "verkauf": False,
+    },
+    {
+        # Adresse noch offen - siehe VEBO.
+        "code": "DIETIKON",
+        "name": "Lager Dietikon",
+        "strasse": None,
+        "plz": None,
+        "ort": "Dietikon",
         "telefon": None,
         "email": None,
         "verkauf": False,

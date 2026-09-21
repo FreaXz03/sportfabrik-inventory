@@ -8,7 +8,11 @@ from sqlalchemy.orm import Session
 from ..core.models import BenutzerLagerort, Lagerort, User
 from .lieferadresse import LagerortAdresse
 
-_CODE_ORDER = {"SF1": 0, "SF2": 1, "SF3": 2, "SF4": 3, "GEWA": 4}
+_CODE_ORDER = {
+    "SF1": 0, "SF2": 1, "SF3": 2, "SF4": 3,
+    # Externe Standorte ohne Verkauf hinter den Filialen.
+    "GEWA": 4, "VEBO": 5, "DIETIKON": 6,
+}
 
 
 def _sort_key(lagerort: Lagerort) -> tuple:

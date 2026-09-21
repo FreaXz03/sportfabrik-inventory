@@ -65,9 +65,13 @@ class User(Base):
 
 
 class Lagerort(Base):
-    """Filiale (SF1-SF4, Verkauf) oder externes Aufbereitungslager (GEWA, kein
-    Verkauf). Seed-Daten in app/core/lagerorte.py, Adresse dient später auch
-    der automatischen Filial-Erkennung aus der Lieferadresse eines Dokuments."""
+    """Filiale (SF1-SF4, Verkauf) oder externer Standort ohne Verkauf: die
+    Verarbeitungsstellen GEWA und VEBO sowie das Lager Dietikon. Seed-Daten in
+    app/core/lagerorte.py, Adresse dient später auch der automatischen
+    Filial-Erkennung aus der Lieferadresse eines Dokuments.
+
+    `verkauf` trägt die Regel 6: Nur an einem Lagerort mit Verkauf bekommt Ware
+    ein Eingangsdatum, erst damit startet die Reduktionsuhr (18/36 Monate)."""
 
     __tablename__ = "lagerorte"
 

@@ -8,8 +8,9 @@ und Preisverlauf nachvollziehen, Freitext-Notizen hinterlegen und die
 Artikelliste als Excel-Datei exportieren.
 
 Läuft auf einem zentralen Server (Volketswil); die 4 Filialen (SF1 Volketswil,
-SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey) sowie das externe Aufbereitungslager
-GEWA greifen im internen Netz über den Browser darauf zu. Anmeldung nach
+SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey) sowie die externen Standorte ohne
+Verkauf — die Verarbeitungsstellen GEWA und VEBO und das Lager Dietikon —
+greifen im internen Netz über den Browser darauf zu. Anmeldung nach
 Kassensystem-Muster: Mitarbeiter mit blosser Kassennummer, Filialleiter und
 Admin/Zentrale zusätzlich mit Passwort. Mitarbeiter dürfen alles ausser
 Dokumente hochladen/bearbeiten/löschen; das bleibt Filialleitern und der
@@ -116,7 +117,7 @@ app/
     database.py
     models.py          SQLAlchemy-Modelle des neuen Datenmodells (siehe docs/datenmodell.md)
     security.py
-    lagerorte.py       Seed-Daten SF1-SF4 + GEWA (siehe app/services/lagerorte.py für Lesezugriffe)
+    lagerorte.py       Seed-Daten SF1-SF4 + GEWA/VEBO/DIETIKON (siehe app/services/lagerorte.py für Lesezugriffe)
     lieferanten.py     Seed-Daten Lieferanten (aktuell nur INTERSPORT; parser_key = Modul in app/services/parsers/)
     kategorien.py      Seed-Daten Kassenkategorien (Hauptgruppe x Sportbereich, 35 Kombinationen)
     fedas.py           FEDAS-Code -> Kassenkategorie-Vorschlag (Phase B, siehe docs/projekt-kontext.md)
@@ -200,7 +201,8 @@ alembic upgrade head
 ```
 
 Erstes Filialleiter-Konto anlegen, damit überhaupt eine Anmeldung möglich ist
-(Lagerort-Codes: SF1-SF4 für die Filialen, GEWA fürs externe Lager; der erste
+(Lagerort-Codes: SF1-SF4 für die Filialen, GEWA/VEBO/DIETIKON für die externen
+Standorte; der erste
 angegebene Code wird als primäre Filiale gesetzt):
 
 ```powershell

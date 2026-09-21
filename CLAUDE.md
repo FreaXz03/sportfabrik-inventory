@@ -4,7 +4,7 @@ Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` le
 
 ## Worum es geht
 
-Warenwirtschaftssystem für die **Sportfabrik** (Intersport-Outlet, 4 Filialen in der Schweiz: SF1 Volketswil, SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey + externes Lager GEWA).
+Warenwirtschaftssystem für die **Sportfabrik** (Intersport-Outlet, 4 Filialen in der Schweiz: SF1 Volketswil, SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey). Dazu drei externe Standorte ohne Verkauf: die Verarbeitungsstellen **GEWA** und **VEBO** (fachlich gleichwertig) und das **Lager Dietikon**.
 Ware wird per Upload (Rechnung / Lieferschein / Auftragsbestätigung) oder manuell erfasst, der Artikelstamm bleibt für immer, Bestand wird pro Filiale geführt, Filialen bekommen Runterschreib-Hinweise (30/50/70 %). Später Anbindung an die Intersport-Kasse.
 
 Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbasis und wird **umgebaut**, nicht neu geschrieben: Parser, zweistufiger Import, Hash-Prüfung, Audit-Snapshot, Advisory-Lock, Auth und Tests weiterverwenden.
@@ -17,7 +17,7 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 4. **Artikelstamm ist filialübergreifend**, Bestand / Wareneingänge / Reduktionen sind filialbezogen (`lagerort_id`).
 5. **EAN ist optional.** Varianten ohne EAN müssen funktionieren (Schlüssel: Lieferant + Artikelnr. + Farbe + Grösse). Interne EANs: EAN-13 im GS1-Bereich 20–29 mit korrekter Prüfziffer, als intern markiert.
 6. **Eingangsdatum-Regeln** (für Lagerdauer / Reduktion):
-   - Ware an GEWA: noch **kein** Eingangsdatum; gesetzt bei Ankunft in der Filiale (auch rückwirkend).
+   - Ware an einen externen Standort (GEWA, VEBO, Dietikon — alle `verkauf = false`): noch **kein** Eingangsdatum; gesetzt bei Ankunft in einer Filiale SF1–SF4 (auch rückwirkend). Massgeblich ist immer `lagerorte.verkauf`, nie der einzelne Code.
    - Umlagerung Filiale → Filiale: **ursprüngliches Datum bleibt**.
    - Reduktions-Hinweise pro Filiale: 18 Monate → 50 %, 36 Monate → 70 %, gerechnet ab letztem Wareneingang derselben Lieferanten-Artikelnummer **in dieser Filiale**; Nachlieferung startet die Uhr neu.
 7. **Mehrsprachig DE / FR / EN.** Keine neuen hartcodierten UI-Texte — immer Übersetzungs-Keys (Templates + JS + Fehlermeldungen). Deutsch ist Standard. Artikeldaten aus Lieferantendokumenten werden nicht übersetzt.
@@ -48,7 +48,7 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 
 ## Abgeschlossen: Phase A — Fundament
 
-1. Lagerorte SF1–SF4 + GEWA (Seed-Daten), Benutzer ↔ Lagerort, Rollen gemäss Regel 9, Filialwechsel in der Oberfläche. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.
+1. Lagerorte SF1–SF4 + GEWA/VEBO/DIETIKON (Seed-Daten), Benutzer ↔ Lagerort, Rollen gemäss Regel 9, Filialwechsel in der Oberfläche. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.
 2. i18n-Grundgerüst (DE/FR/EN), Sprachwahl pro Benutzer, bestehende Seiten auf Keys umstellen. ✅ abgeschlossen (inkl. Backend-Fehlermeldungen) — siehe `docs/projekt-kontext.md` Abschnitt 11 und `docs/architektur.md` Abschnitt „Mehrsprachigkeit (i18n)".
 3. Neues Datenmodell gemäss `docs/projekt-kontext.md` Abschnitt 8.2 (Lieferanten, Kategorien, Artikel/Varianten, Preise, Dokumente, Wareneingänge, Lagerbewegungen, Bestand) + Alembic-Migration der bestehenden Daten. ✅ abgeschlossen, inkl. Umstellung des Live-Imports (nicht nur der Migration) — siehe `docs/projekt-kontext.md` Abschnitt 11.
 4. Tests + Doku nachführen. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.

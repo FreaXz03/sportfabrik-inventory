@@ -193,10 +193,12 @@ def import_invoice(
                         id=existing.id,
                     )
                 )
-            # Regel 6: Ware an ein externes Lager (GEWA, `verkauf = False`)
-            # bekommt noch KEIN Eingangsdatum - das wird erst bei Ankunft in
-            # einer Filiale gesetzt, damit die Reduktionsuhr (18/36 Monate)
-            # nicht schon im Zwischenlager zu laufen beginnt.
+            # Regel 6: Ware an einen externen Standort ohne Verkauf (die
+            # Verarbeitungsstellen GEWA und VEBO sowie das Lager Dietikon -
+            # alle `verkauf = False`) bekommt noch KEIN Eingangsdatum. Das
+            # wird erst bei Ankunft in einer Filiale gesetzt, damit die
+            # Reduktionsuhr (18/36 Monate) nicht schon extern zu laufen
+            # beginnt. Massgeblich ist `lagerorte.verkauf`, nie der Code.
             lagerort_verkauft = session.scalar(
                 select(Lagerort.verkauf).where(Lagerort.id == lagerort_id)
             )
@@ -456,15 +458,17 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
         all_varianten_ids = {v for ids in varianten_by_lagerort.values() for v in ids}
         for varianten_id in all_varianten_ids:
             # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
-            # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an GEWA leer
-            #   (Regel 6) und wuerde die Werte hier auf NULL zuruecksetzen.
+            # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an einem
+            #   Standort ohne Verkauf leer (Regel 6) und wuerde die Werte hier
+            #   auf NULL zuruecksetzen.
             # Datum der Lieferung: das Dokumentdatum, und bei manuell
             # erfasster Ware (ohne Beleg, D27) das Eingangsdatum. Darum ein
             # LEFT JOIN auf `dokumente` - sonst fielen genau diese
             # Wareneingänge aus der Berechnung. Bleibt beides leer (von Hand
-            # an die GEWA erfasst, Regel 6), zählt dieser Wareneingang hier
-            # nicht mit - first_seen/last_seen sind reine Anzeigewerte, die
-            # Reduktionsuhr hängt an `bestand.aeltestes_eingangsdatum`.
+            # an einem Standort ohne Verkauf erfasst, Regel 6), zählt dieser
+            # Wareneingang hier nicht mit - first_seen/last_seen sind reine
+            # Anzeigewerte, die Reduktionsuhr hängt an
+            # `bestand.aeltestes_eingangsdatum`.
             datum = func.coalesce(Dokument.dokumentdatum, Wareneingang.eingangsdatum)
             first_seen, last_seen = session.execute(
                 select(func.min(datum), func.max(datum))

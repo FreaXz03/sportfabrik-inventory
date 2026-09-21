@@ -243,10 +243,13 @@ ersten Zugang gesetzt — rückwirkend möglich (D13), in einem Lager ohne Verka
 gar nicht (Regel 6).
 
 `eingangsdatum` folgt Regel 6: Bei einer Filiale (`lagerorte.verkauf = true`)
-ist es das Rechnungsdatum, bei einem Lager ohne Verkauf (GEWA) bleibt es
-**leer** und wird erst bei Ankunft in einer Filiale gesetzt — die
-Reduktionsuhr (18/36 Monate) soll nicht schon im Zwischenlager laufen.
-Dasselbe gilt für `bestand.aeltestes_eingangsdatum`.
+ist es das Rechnungsdatum, an einem Standort ohne Verkauf bleibt es **leer**
+und wird erst bei Ankunft in einer Filiale gesetzt — die Reduktionsuhr (18/36
+Monate) soll nicht schon extern laufen. Das gilt für alle drei externen
+Standorte: die Verarbeitungsstellen GEWA und VEBO ebenso wie das Lager
+Dietikon. Massgeblich ist immer `lagerorte.verkauf`, nie der einzelne Code —
+ein weiterer externer Standort greift dadurch automatisch. Dasselbe gilt für
+`bestand.aeltestes_eingangsdatum`.
 
 ### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
 Eine Zeile je Position eines Wareneingangs — verallgemeinert die frühere
@@ -287,7 +290,14 @@ Wie zuvor, jetzt an `artikel_id` statt `product_id` — eine Notiz gilt für das
 ganze Modell (alle Farben/Grössen), nicht mehr nur für die beim Erstellen
 angezeigte Variante. Optimistisches Sperren über `version` unverändert.
 
-### `users`, `lagerorte`, `benutzer_lagerorte`
+### `lagerorte`
+Sieben Einträge: die vier Filialen SF1–SF4 (`verkauf = true`) und drei externe
+Standorte ohne Verkauf — die Verarbeitungsstellen `GEWA` und `VEBO` und das
+Lager `DIETIKON`. Verarbeitungsstelle und Lager unterscheidet das Schema
+bewusst **nicht**: Für jede Regel zählt allein `verkauf`. Seed-Daten in
+`app/core/lagerorte.py` (einzige Quelle, Migration und Tests nutzen sie).
+
+### `users`, `benutzer_lagerorte`
 Unverändert seit Phase A Punkt 1/2 (siehe Migrationshistorie unten).
 
 ## Migration der Altdaten (`c3d4e5f6a7b8`)
@@ -328,6 +338,7 @@ oben):
 | `e5f6a7b8c9d0` | Belegnummer nur je Lieferant eindeutig (Teilaufgabe B2): `UNIQUE (lieferant_id, dokumentnummer)` statt global eindeutiger `dokumentnummer` |
 | `f6a7b8c9d0e1` | `wareneingang_positionen.menge_eingetroffen` (Teilaufgabe B5) inkl. Auffüllen der Altdaten — die Differenz zu `menge` ist die offene Restmenge (D22) |
 | `a7b8c9d0e1f2` | Manuelle Erfassung (Teilaufgabe B6): `wareneingaenge.dokument_id` und `artikel.lieferant_id` dürfen leer bleiben (Wareneingang ohne Beleg, D27; Artikel ohne Lieferant, D23) |
+| `b8c9d0e1f2a3` | Zwei weitere Lagerorte ohne Verkauf: `VEBO` (Verarbeitungsstelle wie GEWA) und `DIETIKON` (externes Lager); GEWA umbenannt in „GEWA (externe Verarbeitung)“. Idempotent; der Downgrade löscht einen der beiden nur, solange nichts daran hängt |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

@@ -1,6 +1,6 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
-Stand: 2026-09-20 (Rev. 5 — Umlagerung behält Datum; Reduktion pro Filiale, GEWA-Eingangsdatum, Etikettendrucker, Scanner, Kategorien final) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
+Stand: 2026-09-21 (Rev. 6 — zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon; Eingangsdatum startet erst in einer Filiale) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
 Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `ea5c7ac`).
 
 ---
@@ -23,9 +23,15 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | **SF2** | Regensdorf | Althardstrasse 10, 8105 Regensdorf | 044 840 05 90 | regensdorf@sportfabrik.ch |
 | **SF3** | Hägendorf | Industriestrasse West 40/42, 4614 Hägendorf | 062 216 53 88 | haegendorf@sportfabrik.ch |
 | **SF4** | Conthey | Route Cantonale 7, 1964 Conthey | 027 322 75 83 | conthey@sportfabrik.ch |
-| **GEWA** | Externes Lager *(kein Verkauf)* | GEWA-John Leuenberger, Grubenstrasse 22, 3322 Urtenen-Schönbühl | – | – |
+| **GEWA** | Externe Verarbeitung *(kein Verkauf)* | GEWA-John Leuenberger, Grubenstrasse 22, 3322 Urtenen-Schönbühl | – | – |
+| **VEBO** | Externe Verarbeitung *(kein Verkauf)* | *Adresse noch nachzutragen* | – | – |
+| **DIETIKON** | Externes Lager *(kein Verkauf)* | *Adresse noch nachzutragen*, Dietikon | – | – |
 
-**GEWA** = externes Lager, in dem Ware ausgepackt und aufbereitet wird; danach geht sie in eine Filiale. → Im System ein eigener **Lagerort ohne Verkauf**; Weitergabe an eine Filiale = **Umlagerung** (gehört damit schon ins MVP).
+**GEWA** und **VEBO** = zwei externe **Verarbeitungsstellen**, in denen Ware ausgepackt und aufbereitet wird; danach geht sie in eine Filiale. Fachlich gleichwertig — was für die eine gilt, gilt auch für die andere.
+
+**Dietikon** = externes **Lager** ohne Verarbeitung; Ware wird dort nur zwischengelagert.
+
+→ Im System sind alle drei eigene **Lagerorte ohne Verkauf** (`verkauf = false`). Weitergabe an eine Filiale = **Umlagerung** (gehört damit schon ins MVP). Das System unterscheidet Verarbeitungsstelle und Lager bewusst **nicht** technisch — für alle Regeln zählt allein, dass dort nicht verkauft wird.
 
 ### Warenquellen
 
@@ -75,13 +81,13 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D8 | Rechte | Mitarbeiter dürfen vorerst **alles ausser Dokumente hochladen/bearbeiten**. Feinere Rechte später |
 | D9 | **Keine KI / keine externen Dienste** | Alle Dokumente werden **lokal auf dem eigenen Server** erkannt — keine Weitergabe an Drittanbieter, keine KI-Extraktion |
 | D10 | EAN | EAN muss **nachträglich erfassbar** sein. Wird nie eine nachgetragen, **generiert das System eine interne EAN** (inkl. Etikett) |
-| D11 | GEWA | Externes Aufbereitungslager → eigener Lagerort, Ware wird von dort an Filialen umgelagert |
+| D11 | Externe Standorte | Zwei Verarbeitungsstellen (GEWA, VEBO) und ein externes Lager (Dietikon) → je ein eigener Lagerort ohne Verkauf, Ware wird von dort an Filialen umgelagert |
 | D12 | Chris Sports | „Preis“ auf deren Dokumenten = **UVP** (Rabatt 70 % → EK = 30 % des UVP) |
-| D13 | Eingangsdatum bei GEWA-Ware | Ware, die an die GEWA geht, bekommt **noch kein Eingangsdatum**. Das Datum wird gesetzt/nachgetragen, **sobald die Ware in der Filiale angekommen ist** — erst ab dann zählt die Lagerdauer |
+| D13 | Eingangsdatum bei externer Ware | Ware, die an GEWA, VEBO oder das Lager Dietikon geht, bekommt **noch kein Eingangsdatum**. Das Datum wird gesetzt/nachgetragen, **sobald die Ware in einer Filiale (SF1–SF4) angekommen ist** — erst ab dann zählt die Lagerdauer |
 | D14 | Etikettendrucker | **Sato CL4NX Plus** (Industrie-Etikettendrucker), alle PCs im WLAN können darauf drucken. Etikettengrösse noch offen (siehe Abschnitt 10) |
 | D15 | Scanner | Heute nur an den 2 Kassen-PCs. Für Wareneingang/EAN-Nachtrag werden **Funk-Scanner** angeschafft |
 | D16 | Kategorien | Velo und Food haben **keine** Unterkategorien; „Hartware“ bestätigt |
-| D17 | Umlagerung Filiale → Filiale | Ware **behält ihr ursprüngliches Eingangsdatum** (wird durch Umbuchen nicht „verjüngt“). Nur GEWA → Filiale setzt das Datum erstmals (D13) |
+| D17 | Umlagerung Filiale → Filiale | Ware **behält ihr ursprüngliches Eingangsdatum** (wird durch Umbuchen nicht „verjüngt“). Nur der Weg von einem externen Standort (GEWA/VEBO/Dietikon) in eine Filiale setzt das Datum erstmals (D13) |
 | D18 | Position ohne EAN beim Upload *(21.09.2026)* | **Mit Hinweis durchlassen** — der Import wird davon nicht gesperrt (Regel 5). Eine EAN, die im Dokument steht, aber unleserlich ist, bleibt dagegen eine blockierende Warnung: das ist ein Lesefehler-Verdacht und keine bewusst fehlende Nummer |
 | D19 | Lagerort aus der Lieferadresse *(21.09.2026)* | Der erkannte Lagerort ist **nur ein Vorschlag** und bleibt beim Import änderbar |
 | D20 | Ein Beleg, eine Lieferadresse *(21.09.2026)* | Ein Dokument hat **eine** Lieferadresse, also einen Wareneingang auf einen Lagerort. Wird die Ware danach auf Filialen verteilt, läuft das ganz normal über eine **Warenverschiebung (Umlagerung)** — nicht über mehrere Lagerorte am selben Dokument |
@@ -90,7 +96,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D23 | Manuelle Erfassung, Pflichtfelder *(21.09.2026)* | **Marke + Bezeichnung + Menge + UVP** genügen. Alles andere (Lieferant, Kategorie, Farbe, Grösse, EAN) ist optional |
 | D24 | Interne EAN *(21.09.2026)* | Wird **auf Knopfdruck** erzeugt (wenn ein Etikett gebraucht wird), nicht automatisch beim Import |
 | D25 | Inhalt des Etiketts *(21.09.2026)* | **Jahrgang** (Jahr des Wareneingangs), **Lieferant**, **UVP** und die **Reduktionsstufe** (30 / 50 / 70 %). Ob zusätzlich der Barcode aufs Etikett soll, ist noch offen (siehe Abschnitt 10) |
-| D26 | Wer auf welchen Lagerort bucht *(21.09.2026, bestätigt)* | **Wer Dokumente hochladen darf, darf auf jeden Lagerort buchen** (eigene Filiale zuoberst). Das Ziel bestimmt der Beleg über seine Lieferadresse, nicht die gerade aktive Filiale — sonst liesse sich eine Lieferung an eine andere Filiale oder an die GEWA gar nicht erfassen. Filialwechsel und Leseansichten bleiben bei den zugewiesenen Filialen |
+| D26 | Wer auf welchen Lagerort bucht *(21.09.2026, bestätigt)* | **Wer Dokumente hochladen darf, darf auf jeden Lagerort buchen** (eigene Filiale zuoberst). Das Ziel bestimmt der Beleg über seine Lieferadresse, nicht die gerade aktive Filiale — sonst liesse sich eine Lieferung an eine andere Filiale oder an einen externen Standort gar nicht erfassen. Filialwechsel und Leseansichten bleiben bei den zugewiesenen Filialen |
 | D27 | Ware ohne Dokument *(21.09.2026)* | Manuelle Erfassung ist ein **direkter Wareneingang ohne Beleg** — es entsteht kein Dokument und keine Belegnummer. Gebucht wird sofort auf die gewählte Filiale; nachvollziehbar bleibt alles über das Journal `lagerbewegungen` (wer, wann, wie viel) |
 
 ## 5. Anforderungen
@@ -105,7 +111,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | Z4 | **UVP-Preisverlauf** (+ optional EK) | UVP je Artikel über die Zeit; Preis älterer Artikel nachschlagen |
 | Z5 | **Lagerbestand pro Filiale** | Aktueller Bestand je Variante × Filiale, inkl. Eingangsdatum (für Lagerdauer) |
 | Z6 | **Manuelles Ausbuchen** | Verkäufe/Abgänge per Scan von Hand ausbuchen (später automatisch durch die Kasse) |
-| Z7 | **Filialen & Lagerorte** | SF1–SF4 + GEWA; getrennte Bestände/Wareneingänge, gemeinsamer Artikelstamm, Filialwechsel, Umlagerung GEWA → Filiale |
+| Z7 | **Filialen & Lagerorte** | SF1–SF4 plus GEWA, VEBO und Lager Dietikon; getrennte Bestände/Wareneingänge, gemeinsamer Artikelstamm, Filialwechsel, Umlagerung externer Standort → Filiale |
 | Z8 | **Mehrsprachig** | DE / EN / FR |
 | Z9 | **Kassenkategorien** | Jeder Artikel hat Hauptgruppe + Sportbereich wie in der Kasse; Vorschlag via FEDAS |
 | Z10 | **Runterschreib-Hinweise** | Übersicht/Benachrichtigung je Filiale gemäss Regeln in 8.3 (18 / 36 Monate) |
@@ -117,7 +123,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 ### Später (Backlog, wird laufend ergänzt)
 - [ ] **Kassenanbindung**: Scan an der Kasse liefert Kategorie, UVP, Reduktion; Verkauf bucht automatisch aus
 - [ ] Preisschilddruck mit reduziertem Preis
-- [ ] Umlagerungen zwischen Filialen (GEWA → Filiale ist bereits MVP)
+- [ ] Umlagerungen zwischen Filialen (externer Standort → Filiale ist bereits MVP)
 - [ ] Inventur (Zählen per Scanner, Differenzen buchen)
 - [ ] Auswertungen: Lagerwert, Lagerdauer, Abverkauf nach Marke/Kategorie/Filiale, Marge (wenn EK vorhanden)
 - [ ] Feinere Benutzerrechte
@@ -131,7 +137,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 | **Externer Händler** (Rg. 72586, Bollé Close Out, Chippis) | Rechnung (mit Lieferschein-Nr.) | Text | ❌ | ❌ | ✅ | ✅ unter Bezeichnung | **Lieferadresse Conthey**, Rechnung an Volketswil → Filiale aus Lieferadresse ableiten |
 | **Alpina** (AB 160165) | Auftragsbestätigung | Text | ❌ | ✅ | ✅ HEK + Netto | ✅ in Bezeichnung (z. B. „matt 52-56“) | Liefertermin je Position |
 | **Chris Sports** (AB CS-12809663, Giro-Socken) | Auftragsbestätigung (Liquidation) | Text | ✅ | ✅ („Preis“ = UVP) | ✅ Betrag | ✅ „Farbe,Grösse“ je Zeile | Varianten sauber unter Artikel gruppiert |
-| **CMP 2** (AB 2026A-F30-246) | Auftragsbestätigung | Text | ❌ | ✅ (VK) | ✅ (EK) | ✅ **Grössen-Matrix** (92–176) | Lieferung an **GEWA** (externes Lager) |
+| **CMP 2** (AB 2026A-F30-246) | Auftragsbestätigung | Text | ❌ | ✅ (VK) | ✅ (EK) | ✅ **Grössen-Matrix** (92–176) | Lieferung an **GEWA** (externe Verarbeitung) |
 | **CMP 1** (Bestellung 22065) | Bestellung | **Scan (Bild)** | ❌ | ✅ (VK) | ✅ (Preise) | ✅ Grössen-Matrix | Farbige Tabelle, OCR-Text unbrauchbar |
 
 ### Erkenntnisse & Konsequenzen
@@ -143,7 +149,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 2. **Viele Dokumente haben keine EAN** (4 von 6), und auch physisch hat nicht jeder Artikel einen Barcode. → Varianten müssen **ohne EAN** existieren können (Schlüssel: Lieferant + Artikelnummer + Farbe + Grösse). EAN jederzeit **per Scan nachtragen**; hat ein Artikel nie eine, **generiert das System eine interne EAN-13** (GS1-Bereich 20–29 für interne Nummern, mit Prüfziffer — kollidiert nie mit echten Hersteller-EANs) und druckt ein Etikett. So ist später **jeder** Artikel an der Kasse scanbar.
 3. **UVP fehlt teilweise** (externer Händler) → in der Vorschau als Pflichtfeld nachfragen, sonst kein Verkaufspreis berechenbar. Bereits bekannter UVP derselben Artikelnummer wird vorgeschlagen.
 4. **Auftragsbestätigung ≠ Wareneingang.** → Dokument erzeugt einen **erwarteten Wareneingang**; erst „Ware eingetroffen“ (mit Mengenkontrolle) bucht den **Lagerzugang** (D6).
-5. **Lagerort aus Lieferadresse** erkennbar (SF1–SF4 oder GEWA, Adressen siehe oben) → automatische Vorauswahl beim Upload, manuell änderbar. Ware an GEWA wird später an eine Filiale umgelagert.
+5. **Lagerort aus Lieferadresse** erkennbar (SF1–SF4 oder einer der externen Standorte GEWA/VEBO/Dietikon, Adressen siehe oben) → automatische Vorauswahl beim Upload, manuell änderbar. Ware an einen externen Standort wird später an eine Filiale umgelagert.
 6. **Grössen-Matrix** (CMP): eine Zeile = mehrere Grössen mit je eigener Menge → Parser muss in Einzelvarianten auflösen.
 7. **ECOM** braucht keinen eigenen Parser: Intersport-Layout, Quelle über Referenzfeld erkennen.
 
@@ -155,8 +161,8 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 | Manuelle Erfassung | ❌ | neu |
 | Artikelstamm | ✅ `products` (EAN eindeutig), Varianten-Gruppierung zur Laufzeit | Kein Modell↔Variante; **EAN-Pflicht blockiert Artikel ohne EAN**; keine Kategorien |
 | Preise | ✅ UVP je Rechnungsposition | EK optional, Reduktionsstufen fehlen |
-| Lagerbestand | ❌ | neu (Lagerbewegungen, Lagerdauer, Lagerort GEWA) |
-| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche | Bestand/Wareneingänge/Reduktionen noch nicht filialbezogen (Phase B/C) |
+| Lagerbestand | ❌ | neu (Lagerbewegungen, Lagerdauer, externe Lagerorte) |
+| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche | Bestand/Wareneingänge/Reduktionen noch nicht filialbezogen (Phase B/C) |
 | Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
 | Deployment | Docker, 1 Laden-Server | Zentraler Server Volketswil, Zugriff aus 4 Filialen |
@@ -172,7 +178,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 
 | Tabelle | Zweck | Filialbezogen? |
 |---|---|---|
-| `lagerorte` | SF1–SF4 (Verkauf) + GEWA (kein Verkauf), inkl. Adresse (für Auto-Erkennung) — **umgesetzt** | – |
+| `lagerorte` | SF1–SF4 (Verkauf) + GEWA, VEBO, Dietikon (kein Verkauf), inkl. Adresse (für Auto-Erkennung) — **umgesetzt** | – |
 | `lieferanten` | Name, Typ (Intersport / ECOM / Dritthändler / Extern), Parser-Zuordnung | nein |
 | `kategorien` | Hauptgruppe × Sportbereich (Kassenstruktur) + FEDAS-Mapping | nein |
 | `artikel` | Modell: Marke, Lieferant, Lief.-Art.-Nr., Bezeichnung, Kategorie, FEDAS | nein |
@@ -197,7 +203,7 @@ Kernprinzipien: **Bestand nie überschreiben, sondern als Bewegung buchen.** Fü
 
 - „Artikelnummer“ = Lieferanten-Artikelnummer (Modell), also über alle Farben/Grössen hinweg.
 - Berechnung **pro Filiale** (D5): Eine Lieferung nach SF2 setzt die Uhr in SF1 nicht zurück.
-- Ware ohne Eingangsdatum (z. B. noch in der GEWA) erzeugt **keine** Hinweise.
+- Ware ohne Eingangsdatum (z. B. noch bei GEWA/VEBO oder im Lager Dietikon) erzeugt **keine** Hinweise.
 - Zentrale (Admin) sieht die Empfehlungen aller Filialen und kann eine **einheitliche Empfehlung** setzen; jede Filiale übernimmt oder weicht bewusst ab (Abweichungen sichtbar).
 - Hinweise als Liste „Zum Runterschreiben fällig“ + Zähler im Dashboard; Schwellen (18/36 Monate) konfigurierbar.
 
@@ -207,14 +213,14 @@ Kernprinzipien: **Bestand nie überschreiben, sondern als Bewegung buchen.** Fü
 - **Lieferanten-Erkennung** über Merkmale → passender Parser; nichts erkannt → „unbekanntes Layout“ → manuelle Erfassung.
 - Alles läuft auf dem Server in Volketswil; keine Daten verlassen das Firmennetz.
 
-### 8.5 Ablauf GEWA → Filiale (D13)
-Umbuchungen passieren spontan — deshalb bewusst einfach:
+### 8.5 Ablauf externer Standort → Filiale (D13)
+Gilt gleichermassen für die Verarbeitungsstellen GEWA und VEBO und für das Lager Dietikon. Umbuchungen passieren spontan — deshalb bewusst einfach:
 
 | Schritt | Im System | Eingangsdatum (Lagerdauer) |
 |---|---|---|
-| 1. Lieferung an GEWA | Wareneingang auf Lagerort **GEWA** (Lieferadresse wird erkannt) | **leer** |
-| 2. Aufbereitung in der GEWA | Ware ist sichtbar unter „In der GEWA“, kann aber nicht verkauft/ausgebucht werden | leer |
-| 3. Ware geht in Filiale X | **Umlagerung GEWA → SFx**: Artikel/Positionen oder ganze Lieferung auswählen | – |
+| 1. Lieferung an den externen Standort | Wareneingang auf Lagerort **GEWA**, **VEBO** oder **DIETIKON** (Lieferadresse wird erkannt) | **leer** |
+| 2. Aufbereitung bzw. Lagerung | Ware ist sichtbar unter „Extern“ (je Standort), kann aber nicht verkauft/ausgebucht werden | leer |
+| 3. Ware geht in Filiale X | **Umlagerung → SFx**: Artikel/Positionen oder ganze Lieferung auswählen | – |
 | 4. Ankunft bestätigen | Filiale bestätigt Ankunft; Datum wird vorgeschlagen (heute), kann **nachträglich/rückwirkend** eingetragen werden — auch als Sammel-Nachtrag für mehrere Artikel | **gesetzt** → ab jetzt zählen 18/36 Monate |
 
 Zusätzlich: Liste „**Unterwegs / ohne Eingangsdatum**“ je Filiale, damit nichts vergessen geht.
@@ -235,7 +241,7 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 |---|---|---|
 | **A — Fundament** | Filialen, Rollen (D8), Filialwechsel, i18n-Gerüst, neues Datenmodell inkl. Kategorien, Migration der bestehenden Daten (→ SF1) | mehrfilialfähig & mehrsprachig |
 | **B — Wareneingang v2** | Dokumenttypen, Lieferanten-Erkennung, erwartet→eingetroffen, Lagerort aus Lieferadresse, manuelle Erfassung mit Scanner, EAN nachtragen/generieren + Etikett, FEDAS-Kategorievorschlag | jede Ware kommt ins System |
-| **C — Lagerbestand** | Lagerbewegungen, Bestand je Lagerort, Umlagerung GEWA → Filiale, Ausbuchen per Scan, Korrekturen | aktueller Bestand |
+| **C — Lagerbestand** | Lagerbewegungen, Bestand je Lagerort, Umlagerung externer Standort → Filiale, Ausbuchen per Scan, Korrekturen | aktueller Bestand |
 | **D — Preise & Reduktion** | UVP/EK-Verlauf, Reduktionsstufen, zentrale Empfehlung, 18-/36-Monats-Hinweise | Runterschreiben unterstützt |
 | **E — Weitere Lieferanten** | Parser für Alpina, Chris Sports, CMP (Text + Scan), externer Händler; weitere laufend nach Beispielen | Upload für alle bekannten Lieferanten |
 | **F — Betrieb** | Server Volketswil, VPN, externe Backups, Datenumzug | alle 4 Filialen produktiv |
@@ -292,7 +298,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
-- Neue Tabellen `lagerorte` (SF1–SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet.
+- Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `e5f6a7b8c9d0` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
 - `users.role` um `admin` erweitert (Rollen: `mitarbeiter`, `chef` = Filialleiter, `admin` = Zentrale), Rechte gemäss Regel 9 in `app/routers/auth.py` und `app/routers/article_details.py` umgesetzt.
 - Filialwechsel in der Oberfläche: `/api/me` liefert aktive Filiale + wählbare Filialen, `POST /api/active-lagerort` wechselt sie (Admin zusätzlich „Alle Filialen“); UI-Auswahl in der Session-Leiste (`app/static/js/session.js`).
 - `scripts/manage_users.py` erweitert um Filialzuordnung (`add-mitarbeiter`/`add-chef <kassennummer> <name> <lagerort-codes...>`) und `add-admin`.
@@ -599,12 +605,12 @@ mit neuen Tests belegt:
 - **FEDAS-Nachtrag**: Kategorie und FEDAS-Code wurden nur nachgetragen, wenn die Variante
   *nicht* über die EAN gefunden wurde — genau die migrierten Altartikel wären damit dauerhaft
   ohne Kategorie geblieben.
-- **Regel 6 (GEWA)**: Ware an ein Lager ohne Verkauf (`lagerorte.verkauf = false`) bekommt
+- **Regel 6 (externe Standorte)**: Ware an einen Lagerort ohne Verkauf (`lagerorte.verkauf = false` — GEWA, VEBO, Dietikon) bekommt
   jetzt tatsächlich kein Eingangsdatum — weder am Wareneingang noch in
   `bestand.aeltestes_eingangsdatum`. Die Reduktionsuhr (18/36 Monate) startet damit erst bei
   Ankunft in einer Filiale.
 - **`delete_invoice()`**: `first_seen`/`last_seen` wurden aus dem Eingangsdatum neu berechnet,
-  der Import setzt sie aber aus dem Dokumentdatum — nach der GEWA-Änderung wären sie für
+  der Import setzt sie aber aus dem Dokumentdatum — nach der Änderung oben wären sie für
   solche Varianten beim Löschen auf NULL gefallen. Jetzt beidseitig das Dokumentdatum.
 - Kleinere Korrekturen: `reused_products` zählte in derselben Rechnung neu angelegte Varianten
   mit; `fedas_code` fehlte in der Längenprüfung (wäre erst in PostgreSQL als 503 aufgeschlagen);
@@ -616,7 +622,7 @@ mit neuen Tests belegt:
   Kontosprache meldet, holte jede Seite ihren Katalog doppelt und ihre Daten dreifach
   (gemessen; jetzt 1× bzw. 2×) — im Ladennetz spürbar.
 - **Neue Tests**: `tests/test_lagerbewegungen.py` (10 Tests: Zugang, Bestand je Filiale,
-  ältestes Eingangsdatum, GEWA-Regel, Neuberechnung beim Löschen — diese Kernlogik aus Regel 2
+  ältestes Eingangsdatum, Regel 6 je externem Standort, Neuberechnung beim Löschen — diese Kernlogik aus Regel 2
   hatte bis dahin keinen einzigen Test) und zwei Katalogtests in `tests/test_i18n.py`, die Keys
   und Platzhalter aller drei Sprachen vergleichen. Gesamtsuite: 145 bestandene Tests.
 
