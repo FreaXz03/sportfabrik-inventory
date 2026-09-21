@@ -1,6 +1,6 @@
 # CLAUDE.md — Sportfabrik Warenwirtschaftssystem
 
-Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` lesen** — dort stehen Zielbild, alle Entscheidungen (D1–D26), Datenmodell-Vorschlag und Roadmap. Bei Widerspruch zwischen altem Code/alter Doku und `projekt-kontext.md` gilt `projekt-kontext.md`.
+Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` lesen** — dort stehen Zielbild, alle Entscheidungen (D1–D27), Datenmodell-Vorschlag und Roadmap. Bei Widerspruch zwischen altem Code/alter Doku und `projekt-kontext.md` gilt `projekt-kontext.md`.
 
 ## Worum es geht
 
@@ -78,7 +78,8 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
    Ankunft bestätigen (D21), Restmengen bleiben offen (D22).
    ✅ abgeschlossen — Seite `/wareneingaenge`, Migration `f6a7b8c9d0e1`.
 6. **Manuelle Erfassung** mit Scanner (Z2), auch als Weg für unbekannte Layouts.
-   Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23).
+   Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); es entsteht **kein
+   Beleg** — direkter Wareneingang (D27).
    ⬅ **nächster Schritt**
 7. **EAN nachtragen/generieren** (interne EAN-13, GS1 20–29) + Etikett als PDF.
 8. **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist.

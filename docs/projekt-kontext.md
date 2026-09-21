@@ -91,6 +91,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D24 | Interne EAN *(21.09.2026)* | Wird **auf Knopfdruck** erzeugt (wenn ein Etikett gebraucht wird), nicht automatisch beim Import |
 | D25 | Inhalt des Etiketts *(21.09.2026)* | **Jahrgang** (Jahr des Wareneingangs), **Lieferant**, **UVP** und die **Reduktionsstufe** (30 / 50 / 70 %). Ob zusätzlich der Barcode aufs Etikett soll, ist noch offen (siehe Abschnitt 10) |
 | D26 | Wer auf welchen Lagerort bucht *(21.09.2026, bestätigt)* | **Wer Dokumente hochladen darf, darf auf jeden Lagerort buchen** (eigene Filiale zuoberst). Das Ziel bestimmt der Beleg über seine Lieferadresse, nicht die gerade aktive Filiale — sonst liesse sich eine Lieferung an eine andere Filiale oder an die GEWA gar nicht erfassen. Filialwechsel und Leseansichten bleiben bei den zugewiesenen Filialen |
+| D27 | Ware ohne Dokument *(21.09.2026)* | Manuelle Erfassung ist ein **direkter Wareneingang ohne Beleg** — es entsteht kein Dokument und keine Belegnummer. Gebucht wird sofort auf die gewählte Filiale; nachvollziehbar bleibt alles über das Journal `lagerbewegungen` (wer, wann, wie viel) |
 
 ## 5. Anforderungen
 
@@ -242,7 +243,7 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 ## 10. Offene Fragen
 
-Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D26). Noch offen:
+Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 
 1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm).
 2. **Barcode aufs Etikett?** D25 nennt Jahrgang, Lieferant, UVP und Reduktionsstufe. Soll der EAN-Barcode **zusätzlich** drauf? Ohne ihn bleibt ein Artikel ohne Hersteller-EAN an der Kasse unscannbar — das war der Zweck der internen EAN (D10).
@@ -260,7 +261,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D26). Noch offen:
 
 | Phase | Status |
 |---|---|
-| Konzept (D1–D26) | ✅ abgeschlossen (D1–D17 am 20.09.2026, D18–D26 am 21.09.2026) |
+| Konzept (D1–D27) | ✅ abgeschlossen (D1–D17 am 20.09.2026, D18–D27 am 21.09.2026) |
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
@@ -285,7 +286,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | ✅ abgeschlossen |
 | B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload **vorschlagen**, änderbar (D19); ein Beleg = ein Lagerort (D20) | ✅ abgeschlossen |
 | B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | ✅ abgeschlossen |
-| B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23) | offen |
+| B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); ohne Beleg (D27) | offen |
 | B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | offen |
 | B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
 
