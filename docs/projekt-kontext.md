@@ -78,11 +78,18 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D11 | GEWA | Externes Aufbereitungslager → eigener Lagerort, Ware wird von dort an Filialen umgelagert |
 | D12 | Chris Sports | „Preis“ auf deren Dokumenten = **UVP** (Rabatt 70 % → EK = 30 % des UVP) |
 | D13 | Eingangsdatum bei GEWA-Ware | Ware, die an die GEWA geht, bekommt **noch kein Eingangsdatum**. Das Datum wird gesetzt/nachgetragen, **sobald die Ware in der Filiale angekommen ist** — erst ab dann zählt die Lagerdauer |
-| D14 | Etikettendrucker | Eine Etikettenmaschine ist vorhanden, alle PCs im WLAN können darauf drucken (Modell noch unbekannt) |
+| D14 | Etikettendrucker | **Sato CL4NX Plus** (Industrie-Etikettendrucker), alle PCs im WLAN können darauf drucken. Etikettengrösse noch offen (siehe Abschnitt 10) |
 | D15 | Scanner | Heute nur an den 2 Kassen-PCs. Für Wareneingang/EAN-Nachtrag werden **Funk-Scanner** angeschafft |
 | D16 | Kategorien | Velo und Food haben **keine** Unterkategorien; „Hartware“ bestätigt |
 | D17 | Umlagerung Filiale → Filiale | Ware **behält ihr ursprüngliches Eingangsdatum** (wird durch Umbuchen nicht „verjüngt“). Nur GEWA → Filiale setzt das Datum erstmals (D13) |
 | D18 | Position ohne EAN beim Upload *(21.09.2026)* | **Mit Hinweis durchlassen** — der Import wird davon nicht gesperrt (Regel 5). Eine EAN, die im Dokument steht, aber unleserlich ist, bleibt dagegen eine blockierende Warnung: das ist ein Lesefehler-Verdacht und keine bewusst fehlende Nummer |
+| D19 | Lagerort aus der Lieferadresse *(21.09.2026)* | Der erkannte Lagerort ist **nur ein Vorschlag** und bleibt beim Import änderbar |
+| D20 | Ein Beleg, eine Lieferadresse *(21.09.2026)* | Ein Dokument hat **eine** Lieferadresse, also einen Wareneingang auf einen Lagerort. Wird die Ware danach auf Filialen verteilt, läuft das ganz normal über eine **Warenverschiebung (Umlagerung)** — nicht über mehrere Lagerorte am selben Dokument |
+| D21 | „Ware eingetroffen" bestätigen *(21.09.2026)* | Dürfen **auch Mitarbeiter** — das ist Lagerarbeit, kein Dokument-Recht (Regel 9) |
+| D22 | Teillieferung *(21.09.2026)* | Kommt weniger an als erwartet, bleibt die **Restmenge offen** („erwartet"), damit fehlende Ware sichtbar bleibt |
+| D23 | Manuelle Erfassung, Pflichtfelder *(21.09.2026)* | **Marke + Bezeichnung + Menge + UVP** genügen. Alles andere (Lieferant, Kategorie, Farbe, Grösse, EAN) ist optional |
+| D24 | Interne EAN *(21.09.2026)* | Wird **auf Knopfdruck** erzeugt (wenn ein Etikett gebraucht wird), nicht automatisch beim Import |
+| D25 | Inhalt des Etiketts *(21.09.2026)* | **Jahrgang** (Jahr des Wareneingangs), **Lieferant**, **UVP** und die **Reduktionsstufe** (30 / 50 / 70 %). Ob zusätzlich der Barcode aufs Etikett soll, ist noch offen (siehe Abschnitt 10) |
 
 ## 5. Anforderungen
 
@@ -211,7 +218,7 @@ Umbuchungen passieren spontan — deshalb bewusst einfach:
 Zusätzlich: Liste „**Unterwegs / ohne Eingangsdatum**“ je Filiale, damit nichts vergessen geht.
 
 ### 8.6 Hardware: Etiketten & Scanner
-- **Etiketten:** Das System erzeugt Etiketten (Barcode EAN-13 inkl. interner EAN, Marke, Bezeichnung, Grösse, UVP) als **PDF im passenden Etikettenformat** → druckbar von jedem PC auf die vorhandene Etikettenmaschine, ohne Treiber-Spezialitäten. Falls die Maschine eine eigene Druckersprache kann (z. B. Zebra/ZPL), später Direktdruck als Option. **Modell + Etikettengrösse notieren** (siehe offene Fragen).
+- **Etiketten:** Drucker ist ein **Sato CL4NX Plus** (D14). Das System erzeugt die Etiketten als **PDF im passenden Etikettenformat** → druckbar von jedem PC über den normalen Druckertreiber, ohne Treiber-Spezialitäten. Der CL4NX Plus versteht zusätzlich seine eigene Druckersprache (SBPL) und kann fremde emulieren — **Direktdruck** bleibt damit als späterer Ausbau offen, ist aber für den Start nicht nötig. Inhalt gemäss D25: Jahrgang des Wareneingangs, Lieferant, UVP, Reduktionsstufe. Zwei Konsequenzen: (1) Weil die **Reduktionsstufe auf dem Etikett steht**, braucht jedes Runterschreiben ein neues Etikett — die Liste „Zum Runterschreiben fällig" (Phase D) soll darum direkt zum Etikettendruck führen. (2) Weil der **Jahrgang** aus dem Wareneingang kommt, lässt sich für Ware in der GEWA noch kein Etikett drucken (D13: dort gibt es noch kein Eingangsdatum). Noch offen: Etikettengrösse und ob der Barcode mit aufs Etikett soll (Abschnitt 10).
 - **Scanner:** Das Web-System funktioniert mit jedem Scanner im **Tastatur-Modus (HID)** — keine Software nötig. Empfehlung für die Funk-Scanner: 1D/2D-Scanner mit **USB-Funk-Dongle oder Bluetooth**, HID-Modus, liest **EAN-13 + Code 128**, idealerweise mit **Speicher-/Batch-Modus** (im Lager scannen ohne Funkreichweite). Erst 1 Gerät testen, dann pro Filiale 1–2 Stück.
 
 ### 8.7 Mehrsprachigkeit
@@ -234,10 +241,14 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 ## 10. Offene Fragen
 
-Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D18). Noch offen:
+Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D25). Noch offen:
 
-1. **Etikettenmaschine:** Marke/Modell und Etikettengrösse (bei Gelegenheit abfotografieren).
-2. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
+1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm).
+2. **Barcode aufs Etikett?** D25 nennt Jahrgang, Lieferant, UVP und Reduktionsstufe. Soll der EAN-Barcode **zusätzlich** drauf? Ohne ihn bleibt ein Artikel ohne Hersteller-EAN an der Kasse unscannbar — das war der Zweck der internen EAN (D10).
+3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
+4. **Filialbezug beim Lesen:** Sollen Übersicht, Rechnungsliste und Artikeldetails nur die eigene Filiale zeigen? (Heute zeigen sie allen Konten alle Filialen; Regel 9 regelt nur das Schreiben.)
+5. **Ausbuchen per Scan** (Phase C): blockieren, wenn der Bestand dadurch negativ würde, oder mit Warnung zulassen?
+6. **Umlagerung GEWA → Filiale** (Phase C): bucht die abholende Filiale selbst, oder die GEWA/Zentrale?
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
@@ -247,7 +258,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D18). Noch offen:
 
 | Phase | Status |
 |---|---|
-| Konzept (D1–D18) | ✅ abgeschlossen (D1–D17 am 20.09.2026, D18 am 21.09.2026) |
+| Konzept (D1–D25) | ✅ abgeschlossen (D1–D17 am 20.09.2026, D18–D25 am 21.09.2026) |
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
@@ -268,10 +279,10 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B1 | **Parser-Registry**: ein Modul je Lieferanten-Layout mit gemeinsamer Schnittstelle, automatische Lieferanten- und Dokumenttyp-Erkennung, unbekanntes Layout klar melden | ✅ abgeschlossen |
 | B2 | Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id, dokumentnummer)`) inkl. Duplikatsprüfung im Importer — offener Punkt aus dem Review, Voraussetzung für den zweiten Lieferanten | ✅ abgeschlossen |
 | B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | ✅ abgeschlossen |
-| B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload vorschlagen, manuell änderbar | offen |
-| B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6) | offen |
-| B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt) | offen |
-| B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10) + Etikett als PDF | offen |
+| B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload **vorschlagen**, änderbar (D19); ein Beleg = ein Lagerort (D20) | offen |
+| B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | offen |
+| B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23) | offen |
+| B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | offen |
 | B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):

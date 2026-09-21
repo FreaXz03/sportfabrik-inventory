@@ -1,6 +1,6 @@
 # CLAUDE.md — Sportfabrik Warenwirtschaftssystem
 
-Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` lesen** — dort stehen Zielbild, alle Entscheidungen (D1–D18), Datenmodell-Vorschlag und Roadmap. Bei Widerspruch zwischen altem Code/alter Doku und `projekt-kontext.md` gilt `projekt-kontext.md`.
+Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` lesen** — dort stehen Zielbild, alle Entscheidungen (D1–D25), Datenmodell-Vorschlag und Roadmap. Bei Widerspruch zwischen altem Code/alter Doku und `projekt-kontext.md` gilt `projekt-kontext.md`.
 
 ## Worum es geht
 
@@ -22,7 +22,7 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
    - Reduktions-Hinweise pro Filiale: 18 Monate → 50 %, 36 Monate → 70 %, gerechnet ab letztem Wareneingang derselben Lieferanten-Artikelnummer **in dieser Filiale**; Nachlieferung startet die Uhr neu.
 7. **Mehrsprachig DE / FR / EN.** Keine neuen hartcodierten UI-Texte — immer Übersetzungs-Keys (Templates + JS + Fehlermeldungen). Deutsch ist Standard. Artikeldaten aus Lieferantendokumenten werden nicht übersetzt.
 8. **Kassenkategorien** exakt wie in der Kasse: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) × Sportbereich (Velo, Freizeit, Tennis, Winter, Outdoor, Fussball, Kids, Baden, Indoor, Running, Rollsport); Velo und Food ohne Sportbereich.
-9. **Rechte (vorerst):** Mitarbeiter dürfen alles **ausser Dokumente hochladen/bearbeiten/löschen**. Filialleiter zusätzlich Dokumente. Admin/Zentrale filialübergreifend.
+9. **Rechte (vorerst):** Mitarbeiter dürfen alles **ausser Dokumente hochladen/bearbeiten/löschen** — Lagerarbeit wie „Ware eingetroffen" bestätigen ist ausdrücklich erlaubt (D21). Filialleiter zusätzlich Dokumente. Admin/Zentrale filialübergreifend.
 10. **Einkaufspreis (EK)** optional speichern, wenn im Dokument vorhanden — nie Pflicht.
 
 ## Technik & Konventionen
