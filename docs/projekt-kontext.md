@@ -61,7 +61,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 
 > Ein **Warenwirtschaftssystem für alle 4 Filialen**, in dem jede Ware beim Eingang erfasst wird (Upload von Lieferschein/Rechnung oder manuell), das **alle je erfassten Artikel dauerhaft** mit Preisverlauf speichert, **pro Filiale den aktuellen Lagerbestand** führt, Filialen beim **Runterschreiben** unterstützt — und später mit der **Kasse** verbunden wird, sodass verkaufte Artikel automatisch ausgebucht werden und an der Kasse nur noch gescannt wird.
 
-## 4. Entscheidungen (Stand 20.09.2026)
+## 4. Entscheidungen (Stand 21.09.2026)
 
 | # | Thema | Entscheid |
 |---|---|---|
@@ -82,6 +82,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D15 | Scanner | Heute nur an den 2 Kassen-PCs. Für Wareneingang/EAN-Nachtrag werden **Funk-Scanner** angeschafft |
 | D16 | Kategorien | Velo und Food haben **keine** Unterkategorien; „Hartware“ bestätigt |
 | D17 | Umlagerung Filiale → Filiale | Ware **behält ihr ursprüngliches Eingangsdatum** (wird durch Umbuchen nicht „verjüngt“). Nur GEWA → Filiale setzt das Datum erstmals (D13) |
+| D18 | Position ohne EAN beim Upload *(21.09.2026)* | **Mit Hinweis durchlassen** — der Import wird davon nicht gesperrt (Regel 5). Eine EAN, die im Dokument steht, aber unleserlich ist, bleibt dagegen eine blockierende Warnung: das ist ein Lesefehler-Verdacht und keine bewusst fehlende Nummer |
 
 ## 5. Anforderungen
 
@@ -233,7 +234,7 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 ## 10. Offene Fragen
 
-Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
+Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D18). Noch offen:
 
 1. **Etikettenmaschine:** Marke/Modell und Etikettengrösse (bei Gelegenheit abfotografieren).
 2. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
@@ -246,14 +247,15 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 
 | Phase | Status |
 |---|---|
-| Konzept (D1–D17) | ✅ abgeschlossen (20.09.2026) |
+| Konzept (D1–D18) | ✅ abgeschlossen (D1–D17 am 20.09.2026, D18 am 21.09.2026) |
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | B — Wareneingang v2: FEDAS-Kategorievorschlag | ⏳ Infrastruktur fertig, restliche Codes offen (siehe unten) |
 | B — Wareneingang v2, Teilaufgabe 1 (Parser-Registry, Lieferanten- und Dokumenttyp-Erkennung) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 2 (Belegnummer je Lieferant eindeutig) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
-| B — Wareneingang v2, Teilaufgaben 3–8 | offen (Aufteilung siehe unten) |
+| B — Wareneingang v2, Teilaufgabe 3 (EAN wirklich optional) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
+| B — Wareneingang v2, Teilaufgaben 4–8 | offen (Aufteilung siehe unten) |
 | C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -265,7 +267,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 |---|---|---|
 | B1 | **Parser-Registry**: ein Modul je Lieferanten-Layout mit gemeinsamer Schnittstelle, automatische Lieferanten- und Dokumenttyp-Erkennung, unbekanntes Layout klar melden | ✅ abgeschlossen |
 | B2 | Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id, dokumentnummer)`) inkl. Duplikatsprüfung im Importer — offener Punkt aus dem Review, Voraussetzung für den zweiten Lieferanten | ✅ abgeschlossen |
-| B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | offen |
+| B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | ✅ abgeschlossen |
 | B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload vorschlagen, manuell änderbar | offen |
 | B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6) | offen |
 | B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt) | offen |
@@ -398,6 +400,38 @@ ein Modul je Lieferanten-Layout"):
 - Der `downgrade` scheitert absichtlich, sobald zwei Lieferanten dieselbe
   Nummer verwenden: dann gibt es keine global eindeutige Nummer mehr.
 
+**Details zu Phase B, Teilaufgabe B3 — EAN wirklich optional** (Entscheid D18,
+siehe `docs/architektur.md`, Abschnitt „PDF-Parsing" → „Warnung oder Hinweis?"):
+- Regel 5 galt im Datenmodell und im Importer, **nicht** aber im Parser und in
+  den Korrekturen: dort war die EAN Pflichtfeld. Bei 4 von 6 Beispieldokumenten
+  hat kein Artikel eine EAN — der Upload wäre für diese Lieferanten von
+  vorneherein blockiert gewesen.
+- Jede Position hat jetzt zwei getrennte Listen: `warnings` (sperrt den Import)
+  und `hints` (läuft durch). Das Ergebnis zählt beides (`rows_with_warnings`,
+  `rows_with_hints`).
+- Keine EAN → Hinweis. Eine EAN, die im Dokument steht, aber kein gültiges
+  Format hat → weiterhin blockierende Warnung. Dasselbe in den Korrekturen: die
+  EAN löschen ist erlaubt (ergibt den Hinweis), Unsinn eintragen bleibt ein
+  Fehler. Farbe und Grösse waren schon vorher optional.
+- Die Vorschau zeigt Hinweise gedämpft unter den Warnungen derselben Position
+  und als eigene Kennzahl „Positionen mit Hinweisen" (nicht als Warnung
+  eingefärbt). Neue Übersetzungs-Keys in DE/FR/EN.
+- Varianten ohne EAN werden über Lieferant + Artikelnummer + Farbe + Grösse
+  zusammengeführt (Regel 5) — der Importer konnte das schon, jetzt kommt auch
+  etwas dort an.
+- Tests: `tests/test_ean_optional.py` (12 Tests vom Parser über die
+  serverseitige Neuvalidierung bis in die Datenbank: Hinweis statt Warnung,
+  unleserliche EAN blockiert, EAN löschen/nachtragen, zweimal dieselbe
+  Kombination = eine Variante, unterschiedliche Grösse = zwei Varianten).
+  Gesamtsuite: 182 bestandene Tests (vorher 170).
+- Gegen echtes PostgreSQL 16 geprüft: mehrere Varianten mit leerer EAN bestehen
+  nebeneinander (NULL kollidiert nicht im Unique-Index), Bestand wird je
+  Variante gebucht. Artikelliste und Excel-Export zeigen eine leere EAN als
+  „—" bzw. als leere Zelle.
+- Noch offen (Teilaufgabe B7): interne EAN-13 erzeugen und Etikett drucken,
+  damit auch Artikel ohne Hersteller-Barcode an der Kasse scanbar werden.
+  `varianten.ean_intern` ist dafür vorbereitet, wird aber noch nie gesetzt.
+
 **Code-Review nach Phase A** (21.09.2026, Branch `feature/warenwirtschaft-v2`) — vollständige
 Durchsicht des bestehenden Codes auf Fehler; behoben und jeweils gegen echtes PostgreSQL bzw.
 mit neuen Tests belegt:
@@ -456,10 +490,9 @@ mit neuen Tests belegt:
 - ~~`dokumente.dokumentnummer` ist **global** eindeutig~~ — erledigt mit Teilaufgabe B2
   (Migration `e5f6a7b8c9d0`, siehe unten): jetzt `UNIQUE (lieferant_id, dokumentnummer)`
   inkl. Duplikatsprüfung im Importer.
-- Regel 5 („EAN ist optional") gilt im Datenmodell und im Importer, **nicht** aber in
-  `parsers/intersport.py`/`corrections.py`: dort ist die EAN ein Pflichtfeld, eine Position ohne EAN
-  lässt sich nicht importieren. Für INTERSPORT-Rechnungen bisher folgenlos (dort hat jede
-  Zeile eine EAN); vor manueller Erfassung bzw. weiteren Lieferanten zu klären.
+- ~~Regel 5 („EAN ist optional") gilt im Datenmodell und im Importer, **nicht** aber in
+  Parser/Korrekturen~~ — erledigt mit Teilaufgabe B3 (siehe unten): eine Position ohne
+  EAN läuft mit Hinweis durch, eine unleserliche EAN bleibt eine Warnung.
 - Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
   angemeldeten Konto die Dokumente **aller** Filialen. Ob Regel 9 („Admin/Zentrale
   filialübergreifend") auch das Lesen einschränken soll, ist eine fachliche Frage an Fabian.

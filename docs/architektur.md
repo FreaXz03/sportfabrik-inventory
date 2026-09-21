@@ -179,7 +179,10 @@ betroffene Feld direkt in der Vorschau-Tabelle korrigieren, statt die ganze
 Rechnung abzulehnen. `app/services/corrections.py` wendet diese Korrekturen
 serverseitig auf die frisch geparsten Daten an (nie auf clientseitig
 mitgeschickte Rohdaten) und validiert jede Position komplett neu:
-Pflichtfelder, EAN-Format (8/12/13/14 Ziffern), Zahlenformat für Menge/UVP.
+Pflichtfelder, EAN-Format (8/12/13/14 Ziffern **wenn eine EAN eingetragen
+ist** — Farbe, Grösse und EAN sind optional, Regel 5), Zahlenformat für
+Menge/UVP. Eine EAN zu löschen ist also erlaubt und ergibt einen Hinweis;
+Unsinn einzutragen bleibt ein Fehler.
 Jede tatsächliche Änderung wird als `correction_audit`
 (Ausgangswert, neuer Wert, wer, wann) in `wareneingang_positionen_quelle`
 gespeichert — nachvollziehbar, auch nachdem die Rechnung importiert wurde. `/validate-preview`
@@ -274,11 +277,23 @@ Spaltenbreite): Kopfzeile wird anhand bekannter Spaltentitel gesucht, Zeilen
 werden anhand ihrer vertikalen Position gruppiert, Fortsetzungszeilen einer
 Position (z. B. mehrzeilige Bezeichnung, Farbe/Grösse in Klammern) werden
 der vorherigen Position zugeordnet. Der Parser selbst schreibt nichts in die
-Datenbank und trifft keine automatischen Annahmen bei Unklarheiten — jede
-unsichere Zeile bekommt eine Warnung, die den Import blockiert, bis sie
-manuell geprüft (oder korrigiert, siehe oben) wurde. Weicht eine einzelne
-Seite eines erkannten Layouts ab (z. B. Kopfzeile auf einem Scan unlesbar),
-führt das zu einem expliziten Fehler statt zu stillem Fehlverhalten.
+Datenbank und trifft keine automatischen Annahmen bei Unklarheiten. Weicht
+eine einzelne Seite eines erkannten Layouts ab (z. B. Kopfzeile auf einem
+Scan unlesbar), führt das zu einem expliziten Fehler statt zu stillem
+Fehlverhalten.
+
+**Warnung oder Hinweis?** Jede Position trägt zwei getrennte Listen:
+
+| Liste | Bedeutung | Import |
+|---|---|---|
+| `warnings` | etwas ist unsicher oder unplausibel gelesen (Pflichtfeld leer, Farbe/Grösse nicht eindeutig, unleserliche EAN, nicht zuordenbare Zeile) | **gesperrt**, bis geprüft oder korrigiert |
+| `hints` | alles in Ordnung, soll aber auffallen — aktuell: Position **ohne** EAN (Regel 5) | läuft durch |
+
+Die Vorschau zeigt Hinweise gedämpft unter den Warnungen derselben Position
+und zählt sie als eigene Kennzahl (`rows_with_hints`). Eine EAN, die im
+Dokument steht, aber kein gültiges Format hat, bleibt bewusst eine Warnung:
+das ist ein Lesefehler-Verdacht und keine bewusst fehlende Nummer
+(Teilaufgabe B3).
 
 **Dokumenttyp** (D6): `parse()` liefert ihn mit (`rechnung`,
 `lieferschein`, `auftragsbestaetigung`, `bestellung`) — er landet in

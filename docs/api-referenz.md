@@ -80,6 +80,12 @@ unveränderten Original-Snapshot der Position.
 | POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true` und optional `corrections` (JSON, siehe unten). Bucht Wareneingang und Bestand gegen die aktive Filiale des Kontos (`GET /api/me`, `lagerort`) — ohne gewählte Filiale (nur für Admin möglich, „alle Filialen") HTTP 400 |
 | GET | `/invoice-import-status` | 🔒 Prüft per Datei-Hash (`file_hash`) oder per Belegnummer **beim erkannten Lieferanten** (`invoice_number` **und** `parser_key`, beide aus der Vorschau-Antwort), ob eine Rechnung bereits importiert ist — wird von der Stapel-Import-Warteschlange genutzt, um bereits importierte Dateien zu überspringen. Ohne `parser_key` zählt nur der Datei-Hash: dieselbe Belegnummer kann bei einem anderen Lieferanten eine völlig andere Rechnung sein |
 
+**Warnungen und Hinweise je Position**: Jede Position der Antwort hat zwei
+Listen — `warnings` (blockiert den Import, bis geprüft/korrigiert) und `hints`
+(nicht blockierend, aktuell: Position ohne EAN, Regel 5). Dazu die Zähler
+`rows_with_warnings` und `rows_with_hints`. `/import-invoice` weist ein
+Dokument nur wegen `warnings` ab, nie wegen `hints`.
+
 **Erkannter Lieferant (`/upload-preview`, `/validate-preview`)**: Die Antwort
 enthält neben den Positionen `parser_key` (zuständiges Parser-Modul, =
 `lieferanten.parser_key`), `supplier_name` (Anzeige in der Vorschau) und
@@ -90,8 +96,9 @@ Dokumentlayout noch nicht bekannt ist (siehe docs/architektur.md, „PDF-Parsing
 
 **Korrekturen (`corrections`)**: JSON-Objekt `{"<Positionsnummer>": {"<Feld>": "<neuer Wert>"}}`.
 Erlaubte Felder: `brand`, `supplier_article_no`, `article_no`, `ean`,
-`description`, `color`, `size`, `quantity`, `unit`, `uvp`. Der Server
-validiert jede Position vollständig neu (Pflichtfelder, EAN-Format,
+`description`, `color`, `size`, `quantity`, `unit`, `uvp` — `ean`, `color` und
+`size` dürfen leer bleiben (Regel 5). Der Server validiert jede Position
+vollständig neu (Pflichtfelder, EAN-Format sofern eine EAN eingetragen ist,
 Zahlenformat) statt der übermittelten Werte blind zu vertrauen; jede
 tatsächliche Änderung wird als `correction_audit` (vorher/nachher, wer, wann)
 dauerhaft mit der Position gespeichert.

@@ -188,7 +188,10 @@ späteren Rechnung mit bekanntem Code nachträglich befüllt.
 
 ### `varianten`
 Farbe/Grösse/EAN eines Artikels (Regel 5: EAN optional — Schlüssel ohne EAN
-ist Lieferant + Artikelnummer + Farbe + Grösse über `artikel_id`).
+ist Lieferant + Artikelnummer + Farbe + Grösse über `artikel_id`). Seit
+Teilaufgabe B3 gilt das auch beim Upload: eine Position ohne EAN läuft mit
+Hinweis durch und landet als Variante mit leerer EAN. Mehrere solche Varianten
+stören sich nicht, weil NULL im Unique-Index nicht kollidiert.
 `ean_intern` markiert vom System generierte EANs (EAN-13 im GS1-Bereich
 20–29, Phase B, noch ungenutzt). `first_seen`/`last_seen` wie früher auf
 `products`, bei jedem Import/jeder Löschung neu berechnet.

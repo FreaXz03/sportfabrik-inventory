@@ -26,6 +26,9 @@ der Oberfläche zwischen ihren Filialen wechseln.
   im Dokument (ein Parser-Modul je Lieferanten-Layout, siehe
   `app/services/parsers/`); ein noch unbekanntes Layout wird als solches
   gemeldet, statt mit einer irreführenden Fehlermeldung abzubrechen.
+- **Artikel ohne Barcode** sind kein Sonderfall: eine Position ohne EAN läuft
+  mit Hinweis durch (Schlüssel ist dann Lieferant + Artikelnummer + Farbe +
+  Grösse); eine unleserliche EAN blockiert den Import dagegen weiterhin.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
 - **Artikelsuche** über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung,
@@ -64,7 +67,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (170 bestanden, 19 übersprungen ohne optionale
+- **Tests**: pytest (182 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
