@@ -43,6 +43,12 @@
   "dashboard.load_error": "Data could not be loaded.",
   "dashboard.ocr_scan_suffix": "(OCR scan)",
 
+  "document_types.rechnung": "Invoice",
+  "document_types.lieferschein": "Delivery note",
+  "document_types.auftragsbestaetigung": "Order confirmation",
+  "document_types.bestellung": "Order",
+  "document_types.unknown": "unknown document type",
+
   "fields.brand": "Brand",
   "fields.supplier_article_no": "Supplier item no.",
   "fields.fedas_code": "FEDAS code",
@@ -114,6 +120,7 @@
 
   "preview.invoice_heading": "Invoice {number}",
   "preview.no_number_detected": "no number detected",
+  "preview.detected_label": "Detected: {supplier} · {document_type}",
   "preview.stats.positions": "Lines",
   "preview.stats.pages": "Pages",
   "preview.stats.positions_with_warnings": "Lines with warnings",
@@ -319,6 +326,8 @@
   "errors.parser.mixed_invoice_numbers": "The PDF contains different invoice numbers.",
   "errors.parser.hint_ocr": " (read via OCR from a scan; please check image quality/orientation)",
   "errors.parser.hint_other_layout": " (scan/other layout)",
+  "errors.parser.unknown_layout": "The system does not know this document layout yet{hint}. It cannot be read automatically - please pass the document on as a sample so the matching parser can be added.",
+  "errors.parser.ambiguous_layout": "Supplier detection is not conclusive: several layouts match equally well ({suppliers}).",
   "errors.parser.missing_table_header": "Page {page}: INTERSPORT table header missing or ambiguous{hint}.",
   "errors.parser.article_columns_not_detected": "Article columns could not be detected.",
   "errors.parser.unassigned_row": "Page {page}: unassigned line: {row_text}",
@@ -349,6 +358,7 @@
   "errors.importer.field_invalid_format": "Line {row}: {field} does not fit the database format.",
   "errors.importer.already_imported": "Invoice {number} has already been imported (ID {id}).",
   "errors.importer.supplier_not_configured": "No supplier configured for this parser.",
+  "errors.importer.document_type_unknown": "The document type (invoice, delivery note, order confirmation, order) was not recognised.",
   "errors.importer.integrity_conflict": "Data conflict: the import was fully rolled back. Please check the preview again.",
   "errors.importer.invoice_not_found": "Invoice {id} was not found.",
 

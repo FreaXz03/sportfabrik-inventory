@@ -4,9 +4,7 @@ preview confirmation. Deletion: chef-only, see app/auth.py."""
 from datetime import datetime, timezone
 from decimal import Decimal
 import hashlib
-import re
 
-import pymupdf
 from sqlalchemy import delete, func, select, or_, text
 from sqlalchemy.exc import IntegrityError
 
@@ -26,10 +24,8 @@ from ..core.models import (
     WareneingangPosition,
     WareneingangPositionQuelle,
 )
-from .parser import page_content, parse_invoice
+from .parsers import parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
-
-INTERSPORT_PARSER_KEY = "intersport"
 
 
 class ImportRejected(ValueError):
@@ -38,44 +34,6 @@ class ImportRejected(ValueError):
 
 class DeleteRejected(ValueError):
     pass
-
-
-def invoice_dates(pdf, language: str = DEFAULT_LANGUAGE):
-    # Uses the same native-text-or-OCR fallback as parse_invoice, so dates are
-    # still found on scanned (paper) invoices - see parser.py. All pages are
-    # searched, not just the first: a scanned invoice's pages are not always
-    # in the order a digital export always uses (the header block with these
-    # dates can end up scanned onto a later page).
-    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
-        pages_words = [page_content(page, language)[0] for page in doc]
-    result = {}
-    # "Rechnungsdatum"/"Belegdatum" sind feste Textanker im INTERSPORT-Layout
-    # (immer Deutsch, unabhängig von der UI-Sprache) - nur die Fehlermeldung
-    # bei fehlendem/mehrdeutigem Datum wird übersetzt.
-    for label, key in [
-        ("Rechnungsdatum", "invoice_date"),
-        ("Belegdatum", "document_date"),
-    ]:
-        anchors = [(words, w) for words in pages_words for w in words if w[4] == label]
-        if len(anchors) != 1:
-            raise ImportRejected(translate(f"errors.importer.{key}_not_unique", language))
-        words, anchor = anchors[0]
-        candidates = [
-            w[4]
-            for w in words
-            if w[0] > anchor[2]
-            and abs(w[1] - anchor[1]) < 2
-            and re.fullmatch(r"\d{2}\.\d{2}\.\d{4}", w[4])
-        ]
-        if len(candidates) != 1:
-            raise ImportRejected(
-                translate(f"errors.importer.{key}_missing_or_ambiguous", language)
-            )
-        try:
-            result[key] = datetime.strptime(candidates[0], "%d.%m.%Y").date()
-        except ValueError as exc:
-            raise ImportRejected(translate(f"errors.importer.{key}_invalid", language)) from exc
-    return result
 
 
 def _artikel_group_key(brand: str | None, supplier_article_no: str | None):
@@ -137,7 +95,11 @@ def import_invoice(
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
         raise ImportRejected(translate("errors.importer.hash_mismatch", language))
-    parsed = parse_invoice(pdf, language)
+    # Ein Lese-/OCR-Durchgang für alles: Lieferanten-Erkennung, Positionen und
+    # Datumsfelder arbeiten auf demselben eingelesenen Dokument (siehe
+    # app/services/parsers/).
+    document, parser = read_and_detect(pdf, language)
+    parsed = parse_with_parser(parser, document, language)
     if corrections:
         try:
             parsed = apply_corrections(parsed, corrections, imported_by, language)
@@ -149,7 +111,11 @@ def import_invoice(
         or parsed["rows_with_warnings"]
     ):
         raise ImportRejected(translate("errors.importer.locked_warnings", language))
-    dates = invoice_dates(pdf, language)
+    if not parsed.get("document_type"):
+        raise ImportRejected(
+            translate("errors.importer.document_type_unknown", language)
+        )
+    dates = parser.dates(document, language)
     for item in parsed["items"]:
         # Jedes Feld, das in eine begrenzte Spalte geschrieben wird - sonst
         # scheitert erst PostgreSQL mit einem DataError (der nicht als
@@ -209,8 +175,10 @@ def import_invoice(
                         id=existing.id,
                     )
                 )
+            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT):
+            # `parser_key` verbindet Parser-Modul und Lieferanten-Stammdaten.
             lieferant = session.scalar(
-                select(Lieferant).where(Lieferant.parser_key == INTERSPORT_PARSER_KEY)
+                select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
             )
             if lieferant is None:
                 raise ImportRejected(
@@ -228,7 +196,7 @@ def import_invoice(
             dokument = Dokument(
                 lieferant_id=lieferant.id,
                 lagerort_id=lagerort_id,
-                typ="rechnung",
+                typ=parsed["document_type"],
                 dokumentnummer=parsed["invoice_number"],
                 dokumentdatum=dates["invoice_date"],
                 belegdatum=dates["document_date"],
@@ -241,6 +209,11 @@ def import_invoice(
             )
             session.add(dokument)
             session.flush()
+            # Regel 3/D6: Nur Dokumente über tatsächlich gelieferte Ware buchen
+            # Bestand. Bisher erkennt die Registry ausschliesslich Rechnungen
+            # (siehe app/services/parsers/), darum immer „eingetroffen"; mit
+            # Auftragsbestätigungen/Bestellungen kommt hier der Status
+            # „erwartet" dazu (nächster Teilschritt von Phase B).
             wareneingang = Wareneingang(
                 dokument_id=dokument.id,
                 lagerort_id=lagerort_id,

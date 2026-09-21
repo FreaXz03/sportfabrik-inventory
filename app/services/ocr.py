@@ -1,16 +1,16 @@
 """OCR fallback for scanned (image-only) invoice pages.
 
-parser.py calls into this module only when a PDF page has no extractable
-text at all - i.e. a paper invoice that arrived stapled inside a delivery
-instead of by email and was scanned rather than exported digitally. The
-result is shaped exactly like PyMuPDF's page.get_text("words") (a list of
-(x0, y0, x1, y1, word, block_no, line_no, word_no) tuples, in PDF point
-space), so the existing table-reconstruction logic in parser.py can be
-reused unchanged for OCR-derived pages.
+parsers/base.py (read_page) calls into this module only when a PDF page has
+no extractable text at all - i.e. a paper invoice that arrived stapled
+inside a delivery instead of by email and was scanned rather than exported
+digitally. The result is shaped exactly like PyMuPDF's page.get_text("words")
+(a list of (x0, y0, x1, y1, word, block_no, line_no, word_no) tuples, in PDF point
+space), so both the layout detection and the table-reconstruction logic of
+every parser module work unchanged for OCR-derived pages.
 
 OCR is inherently less reliable than a native text layer, so callers are
-expected to flag results derived this way for extra human review - see
-parser.parse_invoice's ocr_used/ocr_pages fields.
+expected to flag results derived this way for extra human review - see the
+ocr_used/ocr_pages fields of a parser's result.
 """
 
 import re
@@ -78,11 +78,11 @@ def _grouped_words(data):
     y-coordinates are normalised per detected text line.
 
     Tesseract's own bounding boxes jitter by a few points from word to word
-    on the same visual line (ascenders, descenders, box padding). parser.py's
-    row-grouping (lines() in parser.py) expects same-line words to share
+    on the same visual line (ascenders, descenders, box padding). The parsers'
+    row-grouping (lines() in parsers/base.py) expects same-line words to share
     (almost) the same y0, as they do in a native PDF's text layer. Snapping
     every word in a Tesseract line/paragraph/block group to that group's
-    shared top/bottom keeps parser.py's logic unchanged for OCR input.
+    shared top/bottom keeps that logic unchanged for OCR input.
     """
     groups = {}
     entries = []

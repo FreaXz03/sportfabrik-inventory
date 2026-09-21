@@ -6,7 +6,7 @@ from starlette.concurrency import run_in_threadpool
 from .auth import get_language, require_active_lagerort, require_chef_api, require_chef_page
 from ..core.i18n import translate
 from ..core.models import Lagerort
-from ..services.parser import InvoiceParseError, parse_invoice
+from ..services.parsers import DocumentParseError, parse_document
 from pathlib import Path
 from fastapi.responses import FileResponse
 
@@ -32,8 +32,8 @@ async def upload_preview(
         if len(data) > MAX_UPLOAD_BYTES:
             raise HTTPException(413, translate("errors.preview.file_too_large", language))
         try:
-            result = await run_in_threadpool(parse_invoice, data, language)
-        except InvoiceParseError as exc:
+            result = await run_in_threadpool(parse_document, data, language)
+        except DocumentParseError as exc:
             raise HTTPException(422, str(exc)) from exc
         return {
             "filename": file.filename,
@@ -78,7 +78,7 @@ async def confirm_import(
                 decode_corrections(corrections, language),
                 language,
             )
-        except (ImportRejected, InvoiceParseError) as exc:
+        except (ImportRejected, DocumentParseError) as exc:
             raise HTTPException(409, str(exc)) from exc
         except SQLAlchemyError as exc:
             raise HTTPException(
@@ -114,9 +114,9 @@ async def validate_preview(
             raise HTTPException(409, translate("errors.preview.file_mismatch", language))
         patches = decode_corrections(corrections, language)
         try:
-            parsed = await run_in_threadpool(parse_invoice, data, language)
+            parsed = await run_in_threadpool(parse_document, data, language)
             result = apply_corrections(parsed, patches, None, language)
-        except (InvoiceParseError, CorrectionError) as exc:
+        except (DocumentParseError, CorrectionError) as exc:
             raise HTTPException(422, str(exc)) from exc
         return {"filename": file.filename, "file_hash": expected_hash, **result}
     finally:

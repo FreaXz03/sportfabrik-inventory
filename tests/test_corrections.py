@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select, func
 from test_importer import setup_import
 from app.services.corrections import apply_corrections, CorrectionError
-from app.services.parser import parse_invoice
+from app.services.parsers import parse_document
 from app.services.importer import import_invoice, ImportRejected
 from app.core.models import Dokument, WareneingangPosition, WareneingangPositionQuelle
 
@@ -40,7 +40,7 @@ def test_corrected_import_preserves_original_and_actor(setup_import):
 def test_reject_unknown_fields_and_rows(setup_import, patch):
     pdf, _, _, _, _ = setup_import
     with pytest.raises(CorrectionError):
-        apply_corrections(parse_invoice(pdf), patch)
+        apply_corrections(parse_document(pdf), patch)
 
 
 @pytest.mark.parametrize(
@@ -63,7 +63,7 @@ def test_invalid_values_block_import(setup_import, patch):
 
 def test_repair_warnings_without_erasing_structural_problems(setup_import):
     pdf, _, _, _, _ = setup_import
-    parsed = parse_invoice(pdf)
+    parsed = parse_document(pdf)
     parsed["items"][0]["ean"] = "bad"
     parsed["items"][0]["warnings"] = ["EAN hat ein unerwartetes Format."]
     parsed["warnings"] = ["Nicht zugeordnete Zeile"]

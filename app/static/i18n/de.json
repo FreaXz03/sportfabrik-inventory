@@ -43,6 +43,12 @@
   "dashboard.load_error": "Daten konnten nicht geladen werden.",
   "dashboard.ocr_scan_suffix": "(OCR-Scan)",
 
+  "document_types.rechnung": "Rechnung",
+  "document_types.lieferschein": "Lieferschein",
+  "document_types.auftragsbestaetigung": "Auftragsbestätigung",
+  "document_types.bestellung": "Bestellung",
+  "document_types.unknown": "unbekannter Dokumenttyp",
+
   "fields.brand": "Marke",
   "fields.supplier_article_no": "Lief. Art. Nr.",
   "fields.fedas_code": "FEDAS-Code",
@@ -114,6 +120,7 @@
 
   "preview.invoice_heading": "Rechnung {number}",
   "preview.no_number_detected": "ohne erkannte Nummer",
+  "preview.detected_label": "Erkannt: {supplier} · {document_type}",
   "preview.stats.positions": "Positionen",
   "preview.stats.pages": "Seiten",
   "preview.stats.positions_with_warnings": "Positionen mit Warnungen",
@@ -319,6 +326,8 @@
   "errors.parser.mixed_invoice_numbers": "Das PDF enthält unterschiedliche Rechnungsnummern.",
   "errors.parser.hint_ocr": " (Scan per OCR gelesen; bitte Bildqualität/Ausrichtung prüfen)",
   "errors.parser.hint_other_layout": " (Scan/anderes Layout)",
+  "errors.parser.unknown_layout": "Dieses Dokumentlayout kennt das System noch nicht{hint}. Es kann darum nicht automatisch gelesen werden - bitte das Dokument als Beispiel weitergeben, damit der passende Parser ergänzt wird.",
+  "errors.parser.ambiguous_layout": "Die Lieferanten-Erkennung ist nicht eindeutig: mehrere Layouts passen gleich gut ({suppliers}).",
   "errors.parser.missing_table_header": "Seite {page}: INTERSPORT-Tabellenkopf fehlt oder ist mehrdeutig{hint}.",
   "errors.parser.article_columns_not_detected": "Artikelspalten konnten nicht erkannt werden.",
   "errors.parser.unassigned_row": "Seite {page}: nicht zugeordnete Zeile: {row_text}",
@@ -349,6 +358,7 @@
   "errors.importer.field_invalid_format": "Position {row}: {field} passt nicht in das Datenbankformat.",
   "errors.importer.already_imported": "Rechnung {number} wurde bereits importiert (ID {id}).",
   "errors.importer.supplier_not_configured": "Kein Lieferant für diesen Parser hinterlegt.",
+  "errors.importer.document_type_unknown": "Der Dokumenttyp (Rechnung, Lieferschein, Auftragsbestätigung, Bestellung) wurde nicht erkannt.",
   "errors.importer.integrity_conflict": "Datenkonflikt: Der Import wurde vollständig zurückgerollt. Bitte Vorschau erneut prüfen.",
   "errors.importer.invoice_not_found": "Rechnung {id} wurde nicht gefunden.",
 

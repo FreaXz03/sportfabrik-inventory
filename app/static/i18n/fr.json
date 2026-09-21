@@ -43,6 +43,12 @@
   "dashboard.load_error": "Les données n'ont pas pu être chargées.",
   "dashboard.ocr_scan_suffix": "(scan OCR)",
 
+  "document_types.rechnung": "Facture",
+  "document_types.lieferschein": "Bulletin de livraison",
+  "document_types.auftragsbestaetigung": "Confirmation de commande",
+  "document_types.bestellung": "Commande",
+  "document_types.unknown": "type de document inconnu",
+
   "fields.brand": "Marque",
   "fields.supplier_article_no": "N° art. fournisseur",
   "fields.fedas_code": "Code FEDAS",
@@ -114,6 +120,7 @@
 
   "preview.invoice_heading": "Facture {number}",
   "preview.no_number_detected": "sans numéro détecté",
+  "preview.detected_label": "Détecté : {supplier} · {document_type}",
   "preview.stats.positions": "Positions",
   "preview.stats.pages": "Pages",
   "preview.stats.positions_with_warnings": "Positions avec avertissements",
@@ -319,6 +326,8 @@
   "errors.parser.mixed_invoice_numbers": "Le PDF contient des numéros de facture différents.",
   "errors.parser.hint_ocr": " (lu par OCR à partir d'un scan ; veuillez vérifier la qualité/orientation de l'image)",
   "errors.parser.hint_other_layout": " (scan/autre mise en page)",
+  "errors.parser.unknown_layout": "Le système ne connaît pas encore la mise en page de ce document{hint}. Il ne peut donc pas être lu automatiquement - merci de transmettre le document comme exemple afin que l'analyseur correspondant soit ajouté.",
+  "errors.parser.ambiguous_layout": "La reconnaissance du fournisseur n'est pas univoque : plusieurs mises en page correspondent aussi bien ({suppliers}).",
   "errors.parser.missing_table_header": "Page {page} : en-tête de tableau INTERSPORT manquant ou ambigu{hint}.",
   "errors.parser.article_columns_not_detected": "Les colonnes d'articles n'ont pas pu être détectées.",
   "errors.parser.unassigned_row": "Page {page} : ligne non attribuée : {row_text}",
@@ -349,6 +358,7 @@
   "errors.importer.field_invalid_format": "Position {row} : {field} ne correspond pas au format de la base de données.",
   "errors.importer.already_imported": "La facture {number} a déjà été importée (ID {id}).",
   "errors.importer.supplier_not_configured": "Aucun fournisseur configuré pour ce parser.",
+  "errors.importer.document_type_unknown": "Le type de document (facture, bulletin de livraison, confirmation de commande, commande) n'a pas été reconnu.",
   "errors.importer.integrity_conflict": "Conflit de données : l'import a été entièrement annulé. Veuillez vérifier l'aperçu à nouveau.",
   "errors.importer.invoice_not_found": "La facture {id} est introuvable.",
 

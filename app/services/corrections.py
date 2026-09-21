@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from collections import Counter
 import re
 from decimal import Decimal
-from .parser import decimal_value
+from .parsers import decimal_value
 from ..core.i18n import DEFAULT_LANGUAGE, template, translate
 
 FIELDS = {

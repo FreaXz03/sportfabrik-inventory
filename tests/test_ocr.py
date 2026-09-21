@@ -7,7 +7,7 @@ handgebauten Tesseract-Rohdaten getestet, ganz ohne echtes Tesseract.
 
 test_ocr_fallback_end_to_end baut zusätzlich eine echte, aber synthetische
 Scan-Seite (per PIL gezeichneter Text, ohne Textebene) und lässt sie durch
-den kompletten parse_invoice-Pfad laufen. Dieser Test braucht ein
+den kompletten parse_document-Pfad laufen. Dieser Test braucht ein
 installiertes Tesseract und wird andernfalls übersprungen (z. B. auf einem
 Windows-Entwicklungsrechner ohne lokale Tesseract-Installation - siehe
 SERVER-SETUP.md)."""
@@ -19,7 +19,7 @@ import pymupdf
 import pytest
 
 from app.services import ocr
-from app.services.parser import InvoiceParseError, parse_invoice
+from app.services.parsers import DocumentParseError, parse_document
 
 TESSERACT_AVAILABLE = shutil.which("tesseract") is not None
 
@@ -287,7 +287,7 @@ def _draw_scanned_invoice_pdf():
 )
 def test_ocr_fallback_end_to_end():
     pdf_bytes = _draw_scanned_invoice_pdf()
-    result = parse_invoice(pdf_bytes)
+    result = parse_document(pdf_bytes)
 
     assert result["ocr_used"] is True
     assert result["ocr_pages"] == [1]
@@ -311,7 +311,7 @@ def test_native_text_page_does_not_use_ocr(monkeypatch):
     # darf niemals den (viel langsameren, ungenaueren) OCR-Pfad auslösen -
     # unabhängig davon, ob auf diesem Rechner überhaupt Tesseract installiert
     # ist. Kein gültiges INTERSPORT-Layout, das ist hier unerheblich: es geht
-    # nur darum, dass page_content() den vorhandenen Textlayer nutzt statt OCR.
+    # nur darum, dass read_page() den vorhandenen Textlayer nutzt statt OCR.
     def fail_if_called(page, dpi=ocr.OCR_DPI):
         raise AssertionError("OCR wurde für eine Seite mit Textebene aufgerufen")
 
@@ -326,5 +326,5 @@ def test_native_text_page_does_not_use_ocr(monkeypatch):
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as check:
         assert check[0].get_text("words")  # Textebene vorhanden.
 
-    with pytest.raises(InvoiceParseError, match="Tabellenkopf"):
-        parse_invoice(pdf_bytes)
+    with pytest.raises(DocumentParseError, match="noch nicht"):
+        parse_document(pdf_bytes)
