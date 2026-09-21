@@ -3,12 +3,14 @@
 
 * Regel 2 - Bestand wird nie direkt überschrieben, sondern aus den Zeilen in
   `lagerbewegungen` abgeleitet; beim Löschen wird er daraus neu berechnet.
-* Regel 3/6 - Ware an GEWA (`verkauf = False`) bekommt noch kein
-  Eingangsdatum, damit die Reduktionsuhr nicht im Zwischenlager läuft.
+* Regel 3/6 - Ware an einem externen Standort ohne Verkauf
+  (`verkauf = False`: die Verarbeitungsstellen GEWA und VEBO sowie das
+  Lager Dietikon) bekommt noch kein Eingangsdatum. Die Reduktionsuhr
+  startet erst bei Ankunft in einer Filiale.
 * Regel 4 - Artikelstamm bleibt für immer; nur Bestand/Bewegungen gehen.
 
 Wie test_importer_fedas.py mit einem synthetischen Rechnungs-Payload
-(monkeypatch auf parse_invoice/invoice_dates), damit kein PDF nötig ist.
+(monkeypatch auf Layout-Erkennung und Parser), damit kein PDF nötig ist.
 """
 
 import hashlib
@@ -36,6 +38,7 @@ from app.core.models import (
     WareneingangPositionQuelle,
 )
 from app.services import importer
+from app.services.parsers import intersport
 from app.services.importer import delete_invoice, import_invoice
 
 
@@ -72,7 +75,7 @@ def setup(monkeypatch):
         s.commit()
         lagerorte = {
             code: s.scalar(select(Lagerort.id).where(Lagerort.code == code))
-            for code in ("SF1", "SF2", "GEWA")
+            for code in ("SF1", "SF2", "GEWA", "VEBO", "DIETIKON")
         }
 
     state = {
@@ -82,8 +85,11 @@ def setup(monkeypatch):
         "document_date": date(2026, 1, 9),
     }
 
-    def fake_parse_invoice(pdf, language="de"):
+    def fake_parse_with_parser(parser, document, language="de"):
         return {
+            "parser_key": intersport.KEY,
+            "supplier_name": intersport.LIEFERANT_NAME,
+            "document_type": "rechnung",
             "invoice_number": state["invoice_number"],
             "warnings": [],
             "rows_with_warnings": 0,
@@ -92,14 +98,19 @@ def setup(monkeypatch):
             "items": state["items"],
         }
 
-    def fake_invoice_dates(pdf, language="de"):
-        return {
-            "invoice_date": state["invoice_date"],
-            "document_date": state["document_date"],
-        }
+    class FakeParser:
+        KEY = intersport.KEY
+        LIEFERANT_NAME = intersport.LIEFERANT_NAME
 
-    monkeypatch.setattr(importer, "parse_invoice", fake_parse_invoice)
-    monkeypatch.setattr(importer, "invoice_dates", fake_invoice_dates)
+        @staticmethod
+        def dates(document, language="de"):
+            return {
+                "invoice_date": state["invoice_date"],
+                "document_date": state["document_date"],
+            }
+
+    monkeypatch.setattr(importer, "read_and_detect", lambda pdf, language="de": (None, FakeParser))
+    monkeypatch.setattr(importer, "parse_with_parser", fake_parse_with_parser)
     return sessions, lagerorte, state
 
 
@@ -177,33 +188,39 @@ def test_bestand_is_per_lagerort(setup):
         assert s.scalar(select(func.count(Variante.id))) == 1
 
 
-# --- Regel 6: GEWA bekommt noch kein Eingangsdatum -------------------------
+# --- Regel 6: kein Eingangsdatum ausserhalb der Filialen -------------------
+
+# GEWA und VEBO sind Verarbeitungsstellen, DIETIKON ein reines Lager -
+# fachlich verschieden, für die Eingangsdatum-Regel aber identisch.
+EXTERNE_STANDORTE = ["GEWA", "VEBO", "DIETIKON"]
 
 
-def test_gewa_delivery_has_no_eingangsdatum(setup):
+@pytest.mark.parametrize("code", EXTERNE_STANDORTE)
+def test_externe_lieferung_has_no_eingangsdatum(setup, code):
     sessions, lagerorte, _ = setup
-    _import(sessions, lagerorte["GEWA"])
+    _import(sessions, lagerorte[code])
     with sessions() as s:
         wareneingang = s.scalar(select(Wareneingang))
-        assert wareneingang.lagerort_id == lagerorte["GEWA"]
+        assert wareneingang.lagerort_id == lagerorte[code]
         assert wareneingang.eingangsdatum is None
         # Das Dokumentdatum bleibt erhalten - nur das Eingangsdatum fehlt.
         assert s.scalar(select(Dokument.dokumentdatum)) == date(2026, 1, 10)
-    bestand = _bestand(sessions, lagerorte["GEWA"])
+    bestand = _bestand(sessions, lagerorte[code])
     assert bestand.menge == Decimal("5")
     assert bestand.aeltestes_eingangsdatum is None
 
 
-def test_gewa_does_not_lower_oldest_date_of_a_filiale(setup):
+@pytest.mark.parametrize("code", EXTERNE_STANDORTE)
+def test_externe_lieferung_does_not_lower_oldest_date_of_a_filiale(setup, code):
     sessions, lagerorte, state = setup
     _import(sessions, lagerorte["SF1"])
 
-    state["invoice_number"] = "LB-GEWA"
+    state["invoice_number"] = "LB-EXT"
     state["invoice_date"] = date(2025, 5, 4)
-    _import(sessions, lagerorte["GEWA"], pdf=b"%PDF-lb-gewa")
+    _import(sessions, lagerorte[code], pdf=b"%PDF-lb-ext")
 
     assert _bestand(sessions, lagerorte["SF1"]).aeltestes_eingangsdatum == date(2026, 1, 10)
-    assert _bestand(sessions, lagerorte["GEWA"]).aeltestes_eingangsdatum is None
+    assert _bestand(sessions, lagerorte[code]).aeltestes_eingangsdatum is None
 
 
 # --- Loeschen: Bestand aus dem verbleibenden Journal neu berechnen ---------
@@ -269,17 +286,18 @@ def test_delete_leaves_other_lagerort_untouched(setup):
     assert _bestand(sessions, lagerorte["SF2"]).menge == Decimal("2")
 
 
-def test_delete_keeps_first_seen_of_a_gewa_only_variante(setup):
+@pytest.mark.parametrize("code", EXTERNE_STANDORTE)
+def test_delete_keeps_first_seen_of_an_external_only_variante(setup, code):
     """first_seen/last_seen kommen aus dem Dokumentdatum. Wuerden sie beim
     Loeschen aus dem Eingangsdatum neu berechnet, waeren sie fuer Ware, die
-    nur an GEWA liegt, danach leer (dort ist es nach Regel 6 NULL)."""
+    nur extern liegt, danach leer (dort ist es nach Regel 6 NULL)."""
     sessions, lagerorte, state = setup
-    _import(sessions, lagerorte["GEWA"])
+    _import(sessions, lagerorte[code])
 
-    state["invoice_number"] = "LB-GEWA-2"
+    state["invoice_number"] = "LB-EXT-2"
     state["invoice_date"] = date(2026, 4, 6)
     state["items"] = [_fake_item(quantity="1")]
-    zweite = _import(sessions, lagerorte["GEWA"], pdf=b"%PDF-lb-gewa-2")
+    zweite = _import(sessions, lagerorte[code], pdf=b"%PDF-lb-ext-2")
 
     delete_invoice(zweite["invoice_id"], sessions)
 
@@ -287,4 +305,4 @@ def test_delete_keeps_first_seen_of_a_gewa_only_variante(setup):
         variante = s.scalar(select(Variante))
         assert variante.first_seen == date(2026, 1, 10)
         assert variante.last_seen == date(2026, 1, 10)
-    assert _bestand(sessions, lagerorte["GEWA"]).menge == Decimal("5")
+    assert _bestand(sessions, lagerorte[code]).menge == Decimal("5")

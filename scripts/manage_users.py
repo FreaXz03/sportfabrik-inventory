@@ -46,7 +46,7 @@ def _resolve_lagerorte(session, codes: list[str]) -> list[Lagerort]:
         lagerort = session.scalar(select(Lagerort).where(Lagerort.code == code.upper()))
         if lagerort is None:
             raise SystemExit(
-                f"Unbekannter Lagerort-Code '{code}'. Gültig: SF1, SF2, SF3, SF4, GEWA."
+                f"Unbekannter Lagerort-Code '{code}'. Gültig: SF1, SF2, SF3, SF4, GEWA, VEBO, DIETIKON."
             )
         lagerorte.append(lagerort)
     return lagerorte

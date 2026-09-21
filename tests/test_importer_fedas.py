@@ -1,6 +1,6 @@
 """FEDAS-Kategorievorschlag beim Live-Import (app/services/importer.py) -
 nutzt einen synthetischen Rechnungs-Payload statt einer echten PDF
-(monkeypatcht parse_invoice/invoice_dates), damit der Test unabhängig von
+(monkeypatcht Layout-Erkennung und Parser), damit der Test unabhängig von
 INTERSPORT_TEST_PDF läuft, siehe app/core/fedas.py für die Codes."""
 
 import hashlib
@@ -15,6 +15,7 @@ from app.core.lagerorte import seed_lagerorte
 from app.core.lieferanten import seed_lieferanten
 from app.core.models import Artikel, Base, Kategorie, Lagerort
 from app.services import importer
+from app.services.parsers import intersport
 from app.services.importer import import_invoice
 
 
@@ -53,8 +54,11 @@ def setup(monkeypatch):
 
     state = {"items": [_fake_item()], "invoice_number": "FEDAS-1"}
 
-    def fake_parse_invoice(pdf, language="de"):
+    def fake_parse_with_parser(parser, document, language="de"):
         return {
+            "parser_key": intersport.KEY,
+            "supplier_name": intersport.LIEFERANT_NAME,
+            "document_type": "rechnung",
             "invoice_number": state["invoice_number"],
             "warnings": [],
             "rows_with_warnings": 0,
@@ -63,11 +67,16 @@ def setup(monkeypatch):
             "items": state["items"],
         }
 
-    def fake_invoice_dates(pdf, language="de"):
-        return {"invoice_date": date(2026, 1, 10), "document_date": date(2026, 1, 9)}
+    class FakeParser:
+        KEY = intersport.KEY
+        LIEFERANT_NAME = intersport.LIEFERANT_NAME
 
-    monkeypatch.setattr(importer, "parse_invoice", fake_parse_invoice)
-    monkeypatch.setattr(importer, "invoice_dates", fake_invoice_dates)
+        @staticmethod
+        def dates(document, language="de"):
+            return {"invoice_date": date(2026, 1, 10), "document_date": date(2026, 1, 9)}
+
+    monkeypatch.setattr(importer, "read_and_detect", lambda pdf, language="de": (None, FakeParser))
+    monkeypatch.setattr(importer, "parse_with_parser", fake_parse_with_parser)
     return sessions, sf1_id, state
 
 

@@ -1,5 +1,6 @@
-"""Lagerorte-Seed-Daten (SF1-SF4 + GEWA) und die Zuordnungslogik in
-app/services/lagerorte.py (Filialwechsel, Rechte gemäss Regel 9)."""
+"""Lagerorte-Seed-Daten (SF1-SF4 plus die externen Standorte GEWA, VEBO und
+Lager Dietikon) und die Zuordnungslogik in app/services/lagerorte.py
+(Filialwechsel, Rechte gemäss Regel 9)."""
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -25,20 +26,27 @@ def session():
         yield s
 
 
-def test_seed_creates_five_lagerorte_with_expected_codes(session):
+ALLE_CODES = ["SF1", "SF2", "SF3", "SF4", "GEWA", "VEBO", "DIETIKON"]
+# Externe Standorte ohne Verkauf: die Verarbeitungsstellen GEWA und VEBO
+# sowie das Lager Dietikon (Regel 6 - dort startet die Reduktionsuhr nicht).
+OHNE_VERKAUF = ["GEWA", "VEBO", "DIETIKON"]
+
+
+def test_seed_creates_expected_codes(session):
     seed_lagerorte(session)
     session.flush()
     codes = {lo.code for lo in session.scalars(select(Lagerort)).all()}
-    assert codes == {"SF1", "SF2", "SF3", "SF4", "GEWA"}
+    assert codes == set(ALLE_CODES)
 
 
-def test_gewa_has_no_verkauf_filialen_have_verkauf(session):
+def test_only_filialen_have_verkauf(session):
     seed_lagerorte(session)
     session.flush()
     by_code = {lo.code: lo for lo in session.scalars(select(Lagerort)).all()}
-    assert by_code["GEWA"].verkauf is False
+    for code in OHNE_VERKAUF:
+        assert by_code[code].verkauf is False, code
     for code in ("SF1", "SF2", "SF3", "SF4"):
-        assert by_code[code].verkauf is True
+        assert by_code[code].verkauf is True, code
 
 
 def test_seed_is_idempotent(session):
@@ -58,29 +66,17 @@ def _make_user(session, role, kassennummer="1", password_hash=None):
     return user
 
 
-def test_list_all_lagerorte_ordered_sf_then_gewa(session):
+def test_list_all_lagerorte_lists_filialen_before_externe(session):
     seed_lagerorte(session)
     session.flush()
-    assert [lo.code for lo in list_all_lagerorte(session)] == [
-        "SF1",
-        "SF2",
-        "SF3",
-        "SF4",
-        "GEWA",
-    ]
+    assert [lo.code for lo in list_all_lagerorte(session)] == ALLE_CODES
 
 
 def test_admin_sees_all_lagerorte_and_has_no_primary(session):
     seed_lagerorte(session)
     session.flush()
     admin = _make_user(session, "admin", password_hash="x")
-    assert [lo.code for lo in list_user_lagerorte(session, admin)] == [
-        "SF1",
-        "SF2",
-        "SF3",
-        "SF4",
-        "GEWA",
-    ]
+    assert [lo.code for lo in list_user_lagerorte(session, admin)] == ALLE_CODES
     assert get_primary_lagerort(session, admin) is None
 
 

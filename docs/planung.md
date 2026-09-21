@@ -25,7 +25,7 @@ kommen aktuell primär von INTERSPORT Schweiz AG per PDF-Rechnung.
 
 | # | Anforderung | Umgesetzt in |
 |---|---|---|
-| F1 | PDF-Rechnungen hochladen und Positionen automatisch auslesen | `app/services/parser.py` |
+| F1 | PDF-Rechnungen hochladen und Positionen automatisch auslesen | `app/services/parsers/` (Registry + ein Modul je Lieferanten-Layout) |
 | F2 | Vorschau der erkannten Positionen vor dem Speichern; nichts wird ungeprüft übernommen | `app/routers/preview.py` (`/upload-preview`) |
 | F3 | Import erst nach expliziter Bestätigung, und nur exakt der geprüften Datei | `app/routers/preview.py` (`/import-invoice`), Hash-Abgleich |
 | F4 | Zentrale Artikeldatenbank; mehrfach gelieferte Artikel (gleiche EAN) zusammenführen statt duplizieren | `app/services/importer.py`, `Artikel`/`Variante`-Modelle (bis Phase A Punkt 3: `Product`-Modell, siehe `datenmodell.md`) |
@@ -160,8 +160,9 @@ zum Nutzen bei vier PCs und einer Handvoll Konten.
 Fehlt einer PDF-Seite jede Textebene (Papierrechnung eingescannt statt
 digital per Mail erhalten), rendert `app/services/ocr.py` die Seite und
 liest sie per Tesseract OCR; die erkannten Wörter werden exakt wie
-PyMuPDF-Wortkoordinaten aufbereitet, sodass die bestehende
-Tabellenerkennung in `parser.py` unverändert weiterverwendet werden kann.
+PyMuPDF-Wortkoordinaten aufbereitet, sodass Layout-Erkennung und
+Tabellenerkennung der Parser-Module unverändert weiterverwendet werden
+können.
 Begründung: eine eigene, parallele Bild-Parsing-Logik hätte dieselbe
 Spaltenerkennung ein zweites Mal, fehleranfällig, nachbauen müssen. OCR
 ist grundsätzlich weniger zuverlässig als eine native Textebene; Positionen

@@ -1,9 +1,11 @@
 """Seed-Daten für Lieferanten. Aktuell nur INTERSPORT Schweiz AG (der einzige
-Lieferant mit funktionierendem Parser, siehe app/services/parser.py) - ECOM
+Lieferant mit funktionierendem Parser, siehe app/services/parsers/) - ECOM
 läuft über dasselbe Layout (siehe projekt-kontext.md Abschnitt 6, Punkt 7),
 braucht daher (noch) keinen eigenen Lieferanten-Eintrag. Weitere Lieferanten
-(Alpina, Chris Sports, CMP, externe Händler, jeweils eigener Parser) folgen
-in Phase E. Einzige Quelle für diese Daten - Migration und Tests nutzen sie.
+(Alpina, Chris Sports, CMP, externe Händler, jeweils eigenes Parser-Modul)
+folgen in Phase E. `parser_key` muss zum KEY des Parser-Moduls passen, sonst
+findet der Import den Lieferanten nicht (siehe app/services/importer.py).
+Einzige Quelle für diese Daten - Migration und Tests nutzen sie.
 """
 
 from sqlalchemy import select

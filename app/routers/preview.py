@@ -1,17 +1,48 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, Form
 import hashlib
 import json
 from ..services.corrections import apply_corrections, CorrectionError
 from starlette.concurrency import run_in_threadpool
-from .auth import get_language, require_active_lagerort, require_chef_api, require_chef_page
+from .auth import (
+    get_language,
+    require_chef_api,
+    require_chef_page,
+    resolve_wareneingang_lagerort,
+)
+from ..core.database import get_session
 from ..core.i18n import translate
-from ..core.models import Lagerort
-from ..services.parser import InvoiceParseError, parse_invoice
+from ..services.lagerorte import lade_adressen, list_wareneingang_lagerorte
+from ..services.parsers import DocumentParseError, parse_document
 from pathlib import Path
 from fastapi.responses import FileResponse
 
 router = APIRouter()
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+
+def _lagerort_daten(lagerort) -> dict | None:
+    if lagerort is None:
+        return None
+    return {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name}
+
+
+def _lagerort_auswahl(session, user, request, language) -> dict:
+    """Wohin dieser Benutzer buchen darf und was gerade aktiv ist - die
+    Vorschau zeigt daraus die Auswahlliste (D19: der erkannte Lagerort ist nur
+    ein Vorschlag)."""
+    try:
+        aktiv = resolve_wareneingang_lagerort(request, session, user, None, language)
+    except HTTPException:
+        # Admin ohne gewählte Filiale („alle Filialen") - dann gibt es keine
+        # Vorauswahl, gewählt werden muss trotzdem (serverseitig geprüft).
+        aktiv = None
+    return {
+        "lagerort_active": _lagerort_daten(aktiv),
+        "lagerort_options": [
+            _lagerort_daten(lagerort)
+            for lagerort in list_wareneingang_lagerorte(session, user)
+        ],
+    }
 
 
 @router.get("/preview", include_in_schema=False)
@@ -24,21 +55,25 @@ def preview_page(user=Depends(require_chef_page)):
 @router.post("/upload-preview")
 async def upload_preview(
     file: UploadFile,
+    request: Request,
     user=Depends(require_chef_api),
+    session=Depends(get_session),
     language: str = Depends(get_language),
 ):
     try:
         data = await file.read(MAX_UPLOAD_BYTES + 1)
         if len(data) > MAX_UPLOAD_BYTES:
             raise HTTPException(413, translate("errors.preview.file_too_large", language))
+        adressen = lade_adressen(session)
         try:
-            result = await run_in_threadpool(parse_invoice, data, language)
-        except InvoiceParseError as exc:
+            result = await run_in_threadpool(parse_document, data, language, adressen)
+        except DocumentParseError as exc:
             raise HTTPException(422, str(exc)) from exc
         return {
             "filename": file.filename,
             "file_hash": hashlib.sha256(data).hexdigest(),
             **result,
+            **_lagerort_auswahl(session, user, request, language),
         }
     finally:
         await file.close()
@@ -46,12 +81,14 @@ async def upload_preview(
 
 @router.post("/import-invoice")
 async def confirm_import(
+    request: Request,
     file: UploadFile,
     expected_hash: str = Form(...),
     confirmed: bool = Form(False),
     corrections: str = Form("{}", max_length=500000),
+    lagerort_id: int | None = Form(None),
     user=Depends(require_chef_api),
-    lagerort: Lagerort = Depends(require_active_lagerort),
+    session=Depends(get_session),
     language: str = Depends(get_language),
 ):
     try:
@@ -59,6 +96,11 @@ async def confirm_import(
             raise HTTPException(
                 400, translate("errors.preview.confirm_required", language)
             )
+        # D19: gewählter Lagerort (Vorschlag aus der Lieferadresse, änderbar),
+        # sonst die aktive Filiale. Die Rechteprüfung passiert serverseitig.
+        lagerort = resolve_wareneingang_lagerort(
+            request, session, user, lagerort_id, language
+        )
         data = await file.read(MAX_UPLOAD_BYTES + 1)
         if len(data) > MAX_UPLOAD_BYTES:
             raise HTTPException(413, translate("errors.preview.file_too_large", language))
@@ -78,7 +120,7 @@ async def confirm_import(
                 decode_corrections(corrections, language),
                 language,
             )
-        except (ImportRejected, InvoiceParseError) as exc:
+        except (ImportRejected, DocumentParseError) as exc:
             raise HTTPException(409, str(exc)) from exc
         except SQLAlchemyError as exc:
             raise HTTPException(
@@ -101,9 +143,11 @@ def decode_corrections(value, language: str = "de"):
 @router.post("/validate-preview")
 async def validate_preview(
     file: UploadFile,
+    request: Request,
     expected_hash: str = Form(...),
     corrections: str = Form("{}", max_length=500000),
     user=Depends(require_chef_api),
+    session=Depends(get_session),
     language: str = Depends(get_language),
 ):
     try:
@@ -113,12 +157,18 @@ async def validate_preview(
         if hashlib.sha256(data).hexdigest() != expected_hash:
             raise HTTPException(409, translate("errors.preview.file_mismatch", language))
         patches = decode_corrections(corrections, language)
+        adressen = lade_adressen(session)
         try:
-            parsed = await run_in_threadpool(parse_invoice, data, language)
+            parsed = await run_in_threadpool(parse_document, data, language, adressen)
             result = apply_corrections(parsed, patches, None, language)
-        except (InvoiceParseError, CorrectionError) as exc:
+        except (DocumentParseError, CorrectionError) as exc:
             raise HTTPException(422, str(exc)) from exc
-        return {"filename": file.filename, "file_hash": expected_hash, **result}
+        return {
+            "filename": file.filename,
+            "file_hash": expected_hash,
+            **result,
+            **_lagerort_auswahl(session, user, request, language),
+        }
     finally:
         await file.close()
 
@@ -127,24 +177,37 @@ async def validate_preview(
 def invoice_import_status(
     file_hash: str,
     invoice_number: str = "",
+    parser_key: str = "",
     user=Depends(require_chef_api),
     language: str = Depends(get_language),
 ):
     from ..core.database import SessionLocal
-    from ..core.models import Dokument
-    from sqlalchemy import select, or_
+    from ..core.models import Dokument, Lieferant
+    from sqlalchemy import and_, select, or_
     from sqlalchemy.exc import SQLAlchemyError
 
     try:
         with SessionLocal() as session:
-            invoice = session.scalar(
-                select(Dokument).where(
-                    or_(
-                        Dokument.datei_hash == file_hash,
+            # Die Belegnummer allein sagt nichts: sie ist nur beim jeweiligen
+            # Lieferanten eindeutig (siehe Migration e5f6a7b8c9d0). Darum zählt
+            # sie nur zusammen mit dem erkannten Layout (`parser_key` aus der
+            # Vorschau-Antwort); ohne das bleibt der Datei-Hash.
+            conditions = [Dokument.datei_hash == file_hash]
+            lieferant_id = (
+                session.scalar(
+                    select(Lieferant.id).where(Lieferant.parser_key == parser_key)
+                )
+                if invoice_number and parser_key
+                else None
+            )
+            if lieferant_id is not None:
+                conditions.append(
+                    and_(
+                        Dokument.lieferant_id == lieferant_id,
                         Dokument.dokumentnummer == invoice_number,
                     )
                 )
-            )
+            invoice = session.scalar(select(Dokument).where(or_(*conditions)))
             return {
                 "imported": invoice is not None,
                 "invoice_id": invoice.id if invoice else None,

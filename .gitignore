@@ -4,9 +4,11 @@ __pycache__/
 uploads/
 .env.server
 backups/
-Recchnungen/
+Rechnungen/
 output/
 .pytest_cache/
 Claude outputs/
 Sportfabrik-Inventory-Dokumentation.docx
 tmp/
+.playwright-mcp/
+graphify-out/

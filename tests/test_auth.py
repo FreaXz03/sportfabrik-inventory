@@ -252,7 +252,9 @@ def test_admin_defaults_to_all_filialen_and_can_switch(client):
     me = client.get("/api/me").json()
     assert me["lagerort"] is None
     assert me["kann_alle_filialen_waehlen"] is True
-    assert [lo["code"] for lo in me["lagerorte"]] == ["SF1", "SF2", "SF3", "SF4", "GEWA"]
+    assert [lo["code"] for lo in me["lagerorte"]] == [
+        "SF1", "SF2", "SF3", "SF4", "GEWA", "VEBO", "DIETIKON"
+    ]
 
     sf4_id = next(lo["id"] for lo in me["lagerorte"] if lo["code"] == "SF4")
     r = client.post("/api/active-lagerort", json={"lagerort_id": sf4_id})

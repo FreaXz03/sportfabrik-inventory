@@ -18,7 +18,9 @@ flowchart TB
     end
     subgraph services["app/services/ — Fachlogik"]
         importer["importer.py<br/>Import/Löschung"]
-        parser["parser.py<br/>PDF → Positionen"]
+        lieferadresse["lieferadresse.py<br/>Lagerort aus der Lieferadresse"]
+        wareneingang["wareneingang.py<br/>Erwartet → eingetroffen, Zugang buchen"]
+        parser["parsers/<br/>Layout-Erkennung, PDF → Positionen"]
         ocr["ocr.py<br/>OCR-Fallback für Scans ohne Textebene"]
         corrections["corrections.py<br/>Manuelle Korrekturen validieren"]
         article_groups["article_groups.py<br/>Varianten gruppieren"]
@@ -38,7 +40,9 @@ flowchart TB
     preview --> importer
     preview --> parser
     preview --> corrections
+    preview --> lieferadresse
     importer --> corrections
+    importer --> wareneingang
     parser --> ocr
     history --> importer
     history --> article_groups
@@ -118,7 +122,7 @@ sequenceDiagram
     actor Filialleiter
     participant UI as Browser (preview.html)
     participant Preview as POST /upload-preview
-    participant Parser as parser.parse_invoice()
+    participant Parser as parsers.parse_document()
     participant Validate as POST /validate-preview
     participant Import as POST /import-invoice
     participant Importer as importer.import_invoice()
@@ -127,7 +131,8 @@ sequenceDiagram
     Filialleiter->>UI: Eine oder mehrere PDFs auswählen
     UI->>Preview: Datei hochladen
     Preview->>Parser: PDF-Bytes parsen
-    Parser-->>Preview: Positionen + Warnungen + SHA-256-Hash
+    Parser->>Parser: Layout/Lieferant erkennen
+    Parser-->>Preview: Lieferant + Dokumenttyp + Positionen<br/>+ Warnungen + SHA-256-Hash
     Preview-->>UI: Vorschau anzeigen (nichts gespeichert)
     opt Filialleiter korrigiert einzelne Felder
         UI->>Validate: Datei + Korrekturen erneut prüfen
@@ -153,6 +158,190 @@ gesamte Transaktion zurückgerollt (kein Teilimport); der Import bleibt
 gesperrt, solange irgendeine Warnung offen ist — das gilt serverseitig,
 nicht nur als Browser-Prüfung.
 
+## Erwartet → eingetroffen
+
+Regel 3 / D6: Eine **Auftragsbestätigung** oder **Bestellung** kündigt Ware nur
+an. Der Import legt dafür einen Wareneingang mit Status `erwartet` an — ohne
+Lagerbewegung, ohne Bestand, ohne Eingangsdatum. Artikel, Varianten und Preise
+entstehen trotzdem, damit angekündigte Ware im Stamm auffindbar ist.
+**Rechnung** und **Lieferschein** begleiten die Ware, sie buchen wie bisher
+sofort (`TYPEN_MIT_WARE` in `app/services/importer.py`).
+
+Gebucht wird beim Bestätigen der Ankunft (`app/services/wareneingang.py`):
+
+| Eingabe | Wirkung |
+|---|---|
+| Menge je Position | Zugang als Lagerbewegung + Bestand (Regel 2), `menge_eingetroffen` wächst |
+| Eingangsdatum | wird beim ersten Zugang gesetzt, rückwirkend möglich (D13) — in einem Lager ohne Verkauf gar nicht (Regel 6) |
+
+Kommt weniger an als erwartet, bleibt die Restmenge offen und der Wareneingang
+weiter `erwartet` (D22) — so ist fehlende Ware sichtbar; eine Nachlieferung
+wird einfach nochmals bestätigt. Erst wenn keine Position mehr offen ist,
+wechselt der Status auf `eingetroffen`.
+
+Zwei Dinge sind bewusst gleich gehalten: Import und Ankunft buchen über
+**dieselbe** Funktion (`buche_zugang`), und beide nehmen dieselbe
+`pg_advisory_xact_lock`, damit sich Zugänge zwischen Arbeitsplätzen nicht
+überholen. „Erste/letzte Lieferung" (`varianten.first_seen`/`last_seen`)
+zählen nur angekommene Ware — eine Ankündigung ist keine Lieferung.
+
+Bedient wird das auf der Seite **/wareneingaenge** (Navigation „Lieferungen"):
+die offenen Lieferungen der aktiven Filiale, je Position erwartet / bereits da
+/ offen und ein Feld für die jetzt eingetroffene Menge. Das dürfen auch
+**Mitarbeiter** (D21) — Ankunft bestätigen ist Lagerarbeit, kein Dokumentrecht.
+
+## Ware von Hand erfassen
+
+Der zweite Weg, auf dem Ware ins System kommt: **ohne PDF, ohne Parser**
+(`app/services/manuelle_erfassung.py`, Seite `/erfassen`). Gedacht für Ware
+ohne Dokument und für Lieferanten, deren Layout noch kein Parser kennt.
+
+D27: Ware ohne Dokument ist ein **direkter Wareneingang ohne Beleg** — es
+entsteht kein Eintrag in `dokumente`, `wareneingaenge.dokument_id` bleibt leer
+(Migration `a7b8c9d0e1f2`, dort auch `artikel.lieferant_id`). Gebucht wird
+sofort (Regel 3: von Hand erfasst wird nur, was man in den Händen hält), über
+**dieselbe** `buche_zugang()` und dieselbe Sperre wie Import und
+Ankunftsbestätigung.
+
+| Feld | Pflicht? | Bemerkung |
+|---|---|---|
+| Marke, Bezeichnung, Menge, UVP | ja (D23) | mehr wird nicht verlangt |
+| EAN | nein (Regel 5) | bekannte EAN füllt das Formular aus, unbekannte wird übernommen |
+| Farbe, Grösse | nein | zusammen mit Artikelnummer der Schlüssel ohne EAN |
+| Einheit, Lieferanten-Artikelnummer, EK | nein | EK nur speichern, wenn vorhanden (Regel 10) |
+| Lieferant | nein | gilt für den ganzen Wareneingang, nicht je Position |
+| Eingangsdatum | nein | heute oder rückwirkend (D13); Lager ohne Verkauf bekommt keines (Regel 6) |
+
+Artikel und Varianten werden über `app/services/artikel.py` gefunden — nach
+genau derselben Regel wie beim Import: bekannte EAN → bekannte Variante, sonst
+Lieferant + Artikelnummer + Farbe + Grösse. Das Modul gibt es, damit die
+beiden Wege nicht auseinanderlaufen. Ohne Lieferant wird unter den Artikeln
+ohne Lieferant gesucht; ein Artikel „Nike A1" mit Lieferant und einer ohne
+bleiben also getrennt.
+
+Ablauf in der Oberfläche (auf Scanner zugeschnitten): Barcode scannen →
+Formular ist ausgefüllt → Menge tippen → Enter legt die Position in eine Liste
+→ nächster Artikel. Erst **ein** Knopf am Ende bucht alle Positionen als einen
+Wareneingang, in einer Transaktion: entweder alles oder nichts. Geprüft wird
+serverseitig; der Browser prüft nur vorab, damit die Rückmeldung sofort kommt.
+
+Erfassen dürfen auch **Mitarbeiter** (Regel 9/D21) — es entsteht kein
+Dokument, also greift das Dokumentrecht nicht. Der Ziel-Lagerort läuft über
+dieselbe serverseitige Prüfung wie der Import (`resolve_wareneingang_lagerort`,
+D26), gebucht wird also auf jeden Lagerort, vorgewählt ist die aktive Filiale.
+Jede Position hinterlässt ausserdem einen unveränderten Schnappschuss der
+Eingabe in `wareneingang_positionen_quelle` (mit Benutzer und Zeitpunkt) und
+die Lagerbewegung den Grund `manuelle-erfassung` — ein fester Schlüssel, kein
+UI-Text.
+
+## Interne EAN und Etikett
+
+Regel 5/D10: Die EAN ist optional, viele Lieferanten liefern keine. Damit ein
+solcher Artikel an der Kasse trotzdem scannbar wird, erzeugt das System auf
+Knopfdruck (D24) eine **interne EAN-13 im GS1-Bereich 20-29**
+(`app/services/ean.py`). Aufbau: `20` + zehnstellige Varianten-Id +
+Prüfziffer. Das braucht keinen Zähler, ist für dieselbe Variante immer
+dieselbe Nummer und trägt ihre Herkunft in sich; `varianten.ean_intern`
+markiert sie.
+
+Zwei Regeln dazu:
+
+* Eine **bestehende EAN wird nie überschrieben** — der Artikelstamm bleibt
+  (Regel 4), und eine gedruckte Nummer klebt bereits auf der Ware.
+* Eine **von Hand nachgetragene** EAN wird streng geprüft, Format *und*
+  Prüfziffer. Beim Import bleibt es bewusst beim Formatcheck (Teilaufgabe
+  B3): dort steht die Nummer so im Lieferantendokument, hier tippt sie
+  jemand, und ein Zahlendreher bliebe für immer im Stamm.
+
+Das **Etikett** (D25) kommt als PDF in Etikettengrösse, damit der Sato CL4NX
+Plus (D14) es 1:1 druckt — eine Seite je Etikett, `anzahl` wiederholt sie.
+Darauf stehen Jahrgang, Lieferant, UVP und Reduktionsstufe, dazu Marke,
+Bezeichnung, Farbe/Grösse und der **EAN-Strichcode**: ohne ihn bliebe genau
+der Artikel unscannbar, für den die interne EAN gedacht ist.
+
+| Angabe | Woher |
+|---|---|
+| Jahrgang | Jahr des letzten Wareneingangs dieses Artikels **in dieser Filiale** (Regel 6) |
+| Lieferant | `artikel.lieferant_id`, leer bei von Hand erfasster Ware (D23) |
+| UVP | neuester Eintrag im Preisverlauf der Variante |
+| Reduktion | Vorschlag nach Regel 6 (18 Monate → 50 %, 36 → 70 %), überschreibbar — die 30 % aus D25 sind eine Entscheidung des Ladens, keine Zeitregel |
+| Strichcode | EAN-13/EAN-8, UPC-12 als EAN-13 mit führender Null |
+
+Gezeichnet wird mit PyMuPDF (ohnehin für das Lesen der Rechnungen im
+Einsatz) und den im PDF eingebauten Schriften — keine zusätzliche
+Abhängigkeit, kein Internet, keine Schriftinstallation auf dem Drucker
+(Regel 1). Das Strichmuster rechnet `app/services/barcode.py` selbst aus;
+eine EAN-14 (Umkarton) ist ITF-14 und wird deshalb nur als Zahl gedruckt,
+ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
+einer, den die Kasse nicht annimmt.
+
+**Etikettengrösse:** einstellbar (`GROESSEN` in `app/services/etikett.py`),
+Voreinstellung 50 × 30 mm. Welche Rollen im Laden laufen, ist noch nicht
+bestätigt; sobald es feststeht, wird das die Voreinstellung. Die Modulbreite
+des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
+masslos in die Breite gezogen wird.
+
+Bedient wird das an zwei Stellen: auf der **Artikelseite** (EAN ansehen,
+erzeugen, nachtragen, Etikett drucken) und direkt nach der **manuellen
+Erfassung** — dort druckt ein Knopf die Etiketten des ganzen Wareneingangs,
+ein Etikett je Stück. Beides dürfen auch **Mitarbeiter** (Regel 9): es ist
+Lagerarbeit, kein Dokument.
+
+## Lagerort aus der Lieferadresse
+
+Wohin ein Wareneingang gebucht wird, steht auf dem Beleg: der externe Händler
+schickt die Rechnung nach Volketswil und die Ware nach Conthey, CMP liefert an
+die GEWA. `app/services/lieferadresse.py` liest das aus dem Dokumenttext —
+reine Textlogik, ohne Datenbank und ohne Layout-Wissen, damit sie bei jedem
+Lieferanten gleich funktioniert. Die Adressen kommen als Werte herein
+(`lagerorte.lade_adressen()`), nicht als ORM-Objekte.
+
+| Merkmal | Punkte | Warum |
+|---|---|---|
+| Postleitzahl | 3 | eindeutig je Ort, kurz, überlebt OCR am besten |
+| Ortsname | 2 | bestätigt die PLZ, steht auch ohne sie oft da |
+| Name des Lagerorts (z. B. „GEWA“, „VEBO“) | 2 | auf der CMP-Auftragsbestätigung steht als Ziel nur „GEWA“. Nur *unterscheidende* Wörter zählen: „Lager Dietikon“ liefert kein Kennwort, sonst schlüge jeder Beleg mit dem Wort „Lager“ an — dort trägt der Ortsname |
+| Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF3 |
+
+Gesucht wird in zwei Durchgängen: zuerst im Umfeld eines Lieferadress-Ankers
+(„Lieferadresse“, „Lieferanschrift“, „Lieferung an“, „Warenempfänger“,
+„Adresse de livraison“, „Ship to“ …), sonst im ganzen Text. Zwei Sicherungen
+gegen falsche Vorschläge: eine **Mindestpunktzahl** (eine Strasse allein
+genügt nie) und **kein Vorschlag bei Gleichstand** — stehen Rechnungs- und
+Lieferadresse gleichberechtigt im Text, wäre jede Wahl geraten. Umlaute werden
+in beiden Schreibweisen gefunden („Hägendorf“ und „Haegendorf“).
+
+**Der Vorschlag entscheidet nichts** (D19). `/upload-preview` liefert ihn
+zusammen mit der Auswahlliste und der aktiven Filiale; die Vorschau zeigt
+„Wareneingang buchen auf“ mit Begründung; `/import-invoice` nimmt den
+gewählten Lagerort als Formularfeld und prüft ihn serverseitig
+(`resolve_wareneingang_lagerort` in `app/routers/auth.py`). Schickt die
+Oberfläche nichts, bleibt es bei der aktiven Filiale — wie vorher.
+
+Buchbar sind **alle** Lagerorte, die eigene Filiale zuerst
+(`list_wareneingang_lagerorte`). Sonst liesse sich eine Lieferung an eine
+andere Filiale oder an einen externen Standort gar nicht erfassen, und D19 wäre genau für die
+Fälle wirkungslos, für die es gedacht ist. Filialwechsel und Leseansichten
+bleiben unverändert bei den zugewiesenen Filialen. Ein Beleg hat dabei genau
+einen Lagerort (D20); verteilt wird die Ware danach über eine Umlagerung.
+
+## Doppelimporte erkennen
+
+Zwei Regeln, beide serverseitig durchgesetzt:
+
+| Merkmal | Geltungsbereich | Warum |
+|---|---|---|
+| `dokumente.datei_hash` (SHA-256) | **global** eindeutig | Dieselbe Datei ist dasselbe Dokument, egal von wem |
+| `dokumente.dokumentnummer` | eindeutig **je Lieferant** (`UNIQUE (lieferant_id, dokumentnummer)`) | Belegnummern sind Lieferantensache und überschneiden sich zwangslos |
+
+Der Importer prüft beides selbst (verständliche Meldung „Rechnung … wurde
+bereits importiert") und schlägt dafür den Lieferanten **vor** der
+Duplikatsprüfung nach; die Datenbank-Constraints sind der Rückfall, falls zwei
+Importe gleichzeitig laufen. Entsprechend braucht
+`GET /invoice-import-status` neben der Belegnummer auch den `parser_key` aus
+der Vorschau-Antwort — ohne Lieferant zählt nur der Datei-Hash (Migration
+`e5f6a7b8c9d0`, Phase B Teilaufgabe B2).
+
 ## Korrekturen in der Vorschau
 
 Erkennt der Parser eine Position falsch oder unvollständig (z. B. Farbe und
@@ -161,7 +350,10 @@ betroffene Feld direkt in der Vorschau-Tabelle korrigieren, statt die ganze
 Rechnung abzulehnen. `app/services/corrections.py` wendet diese Korrekturen
 serverseitig auf die frisch geparsten Daten an (nie auf clientseitig
 mitgeschickte Rohdaten) und validiert jede Position komplett neu:
-Pflichtfelder, EAN-Format (8/12/13/14 Ziffern), Zahlenformat für Menge/UVP.
+Pflichtfelder, EAN-Format (8/12/13/14 Ziffern **wenn eine EAN eingetragen
+ist** — Farbe, Grösse und EAN sind optional, Regel 5), Zahlenformat für
+Menge/UVP. Eine EAN zu löschen ist also erlaubt und ergibt einen Hinweis;
+Unsinn einzutragen bleibt ein Fehler.
 Jede tatsächliche Änderung wird als `correction_audit`
 (Ausgangswert, neuer Wert, wer, wann) in `wareneingang_positionen_quelle`
 gespeichert — nachvollziehbar, auch nachdem die Rechnung importiert wurde. `/validate-preview`
@@ -176,7 +368,10 @@ einen eigenen Warteschlangen-Eintrag mit Status (wartend, bereit, Duplikat,
 Fehler, importiert); der Browser prüft neue Dateien automatisch per
 `/invoice-import-status` auf bereits importierte Duplikate, bevor sie in die
 Warteschlange aufgenommen werden, und springt nach jedem erfolgreichen
-Import selbstständig zur nächsten offenen Datei. Korrekturen an einer Datei
+Import selbstständig zur nächsten offenen Datei. „Duplikat" heisst dabei:
+dieselbe Datei (SHA-256) oder dieselbe Belegnummer **beim selben Lieferanten**
+— zwei Lieferanten dürfen dieselbe Nummer verwenden (siehe „Doppelimporte
+erkennen" unten). Korrekturen an einer Datei
 sind vollständig von den anderen Dateien in der Warteschlange isoliert.
 Serverseitig gibt es keinen eigenen „Batch"-Endpunkt: jede Datei durchläuft
 einzeln denselben Vorschau-/Validierungs-/Import-Ablauf wie ein Einzel-Upload
@@ -224,28 +419,78 @@ Positionen und Original-Snapshots und berechnet `first_seen`/`last_seen` der
 betroffenen Artikel anschliessend aus den verbleibenden Lieferungen neu,
 statt veraltete Werte stehen zu lassen.
 
-## PDF-Parsing
+## PDF-Parsing: ein Modul je Lieferanten-Layout
 
-`app/services/parser.py` liest die INTERSPORT-Rechnungstabelle über
-Wortkoordinaten aus PyMuPDF aus (kein Layout-Template, keine feste
+Jedes Lieferanten-Layout liegt als eigenes Modul in `app/services/parsers/`
+und erfüllt dieselbe Schnittstelle. `__init__.py` ist die **Registry**, die
+entscheidet, wer zuständig ist:
+
+| Baustein | Aufgabe |
+|---|---|
+| `base.py` | `read_document()` liest die PDF **einmal** komplett ein (Wörter samt Koordinaten je Seite, bei Seiten ohne Textebene per OCR), dazu die wiederkehrenden Bausteine `lines()`, `joined()`, `decimal_value()` |
+| `<lieferant>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
+| `__init__.py` | `PARSERS`-Liste, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
+
+**Erkennung** (`detect()`): Jedes Modul bewertet das Dokument mit einer
+Punktzahl oder lehnt es ab (`None`); die höchste Punktzahl gewinnt. Bei
+Gleichstand bricht die Erkennung mit einer klaren Meldung ab, statt einen
+Lieferanten zu raten. Für das INTERSPORT-Layout ist die Positionstabelle mit
+ihrer Kopfzeile das Pflichtmerkmal (auf einem Scan ist das Firmenlogo nicht
+immer als Text lesbar, die Tabelle aber schon); Firmenname und
+Rechnungsnummer erhöhen die Punktzahl nur. Passt **kein** Modul, meldet der
+Upload „Dokumentlayout noch nicht bekannt" — ohne KI (Regel 1) lässt sich
+ein nie gesehenes Layout nicht automatisch lesen, das Dokument muss als
+Beispiel weitergegeben werden (projekt-kontext.md Abschnitt 6, Punkt 1).
+
+**Auslesen** (`parse()`, hier `intersport.py`): liest die Rechnungstabelle
+über Wortkoordinaten aus PyMuPDF (kein Layout-Template, keine feste
 Spaltenbreite): Kopfzeile wird anhand bekannter Spaltentitel gesucht, Zeilen
 werden anhand ihrer vertikalen Position gruppiert, Fortsetzungszeilen einer
 Position (z. B. mehrzeilige Bezeichnung, Farbe/Grösse in Klammern) werden
 der vorherigen Position zugeordnet. Der Parser selbst schreibt nichts in die
-Datenbank und trifft keine automatischen Annahmen bei Unklarheiten — jede
-unsichere Zeile bekommt eine Warnung, die den Import blockiert, bis sie
-manuell geprüft (oder korrigiert, siehe oben) wurde. Ein unbekanntes
-Rechnungslayout (fehlender Tabellenkopf) führt zu einem expliziten Fehler
-statt zu stillem Fehlverhalten.
+Datenbank und trifft keine automatischen Annahmen bei Unklarheiten. Weicht
+eine einzelne Seite eines erkannten Layouts ab (z. B. Kopfzeile auf einem
+Scan unlesbar), führt das zu einem expliziten Fehler statt zu stillem
+Fehlverhalten.
+
+**Warnung oder Hinweis?** Jede Position trägt zwei getrennte Listen:
+
+| Liste | Bedeutung | Import |
+|---|---|---|
+| `warnings` | etwas ist unsicher oder unplausibel gelesen (Pflichtfeld leer, Farbe/Grösse nicht eindeutig, unleserliche EAN, nicht zuordenbare Zeile) | **gesperrt**, bis geprüft oder korrigiert |
+| `hints` | alles in Ordnung, soll aber auffallen — aktuell: Position **ohne** EAN (Regel 5) | läuft durch |
+
+Die Vorschau zeigt Hinweise gedämpft unter den Warnungen derselben Position
+und zählt sie als eigene Kennzahl (`rows_with_hints`). Eine EAN, die im
+Dokument steht, aber kein gültiges Format hat, bleibt bewusst eine Warnung:
+das ist ein Lesefehler-Verdacht und keine bewusst fehlende Nummer
+(Teilaufgabe B3).
+
+**Dokumenttyp** (D6): `parse()` liefert ihn mit (`rechnung`,
+`lieferschein`, `auftragsbestaetigung`, `bestellung`) — er landet in
+`dokumente.typ` und entscheidet später, ob ein Wareneingang nur *erwartet*
+ist oder Bestand bucht (Regel 3). Das INTERSPORT-Layout kommt bisher nur als
+Rechnung vor und erkennt den Typ am Anker „Rechnung Nr."; ohne diesen Anker
+bleibt der Typ offen und der Import weist das Dokument ab.
+
+**Einmal lesen:** Erkennung, Positionen und Rechnungs-/Belegdatum arbeiten
+auf demselben eingelesenen `Document` (siehe `importer.import_invoice()`).
+Vorher öffnete der Import die Datei ein zweites Mal für die Datumsfelder und
+schickte einen Scan damit zweimal durch die Texterkennung.
+
+Ein neues Layout (Roadmap Phase E) braucht damit genau zwei Schritte: Modul
+mit der Schnittstelle anlegen und in `PARSERS` eintragen. Der passende
+Lieferant muss denselben `parser_key` in den Seed-Daten haben
+(`app/core/lieferanten.py`) — `tests/test_parser_registry.py` prüft das.
 
 ## OCR-Fallback für gescannte Papierrechnungen
 
 Ganz selten kommt eine Rechnung nicht digital per Mail, sondern nur als
 Papier im Paket. Ein Scan davon ist eine PDF ohne Textebene (reines
 Rasterbild je Seite) und würde beim normalen Parsing sofort mit
-„Tabellenkopf fehlt" scheitern. `parser.page_content()` prüft deshalb je
-Seite zuerst `page.get_text("words")`; liefert das nichts, übernimmt
-`app/services/ocr.py` die Seite:
+„Layout nicht erkannt" scheitern. `parsers/base.py` (`read_page()`) prüft
+deshalb je Seite zuerst `page.get_text("words")`; liefert das nichts,
+übernimmt `app/services/ocr.py` die Seite:
 
 1. Seite mit PyMuPDF als Bild rendern (300 DPI); Tesseracts
    Ausrichtungserkennung (OSD) korrigiert eine noch falsche Drehung, falls
@@ -253,10 +498,11 @@ Seite zuerst `page.get_text("words")`; liefert das nichts, übernimmt
 2. Tesseract liest Wörter samt Positionen aus dem Bild.
 3. Die Pixel-Koordinaten werden in PDF-Punkte umgerechnet und je
    erkannter Textzeile auf eine gemeinsame Höhe normalisiert, sodass das
-   Ergebnis exakt wie PyMuPDFs eigene `words`-Liste aussieht — die
-   bestehende Tabellenerkennung in `parser.py` (Kopfzeilensuche,
-   Spaltengrenzen, Zeilengruppierung) läuft danach unverändert weiter,
-   ganz gleich ob die Wörter aus der Textebene oder per OCR stammen.
+   Ergebnis exakt wie PyMuPDFs eigene `words`-Liste aussieht — sowohl die
+   Layout-Erkennung als auch die Tabellenerkennung der Parser-Module
+   (Kopfzeilensuche, Spaltengrenzen, Zeilengruppierung) laufen danach
+   unverändert weiter, ganz gleich ob die Wörter aus der Textebene oder per
+   OCR stammen.
 
 OCR-Seiten und die daraus gelesenen Positionen werden mit `ocr_used`
 markiert (bis in die Datenbank, `Dokument.ocr_verwendet`); die Vorschau zeigt
@@ -286,6 +532,38 @@ zwei Skripte werden aber seitenübergreifend eingebunden:
 Für ältere oder sehbeeinträchtigte Mitarbeitende bietet die Artikelsuche
 zusätzlich eine Spalten-Auswahl (einzelne Spalten ausblenden) und grössere
 Schrift in der Ergebnistabelle, ebenfalls per `localStorage` gemerkt.
+
+### Gestaltung: ein Token-Satz für alle Seiten
+
+`app/static/css/app.css` ist die einzige Stilquelle (keine Inline-Styles in
+den Templates, keine externen CDNs — Regel 1). Der Aufbau ist in nummerierte
+Abschnitte gegliedert; Farben, Abstände, Radien, Schatten und Übergänge
+stehen ausschliesslich als Custom Properties in `:root`:
+
+- **Farben/Flächen**: `--bg`, `--surface`, `--surface-soft`, `--surface-alt`,
+  `--text`, `--text-muted`, `--text-faint`, `--border`, `--border-strong`,
+  `--accent` (Sport-Fabrik-Orange) und die Statusfarben `--danger-*`.
+- **Form**: `--radius-xs` … `--radius-xl` plus `--radius-pill` für Knöpfe,
+  `--shadow-sm/md/lg` für die Abstufung Karte → Panel → Overlay.
+- **Bewegung**: `--ease`, `--fast`, `--slow`; ein Block unter
+  `@media (prefers-reduced-motion: reduce)` schaltet alle Übergänge ab.
+- **Raster**: `--page-pad` und `--content-max` (1280 px, auf breiten Seiten
+  1680 px). Kopf- und Fusszeile rechnen ihren Innenabstand aus
+  `--content-max`, damit Navigation, Inhalt und Fusszeile auf derselben
+  Kante sitzen.
+
+Der Dunkelmodus definiert **nur** diese Tokens neu (zweimal: einmal für
+`prefers-color-scheme: dark`, einmal für die manuelle Wahl
+`:root[data-theme="dark"]`) — kein einziger Baustein hat eigene
+Dunkelmodus-Regeln. Wer eine Farbe ändern will, ändert sie an genau einer
+Stelle. `color-scheme` ist mitgesetzt, damit auch native Bedienelemente
+(Datumsfelder, Bildlaufleisten) zum Modus passen.
+
+Die Kopfzeile ist zweizeilig und bleibt beim Scrollen stehen (`sticky` mit
+`backdrop-filter`): Zeile 1 Marke + Navigation, Zeile 2 die von `session.js`
+erzeugte Sitzungsleiste. Ändert sich die Datei, muss der Cache-Parameter
+(`?v=…`) in den Templates mitgezogen werden — sonst sehen Filialrechner noch
+die alte Fassung.
 
 ## Fehlerbehandlung
 
@@ -320,8 +598,8 @@ DB-Abfrage); anonym (z. B. `/login`) der `Accept-Language`-Header
 (`get_language_optional`), sonst Deutsch. Alle Router, die Fehler werfen,
 hängen `language: str = Depends(get_language)` an und übersetzen jede
 `HTTPException`-Meldung mit `translate(key, language, ...)`. Das gilt auch
-für die Service-Schicht (`parser.py`, `ocr.py`, `corrections.py`,
-`importer.py`): `language` wird von den Routern bis zu `parse_invoice()`,
+für die Service-Schicht (`parsers/`, `ocr.py`, `corrections.py`,
+`importer.py`): `language` wird von den Routern bis zu `parse_document()`,
 `apply_corrections()`, `import_invoice()`, `delete_invoice()` durchgereicht,
 damit auch Parser-Warnungen (in der Vorschau angezeigt) und
 Korrektur-Fehlermeldungen übersetzt sind. Eine Besonderheit:

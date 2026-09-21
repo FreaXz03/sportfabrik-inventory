@@ -65,9 +65,13 @@ class User(Base):
 
 
 class Lagerort(Base):
-    """Filiale (SF1-SF4, Verkauf) oder externes Aufbereitungslager (GEWA, kein
-    Verkauf). Seed-Daten in app/core/lagerorte.py, Adresse dient später auch
-    der automatischen Filial-Erkennung aus der Lieferadresse eines Dokuments."""
+    """Filiale (SF1-SF4, Verkauf) oder externer Standort ohne Verkauf: die
+    Verarbeitungsstellen GEWA und VEBO sowie das Lager Dietikon. Seed-Daten in
+    app/core/lagerorte.py, Adresse dient später auch der automatischen
+    Filial-Erkennung aus der Lieferadresse eines Dokuments.
+
+    `verkauf` trägt die Regel 6: Nur an einem Lagerort mit Verkauf bekommt Ware
+    ein Eingangsdatum, erst damit startet die Reduktionsuhr (18/36 Monate)."""
 
     __tablename__ = "lagerorte"
 
@@ -176,6 +180,14 @@ class Dokument(Base):
             "typ IN ('rechnung', 'lieferschein', 'auftragsbestaetigung', 'bestellung')",
             name="ck_dokumente_typ",
         ),
+        # Belegnummern sind nur beim jeweiligen Lieferanten eindeutig - zwei
+        # Lieferanten dürfen dieselbe Nummer verwenden (Phase B, Teilaufgabe
+        # B2, Migration e5f6a7b8c9d0). Der Importer prüft zusätzlich selbst auf
+        # Duplikate, damit der Benutzer eine verständliche Meldung bekommt
+        # statt eines Datenbankfehlers.
+        UniqueConstraint(
+            "lieferant_id", "dokumentnummer", name="uq_dokumente_lieferant_dokumentnummer"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -185,7 +197,11 @@ class Dokument(Base):
 
     typ: Mapped[str] = mapped_column(String(30))
 
-    dokumentnummer: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    # Nur zusammen mit `lieferant_id` eindeutig, siehe __table_args__. Ist
+    # `lieferant_id` leer (bisher nie: der Import weist ein Dokument ohne
+    # erkannten Lieferanten ab), greift die Eindeutigkeit nicht - NULL gilt in
+    # PostgreSQL wie in SQLite als von allem verschieden.
+    dokumentnummer: Mapped[str] = mapped_column(String(100), index=True)
     dokumentdatum: Mapped[date | None] = mapped_column(Date)
     belegdatum: Mapped[date | None] = mapped_column(Date)
 
@@ -214,7 +230,11 @@ class Artikel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    lieferant_id: Mapped[int] = mapped_column(ForeignKey("lieferanten.id"), index=True)
+    # Leer bei manuell erfasster Ware ohne Beleg (D23/D27) - aus einem
+    # Lieferantendokument kommt der Lieferant dagegen immer mit.
+    lieferant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lieferanten.id"), index=True
+    )
     marke: Mapped[str | None] = mapped_column(String(100))
     lieferanten_artikelnr: Mapped[str | None] = mapped_column(String(100), index=True)
     bezeichnung: Mapped[str | None] = mapped_column(String(500))
@@ -261,8 +281,15 @@ class Preis(Base):
 
 
 class Wareneingang(Base):
-    """Wareneingang: erwartet → eingetroffen (Regel 3, D6). Bestand wird erst
-    gebucht, wenn `status = 'eingetroffen'` ist (siehe `lagerbewegungen`)."""
+    """Wareneingang: erwartet → eingetroffen (Regel 3, D6).
+
+    `erwartet` kommt von Auftragsbestätigungen und Bestellungen: die Ware ist
+    angekündigt, aber noch nicht da - es gibt keine Lagerbewegung, keinen
+    Bestand und kein Eingangsdatum. Erst die bestätigte Ankunft bucht
+    (`app/services/wareneingang.py`). Kommt nur ein Teil an, bleibt der
+    Wareneingang `erwartet`, bis keine Position mehr offen ist (D22); der
+    bereits gebuchte Teil steht in `wareneingang_positionen.menge_eingetroffen`.
+    """
 
     __tablename__ = "wareneingaenge"
     __table_args__ = (
@@ -273,7 +300,11 @@ class Wareneingang(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    dokument_id: Mapped[int] = mapped_column(ForeignKey("dokumente.id"), index=True)
+    # Leer bei manueller Erfassung: Ware ohne Dokument ist ein direkter
+    # Wareneingang ohne Beleg (D27).
+    dokument_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dokumente.id"), index=True
+    )
     lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
     status: Mapped[str] = mapped_column(String(20))
     eingangsdatum: Mapped[date | None] = mapped_column(Date)
@@ -281,7 +312,13 @@ class Wareneingang(Base):
 
 class WareneingangPosition(Base):
     """Eine Position (Zeile) eines Wareneingangs - verallgemeinert die frühere
-    invoice_items-Tabelle."""
+    invoice_items-Tabelle.
+
+    `menge` ist die Menge laut Beleg (erwartet), `menge_eingetroffen` die
+    davon tatsächlich angekommene. Die Differenz ist die offene Restmenge
+    (D22). Bei einer Rechnung/einem Lieferschein sind beide von Anfang an
+    gleich, weil die Ware mit dem Beleg kommt.
+    """
 
     __tablename__ = "wareneingang_positionen"
 
@@ -293,6 +330,9 @@ class WareneingangPosition(Base):
     varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
 
     menge: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    menge_eingetroffen: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=0, server_default=text("0")
+    )
     einheit: Mapped[str | None] = mapped_column(String(30))
     uvp: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     ek: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
