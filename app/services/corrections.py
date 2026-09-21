@@ -9,8 +9,8 @@ eine unleserliche EAN bleibt eine Warnung.
 from copy import deepcopy
 from datetime import datetime, timezone
 from collections import Counter
-import re
 from decimal import Decimal
+from .artikel import EAN_MUSTER
 from .parsers import decimal_value
 from ..core.i18n import DEFAULT_LANGUAGE, template, translate
 
@@ -112,7 +112,7 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
                 )
         if not item.get("ean"):
             hints.append(translate("hints.parser.ean_missing", language))
-        elif not re.fullmatch(r"(?:[0-9]{8}|[0-9]{12,14})", item["ean"]):
+        elif not EAN_MUSTER.fullmatch(item["ean"]):
             errors.append(translate("errors.corrections.invalid_ean", language))
         for key in ("quantity", "uvp"):
             try:

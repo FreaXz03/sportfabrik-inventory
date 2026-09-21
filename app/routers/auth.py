@@ -143,6 +143,10 @@ def resolve_wareneingang_lagerort(
     Lagerort mitgegeben - die Oberfläche schickt den aus der Lieferadresse
     vorgeschlagenen, D19 -, muss der Benutzer darauf buchen dürfen; geprüft
     wird das hier serverseitig, nie nur im Browser.
+
+    Gilt für beide Wege, auf denen Ware ins System kommt: den Dokument-Import
+    (Filialleiter/Admin, Regel 9) und die manuelle Erfassung, die auch
+    Mitarbeitern offensteht (D21/D23 - dabei entsteht kein Dokument).
     """
     if lagerort_id is None:
         lagerort = _resolve_active_lagerort(request, session, user)

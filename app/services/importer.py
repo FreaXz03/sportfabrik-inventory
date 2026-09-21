@@ -24,6 +24,12 @@ from ..core.models import (
     WareneingangPosition,
     WareneingangPositionQuelle,
 )
+from .artikel import (
+    artikel_group_key,
+    finde_artikel,
+    finde_variante_ohne_ean,
+    finde_variante_per_ean,
+)
 from .parsers import parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
 from .wareneingang import buche_zugang
@@ -41,18 +47,6 @@ class ImportRejected(ValueError):
 
 class DeleteRejected(ValueError):
     pass
-
-
-def _artikel_group_key(brand: str | None, supplier_article_no: str | None):
-    """Gleiche Gruppierung wie die Alembic-Migration c3d4e5f6a7b8 und (bis zur
-    Umstellung) app/services/article_groups.py: gleiche Marke (ohne Gross-/
-    Kleinschreibung, getrimmt) UND gleiche, nicht-leere Lieferanten-
-    Artikelnummer (getrimmt) = ein Artikel. Fehlt die Nummer, bleibt jedes
-    Produkt ein eigener Artikel (None = immer neu anlegen)."""
-    number = (supplier_article_no or "").strip()
-    if not number:
-        return None
-    return ((brand or "").strip().lower(), number)
 
 
 def _backfill_artikel(session, kategorie_cache, artikel, item):
@@ -251,22 +245,17 @@ def import_invoice(
                 # Treffer in der Datenbank ist echte Wiederverwendung.
                 variante = variante_cache.get(ean) if ean else None
                 if variante is None and ean:
-                    variante = session.scalar(select(Variante).where(Variante.ean == ean))
+                    variante = finde_variante_per_ean(session, ean)
                     if variante is not None:
                         reused_varianten.add(variante.id)
 
                 if variante is None:
-                    group_key = _artikel_group_key(item.get("brand"), item.get("supplier_article_no"))
+                    group_key = artikel_group_key(
+                        item.get("brand"), item.get("supplier_article_no")
+                    )
                     artikel = artikel_cache.get(group_key) if group_key else None
-                    if artikel is None and group_key:
-                        artikel = session.scalar(
-                            select(Artikel).where(
-                                Artikel.lieferant_id == lieferant.id,
-                                func.lower(func.trim(func.coalesce(Artikel.marke, "")))
-                                == group_key[0],
-                                func.trim(Artikel.lieferanten_artikelnr) == group_key[1],
-                            )
-                        )
+                    if artikel is None:
+                        artikel = finde_artikel(session, lieferant.id, group_key)
                     if artikel is None:
                         fedas_code = item.get("fedas_code") or None
                         artikel = Artikel(
@@ -286,12 +275,8 @@ def import_invoice(
 
                     variante = None
                     if not ean:
-                        variante = session.scalar(
-                            select(Variante).where(
-                                Variante.artikel_id == artikel.id,
-                                func.coalesce(Variante.farbe, "") == (item.get("color") or ""),
-                                func.coalesce(Variante.groesse, "") == (item.get("size") or ""),
-                            )
+                        variante = finde_variante_ohne_ean(
+                            session, artikel.id, item.get("color"), item.get("size")
                         )
                     if variante is None:
                         variante = Variante(
@@ -473,15 +458,21 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
             # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
             # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an GEWA leer
             #   (Regel 6) und wuerde die Werte hier auf NULL zuruecksetzen.
+            # Datum der Lieferung: das Dokumentdatum, und bei manuell
+            # erfasster Ware (ohne Beleg, D27) das Eingangsdatum. Darum ein
+            # LEFT JOIN auf `dokumente` - sonst fielen genau diese
+            # Wareneingänge aus der Berechnung. Bleibt beides leer (von Hand
+            # an die GEWA erfasst, Regel 6), zählt dieser Wareneingang hier
+            # nicht mit - first_seen/last_seen sind reine Anzeigewerte, die
+            # Reduktionsuhr hängt an `bestand.aeltestes_eingangsdatum`.
+            datum = func.coalesce(Dokument.dokumentdatum, Wareneingang.eingangsdatum)
             first_seen, last_seen = session.execute(
-                select(
-                    func.min(Dokument.dokumentdatum), func.max(Dokument.dokumentdatum)
-                )
+                select(func.min(datum), func.max(datum))
                 .select_from(WareneingangPosition)
                 .join(
                     Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
                 )
-                .join(Dokument, Dokument.id == Wareneingang.dokument_id)
+                .join(Dokument, Dokument.id == Wareneingang.dokument_id, isouter=True)
                 .where(
                     WareneingangPosition.varianten_id == varianten_id,
                     # Nur angekommene Ware zählt als Lieferung (Teilaufgabe B5).

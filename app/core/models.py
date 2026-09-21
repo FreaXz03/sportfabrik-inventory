@@ -226,7 +226,11 @@ class Artikel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    lieferant_id: Mapped[int] = mapped_column(ForeignKey("lieferanten.id"), index=True)
+    # Leer bei manuell erfasster Ware ohne Beleg (D23/D27) - aus einem
+    # Lieferantendokument kommt der Lieferant dagegen immer mit.
+    lieferant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lieferanten.id"), index=True
+    )
     marke: Mapped[str | None] = mapped_column(String(100))
     lieferanten_artikelnr: Mapped[str | None] = mapped_column(String(100), index=True)
     bezeichnung: Mapped[str | None] = mapped_column(String(500))
@@ -292,7 +296,11 @@ class Wareneingang(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    dokument_id: Mapped[int] = mapped_column(ForeignKey("dokumente.id"), index=True)
+    # Leer bei manueller Erfassung: Ware ohne Dokument ist ein direkter
+    # Wareneingang ohne Beleg (D27).
+    dokument_id: Mapped[int | None] = mapped_column(
+        ForeignKey("dokumente.id"), index=True
+    )
     lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
     status: Mapped[str] = mapped_column(String(20))
     eingangsdatum: Mapped[date | None] = mapped_column(Date)

@@ -156,6 +156,12 @@
   }
 
   $('retry').addEventListener('click', laden);
-  window.addEventListener('sportfabrik:i18n-ready', laden);
-  laden();
+  // Erst anzeigen, wenn der Übersetzungs-Katalog da ist (sonst stünden die
+  // Spaltenköpfe als Keys da), danach bei jedem Sprachwechsel neu zeichnen.
+  // `ready` löst nach dem ersten i18n-ready aus, deshalb wird der Listener
+  // erst danach angemeldet - sonst würde die Liste doppelt geladen.
+  window.SportfabrikI18n.ready.then(() => {
+    laden();
+    document.addEventListener('sportfabrik:i18n-ready', laden);
+  });
 })();
