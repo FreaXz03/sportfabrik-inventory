@@ -4,46 +4,47 @@
 <head>
      <meta charset="utf-8">
      <meta name="viewport" content="width=device-width,initial-scale=1">
-     <script>try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>
-     <title>Übersicht · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=lagerorte-1">
+     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/i18n.js?v=1"></script>
+     <title data-i18n="dashboard.page_title">Übersicht · Sport-Fabrik</title>
+     <link rel="stylesheet" href="/static/css/app.css?v=i18n-1">
 </head>
 
 <body>
-     <header><a class="brand" href="/" aria-label="Sport-Fabrik Inventory – Übersicht"><img
+     <header><a class="brand" href="/" data-i18n-aria-label="dashboard.brand_aria" aria-label="Sport-Fabrik Inventory – Übersicht"><img
                     src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a>
-          <nav aria-label="Hauptnavigation"><a href="/">Übersicht</a><a href="/articles">Artikel</a><a
-                    href="/invoices">Rechnungen</a><a href="/preview">Rechnung hochladen</a></nav>
+          <nav data-i18n-aria-label="nav.main_aria" aria-label="Hauptnavigation"><a href="/" data-i18n="nav.overview">Übersicht</a><a href="/articles" data-i18n="nav.articles">Artikel</a><a
+                    href="/invoices" data-i18n="nav.invoices">Rechnungen</a><a href="/preview" data-i18n="nav.upload">Rechnung hochladen</a></nav>
      </header>
      <main>
           <div class="hero" id="uploadHero">
                <div>
-                    <p class="eyebrow">Dein Sortiment im Überblick</p>
-                    <h1>Alles an einem Ort.</h1>
-                    <p>Rechnungen prüfen, Artikel finden und Lieferungen nachvollziehen.</p>
-               </div><a class="button" href="/preview">+ Rechnung hochladen</a>
+                    <p class="eyebrow" data-i18n="dashboard.hero_eyebrow">Dein Sortiment im Überblick</p>
+                    <h1 data-i18n="dashboard.hero_heading">Alles an einem Ort.</h1>
+                    <p data-i18n="dashboard.hero_text">Rechnungen prüfen, Artikel finden und Lieferungen nachvollziehen.</p>
+               </div><a class="button" href="/preview" data-i18n="dashboard.hero_button">+ Rechnung hochladen</a>
           </div>
-          <p id="status" role="status" aria-live="polite">Übersicht wird geladen …</p><button id="retry"
-               class="secondary" hidden>Erneut versuchen</button>
+          <p id="status" role="status" aria-live="polite" data-i18n="dashboard.loading">Übersicht wird geladen …</p><button id="retry"
+               class="secondary" hidden data-i18n="common.retry">Erneut versuchen</button>
           <div class="cards">
-               <div class="metric"><span>Erfasste Artikelvarianten</span><strong id="products">—</strong><small><a
-                              href="/articles">Artikel durchsuchen →</a></small></div>
-               <div class="metric"><span>Importierte Rechnungen</span><strong id="invoices">—</strong><small><a
-                              href="/invoices">Alle Rechnungen →</a></small></div>
-               <div class="metric"><span>Artikel im Sortiment</span><strong id="delivered_quantity">—</strong></div>
+               <div class="metric"><span data-i18n="dashboard.metric_products">Erfasste Artikelvarianten</span><strong id="products">—</strong><small><a
+                              href="/articles" data-i18n="dashboard.metric_products_link">Artikel durchsuchen →</a></small></div>
+               <div class="metric"><span data-i18n="dashboard.metric_invoices">Importierte Rechnungen</span><strong id="invoices">—</strong><small><a
+                              href="/invoices" data-i18n="dashboard.metric_invoices_link">Alle Rechnungen →</a></small></div>
+               <div class="metric"><span data-i18n="dashboard.metric_delivered">Artikel im Sortiment</span><strong id="delivered_quantity">—</strong></div>
           </div>
           <section class="panel">
-               <h2>Zuletzt importiert</h2>
-               <p id="empty" hidden>Noch keine Rechnungen importiert. Beginne mit „Rechnung hochladen“.</p>
+               <h2 data-i18n="dashboard.recent_heading">Zuletzt importiert</h2>
+               <p id="empty" hidden data-i18n="dashboard.empty">Noch keine Rechnungen importiert. Beginne mit „Rechnung hochladen“.</p>
                <div class="tablewrap" id="table" hidden>
                     <table>
                          <thead>
                               <tr>
-                                   <th>Rechnung</th>
-                                   <th>Rechnungsdatum</th>
-                                   <th>Lieferant</th>
-                                   <th>Importiert</th>
-                                   <th>Importiert von</th>
+                                   <th data-i18n="dashboard.table_invoice">Rechnung</th>
+                                   <th data-i18n="dashboard.table_invoice_date">Rechnungsdatum</th>
+                                   <th data-i18n="dashboard.table_supplier">Lieferant</th>
+                                   <th data-i18n="dashboard.table_uploaded">Importiert</th>
+                                   <th data-i18n="dashboard.table_uploaded_by">Importiert von</th>
                               </tr>
                          </thead>
                          <tbody id="rows"></tbody>
@@ -51,12 +52,12 @@
                </div>
           </section>
      </main>
-     <footer>Sport-Fabrik Inventory</footer>
+     <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
      <script>
-          const $ = id => document.getElementById(id); function date(s) { return s ? s.slice(0, 10).split('-').reverse().join('.') : '—'; } function importedBy(i) { return i.imported_by_name || i.imported_by_kassennummer || '—'; } function sourceLabel(i) { return i.ocr_used ? ' (OCR-Scan)' : ''; } async function load() { $('retry').hidden = true; $('status').textContent = 'Übersicht wird geladen …'; try { const r = await fetch('/api/dashboard'); const d = await r.json(); if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : 'Daten konnten nicht geladen werden.'); for (const key of ['products', 'invoices', 'delivered_quantity']) $(key).textContent = new Intl.NumberFormat('de-CH').format(d[key]); const fragment = document.createDocumentFragment(); for (const i of d.recent_invoices) { const tr = document.createElement('tr'); const td = document.createElement('td'); const a = document.createElement('a'); a.href = '/invoices/' + i.id; a.textContent = i.invoice_number; td.append(a); tr.append(td); for (const value of [date(i.invoice_date), i.supplier, date(i.uploaded_at), importedBy(i) + sourceLabel(i)]) { const cell = document.createElement('td'); cell.textContent = value ?? '—'; tr.append(cell); } fragment.append(tr); } $('rows').replaceChildren(fragment); $('table').hidden = !d.recent_invoices.length; $('empty').hidden = !!d.recent_invoices.length; $('status').textContent = ''; } catch (e) { $('status').textContent = e.message === 'Failed to fetch' ? 'Keine Verbindung zur App. Bitte erneut versuchen.' : e.message; $('retry').hidden = false; } } $('retry').addEventListener('click', load); load();
+          const $ = id => document.getElementById(id); const t = (...a) => window.SportfabrikI18n.t(...a); function date(s) { return s ? s.slice(0, 10).split('-').reverse().join('.') : '—'; } function importedBy(i) { return i.imported_by_name || i.imported_by_kassennummer || '—'; } function sourceLabel(i) { return i.ocr_used ? ' ' + t('dashboard.ocr_scan_suffix') : ''; } async function load() { $('retry').hidden = true; $('status').textContent = t('dashboard.loading'); try { const r = await fetch('/api/dashboard'); const d = await r.json(); if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : t('dashboard.load_error')); for (const key of ['products', 'invoices', 'delivered_quantity']) $(key).textContent = new Intl.NumberFormat('de-CH').format(d[key]); const fragment = document.createDocumentFragment(); for (const i of d.recent_invoices) { const tr = document.createElement('tr'); const td = document.createElement('td'); const a = document.createElement('a'); a.href = '/invoices/' + i.id; a.textContent = i.invoice_number; td.append(a); tr.append(td); for (const value of [date(i.invoice_date), i.supplier, date(i.uploaded_at), importedBy(i) + sourceLabel(i)]) { const cell = document.createElement('td'); cell.textContent = value ?? '—'; tr.append(cell); } fragment.append(tr); } $('rows').replaceChildren(fragment); $('table').hidden = !d.recent_invoices.length; $('empty').hidden = !!d.recent_invoices.length; $('status').textContent = ''; } catch (e) { $('status').textContent = e.message === 'Failed to fetch' ? t('common.connection_lost') : e.message; $('retry').hidden = false; } } $('retry').addEventListener('click', load); load();
      </script>
-     <script src="/static/js/session.js?v=lagerorte-1"></script>
-     <script src="/static/js/theme.js?v=2"></script>
+     <script src="/static/js/session.js?v=i18n-1"></script>
+     <script src="/static/js/theme.js?v=i18n-1"></script>
 </body>
 
 </html>

@@ -24,17 +24,27 @@ der Oberfläche zwischen ihren Filialen wechseln.
   korrigieren — importiert wird erst nach expliziter Bestätigung.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
-- **Artikelsuche** über Marke, EAN, Artikelnummer, Bezeichnung, Farbe, Grösse
-  und Lieferdatum-Bereich, mit sortierbaren Spalten, Spalten-Auswahl und
-  Excel-Export.
+- **Artikelsuche** über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung,
+  Farbe, Grösse und Lieferdatum-Bereich, mit sortierbaren Spalten,
+  Spalten-Auswahl und Excel-Export.
 - **Lieferhistorie und Preisverlauf** je Artikel (inkl. aller Farb-/
   Grössenvarianten), **Freitext-Notizen** mit Autor und Änderungsverlauf.
 - **Rechnungsliste** mit Detailansicht, unwiderruflichem Löschen (inkl.
   korrekter Neuberechnung der Artikel-Kennzahlen) durch Filialleiter.
 - **Hell-/Dunkelmodus** seitenübergreifend, grössere Schrift und
   Spalten-Auswahl für Mitarbeitende mit eingeschränktem Sehvermögen.
+- **Mehrsprachig DE/FR/EN**: Oberfläche und Fehlermeldungen vollständig
+  übersetzt (Deutsch Standard), Sprache jederzeit pro Benutzer umstellbar.
 - **Rollenbasierte Anmeldung** nach Kassensystem-Muster, automatisierte
   geprüfte Backups (Datenbank + Original-PDFs).
+- **Bestand je Filiale**: jede importierte Rechnungsposition bucht einen
+  Wareneingang gegen die aktive Filiale des hochladenden Kontos, als
+  Bewegung im append-only-Journal `lagerbewegungen` (siehe
+  `docs/datenmodell.md`) — Wareneingänge werden nie direkt überschrieben.
+- **FEDAS-Kategorievorschlag**: erkennt der Lieferant eine passende
+  FEDAS-Warengruppe, wird die Kassenkategorie beim Import automatisch
+  vorgeschlagen (aktuell mit einer Teilmenge bestätigter Codes, siehe
+  `app/core/fedas.py`).
 
 ## Tech-Stack
 
@@ -45,7 +55,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
   Papierrechnungen ohne Textebene
 - **Excel-Export**: openpyxl
 - **Frontend**: Vanilla HTML/CSS/JS, kein Framework, keine Build-Pipeline
-- **Tests**: pytest (86 bestanden, 19 übersprungen ohne optionale
+- **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
+  siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
+  Abhängigkeit
+- **Tests**: pytest (145 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -67,8 +80,13 @@ Dieses README ist der Schnelleinstieg. Ausführlichere Dokumentation liegt in
 - [`docs/SERVER-SETUP.md`](docs/SERVER-SETUP.md) — Docker-Build,
   Server-Einrichtung, Datenumzug, Betrieb
 - [`docs/BACKUPS.md`](docs/BACKUPS.md) — automatisierte, geprüfte Backups
-- [`docs/Sportfabrik-Inventory-Dokumentation.docx`](docs/Sportfabrik-Inventory-Dokumentation.docx) —
-  dieselben Inhalte als zusammenhängendes Word-Dokument
+- [`docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx`](docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx) —
+  kurze, nicht-technische Zusammenfassung für die Geschäftsleitung (kein
+  Ersatz für die obigen technischen Dokumente)
+- `docs/Sportfabrik-Inventory-Dokumentation.docx` — dieselben Inhalte wie
+  oben als ein zusammenhängendes Word-Dokument; bewusst **nicht** im Repo
+  (siehe `.gitignore`), da es bei jeder grösseren Änderung neu aus den
+  Markdown-Dokumenten oben generiert statt manuell gepflegt wird
 
 ## Ordnerstruktur
 
@@ -77,27 +95,33 @@ app/
   main.py            Einstiegspunkt: FastAPI-App, Middleware, Router-Registrierung
   core/              Datenbankverbindung, Modelle, Passwort-Hashing
     database.py
-    models.py
+    models.py          SQLAlchemy-Modelle des neuen Datenmodells (siehe docs/datenmodell.md)
     security.py
     lagerorte.py       Seed-Daten SF1-SF4 + GEWA (siehe app/services/lagerorte.py für Lesezugriffe)
+    lieferanten.py     Seed-Daten Lieferanten (aktuell nur INTERSPORT)
+    kategorien.py      Seed-Daten Kassenkategorien (Hauptgruppe x Sportbereich, 35 Kombinationen)
+    fedas.py           FEDAS-Code -> Kassenkategorie-Vorschlag (Phase B, siehe docs/projekt-kontext.md)
+    i18n.py            translate()/normalize_language(): Katalog aus app/static/i18n/*.json lesen
   routers/           HTTP-Endpunkte (Seiten + JSON-API), gruppiert nach Thema
-    auth.py            Anmeldung/Abmeldung, RBAC-Dependencies, Filialwechsel (/api/me, /api/active-lagerort)
+    auth.py            Anmeldung/Abmeldung, RBAC-Dependencies, Filialwechsel, Sprachwahl (/api/me, /api/active-lagerort, /api/language)
     catalog.py         Artikelsuche, Excel-Export
     dashboard.py       Übersichtsseite
     history.py         Rechnungsliste, -details, Artikelhistorie, Löschen
     article_details.py Notizen und Preisverlauf je Artikel
     preview.py         Upload-Vorschau, Korrekturvalidierung, Importbestätigung
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
-    importer.py        Transaktionaler Import/Löschung von Rechnungen
-    parser.py          PDF-Rechnungen in strukturierte Positionen umwandeln
+    importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
+    parser.py          PDF-Rechnungen in strukturierte Positionen umwandeln (inkl. FEDAS-Code)
     ocr.py              OCR-Fallback (Tesseract) für gescannte Seiten ohne Textebene
     corrections.py      Manuelle Korrekturen in der Vorschau validieren
-    article_groups.py  Farb-/Grössenvarianten desselben Artikels gruppieren
+    article_groups.py  Farb-/Grössenvarianten desselben Artikels über die echte artikel_id-Beziehung gruppieren
     article_export.py  Artikelliste als formatierte .xlsx-Datei
     lagerorte.py        Lagerort-Zuordnung eines Benutzers lesen (Filialwechsel)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
-    css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, Vorschau, Artikeldetails)
+    css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)
+    js/i18n.js           Katalog laden, data-i18n anwenden, window.SportfabrikI18n.t()
+    i18n/{de,fr,en}.json Übersetzungs-Katalog (einzige Quelle, auch vom Backend gelesen)
     fonts/, img/        Selbst gehostete Schriftart, Logo
     BRAND-SOURCES.md    Herkunft von Logo/Schriftart, Markenfarben
 

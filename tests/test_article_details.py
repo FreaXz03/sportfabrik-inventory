@@ -96,18 +96,39 @@ def test_delete_note_permissions_version_and_isolation(client):
 
 
 def test_supplier_group_variants_prices_and_notes(client):
+    from decimal import Decimal
+    from sqlalchemy import select
     from app.core.database import get_session
-    from app.core.models import Product, InvoiceItem
+    from app.core.models import Artikel, Lieferant, Variante, WareneingangPosition
     setup(client)
     generator = client.app.dependency_overrides[get_session]()
     session = next(generator)
     try:
-        variant = Product(brand='Hoka', supplier_article_no='SUP-9', ean='333', size='42')
-        unrelated = Product(brand='Other', supplier_article_no='SUP-9', ean='444')
-        blank = Product(brand='Nike', supplier_article_no='', ean='555')
-        session.add_all([variant, unrelated, blank]); session.flush()
+        lieferant_id = session.scalar(select(Lieferant.id))
+        # Weitere Grösse desselben Artikels (artikel_id=1, Hoka/SUP-9 aus der
+        # Fixture) - gehört zur selben Gruppe wie Produkt 1.
+        variant = Variante(artikel_id=1, ean='333', groesse='42')
+        # Gleiche Lief.-Art.-Nr., aber andere Marke -> eigener Artikel, keine Gruppierung.
+        unrelated_artikel = Artikel(lieferant_id=lieferant_id, marke='Other', lieferanten_artikelnr='SUP-9')
+        session.add(unrelated_artikel)
+        session.flush()
+        unrelated = Variante(artikel_id=unrelated_artikel.id, ean='444')
+        # Keine Lief.-Art.-Nr. -> immer ein eigener Artikel, auch bei gleicher Marke.
+        blank_artikel = Artikel(lieferant_id=lieferant_id, marke='Nike', lieferanten_artikelnr='')
+        session.add(blank_artikel)
+        session.flush()
+        blank = Variante(artikel_id=blank_artikel.id, ean='555')
+        session.add_all([variant, unrelated, blank])
+        session.flush()
         variant_id, other_id, blank_id = variant.id, unrelated.id, blank.id
-        session.add_all([InvoiceItem(product_id=p.id, invoice_id=1, quantity=1, unit='PAA', uvp=200) for p in [variant, unrelated, blank]])
+        session.add_all(
+            [
+                WareneingangPosition(
+                    wareneingang_id=1, varianten_id=v.id, menge=Decimal('1'), einheit='PAA', uvp=Decimal('200')
+                )
+                for v in [variant, unrelated, blank]
+            ]
+        )
         session.commit()
     finally:
         generator.close()

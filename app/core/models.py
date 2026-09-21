@@ -10,90 +10,19 @@ from sqlalchemy import (
     Numeric,
     String,
     JSON,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
 
-
-class Product(Base):
-    __tablename__ = "products"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-
-    brand: Mapped[str | None] = mapped_column(String(100))
-    supplier_article_no: Mapped[str | None] = mapped_column(String(100))
-
-    article_no: Mapped[str | None] = mapped_column(String(100), index=True)
-
-    ean: Mapped[str | None] = mapped_column(String(30), unique=True, index=True)
-
-    description: Mapped[str | None] = mapped_column(String(500))
-
-    color: Mapped[str | None] = mapped_column(String(250))
-    size: Mapped[str | None] = mapped_column(String(100))
-
-    first_seen: Mapped[date | None] = mapped_column(Date)
-    last_seen: Mapped[date | None] = mapped_column(Date)
-
-
-class Invoice(Base):
-    __tablename__ = "invoices"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-
-    invoice_number: Mapped[str] = mapped_column(String(100), unique=True, index=True)
-
-    invoice_date: Mapped[date | None] = mapped_column(Date)
-    document_date: Mapped[date | None] = mapped_column(Date)
-
-    supplier: Mapped[str | None] = mapped_column(String(200))
-
-    filename: Mapped[str | None] = mapped_column(String(500))
-
-    file_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
-
-    uploaded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
-
-    imported_by_kassennummer: Mapped[str | None] = mapped_column(String(20))
-    imported_by_name: Mapped[str | None] = mapped_column(String(100))
-
-    # True when this invoice's PDF had no text layer (a paper invoice that
-    # arrived in the package and was scanned instead of received digitally)
-    # and had to be read via OCR - see app/services/ocr.py. OCR is less
-    # reliable than a native text layer, so this stays visible for later audits.
-    ocr_used: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("false")
-    )
-
-
-class InvoiceItem(Base):
-    __tablename__ = "invoice_items"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-
-    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), index=True)
-
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
-
-    quantity: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
-
-    unit: Mapped[str | None] = mapped_column(String(30))
-
-    uvp: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
-
-
-class InvoiceItemSource(Base):
-    """Immutable invoice-time fields, order and original text for later audits."""
-
-    __tablename__ = "invoice_item_sources"
-    item_id: Mapped[int] = mapped_column(
-        ForeignKey("invoice_items.id"), primary_key=True
-    )
-    data: Mapped[dict] = mapped_column(JSON)
+# Hinweis Altdaten: Die frueheren Tabellen products/invoices/invoice_items/
+# invoice_item_sources sind mit Migration c3d4e5f6a7b8 vollstaendig nach
+# artikel/varianten/dokumente/wareneingaenge/wareneingang_positionen(_quelle)
+# migriert worden (Phase A Punkt 3, "nie verwerfen"). Ihre Tabellen bleiben in
+# der Datenbank bestehen (kein DROP), sind aber ab hier nicht mehr gemappt -
+# die App liest/schreibt sie nicht mehr. Siehe docs/datenmodell.md.
 
 
 class User(Base):
@@ -111,6 +40,7 @@ class User(Base):
             "(role = 'mitarbeiter' AND password_hash IS NULL)",
             name="ck_users_chef_has_password",
         ),
+        CheckConstraint("language IN ('de', 'fr', 'en')", name="ck_users_language"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -122,6 +52,12 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20))
 
     password_hash: Mapped[str | None] = mapped_column(String(200))
+
+    # Regel 7: Deutsch ist Standard, jederzeit pro Benutzer umstellbar
+    # (siehe app/core/i18n.py, POST /api/language).
+    language: Mapped[str] = mapped_column(
+        String(2), default="de", server_default=text("'de'")
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -166,9 +102,14 @@ class BenutzerLagerort(Base):
 
 
 class ArticleNote(Base):
+    """Notiz zu einem Artikel (Modell-Ebene, gilt für alle Varianten/Farben/
+    Grössen gemeinsam - vor der Migration wurde das zur Laufzeit über
+    app/services/article_groups.py nachgebildet, jetzt ist artikel_id die
+    echte Gruppe)."""
+
     __tablename__ = "article_notes"
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    artikel_id: Mapped[int] = mapped_column(ForeignKey("artikel.id"), index=True)
     body: Mapped[str] = mapped_column(String(2000))
     author_user_id: Mapped[int] = mapped_column()
     author_name: Mapped[str] = mapped_column(String(100))
@@ -181,3 +122,236 @@ class ArticleNote(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     version: Mapped[int] = mapped_column(default=1)
+
+
+class Lieferant(Base):
+    """Lieferant/Quelle eines Dokuments (Intersport, ECOM, Dritthändler, Extern
+    - siehe projekt-kontext.md Abschnitt 1 „Warenquellen"). `parser_key`
+    verweist auf das zuständige Parser-Modul; `None` = noch kein
+    automatischer Parser (Lieferanten-Erkennung ist Phase B)."""
+
+    __tablename__ = "lieferanten"
+    __table_args__ = (
+        CheckConstraint(
+            "typ IN ('intersport', 'ecom', 'drittanbieter', 'extern')",
+            name="ck_lieferanten_typ",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True)
+    typ: Mapped[str] = mapped_column(String(20))
+    parser_key: Mapped[str | None] = mapped_column(String(50))
+
+
+class Kategorie(Base):
+    """Kassenkategorie: Hauptgruppe × Sportbereich, exakt wie in der Kasse
+    (Regel 8). Velo und Food haben keinen Sportbereich. Fixe Seed-Daten in
+    app/core/kategorien.py (35 Kombinationen). FEDAS→Kategorie-Vorschlag ist
+    Phase B, `artikel.fedas_code` wird aber schon jetzt miterfasst."""
+
+    __tablename__ = "kategorien"
+    __table_args__ = (
+        CheckConstraint(
+            "hauptgruppe IN ('Textil', 'Hartware', 'Schuhe', 'Velo', 'Food')",
+            name="ck_kategorien_hauptgruppe",
+        ),
+        UniqueConstraint("hauptgruppe", "sportbereich", name="uq_kategorien_kombi"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hauptgruppe: Mapped[str] = mapped_column(String(20))
+    sportbereich: Mapped[str | None] = mapped_column(String(20))
+
+
+class Dokument(Base):
+    """Hochgeladenes/erfasstes Dokument - verallgemeinert die frühere
+    invoices-Tabelle auf alle Dokumenttypen aus D6 (Rechnung, Lieferschein,
+    Auftragsbestätigung, Bestellung). `lagerort_id` ist die aus der
+    Lieferadresse erkannte bzw. gewählte Filiale."""
+
+    __tablename__ = "dokumente"
+    __table_args__ = (
+        CheckConstraint(
+            "typ IN ('rechnung', 'lieferschein', 'auftragsbestaetigung', 'bestellung')",
+            name="ck_dokumente_typ",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    lieferant_id: Mapped[int | None] = mapped_column(ForeignKey("lieferanten.id"), index=True)
+    lagerort_id: Mapped[int | None] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+
+    typ: Mapped[str] = mapped_column(String(30))
+
+    dokumentnummer: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    dokumentdatum: Mapped[date | None] = mapped_column(Date)
+    belegdatum: Mapped[date | None] = mapped_column(Date)
+
+    dateiname: Mapped[str | None] = mapped_column(String(500))
+    datei_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+
+    hochgeladen_am: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    hochgeladen_von_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    hochgeladen_von_name: Mapped[str | None] = mapped_column(String(100))
+
+    # Siehe invoices.ocr_used (frühere Tabelle) für den Hintergrund.
+    ocr_verwendet: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+
+
+class Artikel(Base):
+    """Modell-Ebene, filialübergreifend (Regel 4): Marke + Lieferanten-
+    Artikelnummer. Ohne Lieferanten-Artikelnummer bleibt jeder Artikel
+    einzeln (siehe app/services/article_groups.py). Farbe/Grösse/EAN liegen
+    in `varianten`."""
+
+    __tablename__ = "artikel"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    lieferant_id: Mapped[int] = mapped_column(ForeignKey("lieferanten.id"), index=True)
+    marke: Mapped[str | None] = mapped_column(String(100))
+    lieferanten_artikelnr: Mapped[str | None] = mapped_column(String(100), index=True)
+    bezeichnung: Mapped[str | None] = mapped_column(String(500))
+
+    kategorie_id: Mapped[int | None] = mapped_column(ForeignKey("kategorien.id"))
+    fedas_code: Mapped[str | None] = mapped_column(String(10))
+
+
+class Variante(Base):
+    """Farbe/Grösse/EAN eines Artikels (Regel 5: EAN optional, Schlüssel ohne
+    EAN ist Lieferant + Artikelnr. + Farbe + Grösse über `artikel_id`).
+    `ean_intern` markiert vom System generierte EANs (Phase B, noch
+    ungenutzt). `first_seen`/`last_seen` wie früher auf `products`."""
+
+    __tablename__ = "varianten"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    artikel_id: Mapped[int] = mapped_column(ForeignKey("artikel.id"), index=True)
+    farbe: Mapped[str | None] = mapped_column(String(250))
+    groesse: Mapped[str | None] = mapped_column(String(100))
+
+    ean: Mapped[str | None] = mapped_column(String(30), unique=True, index=True)
+    ean_intern: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+
+    first_seen: Mapped[date | None] = mapped_column(Date)
+    last_seen: Mapped[date | None] = mapped_column(Date)
+
+
+class Preis(Base):
+    """UVP/EK-Verlauf je Variante (Regel 10: EK optional, nie Pflicht)."""
+
+    __tablename__ = "preise"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+    uvp: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    ek: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    datum: Mapped[date | None] = mapped_column(Date)
+    dokument_id: Mapped[int | None] = mapped_column(ForeignKey("dokumente.id"))
+
+
+class Wareneingang(Base):
+    """Wareneingang: erwartet → eingetroffen (Regel 3, D6). Bestand wird erst
+    gebucht, wenn `status = 'eingetroffen'` ist (siehe `lagerbewegungen`)."""
+
+    __tablename__ = "wareneingaenge"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('erwartet', 'eingetroffen')", name="ck_wareneingaenge_status"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    dokument_id: Mapped[int] = mapped_column(ForeignKey("dokumente.id"), index=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20))
+    eingangsdatum: Mapped[date | None] = mapped_column(Date)
+
+
+class WareneingangPosition(Base):
+    """Eine Position (Zeile) eines Wareneingangs - verallgemeinert die frühere
+    invoice_items-Tabelle."""
+
+    __tablename__ = "wareneingang_positionen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    wareneingang_id: Mapped[int] = mapped_column(
+        ForeignKey("wareneingaenge.id"), index=True
+    )
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+
+    menge: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    einheit: Mapped[str | None] = mapped_column(String(30))
+    uvp: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    ek: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+
+
+class WareneingangPositionQuelle(Base):
+    """Unveränderter Original-Snapshot je Position für spätere Audits -
+    verallgemeinert die frühere invoice_item_sources-Tabelle."""
+
+    __tablename__ = "wareneingang_positionen_quelle"
+    position_id: Mapped[int] = mapped_column(
+        ForeignKey("wareneingang_positionen.id"), primary_key=True
+    )
+    data: Mapped[dict] = mapped_column(JSON)
+
+
+class Lagerbewegung(Base):
+    """Journal aller Bestandsänderungen (Regel 2: Bestand nie direkt
+    überschreiben, jede Änderung eine Zeile hier). Benutzer als
+    Momentaufnahme gespeichert (wie bei `dokumente`/`article_notes`), nicht
+    als Fremdschlüssel - bleibt lesbar, auch wenn das Konto später entfernt
+    wird."""
+
+    __tablename__ = "lagerbewegungen"
+    __table_args__ = (
+        CheckConstraint(
+            "typ IN ('zugang', 'verkauf', 'ausbuchung', 'korrektur', 'umlagerung')",
+            name="ck_lagerbewegungen_typ",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+    typ: Mapped[str] = mapped_column(String(20))
+    menge: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    grund: Mapped[str | None] = mapped_column(String(200))
+
+    wareneingang_position_id: Mapped[int | None] = mapped_column(
+        ForeignKey("wareneingang_positionen.id")
+    )
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+
+    zeitpunkt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class Bestand(Base):
+    """Aktueller Bestand je Variante × Filiale, aus `lagerbewegungen`
+    abgeleitet (Regel 2) und dort auch aktuell gehalten - nie direkt
+    geschrieben ausser beim Nachführen der Summe. `aeltestes_eingangsdatum`
+    dient der Reduktionslogik (Phase D, 8.3)."""
+
+    __tablename__ = "bestand"
+
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), primary_key=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), primary_key=True)
+    menge: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default=text("0"))
+    aeltestes_eingangsdatum: Mapped[date | None] = mapped_column(Date)

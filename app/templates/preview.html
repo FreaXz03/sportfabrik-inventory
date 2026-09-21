@@ -4,90 +4,92 @@
 <head>
      <meta charset="utf-8">
      <meta name="viewport" content="width=device-width,initial-scale=1">
-     <script>try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>
-     <title>Rechnungsprüfung · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=lagerorte-1">
+     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/i18n.js?v=1"></script>
+     <title data-i18n="preview.page_title">Rechnungsprüfung · Sport-Fabrik</title>
+     <link rel="stylesheet" href="/static/css/app.css?v=i18n-1">
 </head>
 
 <body>
-     <header><a class="brand" href="/" aria-label="Sport-Fabrik Inventory – Übersicht"><img
+     <header><a class="brand" href="/" data-i18n-aria-label="dashboard.brand_aria" aria-label="Sport-Fabrik Inventory – Übersicht"><img
                     src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a>
-          <nav aria-label="Hauptnavigation"><a href="/">Übersicht</a><a href="/articles">Artikel</a><a
-                    href="/invoices">Rechnungen</a><a href="/preview">Rechnung hochladen</a></nav>
+          <nav data-i18n-aria-label="nav.main_aria" aria-label="Hauptnavigation"><a href="/" data-i18n="nav.overview">Übersicht</a><a href="/articles" data-i18n="nav.articles">Artikel</a><a
+                    href="/invoices" data-i18n="nav.invoices">Rechnungen</a><a href="/preview" data-i18n="nav.upload">Rechnung hochladen</a></nav>
      </header>
      <main class="preview-page">
-          <h1>Rechnung prüfen</h1>
-          <p>INTERSPORT-Rechnung hochladen und die erkannten Artikel kontrollieren.<br>Erst nach deiner Bestätigung
+          <h1 data-i18n="preview.heading">Rechnung prüfen</h1>
+          <p data-i18n="preview.intro_line1">INTERSPORT-Rechnung hochladen und die erkannten Artikel kontrollieren.</p>
+          <p data-i18n="preview.intro_line2">Erst nach deiner Bestätigung
                werden Rechnung und Artikel in der Datenbank gespeichert.</p>
           <section class="panel">
-               <form id="upload"><label>PDF-Rechnungen auswählen<input id="file" type="file" multiple
-                              accept="application/pdf,.pdf" required></label><button id="submit">Dateien
+               <form id="upload"><label data-i18n="preview.upload_label">PDF-Rechnungen auswählen<input id="file" type="file" multiple
+                              accept="application/pdf,.pdf" required></label><button id="submit" data-i18n="preview.upload_submit">Dateien
                          einlesen</button></form>
-               <p class="muted">Bis zu 20 PDFs / insgesamt 100 MB · pro Datei maximal 20 MB und 200 Seiten. Weitere
+               <p class="muted" data-i18n="preview.upload_hint">Bis zu 20 PDFs / insgesamt 100 MB · pro Datei maximal 20 MB und 200 Seiten. Weitere
                     Auswahlen werden dem Stapel hinzugefügt.</p>
                <div id="status" role="status" aria-live="polite"></div>
           </section>
           <section id="batch" class="panel" hidden>
-               <h2>Deine Rechnungsauswahl</h2>
+               <h2 data-i18n="preview.batch_heading">Deine Rechnungsauswahl</h2>
                <p id="batchSummary" role="status" aria-live="polite"></p>
-               <p class="muted">Rechnung auswählen, prüfen und einzeln importieren. Korrekturen bleiben beim Wechsel
+               <p class="muted" data-i18n="preview.batch_hint">Rechnung auswählen, prüfen und einzeln importieren. Korrekturen bleiben beim Wechsel
                     erhalten. Noch nicht importierte Vorschauen werden beim Schliessen verworfen.</p>
                <div id="batchRows"></div>
           </section>
           <section id="result" class="panel" hidden>
                <div class="preview-heading">
                     <div>
-                         <p class="eyebrow">Rechnungsvorschau</p>
+                         <p class="eyebrow" data-i18n="preview.result_eyebrow">Rechnungsvorschau</p>
                          <h2 id="invoice"></h2>
                          <p id="filename"></p>
-                    </div><span class="preview-badge">Noch nicht importiert</span>
+                    </div><span class="preview-badge" data-i18n="preview.badge_not_imported">Noch nicht importiert</span>
                </div>
                <div class="stats" id="stats"></div>
-               <p id="ocrNotice" class="notice ocr" hidden>Diese Rechnung wurde aus einem eingescannten Blatt per
+               <p id="ocrNotice" class="notice ocr" hidden data-i18n="preview.ocr_notice">Diese Rechnung wurde aus einem eingescannten Blatt per
                     Texterkennung (OCR) gelesen. OCR ist nicht 100% zuverlässig - bitte alle Positionen besonders
                     sorgfältig prüfen, bevor du importierst.</p>
                <p id="warnings" class="notice" hidden></p>
                <div class="preview-tools">
                     <div class="preview-tools-heading">
-                         <h3>Positionen prüfen</h3><span>Suche, filtere oder korrigiere die erkannten Werte.</span>
+                         <h3 data-i18n="preview.positions_heading">Positionen prüfen</h3><span data-i18n="preview.positions_subheading">Suche, filtere oder korrigiere die erkannten Werte.</span>
                     </div>
-                    <div class="filters"><label>Artikel suchen<input id="search" type="search"
-                                   placeholder="EAN, Marke, Artikelnummer, Bezeichnung …"></label><label>Marke<select
+                    <div class="filters"><label data-i18n="preview.search_label">Artikel suchen<input id="search" type="search"
+                                   data-i18n-placeholder="preview.search_placeholder" placeholder="EAN, Marke, Artikelnummer, Bezeichnung …"></label><label data-i18n="preview.brand_label">Marke<select
                                    id="brand">
-                                   <option value="">Alle Marken</option>
-                              </select></label><label class="check"><input id="warningsOnly" type="checkbox">Nur
-                              Warnungen</label><button type="button" class="secondary" id="download">JSON
+                                   <option value="" data-i18n="preview.filter_all_brands">Alle Marken</option>
+                              </select></label><label class="check"><input id="warningsOnly" type="checkbox"><span data-i18n="preview.warnings_only_label">Nur
+                              Warnungen</span></label><button type="button" class="secondary" id="download" data-i18n="preview.download_json">JSON
                               herunterladen</button></div>
                     <div class="preview-editbar"><label class="edit-switch"><input type="checkbox" role="switch"
-                                   id="editMode"><span class="edit-switch-track" aria-hidden="true"></span><span>Werte
+                                   id="editMode"><span class="edit-switch-track" aria-hidden="true"></span><span data-i18n="preview.edit_mode_label">Werte
                                    bearbeiten</span></label>
-                         <p id="editHelp" hidden>Felder direkt in der Tabelle bearbeiten. Bestehende Artikelstammdaten
+                         <p id="editHelp" hidden data-i18n="preview.edit_help">Felder direkt in der Tabelle bearbeiten. Bestehende Artikelstammdaten
                               bleiben erhalten; korrigierte Werte werden für diese Rechnungsposition gespeichert.</p>
-                         <button type="button" id="validateEdits" class="secondary" hidden>Änderungen
-                              prüfen</button><button type="button" id="resetEdits" class="secondary" hidden>Alle
+                         <button type="button" id="validateEdits" class="secondary" hidden data-i18n="preview.validate_edits">Änderungen
+                              prüfen</button><button type="button" id="resetEdits" class="secondary" hidden data-i18n="preview.reset_edits">Alle
                               Korrekturen zurücksetzen</button>
                          <p id="editStatus" role="status"></p>
                     </div>
                </div>
                <div class="preview-table-heading">
-                    <p id="count" class="muted" aria-live="polite"></p><span>Originaltext je Position aufklappbar</span>
+                    <p id="count" class="muted" aria-live="polite"></p><span data-i18n="preview.raw_text_hint">Originaltext je Position aufklappbar</span>
                </div>
                <div class="tablewrap">
                     <table>
                          <thead>
                               <tr>
-                                   <th>Position / Seite</th>
-                                   <th>Marke</th>
-                                   <th>Lief. Art. Nr.</th>
-                                   <th>Art. Nr.</th>
-                                   <th>EAN</th>
-                                   <th>Bezeichnung</th>
-                                   <th>Farbe</th>
-                                   <th>Grösse</th>
-                                   <th>Menge</th>
-                                   <th>Einheit</th>
-                                   <th>UVP</th>
-                                   <th>Prüfung / Originaltext</th>
+                                   <th data-i18n="preview.table.position_page">Position / Seite</th>
+                                   <th data-i18n="fields.brand">Marke</th>
+                                   <th data-i18n="preview.table.supplier_article_no">Lief. Art. Nr.</th>
+                                   <th data-i18n="preview.table.article_no">Art. Nr.</th>
+                                   <th data-i18n="fields.ean">EAN</th>
+                                   <th data-i18n="fields.description">Bezeichnung</th>
+                                   <th data-i18n="fields.color">Farbe</th>
+                                   <th data-i18n="fields.size">Grösse</th>
+                                   <th data-i18n="fields.quantity">Menge</th>
+                                   <th data-i18n="fields.unit">Einheit</th>
+                                   <th data-i18n="fields.uvp">UVP</th>
+                                   <th data-i18n="preview.table.check">Prüfung / Originaltext</th>
                               </tr>
                          </thead>
                          <tbody id="rows"></tbody>
@@ -95,21 +97,21 @@
                </div>
                <div class="import-panel">
                     <div class="import-copy">
-                         <h3>Prüfung abschliessen</h3><label><input type="checkbox" id="confirm"> Alle Positionen
-                              geprüft – bereit zum Import.</label>
-                         <p class="muted">Es wird immer die vollständige Rechnung importiert, auch wenn ein Filter aktiv
+                         <h3 data-i18n="preview.finish_heading">Prüfung abschliessen</h3><label><input type="checkbox" id="confirm"> <span data-i18n="preview.confirm_label">Alle Positionen
+                              geprüft – bereit zum Import.</span></label>
+                         <p class="muted" data-i18n="preview.import_all_hint">Es wird immer die vollständige Rechnung importiert, auch wenn ein Filter aktiv
                               ist.</p>
                     </div>
-                    <div class="import-actions"><button type="button" id="import" disabled>Import bestätigen</button>
+                    <div class="import-actions"><button type="button" id="import" disabled data-i18n="preview.import_button">Import bestätigen</button>
                          <p id="importStatus" role="status" aria-live="polite"></p>
                     </div>
                </div>
           </section>
      </main>
-     <script src="/static/js/preview.js?v=batch-2"></script>
-     <footer>Sport-Fabrik Inventory</footer>
-     <script src="/static/js/session.js?v=lagerorte-1"></script>
-     <script src="/static/js/theme.js?v=2"></script>
+     <script src="/static/js/preview.js?v=i18n-1"></script>
+     <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
+     <script src="/static/js/session.js?v=i18n-1"></script>
+     <script src="/static/js/theme.js?v=i18n-1"></script>
 </body>
 
 </html>

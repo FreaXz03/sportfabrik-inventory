@@ -15,6 +15,8 @@ parser.parse_invoice's ocr_used/ocr_pages fields.
 
 import re
 
+from ..core.i18n import DEFAULT_LANGUAGE, translate
+
 try:
     import pytesseract
     from pytesseract import Output
@@ -38,14 +40,6 @@ _POINTS_PER_PIXEL = 72 / OCR_DPI
 # kept by Tesseract as part of that word too - strip those as well so the
 # same brand reads identically whether or not the original print quoted it.
 _NOISE = re.compile(r"^[_|~¦†‡•·=\"'‘’“”]+|[_|~¦†‡•·=\"'‘’“”]+$")
-
-_UNAVAILABLE_MESSAGE = (
-    "Diese Datei enthält keinen lesbaren Text (vermutlich ein eingescanntes "
-    "Blatt). Texterkennung (OCR) ist auf diesem Rechner nicht verfügbar - "
-    "bitte Tesseract OCR installieren (siehe SERVER-SETUP.md) oder die "
-    "Rechnung digital anfordern."
-)
-
 
 class OcrUnavailableError(Exception):
     """Raised when a page needs OCR but Tesseract/pytesseract/Pillow are missing."""
@@ -123,7 +117,7 @@ def _grouped_words(data):
     return words
 
 
-def ocr_page(page, dpi=OCR_DPI):
+def ocr_page(page, dpi=OCR_DPI, language: str = DEFAULT_LANGUAGE):
     """OCR a scanned page.
 
     Returns a dict with `words` (PyMuPDF word-tuple shape, in PDF points),
@@ -132,7 +126,7 @@ def ocr_page(page, dpi=OCR_DPI):
     page.rect.height provides for native pages).
     """
     if pytesseract is None or Image is None:
-        raise OcrUnavailableError(_UNAVAILABLE_MESSAGE)
+        raise OcrUnavailableError(translate("errors.ocr.unavailable", language))
     try:
         image = render_upright_image(page, dpi=dpi)
         data = pytesseract.image_to_data(
@@ -140,7 +134,7 @@ def ocr_page(page, dpi=OCR_DPI):
         )
         text = pytesseract.image_to_string(image, config="--psm 6")
     except pytesseract.TesseractNotFoundError as exc:
-        raise OcrUnavailableError(_UNAVAILABLE_MESSAGE) from exc
+        raise OcrUnavailableError(translate("errors.ocr.unavailable", language)) from exc
 
     return dict(
         words=_grouped_words(data), text=text, height=image.height * _POINTS_PER_PIXEL

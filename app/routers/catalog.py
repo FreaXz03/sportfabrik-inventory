@@ -6,27 +6,27 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func, or_
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import require_login_api, require_login_page
+from .auth import get_language, require_login_api, require_login_page
 from ..core.database import get_session
-from ..core.models import Product, Invoice, InvoiceItem
+from ..core.i18n import translate
+from ..core.models import Artikel, Dokument, Variante, Wareneingang, WareneingangPosition
 
 router = APIRouter()
 
 
 # Whitelist of columns the article table may be sorted by. Only real,
-# per-product columns are sortable - "Geliefert gesamt" and "Letzter
-# UVP"/"UVP vom" are computed after pagination from separate queries
+# per-variant/per-model columns are sortable - "Geliefert gesamt" and
+# "Letzter UVP"/"UVP vom" are computed after pagination from separate queries
 # below and are intentionally left out.
 SORTABLE_COLUMNS = {
-    "brand": Product.brand,
-    "description": Product.description,
-    "article_no": Product.article_no,
-    "supplier_article_no": Product.supplier_article_no,
-    "ean": Product.ean,
-    "color": Product.color,
-    "size": Product.size,
-    "first_seen": Product.first_seen,
-    "last_seen": Product.last_seen,
+    "brand": Artikel.marke,
+    "description": Artikel.bezeichnung,
+    "supplier_article_no": Artikel.lieferanten_artikelnr,
+    "ean": Variante.ean,
+    "color": Variante.farbe,
+    "size": Variante.groesse,
+    "first_seen": Variante.first_seen,
+    "last_seen": Variante.last_seen,
 }
 
 
@@ -44,17 +44,21 @@ def contains(column, value):
 
 
 @router.get("/api/brands")
-def brands(user=Depends(require_login_api), session=Depends(get_session)):
+def brands(
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
     try:
         return session.scalars(
-            select(Product.brand)
-            .where(Product.brand.is_not(None), Product.brand != "")
+            select(Artikel.marke)
+            .where(Artikel.marke.is_not(None), Artikel.marke != "")
             .distinct()
-            .order_by(Product.brand)
+            .order_by(Artikel.marke)
         ).all()
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Datenbank nicht erreichbar. Bitte erneut versuchen."
+            503, translate("errors.catalog.database_unreachable", language)
         ) from exc
 
 
@@ -65,7 +69,7 @@ def articles(
     q: str = Query("", max_length=200),
     brand: str = Query("", max_length=100),
     ean: str = Query("", max_length=30),
-    article_no: str = Query("", max_length=100),
+    supplier_article_no: str = Query("", max_length=100),
     description: str = Query("", max_length=500),
     last_delivery_from: str | None = Query(None),
     last_delivery_to: str | None = Query(None),
@@ -74,7 +78,6 @@ def articles(
     sort_by: Literal[
         "brand",
         "description",
-        "article_no",
         "supplier_article_no",
         "ean",
         "color",
@@ -85,77 +88,77 @@ def articles(
     sort_dir: Literal["asc", "desc"] = Query("asc"),
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
         last_delivery_from = date.fromisoformat(last_delivery_from) if last_delivery_from else None
         last_delivery_to = date.fromisoformat(last_delivery_to) if last_delivery_to else None
     except ValueError as exc:
-        raise HTTPException(422, 'Bitte ein gültiges Lieferdatum eingeben.') from exc
+        raise HTTPException(
+            422, translate("errors.catalog.invalid_delivery_date", language)
+        ) from exc
     if last_delivery_from and last_delivery_to and last_delivery_from > last_delivery_to:
-        raise HTTPException(422, 'Das Von-Datum darf nicht nach dem Bis-Datum liegen.')
+        raise HTTPException(422, translate("errors.catalog.delivery_date_range", language))
     conditions = []
     if last_delivery_from:
-        conditions.append(Product.last_seen >= last_delivery_from)
+        conditions.append(Variante.last_seen >= last_delivery_from)
     if last_delivery_to:
-        conditions.append(Product.last_seen <= last_delivery_to)
+        conditions.append(Variante.last_seen <= last_delivery_to)
     if q.strip():
         conditions.append(
             or_(
                 *(
                     contains(c, q)
                     for c in (
-                        Product.brand,
-                        Product.ean,
-                        Product.article_no,
-                        Product.supplier_article_no,
-                        Product.description,
-                        Product.color,
-                        Product.size,
+                        Artikel.marke,
+                        Variante.ean,
+                        Artikel.bezeichnung,
+                        Artikel.lieferanten_artikelnr,
+                        Variante.farbe,
+                        Variante.groesse,
                     )
                 )
             )
         )
     if brand:
-        conditions.append(Product.brand == brand)
+        conditions.append(Artikel.marke == brand)
     if ean.strip():
-        conditions.append(Product.ean == ean.strip())
-    if article_no.strip():
-        conditions.append(
-            or_(
-                contains(Product.article_no, article_no),
-                contains(Product.supplier_article_no, article_no),
-            )
-        )
+        conditions.append(Variante.ean == ean.strip())
+    if supplier_article_no.strip():
+        conditions.append(contains(Artikel.lieferanten_artikelnr, supplier_article_no))
     if description.strip():
-        conditions.append(contains(Product.description, description))
+        conditions.append(contains(Artikel.bezeichnung, description))
     try:
+        base_query = select(Variante, Artikel).join(Artikel, Artikel.id == Variante.artikel_id)
         total = session.scalar(
-            select(func.count()).select_from(Product).where(*conditions)
+            select(func.count())
+            .select_from(Variante)
+            .join(Artikel, Artikel.id == Variante.artikel_id)
+            .where(*conditions)
         )
         sort_column = SORTABLE_COLUMNS[sort_by]
         primary = sort_column.desc() if sort_dir == "desc" else sort_column.asc()
         exporting = request.url.path.endswith("/export")
-        product_query = (select(Product)
-            .where(*conditions)
-            .order_by(primary.nulls_last(), Product.id)
+        variant_query = (
+            base_query.where(*conditions).order_by(primary.nulls_last(), Variante.id)
         )
         if not exporting:
-            product_query = product_query.offset((page - 1) * page_size).limit(page_size)
-        products = session.scalars(product_query).all()
-        ids = [p.id for p in products]
+            variant_query = variant_query.offset((page - 1) * page_size).limit(page_size)
+        rows = session.execute(variant_query).all()
+        ids = [v.id for v, _ in rows]
         totals = {}
         latest = {}
         if ids:
-            for product_id, unit, quantity in session.execute(
+            for varianten_id, unit, quantity in session.execute(
                 select(
-                    InvoiceItem.product_id,
-                    InvoiceItem.unit,
-                    func.sum(InvoiceItem.quantity),
+                    WareneingangPosition.varianten_id,
+                    WareneingangPosition.einheit,
+                    func.sum(WareneingangPosition.menge),
                 )
-                .where(InvoiceItem.product_id.in_(ids))
-                .group_by(InvoiceItem.product_id, InvoiceItem.unit)
+                .where(WareneingangPosition.varianten_id.in_(ids))
+                .group_by(WareneingangPosition.varianten_id, WareneingangPosition.einheit)
             ):
-                totals.setdefault(product_id, []).append(
+                totals.setdefault(varianten_id, []).append(
                     {
                         "unit": unit,
                         "quantity": (
@@ -165,51 +168,52 @@ def articles(
                 )
             ranked = (
                 select(
-                    InvoiceItem.product_id,
-                    InvoiceItem.uvp,
-                    Invoice.invoice_date,
+                    WareneingangPosition.varianten_id,
+                    WareneingangPosition.uvp,
+                    Dokument.dokumentdatum,
                     func.row_number()
                     .over(
-                        partition_by=InvoiceItem.product_id,
+                        partition_by=WareneingangPosition.varianten_id,
                         order_by=(
-                            Invoice.invoice_date.desc().nulls_last(),
-                            Invoice.uploaded_at.desc(),
-                            Invoice.id.desc(),
-                            InvoiceItem.id.desc(),
+                            Dokument.dokumentdatum.desc().nulls_last(),
+                            Dokument.hochgeladen_am.desc(),
+                            Dokument.id.desc(),
+                            WareneingangPosition.id.desc(),
                         ),
                     )
                     .label("rank"),
                 )
-                .join(Invoice, Invoice.id == InvoiceItem.invoice_id)
-                .where(InvoiceItem.product_id.in_(ids), InvoiceItem.uvp.is_not(None))
+                .select_from(WareneingangPosition)
+                .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+                .join(Dokument, Dokument.id == Wareneingang.dokument_id)
+                .where(
+                    WareneingangPosition.varianten_id.in_(ids),
+                    WareneingangPosition.uvp.is_not(None),
+                )
                 .subquery()
             )
             for row in session.execute(
                 select(ranked).where(ranked.c.rank == 1)
             ).mappings():
-                latest[row["product_id"]] = row
+                latest[row["varianten_id"]] = row
         items = []
-        for p in products:
+        for v, a in rows:
             item = {
-                key: getattr(p, key)
-                for key in (
-                    "id",
-                    "brand",
-                    "supplier_article_no",
-                    "article_no",
-                    "ean",
-                    "description",
-                    "color",
-                    "size",
-                    "first_seen",
-                    "last_seen",
-                )
+                "id": v.id,
+                "brand": a.marke,
+                "supplier_article_no": a.lieferanten_artikelnr,
+                "ean": v.ean,
+                "description": a.bezeichnung,
+                "color": v.farbe,
+                "size": v.groesse,
+                "first_seen": v.first_seen,
+                "last_seen": v.last_seen,
             }
-            price = latest.get(p.id)
+            price = latest.get(v.id)
             item.update(
-                delivered=totals.get(p.id, []),
+                delivered=totals.get(v.id, []),
                 latest_uvp=format(price["uvp"], "f") if price else None,
-                uvp_date=price["invoice_date"] if price else None,
+                uvp_date=price["dokumentdatum"] if price else None,
             )
             items.append(item)
         if exporting:
@@ -225,5 +229,5 @@ def articles(
         }
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, "Artikelsuche fehlgeschlagen. Bitte die Datenbankverbindung prüfen."
+            503, translate("errors.catalog.search_failed", language)
         ) from exc

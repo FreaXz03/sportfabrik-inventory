@@ -28,14 +28,14 @@ kommen aktuell primär von INTERSPORT Schweiz AG per PDF-Rechnung.
 | F1 | PDF-Rechnungen hochladen und Positionen automatisch auslesen | `app/services/parser.py` |
 | F2 | Vorschau der erkannten Positionen vor dem Speichern; nichts wird ungeprüft übernommen | `app/routers/preview.py` (`/upload-preview`) |
 | F3 | Import erst nach expliziter Bestätigung, und nur exakt der geprüften Datei | `app/routers/preview.py` (`/import-invoice`), Hash-Abgleich |
-| F4 | Zentrale Artikeldatenbank; mehrfach gelieferte Artikel (gleiche EAN) zusammenführen statt duplizieren | `app/services/importer.py`, `Product`-Modell |
-| F5 | Artikelsuche über Marke, EAN, Artikelnummer, Bezeichnung, Farbe, Grösse, Lieferdatum-Bereich | `app/routers/catalog.py` |
-| F6 | Vollständige Lieferhistorie je Artikel(-Variantengruppe) und je Rechnung, inkl. Original-Rechnungstext | `app/routers/history.py`, `InvoiceItemSource`, `app/services/article_groups.py` |
+| F4 | Zentrale Artikeldatenbank; mehrfach gelieferte Artikel (gleiche EAN) zusammenführen statt duplizieren | `app/services/importer.py`, `Artikel`/`Variante`-Modelle (bis Phase A Punkt 3: `Product`-Modell, siehe `datenmodell.md`) |
+| F5 | Artikelsuche über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung, Farbe, Grösse, Lieferdatum-Bereich | `app/routers/catalog.py` |
+| F6 | Vollständige Lieferhistorie je Artikel(-Variantengruppe) und je Rechnung, inkl. Original-Rechnungstext | `app/routers/history.py`, `WareneingangPositionQuelle` (bis Phase A Punkt 3: `InvoiceItemSource`), `app/services/article_groups.py` |
 | F7 | Rechnung nachträglich vollständig löschen können, mit korrekter Neuberechnung betroffener Artikeldaten | `delete_invoice()` in `app/services/importer.py` |
 | F8 | Gleichzeitiger Zugriff von vier Laden-PCs, ohne inkonsistente Daten bei zeitgleichem Import | Advisory Lock (`pg_advisory_xact_lock`) |
 | F9 | Anmeldung analog zum bestehenden Kassensystem: Mitarbeiter nur mit Kassennummer, Filialleiter zusätzlich mit Passwort | `app/routers/auth.py` |
 | F10 | Nur Filialleiter dürfen Rechnungen hochladen, importieren und löschen; Mitarbeiter dürfen nur ansehen/suchen | RBAC-Dependencies (`require_chef_*` / `require_login_*`) |
-| F11 | Nachvollziehbar, welche Person (Kassennummer/Name) eine Rechnung importiert hat | `imported_by_kassennummer`/`imported_by_name` auf `Invoice` |
+| F11 | Nachvollziehbar, welche Person (Kassennummer/Name) eine Rechnung importiert hat | `hochgeladen_von_kassennummer`/`hochgeladen_von_name` auf `Dokument` (bis Phase A Punkt 3: `imported_by_*` auf `Invoice`) |
 | F12 | Betrieb auf einem Linux-Server im Geschäft, Zugriff über das lokale Netz | Docker/Compose, `SERVER-SETUP.md` |
 | F13 | Eingescannte Papierrechnungen ohne digitale Textebene (Ausnahmefall: Rechnung liegt nur auf Papier im Paket, kein Mail-PDF) per OCR lesbar machen | `app/services/ocr.py`, `parser.page_content()` |
 | F14 | Erkannte Positionen vor dem Import direkt in der Vorschau korrigieren können, statt die ganze Rechnung abzulehnen | `app/services/corrections.py`, `/validate-preview` |
@@ -59,15 +59,22 @@ Entwicklungsphasen).
 - **Robustheit vor Bequemlichkeit**: Bei Unklarheiten (unbekanntes Layout, fehlende Pflichtfelder, uneindeutige Farbe/Grösse) wird die Zeile mit Warnung markiert statt geraten — Korrekturen sind möglich (F14), aber immer explizit und serverseitig nachgeprüft.
 - **Keine stille Datenkorruption**: Hash-Prüfung zwischen Vorschau und Import, Transaktionen mit Rollback bei Fehlern, Advisory Lock gegen Race Conditions, optimistisches Sperren bei Notizen (Version-Konflikt statt stillem Überschreiben).
 - **Unabhängig vom Internet**: Kein Frontend-Framework, keine Build-Pipeline, keine externen Skript-Abhängigkeiten im Browser — muss im Ladennetz ohne Internetzugriff funktionieren.
-- **Nachvollziehbarkeit**: Audit-Trail auf Positionsebene (`InvoiceItemSource`, inkl. `correction_audit`) bleibt auch erhalten, wenn sich Artikel-Stammdaten später ändern.
+- **Nachvollziehbarkeit**: Audit-Trail auf Positionsebene (`WareneingangPositionQuelle`, inkl. `correction_audit`) bleibt auch erhalten, wenn sich Artikel-Stammdaten später ändern.
 - **Erweiterbarkeit**: Architektur soll weitere Lieferanten-Layouts und Endpunkte aufnehmen können, ohne unübersichtlich zu werden (siehe Ordnerstruktur in `docs/architektur.md`).
 
 ## Bewusst ausserhalb des Umfangs (Stand heute)
 
 - Weitere Lieferanten-Layouts ausser INTERSPORT (zurückgestellt, bis eine Beispielrechnung eines weiteren Lieferanten vorliegt).
-- Echte Lagerbestandsführung — die App zeigt gelieferte Mengen, keinen aktuellen Lagerbestand.
 - Admin-Oberfläche für Benutzerverwaltung (bewusst als einfaches CLI-Skript umgesetzt, siehe Entscheidung E10).
 - Externer Backup-Speicherort (Backup-Automatisierung selbst ist umgesetzt, siehe F22 und `docs/BACKUPS.md`; eine Kopie ausserhalb des PCs steht noch aus).
+
+**Überholt seit Phase A Punkt 3** (siehe `projekt-kontext.md` Abschnitt 11):
+Bestand wird inzwischen echt geführt (`lagerbewegungen`/`bestand`, siehe
+`datenmodell.md`) — allerdings mit der dort dokumentierten Einschränkung,
+dass der aus den Altdaten migrierte Bestand nur die kumulierten
+historischen Wareneingänge widerspiegelt, nicht den tatsächlichen
+physischen Bestand (fehlende Verkaufs-/Ausbuchungshistorie im alten
+System). Ein exakter, aktueller Bestand kommt erst mit Phase C.
 
 ## Entwicklungsphasen (Zeitleiste)
 
@@ -117,12 +124,14 @@ Begründung: einfache, robuste Lösung für Mehrplatzbetrieb (vier PCs), ohne
 ein komplexes Locking-Schema entwerfen zu müssen.
 
 **E5 — Denormalisierte Audit-Felder statt reiner Fremdschlüssel-Verknüpfung.**
-`InvoiceItemSource` speichert die Original-Positionsdaten dauerhaft;
-`Invoice.imported_by_kassennummer`/`imported_by_name` und
-`ArticleNote.author_name`/`author_number` speichern eine Momentaufnahme
-statt (nur) eines Fremdschlüssels. Begründung: historische Korrektheit
-bleibt erhalten, selbst wenn sich Artikel-Stammdaten später ändern oder ein
-Benutzerkonto gelöscht wird.
+`WareneingangPositionQuelle` (bis Phase A Punkt 3: `InvoiceItemSource`)
+speichert die Original-Positionsdaten dauerhaft; `Dokument.hochgeladen_von_
+kassennummer`/`hochgeladen_von_name` (bis Phase A Punkt 3:
+`Invoice.imported_by_*`), `Lagerbewegung.benutzer_kassennummer`/
+`benutzer_name` und `ArticleNote.author_name`/`author_number` speichern
+eine Momentaufnahme statt (nur) eines Fremdschlüssels. Begründung:
+historische Korrektheit bleibt erhalten, selbst wenn sich Artikel-
+Stammdaten später ändern oder ein Benutzerkonto gelöscht wird.
 
 **E6 — Alembic-Migrationen statt weiterhin `create_all()`.**
 Begründung: Schemaänderungen müssen nachvollziehbar, versioniert und auf
@@ -168,13 +177,21 @@ geparste. Begründung: eine falsch korrigierte Position (z. B. eine ungültige
 EAN) darf nicht versehentlich zu einer schlechteren Datenqualität führen als
 eine unkorrigierte Warnung.
 
-**E13 — Artikel-Varianten über Marke + Lieferanten-Artikelnummer gruppieren, nicht per eigener Gruppentabelle.**
-`app/services/article_groups.py` berechnet die Zusammengehörigkeit von
-Farb-/Grössenvarianten bei jeder Abfrage neu, statt eine feste
-Gruppen-Fremdschlüssel-Beziehung in der Datenbank zu pflegen. Begründung:
-Lieferanten-Artikelnummer und Marke sind bereits vorhandene, verlässliche
-Felder; eine zusätzliche Tabelle müsste bei jeder Korrektur dieser Felder
-nachgepflegt werden und könnte veralten.
+**E13 — Artikel-Varianten über Marke + Lieferanten-Artikelnummer gruppieren
+(ursprünglich per Laufzeit-Query, seit Phase A Punkt 3 als echte
+Fremdschlüssel-Beziehung).**
+Ursprünglich berechnete `app/services/article_groups.py` die
+Zusammengehörigkeit von Farb-/Grössenvarianten bei jeder Abfrage neu
+(Marke + Lieferanten-Artikelnummer), statt eine feste
+Gruppen-Fremdschlüssel-Beziehung in der Datenbank zu pflegen — Begründung
+damals: eine zusätzliche Tabelle müsste bei jeder Korrektur dieser Felder
+nachgepflegt werden und könnte veralten. Mit dem neuen Datenmodell (Phase A
+Punkt 3, siehe `datenmodell.md`) gibt es diese Tabelle jetzt (`artikel`,
+referenziert von `varianten.artikel_id`) — die Gruppierungs**regel** bleibt
+identisch (gleiche Marke + gleiche, nicht-leere Lieferanten-Artikelnummer),
+wird aber nur noch einmal beim Import angewendet (`app/services/
+importer.py`) statt bei jeder Abfrage neu berechnet; `article_groups.py`
+liest die Beziehung seitdem nur noch aus.
 
 **E14 — Optimistisches Sperren (Versionsfeld) statt Locking bei Notizen.**
 Begründung: Notizen werden selten gleichzeitig von zwei Personen bearbeitet;

@@ -7,7 +7,7 @@ import pymupdf
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
-from app.routers.auth import require_chef_api, require_chef_page
+from app.routers.auth import get_language, require_chef_api, require_chef_page
 from app.routers.preview import router
 from app.services.parser import InvoiceParseError, decimal_value, parse_invoice
 
@@ -16,6 +16,9 @@ app.include_router(router)
 # Diese Tests prüfen die Parser-Logik, nicht die Zugriffsrechte (siehe tests/test_auth.py).
 app.dependency_overrides[require_chef_api] = lambda: None
 app.dependency_overrides[require_chef_page] = lambda: None
+# get_language haengt normalerweise an require_login_api (Session), die hier
+# nicht eingerichtet ist (kein SessionMiddleware in dieser Test-App).
+app.dependency_overrides[get_language] = lambda: "de"
 
 
 @pytest.fixture

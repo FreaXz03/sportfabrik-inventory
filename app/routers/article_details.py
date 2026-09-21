@@ -3,10 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import require_login_api
+from .auth import get_language, require_login_api
 from ..services.article_groups import article_group
 from ..core.database import get_session
-from ..core.models import Product, Invoice, InvoiceItem, ArticleNote
+from ..core.i18n import translate
+from ..core.models import ArticleNote, Dokument, Wareneingang, WareneingangPosition
 
 router = APIRouter()
 
@@ -17,6 +18,14 @@ def _may_edit_any_note(user) -> bool:
     return user.role in ("chef", "admin")
 
 
+def _artikel_id(session, varianten_id, language):
+    """Notizen hängen am Artikel (Modell-Ebene, siehe ArticleNote), nicht an
+    der einzelnen Variante - `product_id` in der URL ist weiterhin eine
+    Varianten-Id (wie in der Artikelliste angeklickt)."""
+    variante, _ = article_group(session, varianten_id, language)
+    return variante.artikel_id
+
+
 @router.delete("/api/articles/{product_id}/notes/{note_id}", status_code=204)
 def delete_note(
     product_id: int,
@@ -24,19 +33,20 @@ def delete_note(
     version: int = Query(..., ge=1),
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
-        _, group_ids = article_group(session, product_id)
+        artikel_id = _artikel_id(session, product_id, language)
         note = session.scalar(
             select(ArticleNote).where(
-                ArticleNote.id == note_id, ArticleNote.product_id.in_(group_ids)
+                ArticleNote.id == note_id, ArticleNote.artikel_id == artikel_id
             )
         )
         if note is None:
-            raise HTTPException(404, "Notiz nicht gefunden.")
+            raise HTTPException(404, translate("errors.article_details.note_not_found", language))
         if not _may_edit_any_note(user) and note.author_user_id != user.id:
             raise HTTPException(
-                403, "Nur eigene Notizen oder als Filialleiter löschen."
+                403, translate("errors.article_details.note_delete_forbidden", language)
             )
         result = session.execute(
             delete(ArticleNote).where(
@@ -46,50 +56,54 @@ def delete_note(
         if result.rowcount != 1:
             session.rollback()
             raise HTTPException(
-                409,
-                "Die Notiz wurde inzwischen geändert. Bitte neu laden und erneut prüfen.",
+                409, translate("errors.article_details.note_version_conflict", language)
             )
         session.commit()
     except SQLAlchemyError as exc:
         session.rollback()
-        raise HTTPException(503, "Notiz konnte nicht gelöscht werden.") from exc
-
-
-def product_exists(session, product_id):
-    if session.get(Product, product_id) is None:
-        raise HTTPException(404, "Artikel nicht gefunden.")
+        raise HTTPException(
+            503, translate("errors.article_details.note_delete_failed", language)
+        ) from exc
 
 
 @router.get("/api/articles/{product_id}/prices")
 def prices(
-    product_id: int, user=Depends(require_login_api), session=Depends(get_session)
+    product_id: int,
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
-        _, group_ids = article_group(session, product_id)
+        _, group_ids = article_group(session, product_id, language)
         rows = session.execute(
             select(
-                Invoice.id,
-                Invoice.invoice_number,
-                Invoice.invoice_date,
-                InvoiceItem.unit,
-                InvoiceItem.uvp,
-                func.count(InvoiceItem.id).label("positions"),
-                func.sum(InvoiceItem.quantity).label("quantity"),
+                Dokument.id,
+                Dokument.dokumentnummer,
+                Dokument.dokumentdatum,
+                WareneingangPosition.einheit,
+                WareneingangPosition.uvp,
+                func.count(WareneingangPosition.id).label("positions"),
+                func.sum(WareneingangPosition.menge).label("quantity"),
             )
-            .join(InvoiceItem, InvoiceItem.invoice_id == Invoice.id)
-            .where(InvoiceItem.product_id.in_(group_ids), InvoiceItem.uvp.is_not(None))
+            .select_from(WareneingangPosition)
+            .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+            .join(Dokument, Dokument.id == Wareneingang.dokument_id)
+            .where(
+                WareneingangPosition.varianten_id.in_(group_ids),
+                WareneingangPosition.uvp.is_not(None),
+            )
             .group_by(
-                Invoice.id,
-                Invoice.invoice_number,
-                Invoice.invoice_date,
-                InvoiceItem.unit,
-                InvoiceItem.uvp,
+                Dokument.id,
+                Dokument.dokumentnummer,
+                Dokument.dokumentdatum,
+                WareneingangPosition.einheit,
+                WareneingangPosition.uvp,
             )
             .order_by(
-                Invoice.invoice_date.asc().nulls_last(),
-                Invoice.id,
-                InvoiceItem.unit,
-                InvoiceItem.uvp,
+                Dokument.dokumentdatum.asc().nulls_last(),
+                Dokument.id,
+                WareneingangPosition.einheit,
+                WareneingangPosition.uvp,
             )
         ).all()
         return {
@@ -107,7 +121,9 @@ def prices(
             ]
         }
     except SQLAlchemyError as exc:
-        raise HTTPException(503, "Preisverlauf konnte nicht geladen werden.") from exc
+        raise HTTPException(
+            503, translate("errors.article_details.prices_failed", language)
+        ) from exc
 
 
 class NoteBody(BaseModel):
@@ -154,10 +170,11 @@ def notes(
     page: int = Query(1, ge=1),
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
-        _, group_ids = article_group(session, product_id)
-        condition = ArticleNote.product_id.in_(group_ids)
+        artikel_id = _artikel_id(session, product_id, language)
+        condition = ArticleNote.artikel_id == artikel_id
         count = session.scalar(
             select(func.count()).select_from(ArticleNote).where(condition)
         )
@@ -175,7 +192,9 @@ def notes(
             "page_size": 20,
         }
     except SQLAlchemyError as exc:
-        raise HTTPException(503, "Notizen konnten nicht geladen werden.") from exc
+        raise HTTPException(
+            503, translate("errors.article_details.notes_failed", language)
+        ) from exc
 
 
 @router.post("/api/articles/{product_id}/notes", status_code=201)
@@ -184,12 +203,13 @@ def create_note(
     payload: NoteBody,
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
-        product_exists(session, product_id)
+        artikel_id = _artikel_id(session, product_id, language)
         name = user.name or user.kassennummer
         note = ArticleNote(
-            product_id=product_id,
+            artikel_id=artikel_id,
             body=payload.body,
             author_user_id=user.id,
             author_name=name,
@@ -203,7 +223,9 @@ def create_note(
         return result
     except SQLAlchemyError as exc:
         session.rollback()
-        raise HTTPException(503, "Notiz konnte nicht gespeichert werden.") from exc
+        raise HTTPException(
+            503, translate("errors.article_details.note_save_failed", language)
+        ) from exc
 
 
 @router.put("/api/articles/{product_id}/notes/{note_id}")
@@ -213,19 +235,20 @@ def edit_note(
     payload: NoteEdit,
     user=Depends(require_login_api),
     session=Depends(get_session),
+    language: str = Depends(get_language),
 ):
     try:
-        _, group_ids = article_group(session, product_id)
+        artikel_id = _artikel_id(session, product_id, language)
         note = session.scalar(
             select(ArticleNote).where(
-                ArticleNote.id == note_id, ArticleNote.product_id.in_(group_ids)
+                ArticleNote.id == note_id, ArticleNote.artikel_id == artikel_id
             )
         )
         if note is None:
-            raise HTTPException(404, "Notiz nicht gefunden.")
+            raise HTTPException(404, translate("errors.article_details.note_not_found", language))
         if not _may_edit_any_note(user) and note.author_user_id != user.id:
             raise HTTPException(
-                403, "Nur eigene Notizen oder als Filialleiter bearbeiten."
+                403, translate("errors.article_details.note_edit_forbidden", language)
             )
         result = session.execute(
             update(ArticleNote)
@@ -240,8 +263,7 @@ def edit_note(
         if result.rowcount != 1:
             session.rollback()
             raise HTTPException(
-                409,
-                "Die Notiz wurde inzwischen geändert. Bitte neu laden und Änderungen vergleichen.",
+                409, translate("errors.article_details.note_edit_conflict", language)
             )
         session.refresh(note)
         result = note_data(note, user)
@@ -249,4 +271,6 @@ def edit_note(
         return result
     except SQLAlchemyError as exc:
         session.rollback()
-        raise HTTPException(503, "Notiz konnte nicht aktualisiert werden.") from exc
+        raise HTTPException(
+            503, translate("errors.article_details.note_update_failed", language)
+        ) from exc

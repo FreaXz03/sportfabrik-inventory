@@ -1,12 +1,22 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from app.core.models import Base, Product, Invoice, InvoiceItem
+from app.core.lagerorte import seed_lagerorte
+from app.core.models import (
+    Artikel,
+    Base,
+    Dokument,
+    Lagerort,
+    Lieferant,
+    Variante,
+    Wareneingang,
+    WareneingangPosition,
+)
 from app.routers.auth import require_login_api, require_login_page
 from app.routers.catalog import router
 from app.core.database import get_session
@@ -20,41 +30,77 @@ def client():
     Base.metadata.create_all(engine)
     sessions = sessionmaker(engine)
     with sessions.begin() as s:
-        p = Product(
-            brand="Hoka",
-            description="Bondi 9",
-            ean="0012345678901",
-            article_no="333.01",
-            supplier_article_no="SUP-9",
-        )
-        other = Product(brand="Nike", description="100%_Cotton", ean="2222222222222")
-        s.add_all([p, other])
+        seed_lagerorte(s)
         s.flush()
-        newer = Invoice(invoice_number="new", invoice_date=date(2026, 8, 5))
-        older = Invoice(invoice_number="old", invoice_date=date(2026, 7, 5))
+        sf1_id = s.scalar(select(Lagerort.id).where(Lagerort.code == "SF1"))
+        lieferant = Lieferant(name="INTERSPORT Schweiz AG", typ="intersport", parser_key="intersport")
+        s.add(lieferant)
+        s.flush()
+        artikel_hoka = Artikel(
+            lieferant_id=lieferant.id,
+            marke="Hoka",
+            lieferanten_artikelnr="SUP-9",
+            bezeichnung="Bondi 9",
+        )
+        artikel_nike = Artikel(
+            lieferant_id=lieferant.id,
+            marke="Nike",
+            lieferanten_artikelnr=None,
+            bezeichnung="100%_Cotton",
+        )
+        s.add_all([artikel_hoka, artikel_nike])
+        s.flush()
+        variante_hoka = Variante(artikel_id=artikel_hoka.id, ean="0012345678901")
+        variante_nike = Variante(artikel_id=artikel_nike.id, ean="2222222222222")
+        s.add_all([variante_hoka, variante_nike])
+        s.flush()
+        newer = Dokument(
+            lieferant_id=lieferant.id,
+            lagerort_id=sf1_id,
+            typ="rechnung",
+            dokumentnummer="new",
+            dokumentdatum=date(2026, 8, 5),
+            hochgeladen_am=datetime.now(timezone.utc),
+        )
+        older = Dokument(
+            lieferant_id=lieferant.id,
+            lagerort_id=sf1_id,
+            typ="rechnung",
+            dokumentnummer="old",
+            dokumentdatum=date(2026, 7, 5),
+            hochgeladen_am=datetime.now(timezone.utc),
+        )
         s.add_all([newer, older])
+        s.flush()
+        newer_we = Wareneingang(
+            dokument_id=newer.id, lagerort_id=sf1_id, status="eingetroffen", eingangsdatum=date(2026, 8, 5)
+        )
+        older_we = Wareneingang(
+            dokument_id=older.id, lagerort_id=sf1_id, status="eingetroffen", eingangsdatum=date(2026, 7, 5)
+        )
+        s.add_all([newer_we, older_we])
         s.flush()
         s.add_all(
             [
-                InvoiceItem(
-                    product_id=p.id,
-                    invoice_id=newer.id,
-                    quantity=Decimal("2"),
-                    unit="PAA",
+                WareneingangPosition(
+                    wareneingang_id=newer_we.id,
+                    varianten_id=variante_hoka.id,
+                    menge=Decimal("2"),
+                    einheit="PAA",
                     uvp=Decimal("200"),
                 ),
-                InvoiceItem(
-                    product_id=p.id,
-                    invoice_id=older.id,
-                    quantity=Decimal("3"),
-                    unit="PAA",
+                WareneingangPosition(
+                    wareneingang_id=older_we.id,
+                    varianten_id=variante_hoka.id,
+                    menge=Decimal("3"),
+                    einheit="PAA",
                     uvp=Decimal("180"),
                 ),
-                InvoiceItem(
-                    product_id=p.id,
-                    invoice_id=older.id,
-                    quantity=Decimal("1"),
-                    unit="STK",
+                WareneingangPosition(
+                    wareneingang_id=older_we.id,
+                    varianten_id=variante_hoka.id,
+                    menge=Decimal("1"),
+                    einheit="STK",
                     uvp=Decimal("180"),
                 ),
             ]
@@ -97,7 +143,7 @@ def test_aggregates_and_latest_price(client):
     "params",
     [
         {"q": "bondi"},
-        {"article_no": "SUP-9"},
+        {"supplier_article_no": "SUP-9"},
         {"brand": "Hoka", "description": "BOND"},
         {"description": "%_"},
     ],
@@ -168,8 +214,8 @@ def test_last_delivery_date_filter(client):
     generator = client.app.dependency_overrides[get_session]()
     session = next(generator)
     try:
-        session.get(Product, 1).last_seen = date(2026, 8, 5)
-        session.get(Product, 2).last_seen = date(2026, 7, 5)
+        session.get(Variante, 1).last_seen = date(2026, 8, 5)
+        session.get(Variante, 2).last_seen = date(2026, 7, 5)
         session.commit()
     finally:
         generator.close()
@@ -184,7 +230,7 @@ def test_last_delivery_date_filter(client):
 
 
 def test_search_and_export_with_empty_date_fields(client):
-    params = {'article_no': 'SUP-9', 'last_delivery_from': '', 'last_delivery_to': ''}
+    params = {'supplier_article_no': 'SUP-9', 'last_delivery_from': '', 'last_delivery_to': ''}
     response = client.get('/api/articles', params=params)
     assert response.status_code == 200
     assert response.json()['total'] == 1

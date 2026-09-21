@@ -49,6 +49,12 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 ## Aktuelle Phase: A — Fundament
 
 1. Lagerorte SF1–SF4 + GEWA (Seed-Daten), Benutzer ↔ Lagerort, Rollen gemäss Regel 9, Filialwechsel in der Oberfläche. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.
-2. i18n-Grundgerüst (DE/FR/EN), Sprachwahl pro Benutzer, bestehende Seiten auf Keys umstellen.
-3. Neues Datenmodell gemäss `docs/projekt-kontext.md` Abschnitt 8.2 (Lieferanten, Kategorien, Artikel/Varianten, Preise, Dokumente, Wareneingänge, Lagerbewegungen, Bestand) + Alembic-Migration der bestehenden Daten.
-4. Tests + Doku nachführen.
+2. i18n-Grundgerüst (DE/FR/EN), Sprachwahl pro Benutzer, bestehende Seiten auf Keys umstellen. ✅ abgeschlossen (inkl. Backend-Fehlermeldungen) — siehe `docs/projekt-kontext.md` Abschnitt 11 und `docs/architektur.md` Abschnitt „Mehrsprachigkeit (i18n)".
+3. Neues Datenmodell gemäss `docs/projekt-kontext.md` Abschnitt 8.2 (Lieferanten, Kategorien, Artikel/Varianten, Preise, Dokumente, Wareneingänge, Lagerbewegungen, Bestand) + Alembic-Migration der bestehenden Daten. ✅ abgeschlossen, inkl. Umstellung des Live-Imports (nicht nur der Migration) — siehe `docs/projekt-kontext.md` Abschnitt 11.
+4. Tests + Doku nachführen. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.
+
+Phase A ist damit vollständig abgeschlossen. Nächste Phase gemäss Roadmap
+(`docs/projekt-kontext.md` Abschnitt 9): **B — Wareneingang v2**. Erster
+Teilschritt (FEDAS-Kategorievorschlag) ist als Infrastruktur umgesetzt,
+siehe Abschnitt 11 — die übrigen Teile von Phase B sind offen und noch
+nicht in Teilaufgaben heruntergebrochen.

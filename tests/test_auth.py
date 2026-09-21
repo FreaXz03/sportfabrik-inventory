@@ -175,7 +175,7 @@ def test_chef_can_reach_upload_page_and_gate(client):
 def test_chef_passes_delete_rbac_gate(client, monkeypatch):
     calls = {}
 
-    def fake_delete_invoice(invoice_id, session_factory):
+    def fake_delete_invoice(invoice_id, session_factory, language="de"):
         calls["invoice_id"] = invoice_id
         return {
             "invoice_id": invoice_id,
