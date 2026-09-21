@@ -18,7 +18,7 @@ flowchart TB
     end
     subgraph services["app/services/ — Fachlogik"]
         importer["importer.py<br/>Import/Löschung"]
-        parser["parser.py<br/>PDF → Positionen"]
+        parser["parsers/<br/>Layout-Erkennung, PDF → Positionen"]
         ocr["ocr.py<br/>OCR-Fallback für Scans ohne Textebene"]
         corrections["corrections.py<br/>Manuelle Korrekturen validieren"]
         article_groups["article_groups.py<br/>Varianten gruppieren"]
@@ -118,7 +118,7 @@ sequenceDiagram
     actor Filialleiter
     participant UI as Browser (preview.html)
     participant Preview as POST /upload-preview
-    participant Parser as parser.parse_invoice()
+    participant Parser as parsers.parse_document()
     participant Validate as POST /validate-preview
     participant Import as POST /import-invoice
     participant Importer as importer.import_invoice()
@@ -127,7 +127,8 @@ sequenceDiagram
     Filialleiter->>UI: Eine oder mehrere PDFs auswählen
     UI->>Preview: Datei hochladen
     Preview->>Parser: PDF-Bytes parsen
-    Parser-->>Preview: Positionen + Warnungen + SHA-256-Hash
+    Parser->>Parser: Layout/Lieferant erkennen
+    Parser-->>Preview: Lieferant + Dokumenttyp + Positionen<br/>+ Warnungen + SHA-256-Hash
     Preview-->>UI: Vorschau anzeigen (nichts gespeichert)
     opt Filialleiter korrigiert einzelne Felder
         UI->>Validate: Datei + Korrekturen erneut prüfen
@@ -224,28 +225,66 @@ Positionen und Original-Snapshots und berechnet `first_seen`/`last_seen` der
 betroffenen Artikel anschliessend aus den verbleibenden Lieferungen neu,
 statt veraltete Werte stehen zu lassen.
 
-## PDF-Parsing
+## PDF-Parsing: ein Modul je Lieferanten-Layout
 
-`app/services/parser.py` liest die INTERSPORT-Rechnungstabelle über
-Wortkoordinaten aus PyMuPDF aus (kein Layout-Template, keine feste
+Jedes Lieferanten-Layout liegt als eigenes Modul in `app/services/parsers/`
+und erfüllt dieselbe Schnittstelle. `__init__.py` ist die **Registry**, die
+entscheidet, wer zuständig ist:
+
+| Baustein | Aufgabe |
+|---|---|
+| `base.py` | `read_document()` liest die PDF **einmal** komplett ein (Wörter samt Koordinaten je Seite, bei Seiten ohne Textebene per OCR), dazu die wiederkehrenden Bausteine `lines()`, `joined()`, `decimal_value()` |
+| `<lieferant>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
+| `__init__.py` | `PARSERS`-Liste, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
+
+**Erkennung** (`detect()`): Jedes Modul bewertet das Dokument mit einer
+Punktzahl oder lehnt es ab (`None`); die höchste Punktzahl gewinnt. Bei
+Gleichstand bricht die Erkennung mit einer klaren Meldung ab, statt einen
+Lieferanten zu raten. Für das INTERSPORT-Layout ist die Positionstabelle mit
+ihrer Kopfzeile das Pflichtmerkmal (auf einem Scan ist das Firmenlogo nicht
+immer als Text lesbar, die Tabelle aber schon); Firmenname und
+Rechnungsnummer erhöhen die Punktzahl nur. Passt **kein** Modul, meldet der
+Upload „Dokumentlayout noch nicht bekannt" — ohne KI (Regel 1) lässt sich
+ein nie gesehenes Layout nicht automatisch lesen, das Dokument muss als
+Beispiel weitergegeben werden (projekt-kontext.md Abschnitt 6, Punkt 1).
+
+**Auslesen** (`parse()`, hier `intersport.py`): liest die Rechnungstabelle
+über Wortkoordinaten aus PyMuPDF (kein Layout-Template, keine feste
 Spaltenbreite): Kopfzeile wird anhand bekannter Spaltentitel gesucht, Zeilen
 werden anhand ihrer vertikalen Position gruppiert, Fortsetzungszeilen einer
 Position (z. B. mehrzeilige Bezeichnung, Farbe/Grösse in Klammern) werden
 der vorherigen Position zugeordnet. Der Parser selbst schreibt nichts in die
 Datenbank und trifft keine automatischen Annahmen bei Unklarheiten — jede
 unsichere Zeile bekommt eine Warnung, die den Import blockiert, bis sie
-manuell geprüft (oder korrigiert, siehe oben) wurde. Ein unbekanntes
-Rechnungslayout (fehlender Tabellenkopf) führt zu einem expliziten Fehler
-statt zu stillem Fehlverhalten.
+manuell geprüft (oder korrigiert, siehe oben) wurde. Weicht eine einzelne
+Seite eines erkannten Layouts ab (z. B. Kopfzeile auf einem Scan unlesbar),
+führt das zu einem expliziten Fehler statt zu stillem Fehlverhalten.
+
+**Dokumenttyp** (D6): `parse()` liefert ihn mit (`rechnung`,
+`lieferschein`, `auftragsbestaetigung`, `bestellung`) — er landet in
+`dokumente.typ` und entscheidet später, ob ein Wareneingang nur *erwartet*
+ist oder Bestand bucht (Regel 3). Das INTERSPORT-Layout kommt bisher nur als
+Rechnung vor und erkennt den Typ am Anker „Rechnung Nr."; ohne diesen Anker
+bleibt der Typ offen und der Import weist das Dokument ab.
+
+**Einmal lesen:** Erkennung, Positionen und Rechnungs-/Belegdatum arbeiten
+auf demselben eingelesenen `Document` (siehe `importer.import_invoice()`).
+Vorher öffnete der Import die Datei ein zweites Mal für die Datumsfelder und
+schickte einen Scan damit zweimal durch die Texterkennung.
+
+Ein neues Layout (Roadmap Phase E) braucht damit genau zwei Schritte: Modul
+mit der Schnittstelle anlegen und in `PARSERS` eintragen. Der passende
+Lieferant muss denselben `parser_key` in den Seed-Daten haben
+(`app/core/lieferanten.py`) — `tests/test_parser_registry.py` prüft das.
 
 ## OCR-Fallback für gescannte Papierrechnungen
 
 Ganz selten kommt eine Rechnung nicht digital per Mail, sondern nur als
 Papier im Paket. Ein Scan davon ist eine PDF ohne Textebene (reines
 Rasterbild je Seite) und würde beim normalen Parsing sofort mit
-„Tabellenkopf fehlt" scheitern. `parser.page_content()` prüft deshalb je
-Seite zuerst `page.get_text("words")`; liefert das nichts, übernimmt
-`app/services/ocr.py` die Seite:
+„Layout nicht erkannt" scheitern. `parsers/base.py` (`read_page()`) prüft
+deshalb je Seite zuerst `page.get_text("words")`; liefert das nichts,
+übernimmt `app/services/ocr.py` die Seite:
 
 1. Seite mit PyMuPDF als Bild rendern (300 DPI); Tesseracts
    Ausrichtungserkennung (OSD) korrigiert eine noch falsche Drehung, falls
@@ -253,10 +292,11 @@ Seite zuerst `page.get_text("words")`; liefert das nichts, übernimmt
 2. Tesseract liest Wörter samt Positionen aus dem Bild.
 3. Die Pixel-Koordinaten werden in PDF-Punkte umgerechnet und je
    erkannter Textzeile auf eine gemeinsame Höhe normalisiert, sodass das
-   Ergebnis exakt wie PyMuPDFs eigene `words`-Liste aussieht — die
-   bestehende Tabellenerkennung in `parser.py` (Kopfzeilensuche,
-   Spaltengrenzen, Zeilengruppierung) läuft danach unverändert weiter,
-   ganz gleich ob die Wörter aus der Textebene oder per OCR stammen.
+   Ergebnis exakt wie PyMuPDFs eigene `words`-Liste aussieht — sowohl die
+   Layout-Erkennung als auch die Tabellenerkennung der Parser-Module
+   (Kopfzeilensuche, Spaltengrenzen, Zeilengruppierung) laufen danach
+   unverändert weiter, ganz gleich ob die Wörter aus der Textebene oder per
+   OCR stammen.
 
 OCR-Seiten und die daraus gelesenen Positionen werden mit `ocr_used`
 markiert (bis in die Datenbank, `Dokument.ocr_verwendet`); die Vorschau zeigt
@@ -352,8 +392,8 @@ DB-Abfrage); anonym (z. B. `/login`) der `Accept-Language`-Header
 (`get_language_optional`), sonst Deutsch. Alle Router, die Fehler werfen,
 hängen `language: str = Depends(get_language)` an und übersetzen jede
 `HTTPException`-Meldung mit `translate(key, language, ...)`. Das gilt auch
-für die Service-Schicht (`parser.py`, `ocr.py`, `corrections.py`,
-`importer.py`): `language` wird von den Routern bis zu `parse_invoice()`,
+für die Service-Schicht (`parsers/`, `ocr.py`, `corrections.py`,
+`importer.py`): `language` wird von den Routern bis zu `parse_document()`,
 `apply_corrections()`, `import_invoice()`, `delete_invoice()` durchgereicht,
 damit auch Parser-Warnungen (in der Vorschau angezeigt) und
 Korrektur-Fehlermeldungen übersetzt sind. Eine Besonderheit:

@@ -22,6 +22,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Rechnungen hochladen** (auch mehrere gleichzeitig als Stapel), Positionen
   automatisch erkennen, in der Vorschau prüfen und bei Bedarf einzelne Felder
   korrigieren — importiert wird erst nach expliziter Bestätigung.
+- **Lieferant und Dokumenttyp erkennt das System selbst** anhand von Merkmalen
+  im Dokument (ein Parser-Modul je Lieferanten-Layout, siehe
+  `app/services/parsers/`); ein noch unbekanntes Layout wird als solches
+  gemeldet, statt mit einer irreführenden Fehlermeldung abzubrechen.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
 - **Artikelsuche** über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung,
@@ -50,7 +54,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 
 - **Backend**: FastAPI + SQLAlchemy 2.0, Python 3.10+
 - **Datenbank**: PostgreSQL, Schema-Verwaltung über Alembic-Migrationen
-- **PDF-Parsing**: PyMuPDF (wortkoordinatenbasierte Tabellenerkennung)
+- **PDF-Parsing**: PyMuPDF (wortkoordinatenbasierte Tabellenerkennung), ein Modul je Lieferanten-Layout mit automatischer Erkennung (`app/services/parsers/`)
 - **OCR**: Tesseract (über `pytesseract`) als Fallback für eingescannte
   Papierrechnungen ohne Textebene
 - **Excel-Export**: openpyxl
@@ -60,7 +64,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (145 bestanden, 19 übersprungen ohne optionale
+- **Tests**: pytest (166 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -100,7 +104,7 @@ app/
     models.py          SQLAlchemy-Modelle des neuen Datenmodells (siehe docs/datenmodell.md)
     security.py
     lagerorte.py       Seed-Daten SF1-SF4 + GEWA (siehe app/services/lagerorte.py für Lesezugriffe)
-    lieferanten.py     Seed-Daten Lieferanten (aktuell nur INTERSPORT)
+    lieferanten.py     Seed-Daten Lieferanten (aktuell nur INTERSPORT; parser_key = Modul in app/services/parsers/)
     kategorien.py      Seed-Daten Kassenkategorien (Hauptgruppe x Sportbereich, 35 Kombinationen)
     fedas.py           FEDAS-Code -> Kassenkategorie-Vorschlag (Phase B, siehe docs/projekt-kontext.md)
     i18n.py            translate()/normalize_language(): Katalog aus app/static/i18n/*.json lesen
@@ -113,7 +117,10 @@ app/
     preview.py         Upload-Vorschau, Korrekturvalidierung, Importbestätigung
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
-    parser.py          PDF-Rechnungen in strukturierte Positionen umwandeln (inkl. FEDAS-Code)
+    parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
+      __init__.py        Registry: Layout/Lieferant erkennen (parse_document, UnknownLayoutError)
+      base.py            Gemeinsame Bausteine: PDF einmal einlesen (inkl. OCR), Zeilen/Zahlen
+      intersport.py      INTERSPORT-Rechnungen (auch ECOM) in Positionen umwandeln (inkl. FEDAS-Code)
     ocr.py              OCR-Fallback (Tesseract) für gescannte Seiten ohne Textebene
     corrections.py      Manuelle Korrekturen in der Vorschau validieren
     article_groups.py  Farb-/Grössenvarianten desselben Artikels über die echte artikel_id-Beziehung gruppieren

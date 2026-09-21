@@ -75,10 +75,18 @@ unveränderten Original-Snapshot der Position.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/preview` | 🔒 Upload-Seite (unterstützt mehrere PDFs gleichzeitig, siehe „Stapel-Import" unten) |
-| POST | `/upload-preview` | 🔒 Eine PDF hochladen, Positionen als Vorschau zurückgeben (max. 20 MB, keine DB-Änderung) |
+| POST | `/upload-preview` | 🔒 Eine PDF hochladen, Lieferant/Dokumenttyp erkennen und Positionen als Vorschau zurückgeben (max. 20 MB, keine DB-Änderung) |
 | POST | `/validate-preview` | 🔒 Manuell korrigierte Positionen (siehe `corrections`) gegen dieselbe Datei erneut validieren, bevor importiert wird; verlangt `expected_hash` |
 | POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true` und optional `corrections` (JSON, siehe unten). Bucht Wareneingang und Bestand gegen die aktive Filiale des Kontos (`GET /api/me`, `lagerort`) — ohne gewählte Filiale (nur für Admin möglich, „alle Filialen") HTTP 400 |
 | GET | `/invoice-import-status` | 🔒 Prüft per Datei-Hash oder Rechnungsnummer, ob eine Rechnung bereits importiert ist — wird von der Stapel-Import-Warteschlange genutzt, um bereits importierte Dateien zu überspringen |
+
+**Erkannter Lieferant (`/upload-preview`, `/validate-preview`)**: Die Antwort
+enthält neben den Positionen `parser_key` (zuständiges Parser-Modul, =
+`lieferanten.parser_key`), `supplier_name` (Anzeige in der Vorschau) und
+`document_type` (`rechnung`, `lieferschein`, `auftragsbestaetigung`,
+`bestellung` — `null`, wenn der Typ im Dokument nicht erkennbar ist). Ist das
+Layout unbekannt, antwortet der Upload mit HTTP 422 und der Meldung, dass das
+Dokumentlayout noch nicht bekannt ist (siehe docs/architektur.md, „PDF-Parsing").
 
 **Korrekturen (`corrections`)**: JSON-Objekt `{"<Positionsnummer>": {"<Feld>": "<neuer Wert>"}}`.
 Erlaubte Felder: `brand`, `supplier_article_no`, `article_no`, `ean`,

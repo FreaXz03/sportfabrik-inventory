@@ -158,8 +158,12 @@ erDiagram
 Ein Datensatz je Lieferant. `typ` (`intersport`/`ecom`/`drittanbieter`/
 `extern`) und `parser_key` (verweist auf das passende Parser-Modul in
 `app/services/parsers/`, aktuell nur `intersport`) steuern die automatische
-Lieferanten-Erkennung beim Dokumenten-Upload (Phase B). Seed-Daten in
-`app/core/lieferanten.py`.
+Lieferanten-Erkennung beim Dokumenten-Upload: die Registry erkennt das Layout
+und der Import schlägt den Lieferanten über denselben `parser_key` nach
+(Phase B, Teilaufgabe B1 — siehe `docs/architektur.md`, „PDF-Parsing"). Ein
+Lieferant ohne passendes Parser-Modul (bzw. umgekehrt) lässt den Import
+scheitern, darum prüft `tests/test_parser_registry.py` beide Seiten
+gegeneinander. Seed-Daten in `app/core/lieferanten.py`.
 
 ### `kategorien`
 Kassenkategorien: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) ×
@@ -196,14 +200,17 @@ und verweisendem Dokument. Ersetzt die frühere implizite Preishistorie über
 
 ### `dokumente`
 Verallgemeinert die frühere `invoices`-Tabelle auf alle Dokumenttypen aus D6
-(Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `dokumentnummer`
-und `datei_hash` sind eindeutig — verhindert Doppelimporte. **Offener Punkt:**
-`dokumentnummer` ist *global* eindeutig, nicht je Lieferant. Solange nur
-INTERSPORT liefert, ist das folgenlos; mit dem zweiten Lieferanten (Phase B)
-muss daraus `UNIQUE (lieferant_id, dokumentnummer)` werden, sonst lehnt der
-Import eine fremde Rechnung mit zufällig gleicher Belegnummer ab. `lagerort_id` ist
-die Zielfiliale (aktuell: die beim Upload aktive Filiale des hochladenden
-Kontos — automatische Erkennung aus der Lieferadresse folgt in Phase B).
+(Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `typ` kommt seit
+Teilaufgabe B1 aus dem Dokument selbst (das erkannte Parser-Modul liefert ihn
+mit) statt fest als `rechnung`; ohne erkannten Typ wird nicht importiert.
+`dokumentnummer` und `datei_hash` sind eindeutig — verhindert Doppelimporte.
+**Offener Punkt:** `dokumentnummer` ist *global* eindeutig, nicht je
+Lieferant. Solange nur INTERSPORT liefert, ist das folgenlos; mit dem zweiten
+Lieferanten muss daraus `UNIQUE (lieferant_id, dokumentnummer)` werden, sonst
+lehnt der Import eine fremde Rechnung mit zufällig gleicher Belegnummer ab
+(Phase B, Teilaufgabe B2). `lagerort_id` ist die Zielfiliale (aktuell: die beim
+Upload aktive Filiale des hochladenden Kontos — automatische Erkennung aus der
+Lieferadresse ist Teilaufgabe B4).
 `ocr_verwendet` markiert Dokumente, die mangels Textebene per Tesseract-OCR
 gelesen wurden.
 
@@ -212,7 +219,9 @@ Ein Wareneingang je Dokument (aktuell 1:1, das Schema erlaubt später mehrere
 je Dokument z. B. bei Teillieferungen). `status` unterscheidet `erwartet`
 (nur bei Auftragsbestätigungen — noch keine Bestandsbuchung, Regel 3) von
 `eingetroffen` (Ware ist da, `lagerbewegungen`/`bestand` werden geschrieben).
-INTERSPORT-Rechnungen sind immer `eingetroffen`.
+INTERSPORT-Rechnungen sind immer `eingetroffen`; den Weg „erwartet →
+eingetroffen" baut Teilaufgabe B5 (bisher erkennt die Parser-Registry nur
+Rechnungen).
 
 `eingangsdatum` folgt Regel 6: Bei einer Filiale (`lagerorte.verkauf = true`)
 ist es das Rechnungsdatum, bei einem Lager ohne Verkauf (GEWA) bleibt es

@@ -141,7 +141,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 
 | Bereich | Heute im Repo | Lücke zum Ziel |
 |---|---|---|
-| Upload & Parsing | ✅ Intersport-PDF, OCR (Tesseract, lokal), Vorschau, Korrektur, Stapel | Nur 1 Layout; Lieferant hartcodiert; keine Lieferanten-Erkennung; keine Dokumenttypen; keine Grössen-Matrix; OCR für farbige Tabellen-Scans zu schwach |
+| Upload & Parsing | ✅ Intersport-PDF, OCR (Tesseract, lokal), Vorschau, Korrektur, Stapel, **Parser-Registry mit Lieferanten-/Dokumenttyp-Erkennung** (Phase B, Teilaufgabe 1) | Bisher nur 1 Layout registriert (weitere in Phase E); keine Grössen-Matrix; OCR für farbige Tabellen-Scans zu schwach; erwartet→eingetroffen, Lagerort aus Lieferadresse und manuelle Erfassung offen |
 | Manuelle Erfassung | ❌ | neu |
 | Artikelstamm | ✅ `products` (EAN eindeutig), Varianten-Gruppierung zur Laufzeit | Kein Modell↔Variante; **EAN-Pflicht blockiert Artikel ohne EAN**; keine Kategorien |
 | Preise | ✅ UVP je Rechnungsposition | EK optional, Reduktionsstufen fehlen |
@@ -251,8 +251,25 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | B — Wareneingang v2: FEDAS-Kategorievorschlag | ⏳ Infrastruktur fertig, restliche Codes offen (siehe unten) |
-| B (übrige Punkte), C–G | offen |
+| B — Wareneingang v2, Teilaufgabe 1 (Parser-Registry, Lieferanten- und Dokumenttyp-Erkennung) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
+| B — Wareneingang v2, Teilaufgaben 2–8 | offen (Aufteilung siehe unten) |
+| C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
+
+**Phase B — Wareneingang v2, Aufteilung in Teilaufgaben** (aus Roadmap
+Abschnitt 9 und den offenen Punkten des Code-Reviews; eine Teilaufgabe = ein
+Commit, Reihenfolge nach Abhängigkeit):
+
+| # | Teilaufgabe | Status |
+|---|---|---|
+| B1 | **Parser-Registry**: ein Modul je Lieferanten-Layout mit gemeinsamer Schnittstelle, automatische Lieferanten- und Dokumenttyp-Erkennung, unbekanntes Layout klar melden | ✅ abgeschlossen |
+| B2 | Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id, dokumentnummer)`) inkl. Duplikatsprüfung im Importer — offener Punkt aus dem Review, Voraussetzung für den zweiten Lieferanten | offen |
+| B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | offen |
+| B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload vorschlagen, manuell änderbar | offen |
+| B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6) | offen |
+| B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt) | offen |
+| B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10) + Etikett als PDF | offen |
+| B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (SF1–SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet.
@@ -285,6 +302,63 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 - `app/services/importer.py` setzt `artikel.kategorie_id` automatisch, sobald eine Rechnungsposition einen bekannten FEDAS-Code mitbringt — beim Anlegen eines neuen Artikels ebenso wie beim Nachtragen an einem bestehenden (auch wenn die Variante über ihre EAN gefunden wurde, was für die migrierten Altartikel der Normalfall ist); ist der Code (noch) nicht zugeordnet, bleibt `kategorie_id` leer. Ein bereits gesetzter Wert wird von späteren Rechnungen nie überschrieben („einmal pro Artikel, danach gemerkt"); fehlt er noch, wird er bei einer späteren Rechnung mit bekanntem Code nachträglich gesetzt.
 - Bewusst noch nicht gebaut: eine Oberfläche zur manuellen Kategorie-Wahl, wenn der FEDAS-Code fehlt oder unbekannt ist (nächster Teilschritt) — bis dahin bleibt `kategorie_id` in diesem Fall einfach leer, ohne Auswirkung auf den restlichen Import.
 - Tests: `tests/test_fedas.py` (reine Zuordnungslogik), `tests/test_importer_fedas.py` (Zusammenspiel mit dem Import: neuer Artikel, unbekannter/fehlender Code, nachträgliches Befüllen, kein Überschreiben) — zusätzlich per Smoke-Test gegen echtes PostgreSQL verifiziert.
+
+**Details zu Phase B, Teilaufgabe B1 — Parser-Registry mit Lieferanten- und
+Dokumenttyp-Erkennung** (siehe `docs/architektur.md`, Abschnitt „PDF-Parsing:
+ein Modul je Lieferanten-Layout"):
+- Aus `app/services/parser.py` ist das Paket `app/services/parsers/` geworden:
+  `base.py` (gemeinsame Bausteine — PDF **einmal** einlesen inkl. OCR-Rückfall
+  je Seite, Wortkoordinaten zu Zeilen gruppieren, Zahlen in Schweizer
+  Schreibweise), `intersport.py` (bisheriges Layout als erstes Plug-in) und
+  `__init__.py` als Registry. Schnittstelle je Layout-Modul:
+  `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect()`, `parse()`,
+  `dates()`. Ein weiteres Layout (Phase E) braucht damit nur ein neues Modul
+  und einen Eintrag in `PARSERS`.
+- **Lieferanten-Erkennung** über Merkmale im Dokument statt hartcodiert: jedes
+  Modul bewertet das Dokument mit einer Punktzahl, die höchste gewinnt. Für das
+  INTERSPORT-Layout ist die Positionstabelle mit ihrer Kopfzeile das
+  Pflichtmerkmal (auf einem Scan ist das Firmenlogo nicht immer als Text
+  lesbar, die Tabelle aber schon), Firmenname und Rechnungsnummer erhöhen die
+  Punktzahl nur. Bei Gleichstand bricht die Erkennung mit einer klaren Meldung
+  ab, statt einen Lieferanten zu raten.
+- **Unbekanntes Layout** meldet der Upload jetzt als solches („Dieses
+  Dokumentlayout kennt das System noch nicht … bitte als Beispiel
+  weitergeben", HTTP 422) statt als „Tabellenkopf fehlt auf Seite 1" — das ist
+  genau der Ablauf aus Abschnitt 6, Punkt 1. Weicht dagegen eine einzelne Seite
+  eines *erkannten* Layouts ab, bleibt die bisherige, genauere Meldung.
+- **Dokumenttyp** (D6) kommt aus dem Dokument: `dokumente.typ` wird nicht mehr
+  fest als `rechnung` geschrieben, sondern aus dem Parser-Ergebnis übernommen;
+  ohne erkannten Typ wird nicht gebucht. Das INTERSPORT-Layout kommt bisher nur
+  als Rechnung vor (Anker „Rechnung Nr."). Der Status
+  `wareneingaenge.status` bleibt darum noch immer `eingetroffen` — der Weg
+  „erwartet → eingetroffen" ist Teilaufgabe B5.
+- Der **Lieferant** wird über den erkannten `parser_key` nachgeschlagen (vorher
+  Konstante `INTERSPORT_PARSER_KEY` im Importer).
+- `invoice_dates()` ist als `dates()` ins INTERSPORT-Modul gewandert: die
+  deutschen Textanker („Rechnungsdatum"/„Belegdatum") gehören zum Layout, nicht
+  zum Import.
+- **Nur noch ein Lesedurchgang:** Erkennung, Positionen und Rechnungs-/
+  Belegdatum arbeiten auf demselben eingelesenen Dokument. Vorher öffnete der
+  Import die Datei für die Datumsfelder ein zweites Mal und schickte einen Scan
+  damit zweimal durch die Texterkennung (bei einer 21-seitigen Rechnung
+  spürbar).
+- Die Vorschau zeigt den erkannten Lieferanten und den Dokumenttyp über der
+  Positionstabelle; `/upload-preview` und `/validate-preview` liefern dafür
+  `parser_key`, `supplier_name` und `document_type` (siehe
+  `docs/api-referenz.md`). Neue Übersetzungs-Keys in DE/FR/EN, keine
+  hartcodierten Texte (Regel 7).
+- Tests: `tests/test_parser_registry.py` (Schnittstellenvertrag jedes
+  registrierten Moduls, `parser_key` ↔ Lieferanten-Seed, Erkennung mit/ohne
+  Firmenname, Punktegleichstand, übersetzte Meldung in DE/FR/EN, nur ein
+  Lesedurchgang) und `tests/test_import_end_to_end.py` (kompletter Weg
+  PDF → Erkennung → Positionen → Datenbank mit einer selbst gebauten
+  Mini-Rechnung, läuft also **ohne** `INTERSPORT_TEST_PDF` — diese Lücke
+  hatten die bisherigen Import-Tests, die den Parser durch eine Attrappe
+  ersetzen). `tests/test_parser.py` heisst jetzt
+  `tests/test_parser_intersport.py`. Gesamtsuite: 166 bestandene Tests
+  (vorher 145); zusätzlich gegen echtes PostgreSQL 16 durchgespielt (Import
+  mit Kategorien/Bestand, Duplikat, GEWA-Regel ohne Eingangsdatum,
+  unbekanntes Layout, Löschen).
 
 **Code-Review nach Phase A** (21.09.2026, Branch `feature/warenwirtschaft-v2`) — vollständige
 Durchsicht des bestehenden Codes auf Fehler; behoben und jeweils gegen echtes PostgreSQL bzw.
@@ -345,7 +419,7 @@ mit neuen Tests belegt:
   dieselbe Belegnummer verwenden — spätestens mit dem zweiten Lieferanten in Phase B muss
   daraus `UNIQUE (lieferant_id, dokumentnummer)` werden (inkl. Duplikatsprüfung im Importer).
 - Regel 5 („EAN ist optional") gilt im Datenmodell und im Importer, **nicht** aber in
-  `parser.py`/`corrections.py`: dort ist die EAN ein Pflichtfeld, eine Position ohne EAN
+  `parsers/intersport.py`/`corrections.py`: dort ist die EAN ein Pflichtfeld, eine Position ohne EAN
   lässt sich nicht importieren. Für INTERSPORT-Rechnungen bisher folgenlos (dort hat jede
   Zeile eine EAN); vor manueller Erfassung bzw. weiteren Lieferanten zu klären.
 - Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
