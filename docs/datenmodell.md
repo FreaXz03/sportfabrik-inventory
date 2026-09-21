@@ -203,12 +203,17 @@ Verallgemeinert die frühere `invoices`-Tabelle auf alle Dokumenttypen aus D6
 (Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `typ` kommt seit
 Teilaufgabe B1 aus dem Dokument selbst (das erkannte Parser-Modul liefert ihn
 mit) statt fest als `rechnung`; ohne erkannten Typ wird nicht importiert.
-`dokumentnummer` und `datei_hash` sind eindeutig — verhindert Doppelimporte.
-**Offener Punkt:** `dokumentnummer` ist *global* eindeutig, nicht je
-Lieferant. Solange nur INTERSPORT liefert, ist das folgenlos; mit dem zweiten
-Lieferanten muss daraus `UNIQUE (lieferant_id, dokumentnummer)` werden, sonst
-lehnt der Import eine fremde Rechnung mit zufällig gleicher Belegnummer ab
-(Phase B, Teilaufgabe B2). `lagerort_id` ist die Zielfiliale (aktuell: die beim
+`datei_hash` ist global eindeutig (dieselbe Datei ist dasselbe Dokument, egal
+von wem), die Belegnummer dagegen nur **je Lieferant**:
+`UNIQUE (lieferant_id, dokumentnummer)` seit Migration e5f6a7b8c9d0 (Phase B,
+Teilaufgabe B2). Belegnummern sind Lieferantensache und überschneiden sich
+zwangslos — vorher hätte die Rechnung eines neuen Lieferanten nur deshalb als
+Duplikat gegolten, weil INTERSPORT die Nummer schon verwendet hatte. Ist
+`lieferant_id` leer, greift die Eindeutigkeit nicht (NULL gilt als von allem
+verschieden); der Import weist ein Dokument ohne erkannten Lieferanten aber ab,
+darum kommt das nicht vor. Die verständliche Meldung („Rechnung … wurde bereits
+importiert") kommt aus dem Importer, der Constraint ist der Rückfall für zwei
+gleichzeitige Importe. `lagerort_id` ist die Zielfiliale (aktuell: die beim
 Upload aktive Filiale des hochladenden Kontos — automatische Erkennung aus der
 Lieferadresse ist Teilaufgabe B4).
 `ocr_verwendet` markiert Dokumente, die mangels Textebene per Tesseract-OCR

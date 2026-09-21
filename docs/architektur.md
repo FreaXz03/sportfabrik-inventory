@@ -154,6 +154,23 @@ gesamte Transaktion zurückgerollt (kein Teilimport); der Import bleibt
 gesperrt, solange irgendeine Warnung offen ist — das gilt serverseitig,
 nicht nur als Browser-Prüfung.
 
+## Doppelimporte erkennen
+
+Zwei Regeln, beide serverseitig durchgesetzt:
+
+| Merkmal | Geltungsbereich | Warum |
+|---|---|---|
+| `dokumente.datei_hash` (SHA-256) | **global** eindeutig | Dieselbe Datei ist dasselbe Dokument, egal von wem |
+| `dokumente.dokumentnummer` | eindeutig **je Lieferant** (`UNIQUE (lieferant_id, dokumentnummer)`) | Belegnummern sind Lieferantensache und überschneiden sich zwangslos |
+
+Der Importer prüft beides selbst (verständliche Meldung „Rechnung … wurde
+bereits importiert") und schlägt dafür den Lieferanten **vor** der
+Duplikatsprüfung nach; die Datenbank-Constraints sind der Rückfall, falls zwei
+Importe gleichzeitig laufen. Entsprechend braucht
+`GET /invoice-import-status` neben der Belegnummer auch den `parser_key` aus
+der Vorschau-Antwort — ohne Lieferant zählt nur der Datei-Hash (Migration
+`e5f6a7b8c9d0`, Phase B Teilaufgabe B2).
+
 ## Korrekturen in der Vorschau
 
 Erkennt der Parser eine Position falsch oder unvollständig (z. B. Farbe und
@@ -177,7 +194,10 @@ einen eigenen Warteschlangen-Eintrag mit Status (wartend, bereit, Duplikat,
 Fehler, importiert); der Browser prüft neue Dateien automatisch per
 `/invoice-import-status` auf bereits importierte Duplikate, bevor sie in die
 Warteschlange aufgenommen werden, und springt nach jedem erfolgreichen
-Import selbstständig zur nächsten offenen Datei. Korrekturen an einer Datei
+Import selbstständig zur nächsten offenen Datei. „Duplikat" heisst dabei:
+dieselbe Datei (SHA-256) oder dieselbe Belegnummer **beim selben Lieferanten**
+— zwei Lieferanten dürfen dieselbe Nummer verwenden (siehe „Doppelimporte
+erkennen" unten). Korrekturen an einer Datei
 sind vollständig von den anderen Dateien in der Warteschlange isoliert.
 Serverseitig gibt es keinen eigenen „Batch"-Endpunkt: jede Datei durchläuft
 einzeln denselben Vorschau-/Validierungs-/Import-Ablauf wie ein Einzel-Upload

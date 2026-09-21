@@ -65,8 +65,10 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
    Dokumenttyp-Erkennung, unbekanntes Layout klar melden. ✅ abgeschlossen —
    siehe `docs/architektur.md`, Abschnitt „PDF-Parsing".
 2. Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id,
-   dokumentnummer)`) inkl. Duplikatsprüfung im Importer. ⬅ **nächster Schritt**
+   dokumentnummer)`) inkl. Duplikatsprüfung im Importer. ✅ abgeschlossen —
+   Migration `e5f6a7b8c9d0`.
 3. **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen.
+   ⬅ **nächster Schritt**
 4. **Lagerort aus der Lieferadresse** erkennen und beim Upload vorschlagen.
 5. **Erwartet → eingetroffen** (Regel 3, D6): Auftragsbestätigung/Bestellung
    erzeugen nur einen erwarteten Wareneingang.

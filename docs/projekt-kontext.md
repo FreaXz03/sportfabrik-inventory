@@ -252,7 +252,8 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | B — Wareneingang v2: FEDAS-Kategorievorschlag | ⏳ Infrastruktur fertig, restliche Codes offen (siehe unten) |
 | B — Wareneingang v2, Teilaufgabe 1 (Parser-Registry, Lieferanten- und Dokumenttyp-Erkennung) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
-| B — Wareneingang v2, Teilaufgaben 2–8 | offen (Aufteilung siehe unten) |
+| B — Wareneingang v2, Teilaufgabe 2 (Belegnummer je Lieferant eindeutig) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
+| B — Wareneingang v2, Teilaufgaben 3–8 | offen (Aufteilung siehe unten) |
 | C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -263,7 +264,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | # | Teilaufgabe | Status |
 |---|---|---|
 | B1 | **Parser-Registry**: ein Modul je Lieferanten-Layout mit gemeinsamer Schnittstelle, automatische Lieferanten- und Dokumenttyp-Erkennung, unbekanntes Layout klar melden | ✅ abgeschlossen |
-| B2 | Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id, dokumentnummer)`) inkl. Duplikatsprüfung im Importer — offener Punkt aus dem Review, Voraussetzung für den zweiten Lieferanten | offen |
+| B2 | Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id, dokumentnummer)`) inkl. Duplikatsprüfung im Importer — offener Punkt aus dem Review, Voraussetzung für den zweiten Lieferanten | ✅ abgeschlossen |
 | B3 | **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen — Voraussetzung für manuelle Erfassung und für Lieferanten ohne EAN (4 von 6 Beispielen) | offen |
 | B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload vorschlagen, manuell änderbar | offen |
 | B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6) | offen |
@@ -360,6 +361,43 @@ ein Modul je Lieferanten-Layout"):
   mit Kategorien/Bestand, Duplikat, GEWA-Regel ohne Eingangsdatum,
   unbekanntes Layout, Löschen).
 
+**Details zu Phase B, Teilaufgabe B2 — Belegnummer nur je Lieferant eindeutig**
+(Migration `e5f6a7b8c9d0`, siehe auch `docs/datenmodell.md`, `dokumente`):
+- Belegnummern sind Lieferantensache und überschneiden sich zwangslos. Vorher
+  war `dokumente.dokumentnummer` **global** eindeutig — die Rechnung eines
+  neuen Lieferanten wäre als Duplikat abgewiesen worden, nur weil INTERSPORT
+  dieselbe Nummer schon verwendet hatte. Jetzt gilt
+  `UNIQUE (lieferant_id, dokumentnummer)`.
+- Zu entfernen waren **zwei** Objekte, weil Migration `c3d4e5f6a7b8` beides
+  angelegt hatte: die Spalten-Eindeutigkeit (in PostgreSQL als Constraint
+  `dokumente_dokumentnummer_key`) und zusätzlich einen eigenen UNIQUE-Index.
+  Der Index auf der Nummer bleibt, nur nicht mehr eindeutig.
+- `datei_hash` bleibt global eindeutig: dieselbe Datei ist dasselbe Dokument,
+  egal von wem.
+- Der Importer schlägt den Lieferanten jetzt **vor** der Duplikatsprüfung nach
+  und vergleicht Datei-Hash (global) oder Belegnummer beim selben Lieferanten.
+  Die verständliche Meldung kommt weiterhin aus dem Importer, der
+  Datenbank-Constraint ist der Rückfall für zwei gleichzeitige Importe.
+- `GET /invoice-import-status` (Stapel-Warteschlange) nimmt zusätzlich
+  `parser_key`: die Belegnummer allein sagt nichts mehr, ohne Lieferant zählt
+  nur der Datei-Hash. Die Warteschlange im Browser schickt den Wert mit und
+  vergleicht ihn auch beim Duplikat innerhalb der eigenen Auswahl.
+- Tests: zwei Lieferanten mit derselben Nummer (über ein zweites, nur im Test
+  registriertes Layout), derselbe Lieferant mit derselben Nummer aus einer
+  anderen Datei, der Datenbank-Constraint selbst, die Statusabfrage mit und
+  ohne Lieferant sowie die Warteschlange im Node-Test. Gesamtsuite: 170
+  bestandene Tests.
+- Gegen echtes PostgreSQL 16 geprüft: Migration auf leerer und auf gefüllter
+  Datenbank, `downgrade`/`upgrade`-Rundlauf mit Daten, Verhalten beider
+  Constraints, kompletter Importweg mit zwei Lieferanten. `alembic revision
+  --autogenerate` zeigt für `dokumente` keine Abweichung zwischen Modell und
+  Schema mehr. Dabei aufgefallen (nicht geändert, betrifft eine andere
+  Tabelle): `varianten.ean` hat aus demselben Grund ebenfalls doppelt
+  hinterlegte Eindeutigkeit (Constraint `varianten_ean_key` **und**
+  UNIQUE-Index `ix_varianten_ean`) — fachlich harmlos, aber unnötig.
+- Der `downgrade` scheitert absichtlich, sobald zwei Lieferanten dieselbe
+  Nummer verwenden: dann gibt es keine global eindeutige Nummer mehr.
+
 **Code-Review nach Phase A** (21.09.2026, Branch `feature/warenwirtschaft-v2`) — vollständige
 Durchsicht des bestehenden Codes auf Fehler; behoben und jeweils gegen echtes PostgreSQL bzw.
 mit neuen Tests belegt:
@@ -415,9 +453,9 @@ mit neuen Tests belegt:
   auf `?v=premium-1` gezogen, damit Filialrechner die neue Datei laden.
 
 **Offene Punkte aus dem Review** (bewusst nicht im Review-Commit geändert, siehe Abschnitt 9):
-- `dokumente.dokumentnummer` ist **global** eindeutig. Zwei verschiedene Lieferanten dürfen
-  dieselbe Belegnummer verwenden — spätestens mit dem zweiten Lieferanten in Phase B muss
-  daraus `UNIQUE (lieferant_id, dokumentnummer)` werden (inkl. Duplikatsprüfung im Importer).
+- ~~`dokumente.dokumentnummer` ist **global** eindeutig~~ — erledigt mit Teilaufgabe B2
+  (Migration `e5f6a7b8c9d0`, siehe unten): jetzt `UNIQUE (lieferant_id, dokumentnummer)`
+  inkl. Duplikatsprüfung im Importer.
 - Regel 5 („EAN ist optional") gilt im Datenmodell und im Importer, **nicht** aber in
   `parsers/intersport.py`/`corrections.py`: dort ist die EAN ein Pflichtfeld, eine Position ohne EAN
   lässt sich nicht importieren. Für INTERSPORT-Rechnungen bisher folgenlos (dort hat jede

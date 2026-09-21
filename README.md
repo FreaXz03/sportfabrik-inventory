@@ -64,7 +64,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (166 bestanden, 19 übersprungen ohne optionale
+- **Tests**: pytest (170 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe

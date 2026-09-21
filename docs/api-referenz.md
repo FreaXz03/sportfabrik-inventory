@@ -78,7 +78,7 @@ unveränderten Original-Snapshot der Position.
 | POST | `/upload-preview` | 🔒 Eine PDF hochladen, Lieferant/Dokumenttyp erkennen und Positionen als Vorschau zurückgeben (max. 20 MB, keine DB-Änderung) |
 | POST | `/validate-preview` | 🔒 Manuell korrigierte Positionen (siehe `corrections`) gegen dieselbe Datei erneut validieren, bevor importiert wird; verlangt `expected_hash` |
 | POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true` und optional `corrections` (JSON, siehe unten). Bucht Wareneingang und Bestand gegen die aktive Filiale des Kontos (`GET /api/me`, `lagerort`) — ohne gewählte Filiale (nur für Admin möglich, „alle Filialen") HTTP 400 |
-| GET | `/invoice-import-status` | 🔒 Prüft per Datei-Hash oder Rechnungsnummer, ob eine Rechnung bereits importiert ist — wird von der Stapel-Import-Warteschlange genutzt, um bereits importierte Dateien zu überspringen |
+| GET | `/invoice-import-status` | 🔒 Prüft per Datei-Hash (`file_hash`) oder per Belegnummer **beim erkannten Lieferanten** (`invoice_number` **und** `parser_key`, beide aus der Vorschau-Antwort), ob eine Rechnung bereits importiert ist — wird von der Stapel-Import-Warteschlange genutzt, um bereits importierte Dateien zu überspringen. Ohne `parser_key` zählt nur der Datei-Hash: dieselbe Belegnummer kann bei einem anderen Lieferanten eine völlig andere Rechnung sein |
 
 **Erkannter Lieferant (`/upload-preview`, `/validate-preview`)**: Die Antwort
 enthält neben den Positionen `parser_key` (zuständiges Parser-Modul, =
