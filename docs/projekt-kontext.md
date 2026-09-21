@@ -90,6 +90,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D23 | Manuelle Erfassung, Pflichtfelder *(21.09.2026)* | **Marke + Bezeichnung + Menge + UVP** genügen. Alles andere (Lieferant, Kategorie, Farbe, Grösse, EAN) ist optional |
 | D24 | Interne EAN *(21.09.2026)* | Wird **auf Knopfdruck** erzeugt (wenn ein Etikett gebraucht wird), nicht automatisch beim Import |
 | D25 | Inhalt des Etiketts *(21.09.2026)* | **Jahrgang** (Jahr des Wareneingangs), **Lieferant**, **UVP** und die **Reduktionsstufe** (30 / 50 / 70 %). Ob zusätzlich der Barcode aufs Etikett soll, ist noch offen (siehe Abschnitt 10) |
+| D26 | Wer auf welchen Lagerort bucht *(21.09.2026, bestätigt)* | **Wer Dokumente hochladen darf, darf auf jeden Lagerort buchen** (eigene Filiale zuoberst). Das Ziel bestimmt der Beleg über seine Lieferadresse, nicht die gerade aktive Filiale — sonst liesse sich eine Lieferung an eine andere Filiale oder an die GEWA gar nicht erfassen. Filialwechsel und Leseansichten bleiben bei den zugewiesenen Filialen |
 
 ## 5. Anforderungen
 
@@ -241,7 +242,7 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 ## 10. Offene Fragen
 
-Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D25). Noch offen:
+Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D26). Noch offen:
 
 1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm).
 2. **Barcode aufs Etikett?** D25 nennt Jahrgang, Lieferant, UVP und Reduktionsstufe. Soll der EAN-Barcode **zusätzlich** drauf? Ohne ihn bleibt ein Artikel ohne Hersteller-EAN an der Kasse unscannbar — das war der Zweck der internen EAN (D10).
@@ -258,7 +259,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D25). Noch offen:
 
 | Phase | Status |
 |---|---|
-| Konzept (D1–D25) | ✅ abgeschlossen (D1–D17 am 20.09.2026, D18–D25 am 21.09.2026) |
+| Konzept (D1–D26) | ✅ abgeschlossen (D1–D17 am 20.09.2026, D18–D26 am 21.09.2026) |
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
@@ -437,10 +438,9 @@ Lieferadresse"):
   eine Lieferung an eine andere Filiale oder an die GEWA gar nicht erfassen —
   D19 wäre für genau die Fälle wirkungslos, für die es gedacht ist. Wer hier
   hinkommt, darf ohnehin Dokumente hochladen (Regel 9); eine falsch gewählte
-  Filiale ist über eine Umlagerung korrigierbar. **Zu bestätigen:** ob das so
-  bleiben soll oder ob nur Admin/Zentrale fremde Filialen buchen darf.
-  Filialwechsel und Leseansichten bleiben unverändert bei den zugewiesenen
-  Filialen.
+  Filiale ist über eine Umlagerung korrigierbar. **Von Fabian bestätigt**
+  (21.09.2026) und als D26 festgehalten. Filialwechsel und Leseansichten
+  bleiben unverändert bei den zugewiesenen Filialen.
 - Tests: `tests/test_lieferadresse.py` (24 Tests: jede Seed-Adresse,
   Lieferadresse schlägt Rechnungsadresse, Gleichstand ohne Vorschlag,
   Schreibweisen, „Lieferschein" ist kein Anker) und

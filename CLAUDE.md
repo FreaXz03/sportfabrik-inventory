@@ -1,6 +1,6 @@
 # CLAUDE.md — Sportfabrik Warenwirtschaftssystem
 
-Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` lesen** — dort stehen Zielbild, alle Entscheidungen (D1–D25), Datenmodell-Vorschlag und Roadmap. Bei Widerspruch zwischen altem Code/alter Doku und `projekt-kontext.md` gilt `projekt-kontext.md`.
+Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` lesen** — dort stehen Zielbild, alle Entscheidungen (D1–D26), Datenmodell-Vorschlag und Roadmap. Bei Widerspruch zwischen altem Code/alter Doku und `projekt-kontext.md` gilt `projekt-kontext.md`.
 
 ## Worum es geht
 
@@ -71,7 +71,8 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
    ✅ abgeschlossen — fehlende EAN ist ein Hinweis (sperrt den Import nicht),
    eine unleserliche EAN bleibt eine Warnung.
 4. **Lagerort aus der Lieferadresse** erkennen und beim Upload vorschlagen.
-   ✅ abgeschlossen — Vorschlag (D19), änderbar; ein Beleg = ein Lagerort (D20).
+   ✅ abgeschlossen — Vorschlag (D19), änderbar; ein Beleg = ein Lagerort (D20);
+   buchbar sind alle Lagerorte (D26).
 5. **Erwartet → eingetroffen** (Regel 3, D6): Auftragsbestätigung/Bestellung
    erzeugen nur einen erwarteten Wareneingang; auch Mitarbeiter dürfen die
    Ankunft bestätigen (D21), Restmengen bleiben offen (D22).
