@@ -127,24 +127,37 @@ async def validate_preview(
 def invoice_import_status(
     file_hash: str,
     invoice_number: str = "",
+    parser_key: str = "",
     user=Depends(require_chef_api),
     language: str = Depends(get_language),
 ):
     from ..core.database import SessionLocal
-    from ..core.models import Dokument
-    from sqlalchemy import select, or_
+    from ..core.models import Dokument, Lieferant
+    from sqlalchemy import and_, select, or_
     from sqlalchemy.exc import SQLAlchemyError
 
     try:
         with SessionLocal() as session:
-            invoice = session.scalar(
-                select(Dokument).where(
-                    or_(
-                        Dokument.datei_hash == file_hash,
+            # Die Belegnummer allein sagt nichts: sie ist nur beim jeweiligen
+            # Lieferanten eindeutig (siehe Migration e5f6a7b8c9d0). Darum zählt
+            # sie nur zusammen mit dem erkannten Layout (`parser_key` aus der
+            # Vorschau-Antwort); ohne das bleibt der Datei-Hash.
+            conditions = [Dokument.datei_hash == file_hash]
+            lieferant_id = (
+                session.scalar(
+                    select(Lieferant.id).where(Lieferant.parser_key == parser_key)
+                )
+                if invoice_number and parser_key
+                else None
+            )
+            if lieferant_id is not None:
+                conditions.append(
+                    and_(
+                        Dokument.lieferant_id == lieferant_id,
                         Dokument.dokumentnummer == invoice_number,
                     )
                 )
-            )
+            invoice = session.scalar(select(Dokument).where(or_(*conditions)))
             return {
                 "imported": invoice is not None,
                 "invoice_id": invoice.id if invoice else None,

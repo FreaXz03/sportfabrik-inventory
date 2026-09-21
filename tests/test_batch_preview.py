@@ -18,7 +18,7 @@ class Element {
 }
 const elements=new Map();global.document={getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(){return new Element();},createDocumentFragment(){return new Element();},querySelector(){return new Element();},querySelectorAll(){return [];},addEventListener(){}};
 global.window={addEventListener(){},SportfabrikI18n:{t(key){return key;}}};global.Option=class extends Element{};
-const parsed=(hash,num)=>({file_hash:hash,invoice_number:num,items:[{row_number:1,brand:'Original',ean:'0012345678901',warnings:[],raw_lines:[]}],pages:1,item_count:1,warnings:[],rows_with_warnings:0,duplicate_eans:{}});
+const parsed=(hash,num,parserKey='intersport')=>({file_hash:hash,invoice_number:num,parser_key:parserKey,supplier_name:'INTERSPORT Schweiz AG',document_type:'rechnung',items:[{row_number:1,brand:'Original',ean:'0012345678901',warnings:[],raw_lines:[]}],pages:1,item_count:1,warnings:[],rows_with_warnings:0,duplicate_eans:{}});
 let replies=[];global.fetch=async()=>{const item=replies.shift();if(item instanceof Error)throw item;return {ok:item.ok!==false,status:item.status||200,json:async()=>item.data};};
 """
     script = (root / "app/static/js/preview.js").read_text(encoding="utf-8")
@@ -37,6 +37,8 @@ let replies=[];global.fetch=async()=>{const item=replies.shift();if(item instanc
  const duplicate={file:new File(['pdf'],'copy.pdf')};queue.push(duplicate);replies=[{data:parsed('one','1')}];await readEntry(duplicate);assert.equal(duplicate.state,'duplicate');
  const existing={file:new File(['pdf3'],'existing.pdf')};queue.push(existing);replies=[{data:parsed('three','3')},{data:{imported:true,invoice_id:88}}];await readEntry(existing);assert.equal(existing.state,'imported');assert.equal(existing.invoiceId,88);
  selectEntry(4);assert.equal(previewFile,null);assert.equal(document.getElementById('confirm').disabled,true);
+ // Gleiche Belegnummer, anderer Lieferant: kein Duplikat (Belegnummern sind nur je Lieferant eindeutig).
+ const other={file:new File(['pdf4'],'anderer-lieferant.pdf')};queue.push(other);replies=[{data:parsed('four','1','testhandel')},{data:{imported:false}}];await readEntry(other);assert.equal(other.state,'ready');
  replies=[{data:parsed('retry','4')},{data:{imported:false}}];await readEntry(failed);assert.equal(failed.state,'ready');
  assert.equal(replies.length,0);
  let destination=null;global.location={assign(url){destination=url;}};

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import hashlib
 
-from sqlalchemy import delete, func, select, or_, text
+from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.fedas import suggest_kategorie
@@ -158,11 +158,28 @@ def import_invoice(
             # different invoices that introduce the same EAN concurrently.
             if session.bind.dialect.name == "postgresql":
                 session.execute(text("SELECT pg_advisory_xact_lock(73421061)"))
+            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT):
+            # `parser_key` verbindet Parser-Modul und Lieferanten-Stammdaten.
+            # Muss vor der Duplikatsprüfung stehen, weil die Belegnummer nur
+            # beim jeweiligen Lieferanten eindeutig ist.
+            lieferant = session.scalar(
+                select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
+            )
+            if lieferant is None:
+                raise ImportRejected(
+                    translate("errors.importer.supplier_not_configured", language)
+                )
+            # Duplikat ist entweder dieselbe Datei (`datei_hash`, global) oder
+            # dieselbe Belegnummer **beim selben Lieferanten** - zwei Lieferanten
+            # dürfen dieselbe Nummer verwenden (siehe Migration e5f6a7b8c9d0).
             existing = session.scalar(
                 select(Dokument).where(
                     or_(
                         Dokument.datei_hash == digest,
-                        Dokument.dokumentnummer == parsed["invoice_number"],
+                        and_(
+                            Dokument.lieferant_id == lieferant.id,
+                            Dokument.dokumentnummer == parsed["invoice_number"],
+                        ),
                     )
                 )
             )
@@ -174,15 +191,6 @@ def import_invoice(
                         number=existing.dokumentnummer,
                         id=existing.id,
                     )
-                )
-            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT):
-            # `parser_key` verbindet Parser-Modul und Lieferanten-Stammdaten.
-            lieferant = session.scalar(
-                select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
-            )
-            if lieferant is None:
-                raise ImportRejected(
-                    translate("errors.importer.supplier_not_configured", language)
                 )
             # Regel 6: Ware an ein externes Lager (GEWA, `verkauf = False`)
             # bekommt noch KEIN Eingangsdatum - das wird erst bei Ankunft in

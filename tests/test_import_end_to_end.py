@@ -10,12 +10,15 @@ eine Lücke zwischen Parser-Ergebnis und Import gar nicht sehen.
 """
 
 import hashlib
+import re
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from test_parser_registry import _invoice_pdf, _text_pdf
 
 from app.core.kategorien import seed_kategorien
@@ -63,7 +66,11 @@ def rechnung():
 
 @pytest.fixture
 def sessions():
-    engine = create_engine("sqlite://")
+    # StaticPool + check_same_thread=False, weil der TestClient den Endpunkt in
+    # einem anderen Thread aufruft als der Test selbst (wie tests/test_i18n.py).
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     Base.metadata.create_all(engine)
     factory = sessionmaker(engine)
     with factory() as session:
@@ -213,3 +220,140 @@ def test_preview_endpoint_rejects_an_unknown_layout():
     )
     assert response.status_code == 422
     assert "noch nicht" in response.json()["detail"]
+
+
+# --- Belegnummer nur je Lieferant eindeutig (Teilaufgabe B2) ---------------
+
+
+class _ZweitesLayout:
+    """Zweites Lieferanten-Layout nur für diese Tests: erkennt sich am
+    Firmennamen und liest die Tabelle mit dem INTERSPORT-Parser (dasselbe
+    Tabellenlayout - hier geht es nur um zwei *Lieferanten*, nicht um ein
+    zweites Tabellenformat). Die hohe Punktzahl lässt es gegen INTERSPORT
+    gewinnen, siehe app/services/parsers/__init__.py."""
+
+    KEY = "testhandel"
+    LIEFERANT_NAME = "Test Handel AG"
+
+    @staticmethod
+    def detect(document):
+        # Wie die echten Parser über den Firmennamen, und wie dort mit \s+:
+        # zwischen weit auseinanderliegenden Wörtern steht im PDF-Text nicht
+        # zwingend genau ein Leerzeichen.
+        return 9 if re.search(r"TEST\s+HANDEL", document.text, re.I) else None
+
+    parse = staticmethod(intersport.parse)
+    dates = staticmethod(intersport.dates)
+
+
+@pytest.fixture
+def zweiter_lieferant(sessions, monkeypatch):
+    """Registriert das zweite Layout und legt den passenden Lieferanten an."""
+    monkeypatch.setattr(
+        "app.services.parsers.PARSERS", (intersport, _ZweitesLayout)
+    )
+    with sessions() as session:
+        session.add(
+            Lieferant(
+                name=_ZweitesLayout.LIEFERANT_NAME,
+                typ="drittanbieter",
+                parser_key=_ZweitesLayout.KEY,
+            )
+        )
+        session.commit()
+    # Gleiche Belegnummer wie `rechnung`, anderer Lieferant.
+    return _invoice_pdf(
+        header_lines=[[(30, "TEST HANDEL AG")]] + KOPFZEILEN[1:],
+        rows=POSITIONEN[:1],
+    )
+
+
+def _import(pdf, sessions, lagerort_id, filename="rechnung.pdf"):
+    return import_invoice(
+        pdf, filename, hashlib.sha256(pdf).hexdigest(), sessions, lagerort_id
+    )
+
+
+def test_two_suppliers_may_use_the_same_document_number(
+    rechnung, zweiter_lieferant, sessions
+):
+    """Belegnummern sind Lieferantensache: dass INTERSPORT die Nummer schon
+    verwendet hat, darf die Rechnung eines anderen Lieferanten nicht blocken."""
+    lagerort_id = _sf1(sessions)
+    _import(rechnung, sessions, lagerort_id)
+    _import(zweiter_lieferant, sessions, lagerort_id, "test-handel.pdf")
+    with sessions() as session:
+        dokumente = session.scalars(select(Dokument).order_by(Dokument.id)).all()
+        assert [d.dokumentnummer for d in dokumente] == ["9001759392", "9001759392"]
+        assert len({d.lieferant_id for d in dokumente}) == 2
+        assert [
+            session.get(Lieferant, d.lieferant_id).parser_key for d in dokumente
+        ] == [intersport.KEY, _ZweitesLayout.KEY]
+
+
+def test_same_number_from_the_same_supplier_is_still_rejected(rechnung, sessions):
+    """Andere Datei, gleiche Belegnummer beim selben Lieferanten: das ist
+    dieselbe Rechnung, nur neu exportiert."""
+    lagerort_id = _sf1(sessions)
+    _import(rechnung, sessions, lagerort_id)
+    nochmal = _invoice_pdf(header_lines=KOPFZEILEN, rows=POSITIONEN[:1])
+    assert hashlib.sha256(nochmal).hexdigest() != hashlib.sha256(rechnung).hexdigest()
+    with pytest.raises(ImportRejected, match="bereits importiert"):
+        _import(nochmal, sessions, lagerort_id, "nochmal.pdf")
+    with sessions() as session:
+        assert session.scalar(select(func.count()).select_from(Dokument)) == 1
+
+
+def test_database_enforces_the_pair_as_well(rechnung, sessions):
+    """Die Prüfung im Importer ist die verständliche Meldung, der
+    Datenbank-Constraint der Rückfall (z. B. bei zwei gleichzeitigen
+    Importen) - siehe UniqueConstraint in app/core/models.py."""
+    lagerort_id = _sf1(sessions)
+    _import(rechnung, sessions, lagerort_id)
+    with sessions() as session:
+        vorhanden = session.scalar(select(Dokument))
+        session.add(
+            Dokument(
+                lieferant_id=vorhanden.lieferant_id,
+                lagerort_id=lagerort_id,
+                typ="rechnung",
+                dokumentnummer=vorhanden.dokumentnummer,
+                datei_hash="anderer-hash",
+                hochgeladen_am=vorhanden.hochgeladen_am,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
+def test_import_status_needs_the_supplier_for_a_number_match(
+    rechnung, zweiter_lieferant, sessions, monkeypatch
+):
+    """Die Stapel-Warteschlange überspringt schon importierte Dateien über
+    diesen Endpunkt - er darf die Rechnung eines anderen Lieferanten mit
+    derselben Nummer nicht als „schon importiert" melden."""
+    import app.core.database as database
+
+    lagerort_id = _sf1(sessions)
+    _import(rechnung, sessions, lagerort_id)
+    monkeypatch.setattr(database, "SessionLocal", sessions)
+    client = _client()
+
+    def status(**params):
+        return client.get("/invoice-import-status", params=params).json()
+
+    importiert = status(
+        file_hash="unbekannt", invoice_number="9001759392", parser_key=intersport.KEY
+    )
+    assert importiert["imported"] is True and importiert["invoice_id"]
+    assert status(
+        file_hash="unbekannt",
+        invoice_number="9001759392",
+        parser_key=_ZweitesLayout.KEY,
+    ) == {"imported": False, "invoice_id": None}
+    # Ohne Lieferant zählt nur die Datei selbst.
+    assert status(file_hash="unbekannt", invoice_number="9001759392") == {
+        "imported": False,
+        "invoice_id": None,
+    }
+    assert status(file_hash=hashlib.sha256(rechnung).hexdigest())["imported"] is True

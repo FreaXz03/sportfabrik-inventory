@@ -176,6 +176,14 @@ class Dokument(Base):
             "typ IN ('rechnung', 'lieferschein', 'auftragsbestaetigung', 'bestellung')",
             name="ck_dokumente_typ",
         ),
+        # Belegnummern sind nur beim jeweiligen Lieferanten eindeutig - zwei
+        # Lieferanten dürfen dieselbe Nummer verwenden (Phase B, Teilaufgabe
+        # B2, Migration e5f6a7b8c9d0). Der Importer prüft zusätzlich selbst auf
+        # Duplikate, damit der Benutzer eine verständliche Meldung bekommt
+        # statt eines Datenbankfehlers.
+        UniqueConstraint(
+            "lieferant_id", "dokumentnummer", name="uq_dokumente_lieferant_dokumentnummer"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -185,7 +193,11 @@ class Dokument(Base):
 
     typ: Mapped[str] = mapped_column(String(30))
 
-    dokumentnummer: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    # Nur zusammen mit `lieferant_id` eindeutig, siehe __table_args__. Ist
+    # `lieferant_id` leer (bisher nie: der Import weist ein Dokument ohne
+    # erkannten Lieferanten ab), greift die Eindeutigkeit nicht - NULL gilt in
+    # PostgreSQL wie in SQLite als von allem verschieden.
+    dokumentnummer: Mapped[str] = mapped_column(String(100), index=True)
     dokumentdatum: Mapped[date | None] = mapped_column(Date)
     belegdatum: Mapped[date | None] = mapped_column(Date)
 
