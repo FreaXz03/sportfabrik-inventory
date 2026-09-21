@@ -82,8 +82,11 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
    Beleg** — direkter Wareneingang (D27). ✅ abgeschlossen — Seite `/erfassen`,
    Migration `a7b8c9d0e1f2`; erfassen dürfen auch Mitarbeiter (Regel 9/D21).
 7. **EAN nachtragen/generieren** (interne EAN-13, GS1 20–29) + Etikett als PDF.
-   ⬅ **nächster Schritt**
+   ✅ abgeschlossen — auf Knopfdruck (D24), Etikett mit Jahrgang, Lieferant,
+   UVP, Reduktionsstufe und Strichcode (D25); Etikettengrösse einstellbar
+   (Voreinstellung 50 × 30 mm, echte Rollengrösse noch offen).
 8. **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist.
+   ⬅ **nächster Schritt**
 
 Der FEDAS-Kategorievorschlag selbst ist als Infrastruktur fertig (Abschnitt 11);
 es fehlen die noch nicht bestätigten Codes und die Auswahl-Oberfläche (B8).

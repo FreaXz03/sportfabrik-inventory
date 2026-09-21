@@ -251,8 +251,8 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 
-1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm).
-2. **Barcode aufs Etikett?** D25 nennt Jahrgang, Lieferant, UVP und Reduktionsstufe. Soll der EAN-Barcode **zusätzlich** drauf? Ohne ihn bleibt ein Artikel ohne Hersteller-EAN an der Kasse unscannbar — das war der Zweck der internen EAN (D10).
+1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm). Bis das feststeht, ist die Grösse einstellbar; Voreinstellung 50 × 30 mm (Teilaufgabe B7).
+2. ~~**Barcode aufs Etikett?**~~ Vorläufig entschieden und so gebaut (B7): **ja** — ohne Strichcode bliebe genau der Artikel unscannbar, für den die interne EAN gedacht ist (D10). Falls das Etikett ihn doch nicht tragen soll, bitte melden.
 3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
 4. **Filialbezug beim Lesen:** Sollen Übersicht, Rechnungsliste und Artikeldetails nur die eigene Filiale zeigen? (Heute zeigen sie allen Konten alle Filialen; Regel 9 regelt nur das Schreiben.)
 5. **Ausbuchen per Scan** (Phase C): blockieren, wenn der Bestand dadurch negativ würde, oder mit Warnung zulassen?
@@ -278,7 +278,8 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 | B — Wareneingang v2, Teilaufgabe 4 (Lagerort aus der Lieferadresse) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 5 (erwartet → eingetroffen) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 6 (manuelle Erfassung mit Scanner) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
-| B — Wareneingang v2, Teilaufgaben 7–8 | offen (Aufteilung siehe unten) |
+| B — Wareneingang v2, Teilaufgabe 7 (interne EAN + Etikett) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
+| B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | offen (Aufteilung siehe unten) |
 | C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -294,7 +295,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B4 | **Lagerort aus der Lieferadresse** erkennen (SF1–SF4/GEWA, Adressen in `lagerorte`) und beim Upload **vorschlagen**, änderbar (D19); ein Beleg = ein Lagerort (D20) | ✅ abgeschlossen |
 | B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | ✅ abgeschlossen |
 | B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); ohne Beleg (D27) | ✅ abgeschlossen |
-| B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | offen |
+| B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | ✅ abgeschlossen |
 | B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
@@ -562,6 +563,52 @@ Hand erfassen"):
 - **Offen geblieben:** Kategorie (B8) und interne EAN samt Etikett (B7) fehlen
   auch hier noch — ein von Hand erfasster Artikel ohne Hersteller-EAN ist an
   der Kasse noch nicht scannbar.
+
+**Details zu Phase B, Teilaufgabe B7 — interne EAN und Etikett** (Regel 5/6,
+D10, D14, D24, D25; siehe `docs/architektur.md`, Abschnitt „Interne EAN und
+Etikett"):
+- `app/services/ean.py`: Prüfziffer nach GS1, strenge Prüfung nachgetragener
+  EANs und die **interne EAN-13** nach dem Muster `20` + zehnstellige
+  Varianten-Id + Prüfziffer. Kein Zähler nötig, für dieselbe Variante immer
+  dieselbe Nummer, `varianten.ean_intern` markiert sie. Eine bestehende EAN
+  wird **nie** überschrieben (Regel 4).
+- Unterschied zum Import (bewusst): dort bleibt es beim Formatcheck (B3), weil
+  die Nummer so im Lieferantendokument steht. Wer sie hier von Hand einträgt,
+  bekommt auch die Prüfziffer geprüft — ein Zahlendreher bliebe sonst für
+  immer im Artikelstamm.
+- `app/services/barcode.py`: EAN-13/EAN-8 als Strichmuster, selbst gerechnet
+  (keine zusätzliche Bibliothek, Regel 1). UPC-12 wird als EAN-13 mit
+  führender Null gedruckt; eine EAN-14 (Umkarton, eigentlich ITF-14) oder eine
+  falsche Prüfziffer ergibt bewusst **keinen** Strichcode, sondern nur die
+  Zahl — lieber keiner als einer, den die Kasse nicht annimmt.
+- `app/services/etikett.py`: Etikett als PDF in Etikettengrösse (eine Seite je
+  Etikett, `anzahl` wiederholt sie), gezeichnet mit PyMuPDF und den im PDF
+  eingebauten Schriften. Darauf: Jahrgang, Lieferant, UVP, Reduktionsstufe
+  (D25) plus Marke, Bezeichnung, Farbe/Grösse und Strichcode.
+- `app/services/reduktion.py`: Regel 6 als eigener, getesteter Baustein —
+  letzter Wareneingang derselben Artikelnummer **in dieser Filiale**, daraus
+  volle Monate und die Stufe (18 → 50 %, 36 → 70 %). Die Hinweise für die
+  Filialen (Phase D) bauen darauf auf. Die 30 % aus D25 sind eine
+  Entscheidung des Ladens und lassen sich beim Druck mitgeben.
+- Oberfläche an zwei Stellen: auf der **Artikelseite** ein Abschnitt „EAN &
+  Etikett" (EAN ansehen, erzeugen, nachtragen, Etikett mit Grösse/Reduktion/
+  Anzahl öffnen) und direkt nach der **manuellen Erfassung** ein Knopf
+  „Etiketten drucken" für den ganzen Wareneingang, ein Etikett je Stück.
+  Beides auch für **Mitarbeiter** (Regel 9). Übersetzungen DE/FR/EN.
+- **Annahmen, solange zwei Fragen offen sind:** Etikettengrösse einstellbar
+  (`GROESSEN`), Voreinstellung 50 × 30 mm; der Strichcode ist drauf (siehe
+  Abschnitt 10, Frage 2). Beides ist an einer Stelle änderbar.
+- Kein Schema-Eingriff nötig: `varianten.ean`/`ean_intern` gab es schon, sie
+  werden jetzt benutzt.
+- Tests: `tests/test_ean_etikett.py` (72 Tests: Prüfziffern echter EANs,
+  interne Nummern, Strichmuster gegen die Norm inkl. Selbsttest der
+  Codetabellen, Reduktionsstufen an den Stichtagen, Etikettendaten aus der
+  Datenbank, PDF-Grösse und -Inhalt, EAN setzen inkl. Konflikten und der
+  ganze Weg über die API). Gesamtsuite: 360 bestandene Tests (vorher 288).
+- Gegen echtes PostgreSQL 16 geprüft und im Browser durchgespielt: interne
+  EAN erzeugen, EAN mit falscher Prüfziffer abgelehnt, Etikett-PDF (50 × 30
+  und 100 × 50 mm) angesehen, Etiketten eines Wareneingangs gedruckt,
+  Sprachwechsel DE/FR/EN.
 
 **Details zu Phase B, Teilaufgabe B3 — EAN wirklich optional** (Entscheid D18,
 siehe `docs/architektur.md`, Abschnitt „PDF-Parsing" → „Warnung oder Hinweis?"):

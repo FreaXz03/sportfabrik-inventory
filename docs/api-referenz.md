@@ -171,6 +171,27 @@ Dokument. Unplausible Eingaben (fehlendes Pflichtfeld, Menge ≤ 0, ungültige
 EAN, Datum in der Zukunft) ergeben HTTP 409 und buchen **nichts**; ein
 Lagerort ohne Zugriff ergibt HTTP 403, ein ungültiges Datumsformat HTTP 422.
 
+## EAN und Etiketten
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| POST | `/api/varianten/{id}/ean` | EAN setzen: `{"generieren": true}` erzeugt eine interne EAN-13 (GS1 20–29, D24), `{"ean": "4006381333931"}` trägt eine vorhandene nach (Format **und** Prüfziffer werden geprüft) |
+| GET | `/api/varianten/{id}/etikett` | Was auf dem Etikett stünde (Vorschau für die Oberfläche) samt Auswahllisten für Grösse und Reduktion |
+| GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (z. B. `50x30`), `reduktion` (0/30/50/70), `anzahl` (1–100) |
+| GET | `/api/wareneingaenge/{id}/etiketten.pdf` | Alle Etiketten eines Wareneingangs — `je_stueck=true` (Voreinstellung) druckt eines pro Stück, sonst eines je Position |
+
+Beide PDF-Antworten kommen als `application/pdf` mit `Content-Disposition:
+inline`, eine Seite je Etikett; die Seitengrösse ist die Etikettengrösse,
+damit der Drucker nichts skaliert.
+
+Jahrgang und Reduktionsvorschlag stammen vom letzten Wareneingang **in der
+betreffenden Filiale** (Regel 6): beim einzelnen Etikett aus der aktiven
+Filiale, beim Wareneingang aus dessen eigener. Eine bestehende EAN wird nie
+überschrieben (HTTP 409), eine falsche Prüfziffer ebenso abgelehnt; eine
+unbekannte Variante ergibt HTTP 404, eine unbekannte Grösse oder
+Reduktionsstufe HTTP 422. Auch **Mitarbeiter** dürfen beides (Regel 9) — es
+entsteht kein Dokument.
+
 ## Sonstiges
 
 | Methode | Pfad | Zweck |
