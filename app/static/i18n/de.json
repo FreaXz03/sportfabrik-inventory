@@ -124,6 +124,7 @@
   "preview.stats.positions": "Positionen",
   "preview.stats.pages": "Seiten",
   "preview.stats.positions_with_warnings": "Positionen mit Warnungen",
+  "preview.stats.positions_with_hints": "Positionen mit Hinweisen",
   "preview.stats.duplicate_eans": "Wiederholte EANs",
   "preview.row_page": "{row} / S. {page}",
   "preview.field_position_label": "Position {row}: {field}",
@@ -319,6 +320,8 @@
   "errors.dashboard.load_failed": "Übersicht konnte nicht geladen werden. Bitte Datenbankverbindung prüfen.",
 
   "errors.ocr.unavailable": "Diese Datei enthält keinen lesbaren Text (vermutlich ein eingescanntes Blatt). Texterkennung (OCR) ist auf diesem Rechner nicht verfügbar - bitte Tesseract OCR installieren (siehe SERVER-SETUP.md) oder die Rechnung digital anfordern.",
+
+  "hints.parser.ean_missing": "Keine EAN im Dokument — der Artikel wird ohne EAN gespeichert; sie lässt sich später nachtragen.",
 
   "errors.parser.unreadable_pdf": "Die Datei ist keine lesbare PDF-Datei.",
   "errors.parser.password_protected": "Passwortgeschützte PDFs werden nicht unterstützt.",

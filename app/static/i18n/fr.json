@@ -124,6 +124,7 @@
   "preview.stats.positions": "Positions",
   "preview.stats.pages": "Pages",
   "preview.stats.positions_with_warnings": "Positions avec avertissements",
+  "preview.stats.positions_with_hints": "Positions avec remarques",
   "preview.stats.duplicate_eans": "EAN répétés",
   "preview.row_page": "{row} / p. {page}",
   "preview.field_position_label": "Position {row} : {field}",
@@ -319,6 +320,8 @@
   "errors.dashboard.load_failed": "L'aperçu n'a pas pu être chargé. Veuillez vérifier la connexion à la base de données.",
 
   "errors.ocr.unavailable": "Ce fichier ne contient aucun texte lisible (probablement une feuille scannée). La reconnaissance de texte (OCR) n'est pas disponible sur cette machine - veuillez installer Tesseract OCR (voir SERVER-SETUP.md) ou demander la facture au format numérique.",
+
+  "hints.parser.ean_missing": "Aucun EAN dans le document — l'article est enregistré sans EAN ; il peut être ajouté plus tard.",
 
   "errors.parser.unreadable_pdf": "Le fichier n'est pas un PDF lisible.",
   "errors.parser.password_protected": "Les PDF protégés par mot de passe ne sont pas pris en charge.",

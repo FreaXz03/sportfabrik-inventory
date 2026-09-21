@@ -124,6 +124,7 @@
   "preview.stats.positions": "Lines",
   "preview.stats.pages": "Pages",
   "preview.stats.positions_with_warnings": "Lines with warnings",
+  "preview.stats.positions_with_hints": "Lines with notes",
   "preview.stats.duplicate_eans": "Repeated EANs",
   "preview.row_page": "{row} / p. {page}",
   "preview.field_position_label": "Line {row}: {field}",
@@ -319,6 +320,8 @@
   "errors.dashboard.load_failed": "Overview could not be loaded. Please check the database connection.",
 
   "errors.ocr.unavailable": "This file contains no readable text (likely a scanned sheet). Text recognition (OCR) is not available on this machine - please install Tesseract OCR (see SERVER-SETUP.md) or request the invoice digitally.",
+
+  "hints.parser.ean_missing": "No EAN in the document — the item is saved without one; it can be added later.",
 
   "errors.parser.unreadable_pdf": "The file is not a readable PDF.",
   "errors.parser.password_protected": "Password-protected PDFs are not supported.",

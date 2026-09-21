@@ -15,8 +15,11 @@ Schnittstelle, die jedes Layout-Modul erfüllt:
 | `dates(doc, lang)`| Dokument-/Belegdatum für den Import                     |
 
 Der Parser selbst trifft bei Unklarheiten keine Annahmen: jede unsichere
-Zeile bekommt eine Warnung, die den Import sperrt, bis sie geprüft oder
-korrigiert wurde.
+Zeile bekommt eine **Warnung** (`item["warnings"]`), die den Import sperrt,
+bis sie geprüft oder korrigiert wurde. Davon getrennt gibt es **Hinweise**
+(`item["hints"]`) für Dinge, die in Ordnung sind, aber auffallen sollen - z. B.
+eine Position ohne EAN (Regel 5: EAN ist optional). Hinweise sperren den
+Import nicht.
 """
 
 from collections import Counter
@@ -89,7 +92,8 @@ def detect(document: Document) -> int | None:
 def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
     """Alle Positionen als Vorschau-Daten: Bezeichner als Text, Beträge als
     exakte Dezimal-Zeichenketten. Keine Datenbankzugriffe, keine stille
-    Entdoppelung. Unsichere Zeilen bleiben mit Warnung in der Vorschau.
+    Entdoppelung. Unsichere Zeilen bleiben mit Warnung in der Vorschau,
+    unkritische Auffälligkeiten (z. B. keine EAN) nur als Hinweis.
     """
     items, warnings, counts = [], [], []
     invoice_number = None
@@ -188,6 +192,7 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                     description_lines=[cells[5]],
                     raw_lines=[joined(row)],
                     warnings=[],
+                    hints=[],
                 )
                 page_items.append(current)
             elif current:
@@ -230,11 +235,11 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                     )
                 desc = desc[:variant_index]
             item["description"] = re.sub(r"-\s+", "-", " ".join(desc))
+            # „ean" fehlt hier bewusst: EAN ist optional (Regel 5), siehe unten.
             for key in (
                 "brand",
                 "supplier_article_no",
                 "article_no",
-                "ean",
                 "description",
                 "quantity",
                 "unit",
@@ -248,7 +253,16 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                             field=translate(f"fields.{key}", language),
                         )
                     )
-            if not re.fullmatch(r"\d{8}|\d{12,14}", item["ean"]):
+            # Regel 5: Ohne EAN geht es weiter - viele Artikel haben gar keinen
+            # Barcode (4 von 6 Beispieldokumenten, siehe projekt-kontext.md
+            # Abschnitt 6). Nur ein Hinweis, der den Import nicht sperrt; die
+            # EAN lässt sich später nachtragen oder das System erzeugt eine
+            # interne (Teilaufgabe B7). Steht dagegen etwas Unleserliches in der
+            # Spalte, ist das ein echtes Lesefehler-Verdachtsmoment und bleibt
+            # eine blockierende Warnung.
+            if not item["ean"]:
+                item["hints"].append(translate("hints.parser.ean_missing", language))
+            elif not re.fullmatch(r"\d{8}|\d{12,14}", item["ean"]):
                 item["warnings"].append(
                     translate("errors.parser.ean_unexpected_format", language)
                 )
@@ -297,6 +311,7 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
         duplicate_eans=duplicates,
         warnings=warnings,
         rows_with_warnings=sum(bool(i["warnings"]) for i in items),
+        rows_with_hints=sum(bool(i["hints"]) for i in items),
         preview_only=True,
         ocr_used=document.ocr_used,
         ocr_pages=document.ocr_pages,

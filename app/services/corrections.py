@@ -1,4 +1,10 @@
-"""Apply field-only corrections to a freshly parsed invoice; never trust client rows."""
+"""Apply field-only corrections to a freshly parsed invoice; never trust client rows.
+
+Unterscheidet wie die Parser (siehe app/services/parsers/intersport.py)
+zwischen blockierenden **Warnungen** und nicht blockierenden **Hinweisen**:
+eine Position ohne EAN ist erlaubt (Regel 5) und bekommt nur einen Hinweis,
+eine unleserliche EAN bleibt eine Warnung.
+"""
 
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -47,6 +53,12 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
         )
     )
     color_size_prefix = template("errors.parser.color_size_ambiguous", language).split("{", 1)[0]
+    # Hinweise, die hier selbst neu erzeugt werden (derselbe Mechanismus wie
+    # oben für Warnungen): alles andere aus dem Parser bleibt stehen.
+    recomputed_hint_prefixes = tuple(
+        template(key, language).split("{", 1)[0]
+        for key in ("hints.parser.ean_missing",)
+    )
     for item in result["items"]:
         patch = patches.get(str(item["row_number"]), {})
         if not isinstance(patch, dict) or set(patch) - FIELDS.keys():
@@ -73,9 +85,15 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
             ):
                 continue
             errors.append(warning)
+        hints = [
+            hint
+            for hint in original.get("hints", [])
+            if not hint.startswith(recomputed_hint_prefixes)
+        ]
         for key, limit in FIELDS.items():
             value = item.get(key)
-            if key not in ("color", "size") and not value:
+            # Farbe/Grösse/EAN sind optional (Regel 5).
+            if key not in ("color", "size", "ean") and not value:
                 errors.append(
                     translate(
                         "errors.parser.required_field_missing",
@@ -92,7 +110,9 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
                         limit=limit,
                     )
                 )
-        if not re.fullmatch(r"(?:[0-9]{8}|[0-9]{12,14})", item.get("ean") or ""):
+        if not item.get("ean"):
+            hints.append(translate("hints.parser.ean_missing", language))
+        elif not re.fullmatch(r"(?:[0-9]{8}|[0-9]{12,14})", item["ean"]):
             errors.append(translate("errors.corrections.invalid_ean", language))
         for key in ("quantity", "uvp"):
             try:
@@ -114,6 +134,7 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
                     )
                 )
         item["warnings"] = errors
+        item["hints"] = hints
         changes = {
             k: {"before": original.get(k), "after": item.get(k)}
             for k in patch
@@ -129,5 +150,6 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
     counts = Counter(i["ean"] for i in result["items"] if i.get("ean"))
     result["duplicate_eans"] = {k: v for k, v in counts.items() if v > 1}
     result["rows_with_warnings"] = sum(bool(i["warnings"]) for i in result["items"])
+    result["rows_with_hints"] = sum(bool(i.get("hints")) for i in result["items"])
     result["corrected_rows"] = sum("correction_audit" in i for i in result["items"])
     return result

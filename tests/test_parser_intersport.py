@@ -63,6 +63,11 @@ def test_original_complete(invoice):
 
 
 def test_missing_ean_is_retained(invoice):
+    """Position bleibt vollständig erhalten und ist importierbar - die EAN ist
+    optional (Regel 5), es gibt nur einen Hinweis. Details in
+    tests/test_ean_optional.py."""
+    from app.core.i18n import translate
+
     with pymupdf.open(stream=invoice, filetype="pdf") as doc:
         page = doc[0]
         for rect in page.search_for("7613709480726"):
@@ -71,7 +76,9 @@ def test_missing_ean_is_retained(invoice):
         result = parse_document(doc.tobytes())
     assert result["item_count"] == 217
     assert result["items"][0]["ean"] == ""
-    assert result["items"][0]["warnings"]
+    assert result["items"][0]["hints"] == [translate("hints.parser.ean_missing")]
+    assert result["items"][0]["warnings"] == []
+    assert result["rows_with_warnings"] == 0
 
 
 def test_api_preview(invoice):
