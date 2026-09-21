@@ -22,6 +22,36 @@
           <div id="articleExtras" hidden>
                <section class="panel">
                     <div class="detail-section-heading">
+                         <h2 data-i18n="etikett.heading">EAN &amp; Etikett</h2>
+                    </div>
+                    <p id="eanStatus" role="status" aria-live="polite" data-i18n="etikett.loading">EAN wird geladen …</p>
+                    <div id="eanBox" hidden>
+                         <p id="eanValue"></p>
+                         <div class="filters">
+                              <button type="button" id="generateEan" class="secondary" data-i18n="etikett.generate">Interne EAN
+                                   erzeugen</button>
+                              <label><span data-i18n="etikett.add_label">EAN nachtragen</span><input id="eanInput" type="text"
+                                             inputmode="numeric" autocomplete="off" maxlength="14"
+                                             data-i18n-placeholder="etikett.add_placeholder" placeholder="EAN scannen oder eingeben"></label>
+                              <button type="button" id="saveEan" data-i18n="etikett.add">Speichern</button>
+                         </div>
+                         <p class="muted" data-i18n="etikett.generate_hint">Erzeugt eine hauseigene EAN-13 (Bereich 20–29) mit
+                              Prüfziffer – bleibt für immer an dieser Variante.</p>
+                         <div class="detail-section-heading">
+                              <h3 data-i18n="etikett.print_heading">Etikett drucken</h3>
+                         </div>
+                         <p id="etikettPreview" class="muted"></p>
+                         <div class="filters lagerort-choice">
+                              <label><span data-i18n="etikett.size_label">Etikettengrösse (mm)</span><select id="etikettGroesse"></select></label>
+                              <label><span data-i18n="etikett.reduction_label">Reduktion</span><select id="etikettReduktion"></select></label>
+                              <label><span data-i18n="etikett.count_label">Anzahl</span><input id="etikettAnzahl" type="number" min="1"
+                                             max="100" value="1"></label>
+                              <button type="button" id="printEtikett" data-i18n="etikett.print">Etikett öffnen</button>
+                         </div>
+                    </div>
+               </section>
+               <section class="panel">
+                    <div class="detail-section-heading">
                          <h2 data-i18n="article_details.price_history_heading">UVP-Verlauf</h2><label data-i18n="article_details.price_unit_label">Einheit <select id="priceUnit"
                                    data-i18n-aria-label="article_details.price_unit_aria" aria-label="Einheit für Preisverlauf"></select></label>
                     </div>
@@ -393,6 +423,7 @@
      <script src="/static/js/session.js?v=premium-1"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>
      <script src="/static/js/article-details.js?v=i18n-1"></script>
+     <script src="/static/js/etikett.js?v=1"></script>
 </body>
 
 </html>

@@ -13,6 +13,9 @@
   let positionen = [];
   let lagerorte = [];
   let busy = false;
+  // Zuletzt gebuchter Wareneingang - dafür lassen sich die Etiketten drucken
+  // (Teilaufgabe B7): erfassen, dann auszeichnen.
+  let letzterWareneingang = null;
 
   function node(tag, text, cls) {
     const el = document.createElement(tag);
@@ -203,6 +206,8 @@
         bekannt: ergebnis.bekannte_varianten
       });
       $('bookStatus').textContent = ergebnis.eingangsdatum ? meldung : meldung + ' ' + t('erfassen.booked_no_date');
+      letzterWareneingang = ergebnis.wareneingang_id;
+      $('printBox').hidden = false;
       $('addStatus').textContent = '';
       $('scanStatus').textContent = '';
       $('ean').focus();
@@ -214,6 +219,10 @@
     }
   }
 
+  $('printLabels').addEventListener('click', () => {
+    if (!letzterWareneingang) return;
+    window.open('/api/wareneingaenge/' + letzterWareneingang + '/etiketten.pdf', '_blank', 'noopener');
+  });
   $('artikelForm').addEventListener('submit', (ereignis) => {
     ereignis.preventDefault();
     if (busy) return;
@@ -223,6 +232,7 @@
       return;
     }
     positionen.push(geprueft.position);
+    $('printBox').hidden = true;
     listeZeichnen();
     felderLeeren();
     $('addStatus').textContent = t('erfassen.added');

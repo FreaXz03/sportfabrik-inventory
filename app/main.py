@@ -16,6 +16,7 @@ from .routers.history import router as history_router
 from .routers.article_details import router as article_details_router
 from .routers.wareneingang import router as wareneingang_router
 from .routers.erfassung import router as erfassung_router
+from .routers.etiketten import router as etiketten_router
 
 app = FastAPI(title="Sport-Fabrik Inventory")
 app.add_middleware(
@@ -32,6 +33,7 @@ app.include_router(article_details_router)
 app.include_router(dashboard_router)
 app.include_router(wareneingang_router)
 app.include_router(erfassung_router)
+app.include_router(etiketten_router)
 app.mount(
     "/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static"
 )
