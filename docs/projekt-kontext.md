@@ -262,7 +262,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 
 **Details zu Phase A, Punkt 2** (siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit (i18n)"):
 - `users.language` (DE/FR/EN, Default `de`) via Alembic-Migration `b2c3d4e5f6a7`.
-- Katalog als einzige Quelle: `app/static/i18n/{de,fr,en}.json` (327 Keys), gelesen von Backend (`app/core/i18n.py`, `translate()`) und Frontend (`app/static/js/i18n.js`, `data-i18n`-Attribute + `window.SportfabrikI18n.t()`).
+- Katalog als einzige Quelle: `app/static/i18n/{de,fr,en}.json` (330 Keys), gelesen von Backend (`app/core/i18n.py`, `translate()`) und Frontend (`app/static/js/i18n.js`, `data-i18n`-Attribute + `window.SportfabrikI18n.t()`).
 - Spracherkennung pro Request: eingeloggt die Kontosprache, anonym (`/login`) der `Accept-Language`-Header (`app/routers/auth.py`, `get_language`/`get_language_optional`).
 - Alle bestehenden Templates (`login.html`, `dashboard.html`, `preview.html`, `articles.html`, `history.html`) und JS-Dateien auf Keys umgestellt; **alle** `HTTPException`-Fehlermeldungen im Backend (Router **und** Services: `parser.py`, `ocr.py`, `corrections.py`, `importer.py`) laufen über `translate()`.
 - Sprachwahl: `POST /api/language` (Konto), Umschalter DE/FR/EN in der Session-Leiste bzw. auf der Login-Seite (`localStorage` vor dem Login).
@@ -281,8 +281,51 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D16). Noch offen:
 
 **Details zu Phase B, FEDAS-Kategorievorschlag** (erster Teilschritt, siehe Roadmap Abschnitt 9):
 - `app/core/fedas.py`: feste Zuordnung 1. FEDAS-Ziffer → Hauptgruppe (`1`=Hartware, `2`=Textil, `3`=Schuhe) sowie Ziffern 2–3 → Sportbereich, aktuell nur die aus echten Rechnungen bestätigten Codes (`24`=Tennis, `32`=Fussball, `60`=Velo, `64`=Outdoor, `75`=Freizeit — 6 der 11 Sportbereiche fehlen noch: Winter, Kids, Baden, Indoor, Running, Rollsport, ebenso die Produktart-Ziffer(n) für die Hauptgruppen Velo/Food selbst).
-- `app/services/importer.py` setzt `artikel.kategorie_id` automatisch beim Anlegen eines neuen Artikels, sofern der FEDAS-Code eine bekannte Kombination ergibt; ist der Code (noch) nicht zugeordnet, bleibt `kategorie_id` leer. Ein bereits gesetzter Wert wird von späteren Rechnungen nie überschrieben („einmal pro Artikel, danach gemerkt"); fehlt er noch, wird er bei einer späteren Rechnung mit bekanntem Code nachträglich gesetzt.
+- `app/services/importer.py` setzt `artikel.kategorie_id` automatisch, sobald eine Rechnungsposition einen bekannten FEDAS-Code mitbringt — beim Anlegen eines neuen Artikels ebenso wie beim Nachtragen an einem bestehenden (auch wenn die Variante über ihre EAN gefunden wurde, was für die migrierten Altartikel der Normalfall ist); ist der Code (noch) nicht zugeordnet, bleibt `kategorie_id` leer. Ein bereits gesetzter Wert wird von späteren Rechnungen nie überschrieben („einmal pro Artikel, danach gemerkt"); fehlt er noch, wird er bei einer späteren Rechnung mit bekanntem Code nachträglich gesetzt.
 - Bewusst noch nicht gebaut: eine Oberfläche zur manuellen Kategorie-Wahl, wenn der FEDAS-Code fehlt oder unbekannt ist (nächster Teilschritt) — bis dahin bleibt `kategorie_id` in diesem Fall einfach leer, ohne Auswirkung auf den restlichen Import.
 - Tests: `tests/test_fedas.py` (reine Zuordnungslogik), `tests/test_importer_fedas.py` (Zusammenspiel mit dem Import: neuer Artikel, unbekannter/fehlender Code, nachträgliches Befüllen, kein Überschreiben) — zusätzlich per Smoke-Test gegen echtes PostgreSQL verifiziert.
+
+**Code-Review nach Phase A** (21.09.2026, Branch `feature/warenwirtschaft-v2`) — vollständige
+Durchsicht des bestehenden Codes auf Fehler; behoben und jeweils gegen echtes PostgreSQL bzw.
+mit neuen Tests belegt:
+- **Migration `c3d4e5f6a7b8`**: Die Id-Sequenzen wurden nur nachgezogen, wenn es Altdaten zu
+  migrieren gab. Auf einer frischen Datenbank scheiterte dadurch der erste Insert ohne
+  explizite Id („duplicate key"). Neue Migration `d4e5f6a7b8c9` repariert bereits migrierte
+  Datenbanken idempotent.
+- **FEDAS-Nachtrag**: Kategorie und FEDAS-Code wurden nur nachgetragen, wenn die Variante
+  *nicht* über die EAN gefunden wurde — genau die migrierten Altartikel wären damit dauerhaft
+  ohne Kategorie geblieben.
+- **Regel 6 (GEWA)**: Ware an ein Lager ohne Verkauf (`lagerorte.verkauf = false`) bekommt
+  jetzt tatsächlich kein Eingangsdatum — weder am Wareneingang noch in
+  `bestand.aeltestes_eingangsdatum`. Die Reduktionsuhr (18/36 Monate) startet damit erst bei
+  Ankunft in einer Filiale.
+- **`delete_invoice()`**: `first_seen`/`last_seen` wurden aus dem Eingangsdatum neu berechnet,
+  der Import setzt sie aber aus dem Dokumentdatum — nach der GEWA-Änderung wären sie für
+  solche Varianten beim Löschen auf NULL gefallen. Jetzt beidseitig das Dokumentdatum.
+- Kleinere Korrekturen: `reused_products` zählte in derselben Rechnung neu angelegte Varianten
+  mit; `fedas_code` fehlte in der Längenprüfung (wäre erst in PostgreSQL als 503 aufgeschlagen);
+  zwei verbliebene hartcodierte deutsche UI-Texte (Regel 7); gespeicherte Spalteneinstellungen
+  der Artikelliste zeigten nach dem Wegfall der Spalte „Art. Nr." auf die falschen Spalten;
+  toter Code in `article_details.py` und `auth.py` entfernt.
+- **`app/static/js/i18n.js`**: Bei unveränderter Sprache wurde der Katalog erneut geholt und ein
+  zweites `sportfabrik:i18n-ready` gesendet. Weil `session.js` direkt nach dem Laden die
+  Kontosprache meldet, holte jede Seite ihren Katalog doppelt und ihre Daten dreifach
+  (gemessen; jetzt 1× bzw. 2×) — im Ladennetz spürbar.
+- **Neue Tests**: `tests/test_lagerbewegungen.py` (10 Tests: Zugang, Bestand je Filiale,
+  ältestes Eingangsdatum, GEWA-Regel, Neuberechnung beim Löschen — diese Kernlogik aus Regel 2
+  hatte bis dahin keinen einzigen Test) und zwei Katalogtests in `tests/test_i18n.py`, die Keys
+  und Platzhalter aller drei Sprachen vergleichen. Gesamtsuite: 145 bestandene Tests.
+
+**Offene Punkte aus dem Review** (bewusst nicht im Review-Commit geändert, siehe Abschnitt 9):
+- `dokumente.dokumentnummer` ist **global** eindeutig. Zwei verschiedene Lieferanten dürfen
+  dieselbe Belegnummer verwenden — spätestens mit dem zweiten Lieferanten in Phase B muss
+  daraus `UNIQUE (lieferant_id, dokumentnummer)` werden (inkl. Duplikatsprüfung im Importer).
+- Regel 5 („EAN ist optional") gilt im Datenmodell und im Importer, **nicht** aber in
+  `parser.py`/`corrections.py`: dort ist die EAN ein Pflichtfeld, eine Position ohne EAN
+  lässt sich nicht importieren. Für INTERSPORT-Rechnungen bisher folgenlos (dort hat jede
+  Zeile eine EAN); vor manueller Erfassung bzw. weiteren Lieferanten zu klären.
+- Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
+  angemeldeten Konto die Dokumente **aller** Filialen. Ob Regel 9 („Admin/Zentrale
+  filialübergreifend") auch das Lesen einschränken soll, ist eine fachliche Frage an Fabian.
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*

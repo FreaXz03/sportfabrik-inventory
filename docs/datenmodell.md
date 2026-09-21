@@ -197,7 +197,11 @@ und verweisendem Dokument. Ersetzt die frühere implizite Preishistorie über
 ### `dokumente`
 Verallgemeinert die frühere `invoices`-Tabelle auf alle Dokumenttypen aus D6
 (Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `dokumentnummer`
-und `datei_hash` sind eindeutig — verhindert Doppelimporte. `lagerort_id` ist
+und `datei_hash` sind eindeutig — verhindert Doppelimporte. **Offener Punkt:**
+`dokumentnummer` ist *global* eindeutig, nicht je Lieferant. Solange nur
+INTERSPORT liefert, ist das folgenlos; mit dem zweiten Lieferanten (Phase B)
+muss daraus `UNIQUE (lieferant_id, dokumentnummer)` werden, sonst lehnt der
+Import eine fremde Rechnung mit zufällig gleicher Belegnummer ab. `lagerort_id` ist
 die Zielfiliale (aktuell: die beim Upload aktive Filiale des hochladenden
 Kontos — automatische Erkennung aus der Lieferadresse folgt in Phase B).
 `ocr_verwendet` markiert Dokumente, die mangels Textebene per Tesseract-OCR
@@ -209,6 +213,12 @@ je Dokument z. B. bei Teillieferungen). `status` unterscheidet `erwartet`
 (nur bei Auftragsbestätigungen — noch keine Bestandsbuchung, Regel 3) von
 `eingetroffen` (Ware ist da, `lagerbewegungen`/`bestand` werden geschrieben).
 INTERSPORT-Rechnungen sind immer `eingetroffen`.
+
+`eingangsdatum` folgt Regel 6: Bei einer Filiale (`lagerorte.verkauf = true`)
+ist es das Rechnungsdatum, bei einem Lager ohne Verkauf (GEWA) bleibt es
+**leer** und wird erst bei Ankunft in einer Filiale gesetzt — die
+Reduktionsuhr (18/36 Monate) soll nicht schon im Zwischenlager laufen.
+Dasselbe gilt für `bestand.aeltestes_eingangsdatum`.
 
 ### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
 Eine Zeile je Position eines Wareneingangs — verallgemeinert die frühere
@@ -279,6 +289,7 @@ oben):
 | `a1b2c3d4e5f6` | Neue Tabellen `lagerorte` (SF1-SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n); `users.role` um `admin` erweitert; bestehende Benutzer auf SF1 zugeordnet |
 | `b2c3d4e5f6a7` | `users.language` (DE/FR/EN, Default `de`) inkl. Check-Constraint |
 | `c3d4e5f6a7b8` | Neues Datenmodell (Phase A Punkt 3): `lieferanten`, `kategorien`, `artikel`, `varianten`, `preise`, `dokumente`, `wareneingaenge`, `wareneingang_positionen` (+`_quelle`), `lagerbewegungen`, `bestand`; vollständige Datenmigration der Altdaten; `article_notes.product_id` → `artikel_id` |
+| `d4e5f6a7b8c9` | Reparatur: Id-Sequenzen der neuen Tabellen auf `MAX(id)` setzen. `c3d4e5f6a7b8` hat sie in seiner ersten Fassung nur nachgezogen, wenn es Altdaten gab — auf einer frischen Datenbank scheiterte dadurch der erste Insert ohne explizite Id. Idempotent, nur PostgreSQL, auf einer korrekten Datenbank ein No-Op |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start
