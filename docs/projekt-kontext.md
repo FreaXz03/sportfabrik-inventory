@@ -79,7 +79,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D6 | Dokumente | Es kommen Rechnungen, Lieferscheine **und Auftragsbestätigungen**; weitere Beispiele werden laufend nachgereicht. **Bestand wird erst gebucht, wenn die Ware eingetroffen ist** |
 | D7 | Einkaufspreis | **Optional** speichern, falls im Dokument vorhanden — keine Priorität |
 | D8 | Rechte | Mitarbeiter dürfen vorerst **alles ausser Dokumente hochladen/bearbeiten**. Feinere Rechte später |
-| D9 | **Keine KI / keine externen Dienste** | Alle Dokumente werden **lokal auf dem eigenen Server** erkannt — keine Weitergabe an Drittanbieter, keine KI-Extraktion |
+| D9 | **Belegdaten bleiben lokal** | Rechnungen, Lieferscheine und Auftragsbestätigungen werden **lokal auf dem eigenen Server** von eigenen Parsern gelesen — keine Weitergabe an Drittanbieter, keine KI-Extraktion. Ausserhalb der Belegverarbeitung ist KI erlaubt, auch extern (präzisiert 22.09.2026; vorher galt „keine KI, keine externen Dienste" für alles) |
 | D10 | EAN | EAN muss **nachträglich erfassbar** sein. Wird nie eine nachgetragen, **generiert das System eine interne EAN** (inkl. Etikett) |
 | D11 | Externe Standorte | Zwei Verarbeitungsstellen (GEWA, VEBO) und ein externes Lager (Dietikon) → je ein eigener Lagerort ohne Verkauf, Ware wird von dort an Filialen umgelagert |
 | D12 | Chris Sports | „Preis“ auf deren Dokumenten = **UVP** (Rabatt 70 % → EK = 30 % des UVP) |
@@ -142,7 +142,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 
 ### Erkenntnisse & Konsequenzen
 
-1. **Jedes Lieferanten-Layout ist anders** — 6 Beispiele, 6 Layouts, weitere folgen. Wegen D9 (keine KI) → **regelbasierte Erkennung, komplett lokal** (siehe 8.4):
+1. **Jedes Lieferanten-Layout ist anders** — 6 Beispiele, 6 Layouts, weitere folgen. Wegen D9 (Belegdaten bleiben lokal) → **regelbasierte Erkennung, komplett lokal** (siehe 8.4):
    - **Lieferanten-Erkennung** automatisch über Merkmale im Dokument (MwSt.-Nr., Firmenname, GLN, Tabellenkopf).
    - **Ein Parser pro Layout** als Plug-in; wiederkehrende Muster (Tabelle mit Kopfzeile, Farbe/Grösse in Folgezeile, Grössen-Matrix) als gemeinsame Bausteine, damit ein neues Layout meist nur eine kleine Konfiguration braucht.
    - **Ehrliche Einschränkung:** Ein Layout, das das System noch nie gesehen hat, kann ohne KI nicht automatisch gelesen werden. Ablauf dann: Dokument wird als „unbekanntes Layout“ markiert → Positionen manuell erfassen (Kopfdaten vorausgefüllt) → Beispiel an Fabian/Entwicklung → Parser ergänzen. Je mehr Beispiele, desto seltener passiert das.

@@ -53,11 +53,16 @@ Installiert werden diese Plugins:
 
 Die ersten sieben laufen vollständig im Container. Die letzten beiden nicht:
 `context7` holt Dokumentation von einem externen Dienst, `claude-mem` überträgt
-Sitzungsdaten an cmem.ai und liest von dort zurück. Das ist eine **bewusste
-Ausnahme von Regel 1** in `CLAUDE.md`, ausdrücklich so gewünscht. Für das
-Produkt selbst gilt Regel 1 unverändert — die Dokumenterkennung der
-Warenwirtschaft bleibt rein lokal. Wer die Ausnahme nicht will, streicht
-`context7` und den zweiten `install_marketplace`-Aufruf aus dem Skript.
+Sitzungsdaten an cmem.ai und liest von dort zurück. Regel 1 in `CLAUDE.md`
+erlaubt das: sie verlangt lokale Verarbeitung für **Belegdaten**, nicht für die
+Entwicklungswerkzeuge.
+
+Eine Einschränkung bleibt aber bestehen: `claude-mem` überträgt, was die Session
+anfasst. Wer in einer Session mit echten Belegen aus `uploads/` oder
+`Rechnungen/` arbeitet — etwa beim Bau eines neuen Parsers —, schickt deren
+Inhalte mit. Das ist derselbe Punkt wie bei Graphify ohne `--code-only`. Für
+solche Sessions `claude-mem` deaktivieren (`/plugin`), oder gleich `context7`
+und den zweiten `install_marketplace`-Aufruf aus dem Skript streichen.
 
 **Nicht dabei:**
 

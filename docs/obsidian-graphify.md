@@ -11,8 +11,10 @@ tree-sitter (AST) — kein Sprachmodell, kein API-Key.
 
 ## Harte Regel: immer `--code-only`
 
-Das folgt direkt aus Regel 1 der `CLAUDE.md` („Keine KI, keine externen
-Dienste") und ist der wichtigste Punkt auf dieser Seite.
+Das folgt direkt aus Regel 1 der `CLAUDE.md` („Belegdaten bleiben lokal") und
+ist der wichtigste Punkt auf dieser Seite. Dass KI ausserhalb der
+Belegverarbeitung erlaubt ist, ändert daran nichts: hier geht es um genau die
+Belege.
 
 Nur für Quellcode ist Graphify vollständig lokal. PDFs, Bilder und
 Office-Dokumente schickt es zur semantischen Analyse an ein Sprachmodell. Auf

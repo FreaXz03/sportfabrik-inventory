@@ -11,7 +11,7 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 
 ## Harte Regeln
 
-1. **Keine KI, keine externen Dienste.** Dokumenterkennung läuft vollständig lokal (PyMuPDF, Tesseract, OpenCV o. ä.). Keine Cloud-APIs, keine Daten verlassen den Server. Frontend ohne externe CDNs (muss im Ladennetz ohne Internet laufen). Gilt auch für Entwicklungswerkzeuge: Graphify nur mit `--code-only` laufen lassen, sonst gehen Rechnungen aus `uploads/` bzw. `Rechnungen/` an ein Sprachmodell (siehe `docs/obsidian-graphify.md`).
+1. **Belegdaten bleiben lokal — sonst ist KI erlaubt.** Rechnungen, Lieferscheine und Auftragsbestätigungen werden von **eigenen Parsern** gelesen, die vollständig auf dem Server laufen (PyMuPDF, Tesseract, OpenCV o. ä.): kein Sprachmodell, kein Cloud-Dienst bekommt Belegdaten zu sehen, und ein unbekanntes Layout wird gemeldet statt geraten. Ausserhalb der Belegverarbeitung ist KI zulässig, auch extern. Entwicklungswerkzeuge nach demselben Kriterium: Graphify nur mit `--code-only` laufen lassen, sonst gehen Rechnungen aus `uploads/` bzw. `Rechnungen/` an ein Sprachmodell (siehe `docs/obsidian-graphify.md`). Unabhängig von KI bleibt das Frontend **ohne externe CDNs** — es muss im Ladennetz ohne Internet laufen.
 2. **Bestand nie direkt überschreiben** — jede Änderung ist eine Zeile in `lagerbewegungen` (Zugang, Verkauf, Ausbuchung, Korrektur, Umlagerung). Bestand wird daraus abgeleitet bzw. konsistent mitgeführt.
 3. **Bestand erst buchen, wenn Ware eingetroffen ist** — Auftragsbestätigungen erzeugen nur einen *erwarteten* Wareneingang.
 4. **Artikelstamm ist filialübergreifend**, Bestand / Wareneingänge / Reduktionen sind filialbezogen (`lagerort_id`).
