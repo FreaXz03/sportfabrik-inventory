@@ -118,9 +118,15 @@
       });
       const ergebnis = await antwort.json();
       if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('wareneingaenge.load_error'));
-      const meldung = ergebnis.status === 'eingetroffen'
+      let meldung = ergebnis.status === 'eingetroffen'
         ? t('wareneingaenge.confirmed_complete')
         : t('wareneingaenge.confirmed_partial', { offen: ergebnis.offene_positionen });
+      // Mehr eingetroffen als erwartet: gebucht wird trotzdem, gesagt wird es
+      // aber - sonst merkt es niemand.
+      const mehrlieferungen = ergebnis.mehrlieferungen || [];
+      if (mehrlieferungen.length) {
+        meldung += ' ' + t('wareneingaenge.over_delivery', { anzahl: mehrlieferungen.length });
+      }
       // Erst neu laden, dann melden: das Neuladen ersetzt diesen Abschnitt
       // samt seiner Rückmeldungszeile, die Meldung gehört also in die
       // Seitenzeile, die stehen bleibt.

@@ -145,6 +145,7 @@
   "wareneingaenge.saving": "Comptabilisation …",
   "wareneingaenge.confirmed_complete": "Livraison complète comptabilisée.",
   "wareneingaenge.confirmed_partial": "Livraison partielle comptabilisée — {offen} position(s) restent ouvertes.",
+  "wareneingaenge.over_delivery": "Attention : pour {anzahl} position(s), il est arrivé plus que prévu. La quantité réelle a été comptabilisée — merci de vérifier.",
   "wareneingaenge.quantity_label": "Position {position} : quantité reçue maintenant",
 
   "preview.invoice_heading": "Facture {number}",

@@ -196,6 +196,10 @@ def bestaetige_ankunft(
     `mengen` bildet Positions-Id → jetzt angekommene Menge ab. Nicht genannte
     Positionen bleiben unangetastet. Der Wareneingang gilt erst als
     `eingetroffen`, wenn keine Position mehr offen ist (D22).
+
+    Kommt *mehr* an als erwartet, wird die tatsächliche Menge gebucht (der
+    Bestand ist, was physisch da ist) und in `mehrlieferungen` gemeldet -
+    bestätigt am 22.09.2026, siehe docs/projekt-kontext.md Abschnitt 10.
     """
     with session_factory() as session, session.begin():
         if session.bind.dialect.name == "postgresql":
@@ -249,9 +253,23 @@ def bestaetige_ankunft(
             )
         )
 
+        mehrlieferungen = []
         for position_id, menge in gebucht.items():
             position = positionen[position_id]
             position.menge_eingetroffen = (position.menge_eingetroffen or 0) + menge
+            # Gemessen wird am Gesamtstand der Position, nicht an dieser einen
+            # Buchung: über die erwartete Menge hinaus kommt man auch mit einer
+            # Nachlieferung.
+            erwartet = position.menge or 0
+            if position.menge_eingetroffen > erwartet:
+                mehrlieferungen.append(
+                    {
+                        "position_id": position.id,
+                        "menge_erwartet": _zahl(erwartet),
+                        "menge_eingetroffen": _zahl(position.menge_eingetroffen),
+                        "menge_zuviel": _zahl(position.menge_eingetroffen - erwartet),
+                    }
+                )
             buche_zugang(
                 session,
                 lagerort_id=wareneingang.lagerort_id,
@@ -292,6 +310,7 @@ def bestaetige_ankunft(
             "status": wareneingang.status,
             "gebuchte_positionen": len(gebucht),
             "offene_positionen": len(offen),
+            "mehrlieferungen": mehrlieferungen,
             "eingangsdatum": wareneingang.eingangsdatum.isoformat()
             if wareneingang.eingangsdatum
             else None,

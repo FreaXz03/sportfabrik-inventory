@@ -145,6 +145,7 @@
   "wareneingaenge.saving": "Booking …",
   "wareneingaenge.confirmed_complete": "Fully arrived and booked.",
   "wareneingaenge.confirmed_partial": "Partial delivery booked — {offen} line(s) remain open.",
+  "wareneingaenge.over_delivery": "Warning: {anzahl} line(s) arrived in a larger quantity than expected. The actual quantity was booked — please check.",
   "wareneingaenge.quantity_label": "Line {position}: quantity arrived now",
 
   "preview.invoice_heading": "Invoice {number}",

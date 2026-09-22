@@ -268,7 +268,7 @@ Quelle: Fabians direkte Antworten, zusätzlich im Main-Vault unter „Sportfabri
 - **Leserechte:** Mitarbeiter und Filialleiter dürfen Dokumente und Bestände aller Filialen sehen. Schreibrechte bleiben unverändert.
 - **Negativer Bestand:** Im Kassensystem mit Warnung erlauben; in einem späteren Onlineshop blockieren. Keine allgemeine Freigabe für andere Ausbuchungsarten.
 - **Umlagerung:** Die empfangende Filiale bucht die Ware.
-- **Mehrlieferung:** Warnung anzeigen, Buchung weiterhin zulassen. Die Warnung ist noch umzusetzen.
+- **Mehrlieferung:** Warnung anzeigen, Buchung weiterhin zulassen. Umgesetzt als Phase C, Teilaufgabe C1.
 - **Standorte:** GEWA und VEBO verarbeiten/entpacken Ware; Dietikon ist ein reines externes Lager ohne Verarbeitung.
 - **Etikettenformat:** Fabian reicht die Informationen am 23.09.2026 nach.
 - **Kassenschnittstelle:** Noch keine Rückmeldung von Intersport; Fabian ergänzt Neuigkeiten, sobald vorhanden.
@@ -342,7 +342,7 @@ Abhängigkeit und Risiko — eine Teilaufgabe = ein Commit):
 
 | # | Teilaufgabe | Status |
 |---|---|---|
-| C1 | **Warnung bei Mehrlieferung**: kommt mehr an als erwartet, warnt das System und bucht trotzdem (bestätigt 22.09.2026). Rest aus B5, klein und fachlich entschieden — deshalb zuerst | offen |
+| C1 | **Warnung bei Mehrlieferung**: kommt mehr an als erwartet, warnt das System und bucht trotzdem (bestätigt 22.09.2026). Rest aus B5, klein und fachlich entschieden — deshalb zuerst | ✅ abgeschlossen |
 | C2 | **Bestandsansicht je Lagerort**: aktueller Bestand pro Variante × Lagerort, lesbar für **alle** Filialen (Leserechte 22.09.2026), mit eigener Sicht auf Ware an einem externen Standort (ohne Eingangsdatum). Bisher zeigt keine Seite den Bestand — ohne sie lässt sich alles Folgende nicht kontrollieren | offen |
 | C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026) | offen |
 | C4 | **Umlagerung**: externer Standort → Filiale setzt das Eingangsdatum erstmals (D13), Filiale → Filiale behält es und startet die Uhr der Zielfiliale nicht neu (D17, 22.09.2026). Gebucht wird beim Empfang durch die **empfangende** Filiale (F5). Offen dazu: der Fall, dass die Zielfiliale die Artikelnummer noch nie hatte (Abschnitt 10) | offen |
@@ -351,6 +351,23 @@ Abhängigkeit und Risiko — eine Teilaufgabe = ein Commit):
 Alle fünf buchen über dieselbe Stelle wie der Zugang (`buche_zugang()` bzw.
 sein Gegenstück) und dieselbe Datenbank-Sperre, damit die Wege nicht
 auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
+
+**Details zu Phase C, Teilaufgabe C1 — Warnung bei Mehrlieferung** (siehe
+`docs/architektur.md`, Abschnitt „Erwartet → eingetroffen"):
+- `bestaetige_ankunft()` bucht weiterhin die tatsächliche Menge und gibt neu
+  `mehrlieferungen` zurück: je betroffene Position die Positions-Id, die
+  erwartete und die eingetroffene Menge sowie die Differenz. Mengen als Text
+  wie überall (kein `float`).
+- Verglichen wird der **Gesamtstand** der Position (`menge_eingetroffen`) mit
+  der erwarteten Menge, nicht die einzelne Buchung — sonst bliebe die
+  Mehrlieferung unbemerkt, wenn sie erst mit einer Nachlieferung entsteht.
+- Die Seite `/wareneingaenge` hängt einen Warnsatz an die Erfolgsmeldung
+  („bei {anzahl} Position(en) ist mehr eingetroffen als erwartet"), neuer
+  Übersetzungs-Key in DE/FR/EN (Regel 7). Blockiert wird nichts.
+- Tests: drei neue Fälle in `tests/test_wareneingang_ankunft.py` (Mehrmenge
+  gebucht und gemeldet, genaue Lieferung meldet nichts, Mehrlieferung entsteht
+  erst durch die Nachlieferung). Gesamtsuite: 421 bestandene Tests
+  (vorher 418).
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
@@ -555,9 +572,10 @@ D21, D22; siehe `docs/architektur.md`, Abschnitt „Erwartet → eingetroffen"):
   INTERSPORT-Rechnungslayout kennt (weitere Layouts: Phase E). Der Weg
   funktioniert also erst mit den nächsten Parsern oder mit der manuellen
   Erfassung (B6) vollständig.
-- **Offen geblieben:** Kommt *mehr* an als bestellt, bucht das System es
+- ~~**Offen geblieben:** Kommt *mehr* an als bestellt, bucht das System es
   (Bestand = was physisch da ist). Am 22.09.2026 bestätigt: zusätzlich warnen,
-  Buchung weiterhin zulassen; die Warnung ist noch umzusetzen.
+  Buchung weiterhin zulassen; die Warnung ist noch umzusetzen.~~ — erledigt mit
+  Phase C, Teilaufgabe C1 (siehe unten).
 
 **Details zu Phase B, Teilaufgabe B6 — manuelle Erfassung mit Scanner**
 (D23, D27, Regel 3/5/6/9/10; siehe `docs/architektur.md`, Abschnitt „Ware von

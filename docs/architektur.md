@@ -179,6 +179,14 @@ weiter `erwartet` (D22) — so ist fehlende Ware sichtbar; eine Nachlieferung
 wird einfach nochmals bestätigt. Erst wenn keine Position mehr offen ist,
 wechselt der Status auf `eingetroffen`.
 
+Kommt **mehr** an als erwartet, wird die tatsächliche Menge gebucht — der
+Bestand ist, was physisch im Laden steht — und die Antwort meldet die
+betroffenen Positionen in `mehrlieferungen` (Positions-Id, erwartete Menge,
+eingetroffene Menge, Differenz). Die Seite hängt daraus einen Warnsatz an die
+Erfolgsmeldung. Gemessen wird am Gesamtstand der Position, nicht an der
+einzelnen Buchung: über die erwartete Menge hinaus kommt man auch mit einer
+Nachlieferung (bestätigt 22.09.2026, Phase C, Teilaufgabe C1).
+
 Zwei Dinge sind bewusst gleich gehalten: Import und Ankunft buchen über
 **dieselbe** Funktion (`buche_zugang`), und beide nehmen dieselbe
 `pg_advisory_xact_lock`, damit sich Zugänge zwischen Arbeitsplätzen nicht

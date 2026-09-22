@@ -145,6 +145,7 @@
   "wareneingaenge.saving": "Wird gebucht …",
   "wareneingaenge.confirmed_complete": "Vollständig eingetroffen und gebucht.",
   "wareneingaenge.confirmed_partial": "Teillieferung gebucht — {offen} Position(en) bleiben offen.",
+  "wareneingaenge.over_delivery": "Achtung: bei {anzahl} Position(en) ist mehr eingetroffen als erwartet. Gebucht wurde die tatsächliche Menge — bitte prüfen.",
   "wareneingaenge.quantity_label": "Position {position}: jetzt eingetroffene Menge",
 
   "preview.invoice_heading": "Rechnung {number}",
