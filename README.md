@@ -109,6 +109,9 @@ Dieses README ist der Schnelleinstieg. Ausführlichere Dokumentation liegt in
 - [`docs/obsidian-graphify.md`](docs/obsidian-graphify.md) — Wissensgraph
   des Codes mit Graphify erzeugen und in Obsidian öffnen; warum
   `graphify-out/` nicht ins Repo gehört
+- [`docs/claude-cloud-setup.md`](docs/claude-cloud-setup.md) — Claude-Code-
+  Cloud-Sessions einrichten: Plugins über das Setup-Skript der Umgebung,
+  Projekt-Abhängigkeiten über einen SessionStart-Hook
 - [`docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx`](docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx) —
   kurze, nicht-technische Zusammenfassung für die Geschäftsleitung (kein
   Ersatz für die obigen technischen Dokumente)
@@ -172,6 +175,8 @@ migrations/          Alembic-Migrationen (siehe docs/SERVER-SETUP.md für den Ab
 scripts/
   manage_users.py    CLI zum Anlegen/Entfernen von Benutzern (Mitarbeiter/Filialleiter/Admin) und ihrer Filialzuordnung
   backup_inventory.py Geprüftes Backup von Datenbank und Original-PDFs (siehe docs/BACKUPS.md)
+  claude-cloud-setup.sh   Plugins für Claude-Code-Cloud-Sessions (siehe docs/claude-cloud-setup.md)
+  claude-session-deps.sh  Projekt-Abhängigkeiten in Cloud-Sessions (siehe docs/claude-cloud-setup.md)
 docs/                Ausführliche Dokumentation (siehe oben) und Deployment-Anleitungen
 tests/               pytest-Suite, ein Testmodul je Fachbereich
 ```
