@@ -1,7 +1,7 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
 Stand: 2026-09-21 (Rev. 6 — zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon; Eingangsdatum startet erst in einer Filiale) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
-Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `ea5c7ac`).
+Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `529674e`; Phase-B-Abschluss auf Branch `claude/awesome-lamport-tivaj9`).
 
 ---
 
@@ -155,14 +155,18 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 
 ## 7. Abgleich Zielbild ↔ aktuelles Repo
 
+Momentaufnahme nach Abschluss von **Phase B** (22.09.2026). Massgeblich für
+den Stand der Umsetzung ist Abschnitt 11; diese Tabelle fasst ihn nur
+gegenüber dem Zielbild zusammen.
+
 | Bereich | Heute im Repo | Lücke zum Ziel |
 |---|---|---|
-| Upload & Parsing | ✅ Intersport-PDF, OCR (Tesseract, lokal), Vorschau, Korrektur, Stapel, **Parser-Registry mit Lieferanten-/Dokumenttyp-Erkennung** (Phase B, Teilaufgabe 1) | Bisher nur 1 Layout registriert (weitere in Phase E); keine Grössen-Matrix; OCR für farbige Tabellen-Scans zu schwach; erwartet→eingetroffen, Lagerort aus Lieferadresse und manuelle Erfassung offen |
-| Manuelle Erfassung | ❌ | neu |
-| Artikelstamm | ✅ `products` (EAN eindeutig), Varianten-Gruppierung zur Laufzeit | Kein Modell↔Variante; **EAN-Pflicht blockiert Artikel ohne EAN**; keine Kategorien |
-| Preise | ✅ UVP je Rechnungsposition | EK optional, Reduktionsstufen fehlen |
-| Lagerbestand | ❌ | neu (Lagerbewegungen, Lagerdauer, externe Lagerorte) |
-| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche | Bestand/Wareneingänge/Reduktionen noch nicht filialbezogen (Phase B/C) |
+| Upload & Parsing | ✅ Intersport-PDF, OCR (Tesseract, lokal), Vorschau, Korrektur, Stapel, **Parser-Registry mit Lieferanten-/Dokumenttyp-Erkennung** (B1), **Lagerort aus der Lieferadresse** (B4), **erwartet→eingetroffen** (B5) | Bisher nur 1 Layout registriert (weitere in Phase E); keine Grössen-Matrix; OCR für farbige Tabellen-Scans zu schwach |
+| Manuelle Erfassung | ✅ Seite `/erfassen` mit Scanner, ohne Beleg (B6) — inkl. Kategorie (B8) und Etikettendruck (B7) | — |
+| Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
+| Preise | ✅ UVP und EK je Wareneingangsposition (EK optional, Regel 10), Preisverlauf je Variante, Reduktionsstufe als Baustein (`app/services/reduktion.py`, genutzt auf dem Etikett) | Reduktions-Hinweise als eigene Ansicht und die zentrale Empfehlung fehlen → Phase D |
+| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung | Verkauf, Ausbuchen, Umlagerung und Korrekturen fehlen → Phase C. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
+| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Die **Ansichten** (Dashboard, Rechnungsliste, Artikeldetails) zeigen weiter alle Filialen — fachlich noch zu klären (siehe „Offene Punkte aus dem Review") |
 | Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
 | Deployment | Docker, 1 Laden-Server | Zentraler Server Volketswil, Zugriff aus 4 Filialen |
@@ -258,9 +262,11 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 5. **Ausbuchen per Scan** (Phase C): blockieren, wenn der Bestand dadurch negativ würde, oder mit Warnung zulassen?
 6. **Umlagerung GEWA → Filiale** (Phase C): bucht die abholende Filiale selbst, oder die GEWA/Zentrale?
 7. **Mehr geliefert als bestellt:** einfach buchen (heutiges Verhalten) oder warnen?
+8. **FEDAS-Codes aus der Praxis lernen?** Wird für einen Artikel mit unbekanntem FEDAS-Code von Hand eine Kategorie gewählt (B8), kennt das System damit faktisch die Zuordnung dieses Codes. Soll daraus ein Vorschlag für `app/core/fedas.py` werden (z. B. eine Liste „diese Codes wurden von Hand so zugeordnet"), oder bleibt die Tabelle bewusst nur das, was aus echten Rechnungen bestätigt ist? Heute: bewusst nur Bestätigtes, jede Wahl von Hand gilt nur für ihren Artikel.
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
+- **FEDAS-Codes bestätigen**: 6 der 11 Sportbereiche und die Produktart-Ziffern für Velo/Food fehlen noch in `app/core/fedas.py` (siehe Abschnitt 11). Bis dahin wird in diesen Fällen von Hand gewählt.
 - Funk-Scanner: 1 Testgerät beschaffen.
 
 ## 11. Stand der Umsetzung
