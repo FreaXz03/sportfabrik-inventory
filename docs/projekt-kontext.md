@@ -96,7 +96,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D23 | Manuelle Erfassung, Pflichtfelder *(21.09.2026)* | **Marke + Bezeichnung + Menge + UVP** genügen. Alles andere (Lieferant, Kategorie, Farbe, Grösse, EAN) ist optional |
 | D24 | Interne EAN *(21.09.2026)* | Wird **auf Knopfdruck** erzeugt (wenn ein Etikett gebraucht wird), nicht automatisch beim Import |
 | D25 | Inhalt des Etiketts *(21.09.2026)* | **Jahrgang** (Jahr des Wareneingangs), **Lieferant**, **UVP** und die **Reduktionsstufe** (30 / 50 / 70 %). Ob zusätzlich der Barcode aufs Etikett soll, ist noch offen (siehe Abschnitt 10) |
-| D26 | Wer auf welchen Lagerort bucht *(21.09.2026, bestätigt)* | **Wer Dokumente hochladen darf, darf auf jeden Lagerort buchen** (eigene Filiale zuoberst). Das Ziel bestimmt der Beleg über seine Lieferadresse, nicht die gerade aktive Filiale — sonst liesse sich eine Lieferung an eine andere Filiale oder an einen externen Standort gar nicht erfassen. Filialwechsel und Leseansichten bleiben bei den zugewiesenen Filialen |
+| D26 | Wer auf welchen Lagerort bucht *(21.09.2026, bestätigt)* | **Wer Dokumente hochladen darf, darf auf jeden Lagerort buchen** (eigene Filiale zuoberst). Das Ziel bestimmt der Beleg über seine Lieferadresse, nicht die gerade aktive Filiale — sonst liesse sich eine Lieferung an eine andere Filiale oder an einen externen Standort gar nicht erfassen. Filialwechsel bleibt bei den zugewiesenen Filialen; Lesen ist gemäss Bestätigung vom 22.09.2026 für alle Filialen erlaubt |
 | D27 | Ware ohne Dokument *(21.09.2026)* | Manuelle Erfassung ist ein **direkter Wareneingang ohne Beleg** — es entsteht kein Dokument und keine Belegnummer. Gebucht wird sofort auf die gewählte Filiale; nachvollziehbar bleibt alles über das Journal `lagerbewegungen` (wer, wann, wie viel) |
 
 ## 5. Anforderungen
@@ -258,10 +258,24 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm). Bis das feststeht, ist die Grösse einstellbar; Voreinstellung 50 × 30 mm (Teilaufgabe B7).
 2. ~~**Barcode aufs Etikett?**~~ Vorläufig entschieden und so gebaut (B7): **ja** — ohne Strichcode bliebe genau der Artikel unscannbar, für den die interne EAN gedacht ist (D10). Falls das Etikett ihn doch nicht tragen soll, bitte melden.
 3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
-4. **Filialbezug beim Lesen:** Sollen Übersicht, Rechnungsliste und Artikeldetails nur die eigene Filiale zeigen? (Heute zeigen sie allen Konten alle Filialen; Regel 9 regelt nur das Schreiben.)
-5. **Ausbuchen per Scan** (Phase C): blockieren, wenn der Bestand dadurch negativ würde, oder mit Warnung zulassen?
-6. **Umlagerung GEWA → Filiale** (Phase C): bucht die abholende Filiale selbst, oder die GEWA/Zentrale?
-7. **Mehr geliefert als bestellt:** einfach buchen (heutiges Verhalten) oder warnen?
+4. **Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären. Für die Kasse und einen späteren Onlineshop ist sie bestätigt (siehe unten).
+
+### Bestätigte Antworten vom 22.09.2026
+
+Quelle: Fabians direkte Antworten, zusätzlich im Main-Vault unter „Sportfabrik Inventory Decisions“ festgehalten.
+
+- **Leserechte:** Mitarbeiter und Filialleiter dürfen Dokumente und Bestände aller Filialen sehen. Schreibrechte bleiben unverändert.
+- **Negativer Bestand:** Im Kassensystem mit Warnung erlauben; in einem späteren Onlineshop blockieren. Keine allgemeine Freigabe für andere Ausbuchungsarten.
+- **Umlagerung:** Die empfangende Filiale bucht die Ware.
+- **Mehrlieferung:** Warnung anzeigen, Buchung weiterhin zulassen. Die Warnung ist noch umzusetzen.
+- **Standorte:** GEWA und VEBO verarbeiten/entpacken Ware; Dietikon ist ein reines externes Lager ohne Verarbeitung.
+- **Etikettenformat:** Fabian reicht die Informationen am 23.09.2026 nach.
+- **Kassenschnittstelle:** Noch keine Rückmeldung von Intersport; Fabian ergänzt Neuigkeiten, sobald vorhanden.
+
+Diese Antworten sind fachliche Entscheidungen, keine Bestätigung neu implementierter Funktionen.
+
+### Weitere offene Produktfrage
+
 8. **FEDAS-Codes aus der Praxis lernen?** Wird für einen Artikel mit unbekanntem FEDAS-Code von Hand eine Kategorie gewählt (B8), kennt das System damit faktisch die Zuordnung dieses Codes. Soll daraus ein Vorschlag für `app/core/fedas.py` werden (z. B. eine Liste „diese Codes wurden von Hand so zugeordnet"), oder bleibt die Tabelle bewusst nur das, was aus echten Rechnungen bestätigt ist? Heute: bewusst nur Bestätigtes, jede Wahl von Hand gilt nur für ihren Artikel.
 
 ### Laufend
@@ -513,8 +527,8 @@ D21, D22; siehe `docs/architektur.md`, Abschnitt „Erwartet → eingetroffen"):
   funktioniert also erst mit den nächsten Parsern oder mit der manuellen
   Erfassung (B6) vollständig.
 - **Offen geblieben:** Kommt *mehr* an als bestellt, bucht das System es
-  (Bestand = was physisch da ist). Ob das so bleiben oder eine Warnung geben
-  soll, ist mit Fabian zu klären.
+  (Bestand = was physisch da ist). Am 22.09.2026 bestätigt: zusätzlich warnen,
+  Buchung weiterhin zulassen; die Warnung ist noch umzusetzen.
 
 **Details zu Phase B, Teilaufgabe B6 — manuelle Erfassung mit Scanner**
 (D23, D27, Regel 3/5/6/9/10; siehe `docs/architektur.md`, Abschnitt „Ware von
@@ -806,3 +820,7 @@ einer, plus ein externes Lager.
   über seinen Namen erkannt und Dietikon nur über den Ortsnamen.
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*
+
+## Lokaler Abgleich am 22.09.2026
+
+Cloud-main `d1c6533` übernommen. Lokale Suite mit `DATABASE_URL=sqlite:// .venv/bin/pytest -q`: 415 bestanden, 20 übersprungen. Kein neuer PostgreSQL- oder Produktivtest. Codegraph mit `--code-only` frisch aufgebaut und lokal als HTML und Obsidian-Vault exportiert; Graphdateien bleiben gitignored. Bestätigte Antworten aus dem Main-Vault in Abschnitt 10 übernommen.
