@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.kategorien import seed_kategorien
 from app.core.lagerorte import seed_lagerorte
 from app.core.lieferanten import seed_lieferanten
-from app.core.models import Artikel, Base, Kategorie, Lagerort
+from app.core.models import Artikel, Base, Kategorie, Lagerort, Variante
 from app.services import importer
 from app.services.parsers import intersport
 from app.services.importer import import_invoice
@@ -151,3 +151,36 @@ def test_existing_category_is_not_overwritten_by_later_invoice(setup):
     with sessions() as s:
         artikel = s.scalar(select(Artikel).where(Artikel.lieferanten_artikelnr == "ABC123"))
         assert artikel.kategorie_id == original_kategorie_id
+
+
+def test_manual_category_survives_a_later_invoice(setup):
+    """Teilaufgabe B8: von Hand gewählt schlägt jeden Vorschlag - auch wenn
+    eine spätere Rechnung einen bekannten FEDAS-Code mitbringt."""
+    from app.services.kategorien import setze_kategorie
+
+    sessions, sf1_id, state = setup
+    state["items"] = [_fake_item(fedas_code="", supplier_article_no="ABC123", ean=None)]
+    _import(sessions, sf1_id)
+    with sessions() as s:
+        artikel = s.scalar(select(Artikel).where(Artikel.lieferanten_artikelnr == "ABC123"))
+        variante_id = s.scalar(
+            select(Variante.id).where(Variante.artikel_id == artikel.id)
+        )
+        von_hand = s.scalar(
+            select(Kategorie.id).where(
+                Kategorie.hauptgruppe == "Schuhe", Kategorie.sportbereich == "Running"
+            )
+        )
+        setze_kategorie(s, variante_id, von_hand)
+
+    state["invoice_number"] = "FEDAS-2"
+    state["items"] = [
+        _fake_item(fedas_code="224100", supplier_article_no="ABC123", ean=None, quantity="2")
+    ]
+    _import(sessions, sf1_id, pdf=b"%PDF-fedas-test-2")
+    with sessions() as s:
+        artikel = s.scalar(select(Artikel).where(Artikel.lieferanten_artikelnr == "ABC123"))
+        # Der Code vom Beleg wird nachgetragen, die Kategorie bleibt von Hand.
+        assert artikel.fedas_code == "224100"
+        assert artikel.kategorie_id == von_hand
+        assert artikel.kategorie_manuell is True

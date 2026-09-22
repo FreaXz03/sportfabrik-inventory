@@ -12,6 +12,7 @@
 
   let positionen = [];
   let lagerorte = [];
+  let kategorien = [];
   let busy = false;
   // Zuletzt gebuchter Wareneingang - dafür lassen sich die Etiketten drucken
   // (Teilaufgabe B7): erfassen, dann auszeichnen.
@@ -48,6 +49,13 @@
       : t('wareneingaenge.no_date_for_warehouse');
   }
 
+  function kategorieAuswahlFuellen(wert) {
+    window.SportfabrikKategorien.fuellen($('kategorie'), kategorien, {
+      leerText: t('erfassen.kategorie_none'),
+      wert: wert
+    });
+  }
+
   async function stammdatenLaden() {
     $('retry').hidden = true;
     $('status').textContent = '';
@@ -63,6 +71,10 @@
       const lieferanten = $('lieferant');
       lieferanten.replaceChildren(new Option(t('erfassen.supplier_none'), ''));
       for (const lieferant of daten.lieferanten || []) lieferanten.add(new Option(lieferant.name, lieferant.id));
+      // Kassenkategorie (Teilaufgabe B8): freiwillig - ohne Beleg gibt es
+      // keinen FEDAS-Code, der sie vorschlagen könnte.
+      kategorien = daten.kategorien || [];
+      kategorieAuswahlFuellen('');
       // Datum vom Server: die Kassenrechner im Laden gehen nicht immer richtig.
       if (daten.heute && !$('eingangsdatum').value) $('eingangsdatum').value = daten.heute;
       datumUmschalten();
@@ -76,6 +88,7 @@
     for (const id of TEXTFELDER) $(id).value = '';
     for (const id of ['uvp', 'ek']) $(id).value = '';
     $('menge').value = '1';
+    $('kategorie').value = '';
   }
 
   function vorschlagUebernehmen(variante) {
@@ -86,6 +99,9 @@
     // zwischen zwei Lieferungen ändern).
     if (variante.uvp) $('uvp').value = variante.uvp;
     if (variante.ek) $('ek').value = variante.ek;
+    // Bestehende Kategorie nur zeigen - gespeichert wird sie nicht neu, der
+    // Server überschreibt sie ohnehin nie.
+    if (variante.kategorie) $('kategorie').value = String(variante.kategorie.id);
     // Lieferant nur setzen, solange keiner gewählt ist: die Wahl gilt für den
     // ganzen Wareneingang, ein Scan soll sie nicht überschreiben.
     if (variante.lieferant && !$('lieferant').value) {
@@ -143,6 +159,7 @@
     const position = { menge: menge.replace(',', '.'), uvp: wert('uvp').replace(',', '.') };
     if (wert('ek')) position.ek = wert('ek').replace(',', '.');
     for (const id of TEXTFELDER) if (wert(id)) position[id] = wert(id);
+    if (wert('kategorie')) position.kategorie_id = Number(wert('kategorie'));
     return { position: position };
   }
 
@@ -155,6 +172,8 @@
       zeile.append(node('td', position.ean || '—', 'id'));
       zeile.append(node('td', position.menge + (position.einheit ? ' ' + position.einheit : '')));
       zeile.append(node('td', position.uvp));
+      const kategorie = kategorien.find((eintrag) => eintrag.id === position.kategorie_id);
+      zeile.append(node('td', window.SportfabrikKategorien.name(kategorie) || '—'));
       const knopf = node('button', t('erfassen.remove'), 'secondary');
       knopf.type = 'button';
       knopf.setAttribute('aria-label', t('erfassen.remove_label', { artikel: artikelName(position) }));
@@ -262,6 +281,7 @@
       datumUmschalten();
       const lieferanten = $('lieferant');
       if (lieferanten.options.length) lieferanten.options[0].textContent = t('erfassen.supplier_none');
+      kategorieAuswahlFuellen($('kategorie').value);
     });
   });
 })();

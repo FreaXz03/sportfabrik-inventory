@@ -68,7 +68,10 @@
                                         autocomplete="off"></label>
                          <label><span data-i18n="fields.supplier_article_no">Lief. Art. Nr.</span><input id="lieferanten_artikelnr"
                                         type="text" autocomplete="off" maxlength="100"></label>
+                         <label><span data-i18n="fields.kategorie">Kategorie</span><select id="kategorie"></select></label>
                     </div>
+                    <p class="muted" data-i18n="erfassen.kategorie_hint">Freiwillig – nötig nur für neue Artikel; eine bereits
+                         gesetzte Kategorie bleibt unverändert.</p>
                     <p class="muted" data-i18n="erfassen.required_hint">* Pflichtfeld</p>
                     <div class="filters">
                          <button id="add" type="submit" data-i18n="erfassen.add">Zur Liste hinzufügen</button>
@@ -89,6 +92,7 @@
                                    <th data-i18n="erfassen.table_ean">EAN</th>
                                    <th data-i18n="erfassen.table_quantity">Menge</th>
                                    <th data-i18n="erfassen.table_price">UVP</th>
+                                   <th data-i18n="fields.kategorie">Kategorie</th>
                                    <th data-i18n="erfassen.table_actions">Aktion</th>
                               </tr>
                          </thead>
@@ -108,6 +112,7 @@
           </section>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
+     <script src="/static/js/kategorien.js?v=1"></script>
      <script src="/static/js/erfassen.js?v=1"></script>
      <script src="/static/js/session.js?v=premium-1"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>

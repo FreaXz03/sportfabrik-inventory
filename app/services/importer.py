@@ -55,7 +55,9 @@ def _backfill_artikel(session, kategorie_cache, artikel, item):
     Läuft für jeden Artikel einer Rechnungsposition - auch wenn die Variante
     über ihre EAN gefunden wurde, denn genau die migrierten Altartikel haben
     noch keinen FEDAS-Code. Ein bereits gesetzter Wert wird nie überschrieben
-    („einmal pro Artikel, danach gemerkt").
+    („einmal pro Artikel, danach gemerkt") - das gilt besonders für eine von
+    Hand gewählte Kategorie (`artikel.kategorie_manuell`, Teilaufgabe B8):
+    sie ist gesetzt, also rührt der Import sie nicht an.
     """
     if not artikel.fedas_code and item.get("fedas_code"):
         artikel.fedas_code = item["fedas_code"]
@@ -68,8 +70,8 @@ def _backfill_artikel(session, kategorie_cache, artikel, item):
 def _resolve_kategorie_id(session, cache, fedas_code):
     """Kategorie-Vorschlag aus dem FEDAS-Code (siehe app/core/fedas.py), oder
     None, wenn der Code (noch) nicht zugeordnet ist bzw. fehlt - dann bleibt
-    artikel.kategorie_id leer (manuelle Auswahl folgt in einem späteren
-    Schritt von Phase B)."""
+    artikel.kategorie_id leer und die Kategorie wird auf der Artikelseite von
+    Hand gewählt (app/services/kategorien.py, Teilaufgabe B8)."""
     suggestion = suggest_kategorie(fedas_code)
     if suggestion is None:
         return None

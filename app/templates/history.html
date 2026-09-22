@@ -22,6 +22,25 @@
           <div id="articleExtras" hidden>
                <section class="panel">
                     <div class="detail-section-heading">
+                         <h2 data-i18n="kategorie.heading">Kassenkategorie</h2>
+                    </div>
+                    <p id="kategorieStatus" role="status" aria-live="polite" data-i18n="kategorie.loading">Kategorie wird
+                         geladen …</p>
+                    <div id="kategorieBox" hidden>
+                         <p id="kategorieWert"></p>
+                         <p id="kategorieHerkunft" class="muted"></p>
+                         <div class="filters">
+                              <label><span data-i18n="kategorie.select_label">Kategorie wählen</span><select
+                                             id="kategorieAuswahl"></select></label>
+                              <button type="button" id="kategorieSpeichern" data-i18n="kategorie.save">Kategorie
+                                   speichern</button>
+                         </div>
+                         <p class="muted" data-i18n="kategorie.hint">Gilt für alle Farben und Grössen dieses Artikels. Von Hand
+                              gewählt bleibt sie bestehen – kein späterer Beleg überschreibt sie.</p>
+                    </div>
+               </section>
+               <section class="panel">
+                    <div class="detail-section-heading">
                          <h2 data-i18n="etikett.heading">EAN &amp; Etikett</h2>
                     </div>
                     <p id="eanStatus" role="status" aria-live="polite" data-i18n="etikett.loading">EAN wird geladen …</p>
@@ -424,6 +443,8 @@
      <script src="/static/js/theme.js?v=i18n-1"></script>
      <script src="/static/js/article-details.js?v=i18n-1"></script>
      <script src="/static/js/etikett.js?v=1"></script>
+     <script src="/static/js/kategorien.js?v=1"></script>
+     <script src="/static/js/kategorie.js?v=1"></script>
 </body>
 
 </html>

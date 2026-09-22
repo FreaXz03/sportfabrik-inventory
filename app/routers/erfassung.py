@@ -21,6 +21,7 @@ from starlette.concurrency import run_in_threadpool
 from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import Lieferant
+from ..services.kategorien import liste_kategorien
 from ..services.lagerorte import list_wareneingang_lagerorte
 from ..services.manuelle_erfassung import (
     ErfassungRejected,
@@ -52,8 +53,9 @@ def api_stammdaten(
     session=Depends(get_session),
 ):
     """Auswahllisten für die Erfassung: buchbare Lagerorte (D26, eigene zuerst),
-    bekannte Lieferanten (optional, D23) und das heutige Datum vom Server -
-    die Kasse im Laden muss dafür keine richtige Uhr haben."""
+    bekannte Lieferanten und Kassenkategorien (beide optional, D23) und das
+    heutige Datum vom Server - die Kasse im Laden muss dafür keine richtige
+    Uhr haben."""
     lagerorte = list_wareneingang_lagerorte(session, user)
     lieferanten = session.scalars(select(Lieferant).order_by(Lieferant.name)).all()
     return {
@@ -71,6 +73,8 @@ def api_stammdaten(
         "lieferanten": [
             {"id": eintrag.id, "name": eintrag.name} for eintrag in lieferanten
         ],
+        # Kassenkategorien in der Reihenfolge der Kasse (Regel 8).
+        "kategorien": liste_kategorien(session),
         "heute": date.today().isoformat(),
     }
 
@@ -105,6 +109,8 @@ class ErfassungPosition(BaseModel):
     einheit: str | None = None
     lieferanten_artikelnr: str | None = None
     ek: str | None = None
+    # Kassenkategorie freiwillig gleich mitgeben (Teilaufgabe B8, D23).
+    kategorie_id: int | None = None
 
 
 class ErfassungBody(BaseModel):
