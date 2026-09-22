@@ -37,21 +37,35 @@ in das Feld **Setup script** kopieren. Das Skript ist bewusst eigenständig — 
 greift auf nichts aus dem Repo zu, weil die Reihenfolge von Klonen und
 Setup-Skript nicht garantiert ist.
 
-Installiert werden diese Plugins:
+Alles kommt aus einem einzigen Marktplatz:
+[`FreaXz03/claude-plugin-marketplace`](https://github.com/FreaXz03/claude-plugin-marketplace).
+Der bündelt die offiziellen Anthropic-Plugins und die aus fremden Repos an einer
+Stelle; bis auf `markitdown` verweist er per `git-subdir` auf die
+Original-Repos, die Plugins bleiben also von selbst aktuell.
 
-| Plugin | Marktplatz | Wofür |
-| --- | --- | --- |
-| `pyright-lsp` | offiziell | Typprüfung live, passend zu `pyrightconfig.json` |
-| `code-review` | offiziell | `/code-review` mit spezialisierten Agenten |
-| `commit-commands` | offiziell | `/commit`, `/commit-push-pr`, `/clean_gone` |
-| `claude-md-management` | offiziell | `CLAUDE.md` pflegen |
-| `security-guidance` | offiziell | Sicherheitshinweise beim Bearbeiten |
-| `frontend-design` | offiziell | Oberfläche, passend zu Vanilla JS/CSS |
-| `playwright` | offiziell | Browsersteuerung; Chromium ist vorinstalliert |
-| `context7` | offiziell | Bibliotheks-Dokumentation zur Hand |
-| `claude-mem` | `thedotmack` | Gedächtnis über Sessions hinweg |
+**Der Marktplatz und die dort verlinkten Quell-Repos müssen öffentlich sein.**
+Der Container hat keinen Git-Credential-Helper und kein `gh`; ein privates Repo
+scheitert mit `could not read Username`. Weil im Skript hinter jedem Aufruf ein
+`|| true` steht, fällt das sonst nicht auf — das Plugin fehlt einfach.
 
-Die ersten sieben laufen vollständig im Container. Die letzten beiden nicht:
+Installiert werden:
+
+| Plugin | Wofür |
+| --- | --- |
+| `pyright-lsp` | Typprüfung live, passend zu `pyrightconfig.json` |
+| `code-review` | `/code-review` mit spezialisierten Agenten |
+| `commit-commands` | `/commit`, `/commit-push-pr`, `/clean_gone` |
+| `claude-md-management` | `CLAUDE.md` pflegen |
+| `security-guidance` | Sicherheitshinweise beim Bearbeiten |
+| `frontend-design` | Oberfläche, passend zu Vanilla JS/CSS |
+| `playwright` | Browsersteuerung; Chromium ist vorinstalliert |
+| `markitdown` | Dokumente nach Markdown wandeln |
+| `caveman` | knappe Antworten |
+| `context-mode` | Kontextfenster schonen |
+| `context7` | Bibliotheks-Dokumentation zur Hand |
+| `claude-mem` | Gedächtnis über Sessions hinweg |
+
+Die ersten zehn laufen vollständig im Container. Die letzten beiden nicht:
 `context7` holt Dokumentation von einem externen Dienst, `claude-mem` überträgt
 Sitzungsdaten an cmem.ai und liest von dort zurück. Regel 1 in `CLAUDE.md`
 erlaubt das: sie verlangt lokale Verarbeitung für **Belegdaten**, nicht für die
@@ -61,17 +75,20 @@ Eine Einschränkung bleibt aber bestehen: `claude-mem` überträgt, was die Sess
 anfasst. Wer in einer Session mit echten Belegen aus `uploads/` oder
 `Rechnungen/` arbeitet — etwa beim Bau eines neuen Parsers —, schickt deren
 Inhalte mit. Das ist derselbe Punkt wie bei Graphify ohne `--code-only`. Für
-solche Sessions `claude-mem` deaktivieren (`/plugin`), oder gleich `context7`
-und den zweiten `install_marketplace`-Aufruf aus dem Skript streichen.
+solche Sessions `claude-mem` deaktivieren (`/plugin`) oder die beiden Zeilen aus
+der Plugin-Liste streichen.
 
-**Nicht dabei:**
+**Im Marktplatz gelistet, aber bewusst nicht installiert:**
 
-- Plugins aus einem lokalen Marktplatz (`my-plugins`, `obsidian-skills`,
-  `local-desktop-app-uploads`) sind aus der Cloud nicht erreichbar. Dafür müsste
-  der Marktplatz in einem Git-Repository liegen; dann lässt er sich mit
-  `claude plugin marketplace add <owner>/<repo>` genauso einbinden.
-- Desktop-gebundene Plugins (Desktop Commander, pdf-viewer,
-  cowork-plugin-management) haben im Container keine Grundlage.
+- `obsidian` — der Vault liegt auf dem Arbeitsrechner, im Container nutzlos.
+- `security-sweep` — das im Manifest hinterlegte Quell-Repo
+  `onomeaj/security-sweep-plugin` ist nicht anonym klonbar (`git ls-remote`
+  fragt nach einem Benutzernamen). Soll es mit in die Cloud, muss das Plugin wie
+  `markitdown` direkt im eigenen Marktplatz-Repo liegen statt per `git-subdir`
+  verlinkt.
+
+**Gar nicht verfügbar:** desktop-gebundene Plugins (Desktop Commander,
+pdf-viewer, cowork-plugin-management) haben im Container keine Grundlage.
 
 ## 2. Abhängigkeiten: SessionStart-Hook registrieren
 
@@ -112,18 +129,20 @@ Leere läuft.
 
 In einem frischen HOME, also so wie ein neuer Container startet:
 
-- Setup-Skript läuft durch, Exit-Code 0, die sieben rein lokalen Plugins
-  installiert.
-- Eine danach gestartete Session im Projektverzeichnis lädt sie: `code-review:`,
-  `commit-commands:` (drei), `claude-md-management:` (zwei), `frontend-design:`.
-  `pyright-lsp`, `security-guidance` und `playwright` bringen keine Skills mit,
-  sondern LSP, Hooks bzw. einen MCP-Server.
+- `claude plugin validate .` gegen den Marktplatz → „Validation passed".
+- Marktplatz hinzugefügt und die zehn rein lokalen Plugins daraus installiert:
+  alle zehn erfolgreich, `security-sweep` als einziges gescheitert (Quell-Repo
+  nicht anonym klonbar, siehe oben).
+- Eine so vorbereitete Session lädt die Plugins auch im Projektverzeichnis —
+  mit der Vorversion des Skripts geprüft: `code-review:`, `commit-commands:`
+  (drei), `claude-md-management:` (zwei), `frontend-design:`. `pyright-lsp`,
+  `security-guidance` und `playwright` bringen keine Skills mit, sondern LSP,
+  Hooks bzw. einen MCP-Server.
 - `context7` und `claude-mem` wurden **nicht** probeweise installiert — der
   Auto-Modus der Entwicklungs-Session hat das unterbunden, weil `claude-mem`
-  Sitzungsdaten nach aussen überträgt. Geprüft ist stattdessen, dass beide in
-  ihrem Marktplatz vorhanden sind (`context7` im offiziellen Katalog,
-  `claude-mem` im Manifest von `thedotmack/claude-mem`) und dass das Skript die
-  richtigen Befehle absetzt. Der erste echte Lauf ist der in deiner Umgebung.
+  Sitzungsdaten nach aussen überträgt. Geprüft ist stattdessen, dass beide im
+  Marktplatz-Manifest stehen und dass das Skript die richtigen Befehle absetzt.
+  Der erste echte Lauf ist der in deiner Umgebung.
 - Abhängigkeits-Skript: Exit-Code 0, 22 Sekunden.
 - Danach `pytest tests/test_ean_etikett.py tests/test_lagerorte.py` → 80 grün,
   `pyright app/services/corrections.py` → 0 Fehler.

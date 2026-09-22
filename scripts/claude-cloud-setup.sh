@@ -12,36 +12,42 @@
 
 set -uo pipefail
 
-install_marketplace() {
-  local repo="$1" name="$2"
-  shift 2
-  claude plugin marketplace add "$repo" \
-    || claude plugin marketplace update "$name" \
-    || true
-  local plugin
-  for plugin in "$@"; do
-    claude plugin install "${plugin}@${name}" || true
-  done
-}
+# Fabians eigener Marktplatz: bündelt die offiziellen Plugins und die aus
+# fremden Repos an einer Stelle. Er und die dort verlinkten Quell-Repos müssen
+# öffentlich sein — der Container hat keine Git-Anmeldedaten für fremde Repos.
+MARKETPLACE_REPO="FreaXz03/claude-plugin-marketplace"
+MARKETPLACE_NAME="claude-plugin-marketplace"
 
-# Offizieller Marktplatz von Anthropic.
-install_marketplace anthropics/claude-plugins-official claude-plugins-official \
-  pyright-lsp \
-  code-review \
-  commit-commands \
-  claude-md-management \
-  security-guidance \
-  frontend-design \
-  playwright \
-  context7
+# Nicht dabei, obwohl im Marktplatz gelistet:
+#   obsidian       — der Vault liegt auf dem Arbeitsrechner
+#   security-sweep — das Quell-Repo onomeaj/security-sweep-plugin ist nicht
+#                    anonym klonbar; siehe docs/claude-cloud-setup.md
+PLUGINS=(
+  pyright-lsp           # Typprüfung live, passend zu pyrightconfig.json
+  code-review           # /code-review mit spezialisierten Agenten
+  commit-commands       # /commit, /commit-push-pr, /clean_gone
+  claude-md-management  # CLAUDE.md pflegen
+  security-guidance     # Sicherheitshinweise beim Bearbeiten
+  frontend-design       # Oberfläche, passend zu Vanilla JS/CSS
+  playwright            # Browsersteuerung; Chromium ist vorinstalliert
+  markitdown            # Dokumente nach Markdown wandeln
+  caveman               # knappe Antworten
+  context-mode          # Kontextfenster schonen
+  context7              # Bibliotheks-Dokumentation zur Hand
+  claude-mem            # Gedächtnis über Sessions hinweg
+)
 
-# Marktplatz von thedotmack; von dort wird nur claude-mem installiert.
-install_marketplace thedotmack/claude-mem thedotmack \
-  claude-mem
+claude plugin marketplace add "$MARKETPLACE_REPO" \
+  || claude plugin marketplace update "$MARKETPLACE_NAME" \
+  || true
 
-# Hinweis: context7 und claude-mem fragen externe Dienste an (Kontext-
-# Dokumentation bzw. cmem.ai). Sie sind eine bewusste, ausdrücklich gewünschte
-# Ausnahme von Regel 1 in CLAUDE.md — siehe docs/claude-cloud-setup.md.
+for plugin in "${PLUGINS[@]}"; do
+  claude plugin install "${plugin}@${MARKETPLACE_NAME}" || true
+done
+
+# Hinweis: context7 und claude-mem sprechen mit externen Diensten. Regel 1
+# verlangt lokale Verarbeitung für Belegdaten — wer in einer Session mit echten
+# Rechnungen aus uploads/ arbeitet, schaltet claude-mem vorher ab.
 
 claude plugin list || true
 
