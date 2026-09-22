@@ -20,9 +20,9 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`; Phase B inkl. B8
 | Kürzel | Standort | Adresse | Telefon | E-Mail |
 |---|---|---|---|---|
 | **SF1** | Volketswil *(Hauptsitz, Server-Standort)* | Industriestrasse 21, 8604 Volketswil | 043 444 93 33 | volketswil@sportfabrik.ch |
-| **SF2** | Regensdorf | Althardstrasse 10, 8105 Regensdorf | 044 840 05 90 | regensdorf@sportfabrik.ch |
-| **SF3** | Hägendorf | Industriestrasse West 40/42, 4614 Hägendorf | 062 216 53 88 | haegendorf@sportfabrik.ch |
-| **SF4** | Conthey | Route Cantonale 7, 1964 Conthey | 027 322 75 83 | conthey@sportfabrik.ch |
+| **SF2** | Conthey | Route Cantonale 7, 1964 Conthey | 027 322 75 83 | conthey@sportfabrik.ch |
+| **SF3** | Regensdorf | Althardstrasse 10, 8105 Regensdorf | 044 840 05 90 | regensdorf@sportfabrik.ch |
+| **SF4** | Hägendorf | Industriestrasse West 40/42, 4614 Hägendorf | 062 216 53 88 | haegendorf@sportfabrik.ch |
 | **GEWA** | Externe Verarbeitung *(kein Verkauf)* | GEWA-John Leuenberger, Grubenstrasse 22, 3322 Urtenen-Schönbühl | – | – |
 | **VEBO** | Externe Verarbeitung *(kein Verkauf)* | *Adresse noch nachzutragen* | – | – |
 | **DIETIKON** | Externes Lager *(kein Verkauf)* | *Adresse noch nachzutragen*, Dietikon | – | – |
@@ -79,7 +79,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`; Phase B inkl. B8
 | D6 | Dokumente | Es kommen Rechnungen, Lieferscheine **und Auftragsbestätigungen**; weitere Beispiele werden laufend nachgereicht. **Bestand wird erst gebucht, wenn die Ware eingetroffen ist** |
 | D7 | Einkaufspreis | **Optional** speichern, falls im Dokument vorhanden — keine Priorität |
 | D8 | Rechte | Mitarbeiter dürfen vorerst **alles ausser Dokumente hochladen/bearbeiten**. Feinere Rechte später |
-| D9 | **Belegdaten bleiben lokal** | Rechnungen, Lieferscheine und Auftragsbestätigungen werden **lokal auf dem eigenen Server** von eigenen Parsern gelesen — keine Weitergabe an Drittanbieter, keine KI-Extraktion. Ausserhalb der Belegverarbeitung ist KI erlaubt, auch extern (präzisiert 22.09.2026; vorher galt „keine KI, keine externen Dienste" für alles) |
+| D9 | **Belegdaten bleiben lokal** | Rechnungen, Lieferscheine und Auftragsbestätigungen werden **lokal auf dem eigenen Server** von eigenen Parsern gelesen — keine Weitergabe an Drittanbieter, keine KI-Extraktion. Ausserhalb der Belegverarbeitung ist KI erlaubt, auch extern (präzisiert 22.09.2026; vorher galt „keine KI, keine externen Dienste" für alles). Für den **Parserbau** darf Fabian einzelne Belege bewusst zeigen (22.09.2026); im fertigen System liest sie weiterhin nur der eigene Parser, später auch ohne Internet |
 | D10 | EAN | EAN muss **nachträglich erfassbar** sein. Wird nie eine nachgetragen, **generiert das System eine interne EAN** (inkl. Etikett) |
 | D11 | Externe Standorte | Zwei Verarbeitungsstellen (GEWA, VEBO) und ein externes Lager (Dietikon) → je ein eigener Lagerort ohne Verkauf, Ware wird von dort an Filialen umgelagert |
 | D12 | Chris Sports | „Preis“ auf deren Dokumenten = **UVP** (Rabatt 70 % → EK = 30 % des UVP) |
@@ -281,7 +281,10 @@ Diese Antworten sind fachliche Entscheidungen, keine Bestätigung neu implementi
 - **Umlagerung Filiale → Filiale und die Reduktionsuhr:** Eine Umlagerung ist in der Zielfiliale **kein** Wareneingang. Die Uhr läuft dort unverändert weiter, die zugeschickte Ware wird auf dem Stand der Zielfiliale mitreduziert (D17: durch Umbuchen wird nichts verjüngt). Unverändert bleibt D13: nur der Weg von einem externen Standort (GEWA/VEBO/Dietikon) in eine Filiale setzt das Eingangsdatum erstmals und startet die Uhr.
 - **Dazu noch offen:** Was gilt, wenn die Zielfiliale diese Lieferanten-Artikelnummer noch **nie** hatte? Dann gibt es dort kein Datum, an das sich die Uhr hängen könnte.
 
-Auch diese beiden Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts (Phase C).
+- **Belege für den Parserbau zeigen:** erlaubt. Ziel bleibt ein Parser, der die Dateien später **ohne Internet** liest; die Belege werden nirgends veröffentlicht und im Betrieb nicht über KI ausgelesen. Das ist die Ausnahme für die Entwicklung und kein automatischer Weg — Graphify läuft weiterhin nur mit `--code-only`.
+- **Filialcodes korrigiert:** SF1 Volketswil, **SF2 Conthey**, **SF3 Regensdorf**, **SF4 Hägendorf**. Die bisherige Zuordnung in Doku, Seed-Daten und Tests war falsch (SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey).
+
+Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts (Phase C).
 
 ### Weitere offene Produktfrage
 
@@ -477,7 +480,7 @@ Lieferadresse"):
   geraten; dann bleibt es bei der aktiven Filiale.
 - D19 in der Oberfläche: die Vorschau zeigt „Wareneingang buchen auf" als
   Auswahl, vorbelegt mit dem Vorschlag, daneben die Begründung („Aus der
-  Lieferadresse erkannt: SF4 · Conthey") oder der Hinweis, dass nichts erkannt
+  Lieferadresse erkannt: SF2 · Conthey") oder der Hinweis, dass nichts erkannt
   wurde. `/import-invoice` nimmt den gewählten Lagerort entgegen und prüft ihn
   serverseitig; ohne Angabe bleibt alles wie bisher.
 - Buchbar sind **alle** Lagerorte (eigene Filiale zuerst). Sonst liesse sich
@@ -495,7 +498,7 @@ Lieferadresse"):
   Anmeldung**, also inklusive Rechteweg). Gesamtsuite: 213 bestandene Tests
   (vorher 182).
 - Gegen echtes PostgreSQL 16 im Browser durchgespielt: Anmeldung, Upload einer
-  Rechnung mit Lieferadresse Conthey, Vorauswahl SF4 mit Begründung,
+  Rechnung mit Lieferadresse Conthey, Vorauswahl SF2 mit Begründung,
   vollständige Auswahlliste.
 
 **Details zu Phase B, Teilaufgabe B5 — erwartet → eingetroffen** (Regel 3, D6,

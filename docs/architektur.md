@@ -337,7 +337,7 @@ Lieferanten gleich funktioniert. Die Adressen kommen als Werte herein
 | Postleitzahl | 3 | eindeutig je Ort, kurz, überlebt OCR am besten |
 | Ortsname | 2 | bestätigt die PLZ, steht auch ohne sie oft da |
 | Name des Lagerorts (z. B. „GEWA“, „VEBO“) | 2 | auf der CMP-Auftragsbestätigung steht als Ziel nur „GEWA“. Nur *unterscheidende* Wörter zählen: „Lager Dietikon“ liefert kein Kennwort, sonst schlüge jeder Beleg mit dem Wort „Lager“ an — dort trägt der Ortsname |
-| Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF3 |
+| Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF4 |
 
 Gesucht wird in zwei Durchgängen: zuerst im Umfeld eines Lieferadress-Ankers
 („Lieferadresse“, „Lieferanschrift“, „Lieferung an“, „Warenempfänger“,

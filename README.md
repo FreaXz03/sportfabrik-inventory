@@ -8,7 +8,7 @@ und Preisverlauf nachvollziehen, Freitext-Notizen hinterlegen und die
 Artikelliste als Excel-Datei exportieren.
 
 Läuft auf einem zentralen Server (Volketswil); die 4 Filialen (SF1 Volketswil,
-SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey) sowie die externen Standorte ohne
+SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf) sowie die externen Standorte ohne
 Verkauf — die Verarbeitungsstellen GEWA und VEBO und das Lager Dietikon —
 greifen im internen Netz über den Browser darauf zu. Anmeldung nach
 Kassensystem-Muster: Mitarbeiter mit blosser Kassennummer, Filialleiter und
