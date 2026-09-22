@@ -1,7 +1,7 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
-Stand: 2026-09-21 (Rev. 6 — zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon; Eingangsdatum startet erst in einer Filiale) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
-Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `529674e`; Phase-B-Abschluss auf Branch `claude/awesome-lamport-tivaj9`).
+Stand: 2026-09-22 (Rev. 6 vom 21.09.2026: zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon, Eingangsdatum startet erst in einer Filiale; ergänzt um die bestätigten Antworten vom 22.09.2026 in Abschnitt 10) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
+Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`; Phase B inkl. B8 ist vollständig in `main`, übernommen mit PR #9, Merge-Commit `d1c6533`).
 
 ---
 
@@ -166,7 +166,7 @@ gegenüber dem Zielbild zusammen.
 | Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
 | Preise | ✅ UVP und EK je Wareneingangsposition (EK optional, Regel 10), Preisverlauf je Variante, Reduktionsstufe als Baustein (`app/services/reduktion.py`, genutzt auf dem Etikett) | Reduktions-Hinweise als eigene Ansicht und die zentrale Empfehlung fehlen → Phase D |
 | Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung | Verkauf, Ausbuchen, Umlagerung und Korrekturen fehlen → Phase C. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
-| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Die **Ansichten** (Dashboard, Rechnungsliste, Artikeldetails) zeigen weiter alle Filialen — fachlich noch zu klären (siehe „Offene Punkte aus dem Review") |
+| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Leserechte am 22.09.2026 geklärt (Abschnitt 10): Mitarbeiter und Filialleiter sehen Dokumente und Bestände **aller** Filialen. Die bestehenden Ansichten (Dashboard, Rechnungsliste, Artikeldetails) tun das bereits, die künftige Bestandsansicht (Phase C) muss es ebenfalls; der Filialwechsel bleibt bei den zugewiesenen Filialen (D26) |
 | Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
 | Deployment | Docker, 1 Laden-Server | Zentraler Server Volketswil, Zugriff aus 4 Filialen |
@@ -476,8 +476,9 @@ Lieferadresse"):
   D19 wäre für genau die Fälle wirkungslos, für die es gedacht ist. Wer hier
   hinkommt, darf ohnehin Dokumente hochladen (Regel 9); eine falsch gewählte
   Filiale ist über eine Umlagerung korrigierbar. **Von Fabian bestätigt**
-  (21.09.2026) und als D26 festgehalten. Filialwechsel und Leseansichten
-  bleiben unverändert bei den zugewiesenen Filialen.
+  (21.09.2026) und als D26 festgehalten. Der Filialwechsel bleibt unverändert
+  bei den zugewiesenen Filialen; lesen dürfen Mitarbeiter und Filialleiter
+  gemäss Bestätigung vom 22.09.2026 alle Filialen (Abschnitt 10).
 - Tests: `tests/test_lieferadresse.py` (24 Tests: jede Seed-Adresse,
   Lieferadresse schlägt Rechnungsadresse, Gleichstand ohne Vorschlag,
   Schreibweisen, „Lieferschein" ist kein Anker) und
@@ -791,9 +792,12 @@ und Wahl von Hand"):
 - ~~Regel 5 („EAN ist optional") gilt im Datenmodell und im Importer, **nicht** aber in
   Parser/Korrekturen~~ — erledigt mit Teilaufgabe B3 (siehe unten): eine Position ohne
   EAN läuft mit Hinweis durch, eine unleserliche EAN bleibt eine Warnung.
-- Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
+- ~~Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
   angemeldeten Konto die Dokumente **aller** Filialen. Ob Regel 9 („Admin/Zentrale
-  filialübergreifend") auch das Lesen einschränken soll, ist eine fachliche Frage an Fabian.
+  filialübergreifend") auch das Lesen einschränken soll, ist eine fachliche Frage an Fabian.~~
+  — geklärt am 22.09.2026 (Abschnitt 10, Leserechte): Mitarbeiter und Filialleiter dürfen
+  Dokumente und Bestände aller Filialen sehen, die Schreibrechte bleiben unverändert. Das
+  bisherige Verhalten der Ansichten ist damit bestätigt, am Code war nichts zu ändern.
 
 **Konzeptänderung Rev. 6** (21.09.2026): zwei externe Verarbeitungsstellen statt
 einer, plus ein externes Lager.

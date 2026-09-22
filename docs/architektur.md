@@ -357,9 +357,11 @@ Oberfläche nichts, bleibt es bei der aktiven Filiale — wie vorher.
 Buchbar sind **alle** Lagerorte, die eigene Filiale zuerst
 (`list_wareneingang_lagerorte`). Sonst liesse sich eine Lieferung an eine
 andere Filiale oder an einen externen Standort gar nicht erfassen, und D19 wäre genau für die
-Fälle wirkungslos, für die es gedacht ist. Filialwechsel und Leseansichten
-bleiben unverändert bei den zugewiesenen Filialen. Ein Beleg hat dabei genau
-einen Lagerort (D20); verteilt wird die Ware danach über eine Umlagerung.
+Fälle wirkungslos, für die es gedacht ist. Der Filialwechsel bleibt
+unverändert bei den zugewiesenen Filialen; lesen dürfen Mitarbeiter und
+Filialleiter alle Filialen (bestätigt am 22.09.2026, `docs/projekt-kontext.md`
+Abschnitt 10). Ein Beleg hat dabei genau einen Lagerort (D20); verteilt wird
+die Ware danach über eine Umlagerung.
 
 ## Doppelimporte erkennen
 
