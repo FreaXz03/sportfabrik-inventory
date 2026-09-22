@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
   <script src="/static/js/i18n.js?v=1"></script>
+  <script src="/static/js/kategorien.js?v=1"></script>
   <title data-i18n="articles.page_title">Artikelsuche · Sport-Fabrik</title>
   <link rel="stylesheet" href="/static/css/app.css?v=premium-2">
 </head>
@@ -26,7 +27,10 @@
           </select></label><label data-i18n="articles.filter.ean">EAN · exakt<input name="ean" inputmode="numeric" maxlength="30"
             data-i18n-placeholder="articles.filter.ean_placeholder" placeholder="Auch mit führender Null"></label><label data-i18n="articles.columns.supplier_article_no">Lief. Art.-Nr.<input name="supplier_article_no"
             maxlength="100"></label><label data-i18n="articles.columns.description">Bezeichnung<input name="description"
-            maxlength="500"></label><label data-i18n="articles.filter.last_delivery_from">Letzte Lieferung von<input type="date" name="last_delivery_from"></label><label data-i18n="articles.filter.last_delivery_to">Letzte Lieferung bis<input type="date" name="last_delivery_to"></label>
+            maxlength="500"></label><label data-i18n="articles.filter.kategorie">Kategorie<select name="kategorie" id="kategorien">
+            <option value="" data-i18n="articles.filter.all_kategorien">Alle Kategorien</option>
+            <option value="ohne" data-i18n="articles.filter.kategorie_missing">Ohne Kategorie</option>
+          </select></label><label data-i18n="articles.filter.last_delivery_from">Letzte Lieferung von<input type="date" name="last_delivery_from"></label><label data-i18n="articles.filter.last_delivery_to">Letzte Lieferung bis<input type="date" name="last_delivery_to"></label>
         <div class="filter-actions"><button data-i18n="articles.filter.search">Suchen</button><button type="button" class="secondary"
             id="resetBtn" data-i18n="articles.filter.reset">Zurücksetzen</button></div>
       </form>
@@ -44,7 +48,7 @@
             gesamt</span></label><label><input type="checkbox" data-col="8" checked><span data-i18n="articles.columns.latest_uvp">Letzter UVP</span></label><label><input
               type="checkbox" data-col="9" checked><span data-i18n="articles.columns.uvp_date">UVP vom</span></label><label><input type="checkbox" data-col="10"
               checked><span data-i18n="articles.columns.first_seen">Erste Lieferung</span></label><label><input type="checkbox" data-col="11" checked><span data-i18n="articles.columns.last_seen">Letzte
-            Lieferung</span></label></div>
+            Lieferung</span></label><label><input type="checkbox" data-col="12" checked><span data-i18n="articles.columns.kategorie">Kategorie</span></label></div>
       </details>
       <div id="table" class="tablewrap" hidden>
         <table id="articlesTable">
@@ -62,6 +66,7 @@
               <th data-i18n="articles.columns.uvp_date">UVP vom</th>
               <th class="sortable" data-sort="first_seen" data-i18n="articles.columns.first_seen">Erste Lieferung</th>
               <th class="sortable" data-sort="last_seen" data-i18n="articles.columns.last_seen">Letzte Lieferung</th>
+              <th data-i18n="articles.columns.kategorie">Kategorie</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -144,7 +149,8 @@
             item.latest_uvp !== null ? `${item.latest_uvp} CHF` : null,
             date(item.uvp_date),
             date(item.first_seen),
-            date(item.last_seen)
+            date(item.last_seen),
+            window.SportfabrikKategorien.name(item.kategorie) || null
           ]) {
             tr.append(cell(value));
           }
@@ -175,6 +181,11 @@
     $('filters').addEventListener('submit', (event) => {
       event.preventDefault();
       filters = new URLSearchParams([...new FormData(event.target)].filter(([, value]) => value !== ''));
+      // Ein Auswahlfeld, zwei Server-Parameter: „ohne" ist keine Kategorie-Id.
+      const kategorie = filters.get('kategorie');
+      filters.delete('kategorie');
+      if (kategorie === 'ohne') filters.set('kategorie_fehlt', 'true');
+      else if (kategorie) filters.set('kategorie_id', kategorie);
       page = 1;
       load();
     });
@@ -207,6 +218,27 @@
       } catch {
         $('brands').disabled = true;
         $('brands').title = t('articles.errors.brands_failed');
+      }
+    }
+
+    async function kategorien() {
+      try {
+        const response = await fetch('/api/kategorien');
+        if (!response.ok) throw new Error();
+
+        const select = $('kategorien');
+        let group = null;
+        for (const kategorie of (await response.json()).items) {
+          if (!group || group.label !== kategorie.hauptgruppe) {
+            group = document.createElement('optgroup');
+            group.label = kategorie.hauptgruppe;
+            select.append(group);
+          }
+          // Voller Name: zugeklappt zeigt das Auswahlfeld nur den Eintrag.
+          group.append(new Option(window.SportfabrikKategorien.name(kategorie), kategorie.id));
+        }
+      } catch {
+        $('kategorien').title = t('articles.errors.kategorien_failed');
       }
     }
 
@@ -280,6 +312,7 @@
 
     applyColumnVisibility(hiddenColumns);
     brands();
+    kategorien();
     load();
     document.addEventListener('sportfabrik:i18n-ready', load);
   </script>

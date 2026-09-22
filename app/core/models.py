@@ -151,8 +151,9 @@ class Lieferant(Base):
 class Kategorie(Base):
     """Kassenkategorie: Hauptgruppe × Sportbereich, exakt wie in der Kasse
     (Regel 8). Velo und Food haben keinen Sportbereich. Fixe Seed-Daten in
-    app/core/kategorien.py (35 Kombinationen). FEDAS→Kategorie-Vorschlag ist
-    Phase B, `artikel.fedas_code` wird aber schon jetzt miterfasst."""
+    app/core/kategorien.py (35 Kombinationen). An den Artikel kommt sie über
+    den FEDAS-Vorschlag (app/core/fedas.py) oder von Hand
+    (app/services/kategorien.py, Teilaufgabe B8)."""
 
     __tablename__ = "kategorien"
     __table_args__ = (
@@ -240,6 +241,12 @@ class Artikel(Base):
     bezeichnung: Mapped[str | None] = mapped_column(String(500))
 
     kategorie_id: Mapped[int | None] = mapped_column(ForeignKey("kategorien.id"))
+    # Woher die Kategorie stammt (Phase B, Teilaufgabe B8, Migration
+    # c9d0e1f2a3b4): `False` = Vorschlag aus dem FEDAS-Code, `True` = von Hand
+    # gewählt. Eine von Hand gewählte Kategorie überschreibt kein Import mehr.
+    kategorie_manuell: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
     fedas_code: Mapped[str | None] = mapped_column(String(10))
 
 

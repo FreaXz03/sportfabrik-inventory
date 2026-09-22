@@ -1187,7 +1187,8 @@ th button:hover {
 #articlesTable.hide-col-8 th:nth-child(8), #articlesTable.hide-col-8 td:nth-child(8),
 #articlesTable.hide-col-9 th:nth-child(9), #articlesTable.hide-col-9 td:nth-child(9),
 #articlesTable.hide-col-10 th:nth-child(10), #articlesTable.hide-col-10 td:nth-child(10),
-#articlesTable.hide-col-11 th:nth-child(11), #articlesTable.hide-col-11 td:nth-child(11) { display: none; }
+#articlesTable.hide-col-11 th:nth-child(11), #articlesTable.hide-col-11 td:nth-child(11),
+#articlesTable.hide-col-12 th:nth-child(12), #articlesTable.hide-col-12 td:nth-child(12) { display: none; }
 
 /* 11.3 Rechnungspruefung */
 .preview-page { max-width: 1800px; }

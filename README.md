@@ -36,7 +36,8 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Ware von Hand erfassen** (Seite „Erfassen"): scannen oder eintippen,
   ohne Beleg und ohne Parser — für Ware ohne Dokument und für Lieferanten,
   deren Layout noch nicht erkannt wird. Pflicht sind nur Marke, Bezeichnung,
-  Menge und UVP; gebucht wird alles auf einmal als ein Wareneingang.
+  Menge und UVP; die Kassenkategorie lässt sich freiwillig mitgeben. Gebucht
+  wird alles auf einmal als ein Wareneingang.
 - **Artikel ohne Barcode** sind kein Sonderfall: eine Position ohne EAN läuft
   mit Hinweis durch (Schlüssel ist dann Lieferant + Artikelnummer + Farbe +
   Grösse); eine unleserliche EAN blockiert den Import dagegen weiterhin.
@@ -49,7 +50,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
 - **Artikelsuche** über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung,
-  Farbe, Grösse und Lieferdatum-Bereich, mit sortierbaren Spalten,
+  Farbe, Grösse, Kategorie und Lieferdatum-Bereich, mit sortierbaren Spalten,
   Spalten-Auswahl und Excel-Export.
 - **Lieferhistorie und Preisverlauf** je Artikel (inkl. aller Farb-/
   Grössenvarianten), **Freitext-Notizen** mit Autor und Änderungsverlauf.
@@ -69,6 +70,11 @@ der Oberfläche zwischen ihren Filialen wechseln.
   FEDAS-Warengruppe, wird die Kassenkategorie beim Import automatisch
   vorgeschlagen (aktuell mit einer Teilmenge bestätigter Codes, siehe
   `app/core/fedas.py`).
+- **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder noch nicht
+  zugeordnet ist — auf der Artikelseite oder gleich beim Erfassen. Die
+  Oberfläche sagt dazu, ob die Kategorie vorgeschlagen oder von Hand gewählt
+  wurde; eine Wahl von Hand überschreibt kein späterer Import. Der Filter
+  „Ohne Kategorie" in der Artikelsuche zeigt, wo noch etwas fehlt.
 
 ## Tech-Stack
 
@@ -84,7 +90,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (297 bestanden, 19 übersprungen ohne optionale
+- **Tests**: pytest (416 bestanden, 19 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -133,6 +139,7 @@ app/
     lieferanten.py     Seed-Daten Lieferanten (aktuell nur INTERSPORT; parser_key = Modul in app/services/parsers/)
     kategorien.py      Seed-Daten Kassenkategorien (Hauptgruppe x Sportbereich, 35 Kombinationen)
     fedas.py           FEDAS-Code -> Kassenkategorie-Vorschlag (Phase B, siehe docs/projekt-kontext.md)
+                       -> von Hand gewaehlt wird in app/services/kategorien.py
     i18n.py            translate()/normalize_language(): Katalog aus app/static/i18n/*.json lesen
   routers/           HTTP-Endpunkte (Seiten + JSON-API), gruppiert nach Thema
     auth.py            Anmeldung/Abmeldung, RBAC-Dependencies, Filialwechsel, Sprachwahl (/api/me, /api/active-lagerort, /api/language)
@@ -144,6 +151,7 @@ app/
     wareneingang.py    Erwartete Lieferungen ansehen und ihre Ankunft bestätigen
     erfassung.py       Ware von Hand erfassen (Scanner-Nachschlag über die EAN, Buchen ohne Beleg)
     etiketten.py       EAN nachtragen/erzeugen und Etiketten als PDF drucken
+    kategorien.py      Kassenkategorie ansehen und von Hand waehlen (/api/kategorien)
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
@@ -163,6 +171,7 @@ app/
     barcode.py          EAN-13/EAN-8 als Strichmuster (ohne Zusatzbibliothek)
     etikett.py          Etikett als PDF in Etikettengroesse (PyMuPDF)
     reduktion.py        Lagerdauer und Reduktionsstufe nach Regel 6
+    kategorien.py       Kassenkategorie: Auswahlliste, von Hand setzen, nie ueberschreiben (B8)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)

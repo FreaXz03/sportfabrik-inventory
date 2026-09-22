@@ -40,10 +40,12 @@ nach dem Login auf eine fremde Seite weiterleitet (offener Redirect).
 |---|---|---|
 | GET | `/articles` | Artikelsuche-Seite |
 | GET | `/api/brands` | Liste aller vorkommenden Marken |
-| GET | `/api/articles` | Artikelsuche; Filter: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `last_delivery_from`/`last_delivery_to` (Datumsbereich auf die letzte Lieferung); Sortierung `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); Paginierung `page`/`page_size` (max. 100) |
+| GET | `/api/articles` | Artikelsuche; Filter: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `kategorie_id`/`kategorie_fehlt` (Kassenkategorie bzw. „noch keine"; `kategorie_fehlt=true` sticht `kategorie_id`), `last_delivery_from`/`last_delivery_to` (Datumsbereich auf die letzte Lieferung); Sortierung `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); Paginierung `page`/`page_size` (max. 100) |
 | GET | `/api/articles/export` | Dieselben Filter wie `/api/articles`, aber **ohne** Paginierung: liefert eine fertig formatierte Excel-Datei (`.xlsx`) mit allen Treffern zum Download |
 | GET | `/api/articles/{product_id}/history` | Vollständige Lieferhistorie eines Artikels **inkl. aller Farb-/Grössenvarianten mit gleicher Marke + Lieferanten-Artikelnummer**, neueste Rechnung zuerst; sortierbar (`sort_by`/`sort_dir`, siehe unten) |
 | GET | `/api/articles/{product_id}/prices` | Preisverlauf (UVP je Rechnung/Einheit) für die Artikelgruppe |
+| GET | `/api/articles/{product_id}/kategorie` | Kassenkategorie des Artikels: gesetzte Kategorie, `manuell` (von Hand gewählt oder aus dem FEDAS-Code vorgeschlagen), `fedas_code` und der aktuelle `vorschlag` |
+| PUT | `/api/articles/{product_id}/kategorie` | Kategorie von Hand setzen (`{"kategorie_id": 12}`) oder wieder leeren (`{"kategorie_id": null}`); jede Anmeldung, auch Mitarbeiter (Regel 9/D21) |
 | GET | `/api/articles/{product_id}/notes` | Notizen zur Artikelgruppe, paginiert (`page`, 20 je Seite), neueste zuerst |
 | POST | `/api/articles/{product_id}/notes` | Neue Notiz anlegen (`body`, max. 2000 Zeichen) |
 | PUT | `/api/articles/{product_id}/notes/{note_id}` | Notiz bearbeiten; verlangt `version` der zuletzt gelesenen Notiz (optimistisches Sperren, sonst HTTP 409); nur eigene Notiz oder als Filialleiter |
@@ -58,6 +60,26 @@ statt rein alphabetisch. `article_no` (die frühere INTERSPORT-eigene
 Artikelnummer) wird seit dem neuen Datenmodell (Phase A Punkt 3) nicht mehr
 als eigene Spalte geführt — der Wert kommt hier, sofern vorhanden, aus dem
 unveränderten Original-Snapshot der Position.
+
+## Kassenkategorie
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/api/kategorien` | Alle 35 Kassenkategorien (Hauptgruppe × Sportbereich, Regel 8) in der Reihenfolge der Kasse: `{"items": [{"id": 1, "hauptgruppe": "Textil", "sportbereich": "Velo"}, …]}` — Velo und Food haben `sportbereich: null` |
+
+Die Kategorie hängt am **Artikel** (Regel 4: filialübergreifend, für alle
+Farben und Grössen), wird aber wie Notizen und Preise über die Varianten-Id
+(`product_id`) angesprochen. Normalerweise schlägt der FEDAS-Code der
+Rechnung sie vor (`app/core/fedas.py`); fehlt er oder ist er unbekannt, wird
+sie von Hand gewählt (`PUT …/kategorie`, siehe oben). Von Hand gewählt gilt
+sie als verbindlich: kein späterer Import überschreibt sie noch. Leeren stellt
+den Ausgangszustand wieder her, ein späterer Beleg mit bekanntem Code darf
+dann wieder vorschlagen. Unbekannte Kategorie → HTTP 422, unbekannte Variante
+→ HTTP 404, unbekannte Felder im Rumpf → HTTP 422.
+
+Die Kategorie lässt sich auch beim manuellen Erfassen mitgeben (Feld
+`kategorie_id` je Position, siehe unten) — dort gibt es keinen FEDAS-Code.
+Sie füllt nur eine noch leere Kategorie.
 
 ## Rechnungen
 
@@ -138,8 +160,8 @@ HTTP 422; gebucht wird in beiden Fällen nichts.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/erfassen` | Seite „Ware erfassen" (jede Anmeldung) |
-| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), bekannte Lieferanten, heutiges Datum vom Server |
-| GET | `/api/erfassen/variante?ean=<ean>` | Nachschlag für den Scanner: `{"gefunden": true, "variante": {…}}` mit Marke, Bezeichnung, Farbe, Grösse, Einheit und letztem UVP/EK als Vorschlag; unbekannte EAN ergibt `{"gefunden": false, "variante": null}` |
+| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), bekannte Lieferanten, Kassenkategorien (Regel 8), heutiges Datum vom Server |
+| GET | `/api/erfassen/variante?ean=<ean>` | Nachschlag für den Scanner: `{"gefunden": true, "variante": {…}}` mit Marke, Bezeichnung, Farbe, Grösse, Einheit, letztem UVP/EK und der bestehenden Kategorie als Vorschlag; unbekannte EAN ergibt `{"gefunden": false, "variante": null}` |
 | POST | `/api/erfassen` | Alle Positionen als **einen** Wareneingang ohne Beleg buchen (D27) |
 
 Rumpf von `POST /api/erfassen`:
@@ -149,7 +171,7 @@ Rumpf von `POST /api/erfassen`:
   "positionen": [
     {"marke": "Nike", "bezeichnung": "Poloshirt Court", "menge": "3", "uvp": "39.90",
      "ean": "4006632041234", "farbe": "Weiss", "groesse": "M", "einheit": "Stk",
-     "lieferanten_artikelnr": "A1", "ek": "19.95"}
+     "lieferanten_artikelnr": "A1", "ek": "19.95", "kategorie_id": 3}
   ],
   "lagerort_id": 1,
   "lieferant_id": null,
@@ -158,7 +180,9 @@ Rumpf von `POST /api/erfassen`:
 ```
 
 Pflicht sind nur `marke`, `bezeichnung`, `menge` und `uvp` (D23); alles andere
-darf fehlen (Regel 5/10). Mengen und Preise sind **Text**, damit nichts über
+darf fehlen (Regel 5/10). `kategorie_id` setzt die Kassenkategorie **nur**,
+wenn der Artikel noch keine hat — eine bestehende bleibt unangetastet; eine
+unbekannte Id ergibt HTTP 409 und bucht nichts. Mengen und Preise sind **Text**, damit nichts über
 `float` läuft (Komma wird akzeptiert). Unbekannte Felder werden abgewiesen
 (HTTP 422). Ohne `lagerort_id` gilt die aktive Filiale, `eingangsdatum` ist
 ohne Angabe heute — in einem Lager ohne Verkauf bleibt es leer (Regel 6).

@@ -11,8 +11,8 @@ Die Regeln dahinter:
   es entsteht kein Eintrag in `dokumente`, `wareneingaenge.dokument_id` bleibt
   leer (Migration `a7b8c9d0e1f2`).
 * **Wenig Pflichtfelder** (D23): Marke, Bezeichnung, Menge und UVP. Alles
-  andere - EAN, Farbe, Grösse, Einheit, Lieferant, Artikelnummer, EK - ist
-  freiwillig (Regel 5 und Regel 10).
+  andere - EAN, Farbe, Grösse, Einheit, Lieferant, Artikelnummer, EK und
+  Kategorie - ist freiwillig (Regel 5 und Regel 10).
 * **Ware ist da** (Regel 3): Von Hand erfasst wird nur, was man in den Händen
   hält. Der Wareneingang ist deshalb sofort `eingetroffen` und wird gebucht;
   ein *erwarteter* Eingang entsteht hier nie.
@@ -26,6 +26,11 @@ Die Regeln dahinter:
 Artikel und Varianten werden über `app/services/artikel.py` gefunden, also
 nach genau derselben Regel wie beim Import: bekannte EAN → bekannte Variante,
 sonst Lieferant + Artikelnummer + Farbe + Grösse.
+
+Ohne Beleg gibt es auch keinen FEDAS-Code, der die Kassenkategorie
+vorschlagen könnte (Regel 8). Sie lässt sich deshalb gleich hier mitgeben -
+freiwillig und nach derselben Regel wie überall: eine schon gesetzte
+Kategorie wird nie überschrieben (`app/services/kategorien.py`).
 """
 
 from datetime import date, datetime, timezone
@@ -37,6 +42,7 @@ from sqlalchemy.exc import IntegrityError
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import (
     Artikel,
+    Kategorie,
     Lagerort,
     Lieferant,
     Preis,
@@ -52,6 +58,7 @@ from .artikel import (
     finde_variante_ohne_ean,
     finde_variante_per_ean,
 )
+from .kategorien import kategorie_daten, merke_kategorie
 from .wareneingang import ADVISORY_LOCK_ID, buche_zugang
 
 # Grund der Lagerbewegung: ein fester Schlüssel, kein UI-Text - übersetzt wird
@@ -84,6 +91,7 @@ FELD_KEYS = {
     "menge": "quantity",
     "uvp": "uvp",
     "ek": "ek",
+    "kategorie_id": "kategorie",
 }
 
 
@@ -124,6 +132,27 @@ def _text_wert(rohwert, name: str, zeile: int, language: str) -> str | None:
     return wert
 
 
+def _kategorie_id(rohwert, zeile: int, language: str) -> int | None:
+    """Kassenkategorie ist auch hier freiwillig (D23) - die meiste von Hand
+    erfasste Ware hat keinen FEDAS-Code, deshalb lässt sie sich gleich beim
+    Erfassen mitgeben (Teilaufgabe B8). Ob die Id wirklich existiert, prüft
+    `erfasse_wareneingang()` in der Transaktion."""
+    if rohwert is None or (isinstance(rohwert, str) and not rohwert.strip()):
+        return None
+    # `bool` ist in Python ein `int` - als Kategorie-Id ist es Unsinn.
+    if isinstance(rohwert, bool):
+        raise _fehler("invalid_field", language, zeile, field=_feld("kategorie_id", language))
+    if isinstance(rohwert, int):
+        wert = rohwert
+    elif isinstance(rohwert, str) and rohwert.strip().isdigit():
+        wert = int(rohwert.strip())
+    else:
+        raise _fehler("invalid_field", language, zeile, field=_feld("kategorie_id", language))
+    if wert <= 0:
+        raise _fehler("invalid_field", language, zeile, field=_feld("kategorie_id", language))
+    return wert
+
+
 def _betrag(rohwert, name: str, zeile: int, language: str) -> Decimal:
     """Menge/Preis als Decimal - nie über float (CLAUDE.md „Technik")."""
     if isinstance(rohwert, float):
@@ -153,7 +182,12 @@ def pruefe_positionen(positionen, language: str = DEFAULT_LANGUAGE) -> list[dict
     for index, position in enumerate(positionen, start=1):
         if not isinstance(position, dict):
             raise _fehler("invalid_position", language, index)
-        unbekannt = set(position) - set(TEXTFELDER) - {"menge", "uvp", "ek"}
+        unbekannt = set(position) - set(TEXTFELDER) - {
+            "menge",
+            "uvp",
+            "ek",
+            "kategorie_id",
+        }
         if unbekannt:
             raise _fehler("invalid_position", language, index)
         werte = {
@@ -176,7 +210,16 @@ def pruefe_positionen(positionen, language: str = DEFAULT_LANGUAGE) -> list[dict
             ek = _betrag(position.get("ek"), "ek", index, language)
             if ek < 0:
                 raise _fehler("price_negative", language, index, field=_feld("ek", language))
-        geprueft.append({**werte, "menge": menge, "uvp": uvp, "ek": ek, "zeile": index})
+        geprueft.append(
+            {
+                **werte,
+                "menge": menge,
+                "uvp": uvp,
+                "ek": ek,
+                "kategorie_id": _kategorie_id(position.get("kategorie_id"), index, language),
+                "zeile": index,
+            }
+        )
     return geprueft
 
 
@@ -196,6 +239,11 @@ def variante_per_ean(session, ean: str | None, language: str = DEFAULT_LANGUAGE)
     if variante is None:
         return None
     artikel = session.get(Artikel, variante.artikel_id)
+    kategorie = (
+        session.get(Kategorie, artikel.kategorie_id)
+        if artikel.kategorie_id is not None
+        else None
+    )
     lieferant = (
         session.get(Lieferant, artikel.lieferant_id) if artikel.lieferant_id else None
     )
@@ -230,6 +278,9 @@ def variante_per_ean(session, ean: str | None, language: str = DEFAULT_LANGUAGE)
         "uvp": str(preis.uvp) if preis and preis.uvp is not None else None,
         "ek": str(preis.ek) if preis and preis.ek is not None else None,
         "lieferant": None if lieferant is None else {"id": lieferant.id, "name": lieferant.name},
+        # Nur zur Anzeige: eine bestehende Kategorie wird beim Erfassen nie
+        # überschrieben (Teilaufgabe B8).
+        "kategorie": kategorie_daten(kategorie),
     }
 
 
@@ -268,6 +319,21 @@ def erfasse_wareneingang(
                 raise ErfassungRejected(
                     translate("errors.erfassung.supplier_unknown", language)
                 )
+            kategorie_ids = {
+                eintrag["kategorie_id"]
+                for eintrag in geprueft
+                if eintrag["kategorie_id"] is not None
+            }
+            if kategorie_ids:
+                bekannt = set(
+                    session.scalars(
+                        select(Kategorie.id).where(Kategorie.id.in_(kategorie_ids))
+                    )
+                )
+                if bekannt != kategorie_ids:
+                    raise ErfassungRejected(
+                        translate("errors.erfassung.kategorie_unknown", language)
+                    )
 
             gesehen = eingangsdatum or heute
             # Regel 6/D13: An einem Standort ohne Verkauf (GEWA, VEBO,
@@ -333,6 +399,13 @@ def erfasse_wareneingang(
                         bekannte_varianten.add(variante.id)
                 if ean:
                     variante_cache[ean] = variante
+
+                # Kategorie von Hand (Teilaufgabe B8): füllt nur eine noch
+                # leere Kategorie - auch bei einem über die EAN gefundenen
+                # Altartikel. Eine bestehende bleibt, wie sie ist.
+                merke_kategorie(
+                    session.get(Artikel, variante.artikel_id), eintrag["kategorie_id"]
+                )
 
                 # Von Hand erfasste Ware ist da - sie zählt wie eine Lieferung.
                 variante.first_seen = (

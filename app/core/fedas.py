@@ -10,8 +10,10 @@ Nur aus echten Rechnungen bestätigte Codes sind hier eingetragen. Fehlt eine
 Zuordnung (unbekannte Produktart- und/oder Sportart-Ziffern, z. B. für die
 Hauptgruppen Velo/Food, deren Produktart-Ziffer noch nicht bekannt ist),
 liefert `suggest_kategorie()` `None` - die Kategorie bleibt dann unbesetzt
-und muss (sobald eine Auswahl-Oberfläche dafür existiert) von Hand gewählt
-werden, danach aber dauerhaft gemerkt (siehe `app/services/importer.py`)."""
+und wird auf der Artikelseite von Hand gewählt (`app/services/kategorien.py`,
+Teilaufgabe B8), danach aber dauerhaft gemerkt: weder ein späterer Import noch
+eine erweiterte Tabelle hier überschreibt eine Wahl von Hand (siehe
+`artikel.kategorie_manuell` und `app/services/importer.py`)."""
 
 HAUPTGRUPPE_NACH_PRODUKTART = {
     "1": "Hartware",

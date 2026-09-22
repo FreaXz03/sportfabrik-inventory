@@ -9,7 +9,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from .auth import get_language, require_login_api, require_login_page
 from ..core.database import get_session
 from ..core.i18n import translate
-from ..core.models import Artikel, Dokument, Variante, Wareneingang, WareneingangPosition
+from ..core.models import (
+    Artikel,
+    Dokument,
+    Kategorie,
+    Variante,
+    Wareneingang,
+    WareneingangPosition,
+)
+from ..services.kategorien import kategorie_daten
 
 router = APIRouter()
 
@@ -71,6 +79,8 @@ def articles(
     ean: str = Query("", max_length=30),
     supplier_article_no: str = Query("", max_length=100),
     description: str = Query("", max_length=500),
+    kategorie_id: int | None = Query(None, ge=1),
+    kategorie_fehlt: bool = Query(False),
     last_delivery_from: str | None = Query(None),
     last_delivery_to: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -128,8 +138,18 @@ def articles(
         conditions.append(contains(Artikel.lieferanten_artikelnr, supplier_article_no))
     if description.strip():
         conditions.append(contains(Artikel.bezeichnung, description))
+    # Kategorie (Teilaufgabe B8): „ohne Kategorie" ist der wichtigere Filter -
+    # er zeigt genau die Artikel, bei denen noch jemand von Hand wählen muss.
+    if kategorie_fehlt:
+        conditions.append(Artikel.kategorie_id.is_(None))
+    elif kategorie_id is not None:
+        conditions.append(Artikel.kategorie_id == kategorie_id)
     try:
-        base_query = select(Variante, Artikel).join(Artikel, Artikel.id == Variante.artikel_id)
+        base_query = (
+            select(Variante, Artikel, Kategorie)
+            .join(Artikel, Artikel.id == Variante.artikel_id)
+            .outerjoin(Kategorie, Kategorie.id == Artikel.kategorie_id)
+        )
         total = session.scalar(
             select(func.count())
             .select_from(Variante)
@@ -145,7 +165,7 @@ def articles(
         if not exporting:
             variant_query = variant_query.offset((page - 1) * page_size).limit(page_size)
         rows = session.execute(variant_query).all()
-        ids = [v.id for v, _ in rows]
+        ids = [v.id for v, _, _ in rows]
         totals = {}
         latest = {}
         if ids:
@@ -197,7 +217,7 @@ def articles(
             ).mappings():
                 latest[row["varianten_id"]] = row
         items = []
-        for v, a in rows:
+        for v, a, k in rows:
             item = {
                 "id": v.id,
                 "brand": a.marke,
@@ -208,6 +228,7 @@ def articles(
                 "size": v.groesse,
                 "first_seen": v.first_seen,
                 "last_seen": v.last_seen,
+                "kategorie": kategorie_daten(k),
             }
             price = latest.get(v.id)
             item.update(
