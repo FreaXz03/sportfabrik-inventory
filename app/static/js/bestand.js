@@ -6,6 +6,11 @@
   let offset = 0;
   let lagerorteGesetzt = false;
   let suchTimer = null;
+  // Welche Filiale gezeigt wird: null heisst „noch nichts gewählt" - dann
+  // entscheidet der Server und nimmt die aktive Filiale. Die Auswahl im
+  // `<select>` taugt dafür nicht: sie steht am Anfang auf „alle", weil die
+  // Filialen erst mit der ersten Antwort ankommen.
+  let wahl = null;
 
   function node(tag, text, cls) {
     const el = document.createElement(tag);
@@ -77,13 +82,14 @@
       option.textContent = lagerort.code + ' · ' + lagerort.name;
       auswahl.append(option);
     }
-    if (gewaehlt !== null && gewaehlt !== undefined) auswahl.value = String(gewaehlt);
+    // Ohne Filiale (nur Admin, „Alle Filialen") bleibt es bei „alle".
+    wahl = gewaehlt === null || gewaehlt === undefined ? 'alle' : String(gewaehlt);
+    auswahl.value = wahl;
     lagerorteGesetzt = true;
   }
 
   function anfrage(neuerOffset) {
     const parameter = new URLSearchParams();
-    const wahl = $('lagerort').value;
     if (wahl === 'alle') parameter.set('alle', 'true');
     else if (wahl) parameter.set('lagerort_id', wahl);
     const suche = $('suche').value.trim();
@@ -129,7 +135,10 @@
     laden(false);
   }
 
-  $('lagerort').addEventListener('change', neuLaden);
+  $('lagerort').addEventListener('change', function () {
+    wahl = $('lagerort').value;
+    neuLaden();
+  });
   $('nurVorhanden').addEventListener('change', neuLaden);
   $('suche').addEventListener('input', function () {
     // Tippen soll nicht bei jedem Zeichen eine Abfrage auslösen.

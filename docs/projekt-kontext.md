@@ -395,7 +395,15 @@ auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
   Standort ohne Datum, ausverkaufte und negative Zeilen, Suche über vier
   Felder, seitenweises Nachladen, API mit aktiver und fremder Filiale,
   unbekannte Filiale, Rechte ohne Anmeldung). Gesamtsuite: 438 bestandene
-  Tests (vorher 421). Im Browser noch nicht durchgespielt.
+  Tests (vorher 421).
+- Im Browser gegen eine SQLite-Testdatenbank durchgespielt: Vorauswahl der
+  aktiven Filiale, Umschalten auf „Alle Filialen und Standorte", Suche,
+  negativer Bestand, GEWA-Zeile mit Hinweis statt Datum. Dabei aufgefallen und
+  behoben: die erste Abfrage schickte `alle=true`, weil die Auswahlliste vor
+  der ersten Antwort nur den Eintrag „alle" kennt — gezeigt wurde also alles,
+  obwohl die Sitzungsleiste SF1 anzeigte. Die Seite merkt sich die Wahl jetzt
+  selbst und überlässt die erste Abfrage dem Server. Gegen PostgreSQL steht
+  der Durchgang noch aus.
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
