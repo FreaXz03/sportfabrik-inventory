@@ -20,22 +20,32 @@ SessionStart-Hook etwa — ist in derselben Session noch nicht da. Nur das
 
 | | Setup-Skript | SessionStart-Hook |
 | --- | --- | --- |
-| Konfiguriert in | claude.ai/code → Umgebung | `.claude/settings.json` im Repo |
+| Konfiguriert in | claude.ai/code → Umgebungs-Wähler → Zahnrad | `.claude/settings.json` im Repo |
 | Läuft | vor dem Start von Claude Code | nach dem Start |
 | Gilt für | nur Cloud-Sessions | lokal und Cloud |
-| Hier zuständig für | Plugins | Projekt-Abhängigkeiten |
+| Hier zuständig für | Systempakete, Datenbank, Plugins | Dienst starten, Python-Abhängigkeiten |
 
 Nach dem Setup-Skript wird das Dateisystem gespeichert; spätere Sessions starten
 direkt aus diesem Abbild und überspringen das Skript. Es läuft erneut, wenn du
 das Skript oder die Netzwerkfreigaben änderst, und nach etwa sieben Tagen.
 
-## 1. Plugins: Setup-Skript eintragen
+Das Abbild hält **Dateien, keine Prozesse**. Installierte Pakete und die
+angelegte Datenbank sind in jeder späteren Session da; ein im Setup-Skript
+gestarteter Dienst dagegen nicht — der gehört in den Hook.
 
-Auf [claude.ai/code](https://claude.ai/code) die Umgebung bearbeiten und den
+## 1. Setup-Skript eintragen
+
+Auf [claude.ai/code](https://claude.ai/code) in der Zeile über dem
+Nachrichtenfeld auf das Wolken-Symbol mit dem Umgebungsnamen klicken, im
+Abschnitt **Cloud** über die Umgebung fahren, das **Zahnrad** anklicken und den
 Inhalt von [`scripts/claude-cloud-setup.sh`](../scripts/claude-cloud-setup.sh)
-in das Feld **Setup script** kopieren. Das Skript ist bewusst eigenständig — es
-greift auf nichts aus dem Repo zu, weil die Reihenfolge von Klonen und
-Setup-Skript nicht garantiert ist.
+in das Feld **Setup script** kopieren. Eine Einstellungsseite oder direkte URL
+dafür gibt es nicht.
+
+Das Skript ist bewusst eigenständig — es greift auf nichts aus dem Repo zu, weil
+zu diesem Zeitpunkt nicht garantiert ist, dass der Klon schon vorliegt. Es
+erledigt drei Dinge: Systempakete (PostgreSQL, Tesseract mit DE/FR für OCR),
+die Test-Datenbank `sportfabrik_dev` samt Benutzer, und die Plugins.
 
 Alles kommt aus einem einzigen Marktplatz:
 [`FreaXz03/claude-plugin-marketplace`](https://github.com/FreaXz03/claude-plugin-marketplace).
@@ -90,11 +100,12 @@ der Plugin-Liste streichen.
 **Gar nicht verfügbar:** desktop-gebundene Plugins (Desktop Commander,
 pdf-viewer, cowork-plugin-management) haben im Container keine Grundlage.
 
-## 2. Abhängigkeiten: SessionStart-Hook registrieren
+## 2. SessionStart-Hook registrieren
 
-Ohne diesen Schritt kann eine Cloud-Session die Testsuite nicht ausführen — der
-Container bringt weder FastAPI noch pytest mit. `.claude/settings.json` anlegen
-(oder den `hooks`-Block in eine bestehende Datei einfügen):
+Ohne diesen Schritt läuft in einer Cloud-Session weder die Testsuite noch die
+App: die Python-Pakete fehlen, und PostgreSQL ist zwar installiert, aber nicht
+gestartet. `.claude/settings.json` anlegen (oder den `hooks`-Block in eine
+bestehende Datei einfügen):
 
 ```json
 {
@@ -114,14 +125,20 @@ Container bringt weder FastAPI noch pytest mit. `.claude/settings.json` anlegen
 }
 ```
 
-[`scripts/claude-session-deps.sh`](../scripts/claude-session-deps.sh) legt ein
-`.venv` an, installiert `requirements.txt` plus pytest und setzt den Pfad für
-die Session. Lokal beendet es sich sofort (`CLAUDE_CODE_REMOTE`), das
-vorhandene `.venv` bleibt unangetastet.
+[`scripts/claude-session-deps.sh`](../scripts/claude-session-deps.sh) startet
+PostgreSQL, legt ein `.venv` an, installiert `requirements.txt` plus pytest und
+setzt den Pfad für die Session. Lokal beendet es sich sofort
+(`CLAUDE_CODE_REMOTE`), das vorhandene `.venv` bleibt unangetastet.
+
+**Warum ein `.venv` und nicht der Systempython:** dort scheitert
+`pip install -r requirements.txt` reproduzierbar mit
+`Cannot uninstall PyYAML 6.0.1, RECORD file not found. Hint: The package was
+installed by debian` — auch mit `--break-system-packages`. `pyrightconfig.json`
+zeigt ohnehin auf `.venv`.
 
 Der Hook läuft synchron: die Session startet erst, wenn er fertig ist. Gemessen
-sind rund 22 Sekunden. Der Vorteil ist, dass die Abhängigkeiten sicher stehen,
-bevor gearbeitet wird; wer den schnelleren Start bevorzugt, kann den Hook
+sind rund 22 Sekunden beim ersten Mal, danach etwa 4, weil `.venv` steht und nur
+noch der Dienst hochkommt. Wer den schnelleren Start bevorzugt, kann den Hook
 asynchron ausführen und nimmt dafür in Kauf, dass ein früher `pytest`-Aufruf ins
 Leere läuft.
 
@@ -143,9 +160,20 @@ In einem frischen HOME, also so wie ein neuer Container startet:
   Sitzungsdaten nach aussen überträgt. Geprüft ist stattdessen, dass beide im
   Marktplatz-Manifest stehen und dass das Skript die richtigen Befehle absetzt.
   Der erste echte Lauf ist der in deiner Umgebung.
-- Abhängigkeits-Skript: Exit-Code 0, 22 Sekunden.
-- Danach `pytest tests/test_ean_etikett.py tests/test_lagerorte.py` → 80 grün,
+- Hook: Exit-Code 0, 22 Sekunden beim ersten Lauf, 4 Sekunden bei stehendem
+  `.venv`. Gegenprobe mit vorher gestopptem Dienst — danach meldet `pg_isready`
+  „accepting connections", und `CLAUDE_ENV_FILE` enthält den `.venv`-Pfad.
+- Datenbank erreichbar: `create_engine(DATABASE_URL)` verbindet sich als
+  `sportfabrik` auf `sportfabrik_dev`.
+- Danach `pytest -q` → 369 bestanden, 19 übersprungen;
   `pyright app/services/corrections.py` → 0 Fehler.
+
+Im laufenden Container ebenfalls bestätigt: `psql` und `tesseract` (mit `deu`,
+`fra`) sind vorhanden und die Datenbank besteht weiter — die Systempakete und
+die Daten überleben also im Abbild. Der PostgreSQL-Dienst dagegen war unten,
+und die Python-Pakete fehlten: der `pip`-Aufruf im Setup-Skript scheitert am
+Debian-PyYAML und wird dort von `|| true` verschluckt. Genau diese beiden
+Lücken schliesst der Hook.
 
 ## Wenn etwas fehlt
 
