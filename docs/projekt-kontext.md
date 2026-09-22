@@ -343,7 +343,7 @@ Abhängigkeit und Risiko — eine Teilaufgabe = ein Commit):
 | # | Teilaufgabe | Status |
 |---|---|---|
 | C1 | **Warnung bei Mehrlieferung**: kommt mehr an als erwartet, warnt das System und bucht trotzdem (bestätigt 22.09.2026). Rest aus B5, klein und fachlich entschieden — deshalb zuerst | ✅ abgeschlossen |
-| C2 | **Bestandsansicht je Lagerort**: aktueller Bestand pro Variante × Lagerort, lesbar für **alle** Filialen (Leserechte 22.09.2026), mit eigener Sicht auf Ware an einem externen Standort (ohne Eingangsdatum). Bisher zeigt keine Seite den Bestand — ohne sie lässt sich alles Folgende nicht kontrollieren | offen |
+| C2 | **Bestandsansicht je Lagerort**: aktueller Bestand pro Variante × Lagerort, lesbar für **alle** Filialen (Leserechte 22.09.2026), mit eigener Sicht auf Ware an einem externen Standort (ohne Eingangsdatum). Bisher zeigt keine Seite den Bestand — ohne sie lässt sich alles Folgende nicht kontrollieren | ✅ abgeschlossen |
 | C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026) | offen |
 | C4 | **Umlagerung**: externer Standort → Filiale setzt das Eingangsdatum erstmals (D13), Filiale → Filiale behält es und startet die Uhr der Zielfiliale nicht neu (D17, 22.09.2026). Gebucht wird beim Empfang durch die **empfangende** Filiale (F5). Offen dazu: der Fall, dass die Zielfiliale die Artikelnummer noch nie hatte (Abschnitt 10) | offen |
 | C5 | **Korrekturen**: Differenz von Hand buchen (`typ = korrektur`) — nur mit Grund, damit das Journal nachvollziehbar bleibt (Regel 2). Braucht es besonders am Anfang, weil der migrierte Bestand kumulierter Wareneingang ohne Verkäufe ist | offen |
@@ -368,6 +368,34 @@ auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
   gebucht und gemeldet, genaue Lieferung meldet nichts, Mehrlieferung entsteht
   erst durch die Nachlieferung). Gesamtsuite: 421 bestandene Tests
   (vorher 418).
+
+**Details zu Phase C, Teilaufgabe C2 — Bestandsansicht** (siehe
+`docs/architektur.md`, Abschnitt „Bestand ansehen"):
+- Neu `app/services/bestand.py` (nur lesen, Regel 2), `app/routers/bestand.py`
+  (`/bestand`, `/api/bestand`), Seite `app/templates/bestand.html` mit
+  `app/static/js/bestand.js`, Navigationseintrag „Bestand" auf allen Seiten.
+  Bis jetzt zeigte **keine** Seite den Bestand — die Artikelliste weist sogar
+  ausdrücklich darauf hin, dass ihre Mengen gelieferte und nicht vorhandene
+  Ware sind.
+- Eine Zeile ist eine **Variante × Lagerort** mit Menge und ältestem
+  Eingangsdatum; dieselbe Abfrage liefert Anzahl und Gesamtmenge der ganzen
+  Auswahl. Mengen als Text, nie als `float`.
+- Vorausgewählt ist die aktive Filiale; wählbar sind **alle** Standorte
+  (Leserechte vom 22.09.2026), dazu „Alle Filialen und Standorte". Der
+  Filialwechsel in der Sitzungsleiste bleibt unverändert bei den zugewiesenen
+  Filialen — er entscheidet weiterhin, wohin gebucht wird.
+- Zeilen mit Menge 0 sind ausgeblendet (umschaltbar), ein **negativer**
+  Bestand wird immer gezeigt: er ist seit dem 22.09.2026 möglich und dann
+  gerade das, was jemand sehen muss.
+- Ware an einem Standort ohne Verkauf hat kein Eingangsdatum (Regel 6/D13);
+  die Seite schreibt dort den Grund hin statt eines leeren Strichs.
+- Suche über Marke, Bezeichnung, Lieferanten-Artikelnummer und EAN;
+  Nachladen über `offset`, Obergrenze 500 Zeilen je Abfrage (Ladennetz).
+- Tests: `tests/test_bestand.py` (16 Fälle: Filter je Lagerort, externer
+  Standort ohne Datum, ausverkaufte und negative Zeilen, Suche über vier
+  Felder, seitenweises Nachladen, API mit aktiver und fremder Filiale,
+  unbekannte Filiale, Rechte ohne Anmeldung). Gesamtsuite: 438 bestandene
+  Tests (vorher 421). Im Browser noch nicht durchgespielt.
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.

@@ -198,6 +198,30 @@ die offenen Lieferungen der aktiven Filiale, je Position erwartet / bereits da
 / offen und ein Feld für die jetzt eingetroffene Menge. Das dürfen auch
 **Mitarbeiter** (D21) — Ankunft bestätigen ist Lagerarbeit, kein Dokumentrecht.
 
+## Bestand ansehen
+
+`app/services/bestand.py` liest, was `lagerbewegungen` gebucht hat — es
+schreibt nichts (Regel 2). Eine Zeile ist eine **Variante × Lagerort** mit
+Menge und ältestem Eingangsdatum; dieselbe Abfrage liefert Anzahl und
+Gesamtmenge der ganzen Auswahl, damit die Seite nicht rechnen muss.
+
+Drei Dinge sind bewusst so gebaut:
+
+- **Alle Filialen sind lesbar** (bestätigt 22.09.2026). Vorausgewählt ist die
+  aktive Filiale, wählbar sind alle Standorte — der Filialwechsel in der
+  Sitzungsleiste bleibt davon unberührt, er entscheidet weiter darüber, wohin
+  gebucht wird.
+- **Zeilen mit Menge 0** sind ausgeblendet (`nur_vorhanden`), aber nicht
+  gelöscht: ausverkaufte Ware bleibt im Stamm. Ein **negativer** Bestand wird
+  dagegen immer gezeigt — er ist möglich (bestätigt 22.09.2026) und genau dann
+  interessant.
+- **Ware an einem Standort ohne Verkauf** (GEWA, VEBO, Dietikon) hat kein
+  Eingangsdatum (Regel 6/D13). Die Seite schreibt dort keinen leeren Strich
+  hin, sondern sagt, warum: das Datum kommt mit der Ankunft in einer Filiale.
+
+Seite: **/bestand** (Navigation „Bestand"), Filter für Filiale, Suche und
+„nur Zeilen mit Bestand", nachladen über `offset` (Phase C, Teilaufgabe C2).
+
 ## Ware von Hand erfassen
 
 Der zweite Weg, auf dem Ware ins System kommt: **ohne PDF, ohne Parser**

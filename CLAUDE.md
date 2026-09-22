@@ -112,7 +112,7 @@ Teilaufgaben und Begründung der Reihenfolge: `docs/projekt-kontext.md`
 Abschnitt 11, „Phase C — Lagerbestand, Aufteilung in Teilaufgaben". Kurz:
 
 1. **Warnung bei Mehrlieferung** — mehr eingetroffen als erwartet: warnen, trotzdem buchen. ✅ abgeschlossen
-2. **Bestandsansicht je Lagerort** — alle Filialen lesbar, externe Standorte separat sichtbar.
+2. **Bestandsansicht je Lagerort** — alle Filialen lesbar, externe Standorte separat sichtbar. ✅ abgeschlossen
 3. **Ausbuchen per Scan** — Verkauf/Abgang von Hand; reicht der Bestand nicht: warnen, trotzdem buchen.
 4. **Umlagerung** — extern → Filiale setzt das Eingangsdatum (D13), Filiale → Filiale behält es und startet die Reduktionsuhr der Zielfiliale nicht neu.
 5. **Korrekturen** — Differenz mit Grund buchen.

@@ -155,6 +155,18 @@ Dokumentrecht. Unplausible Mengen, fremde Positionen oder eine bereits
 vollständig eingetroffene Lieferung ergeben HTTP 409, ein ungültiges Datum
 HTTP 422; gebucht wird in beiden Fällen nichts.
 
+## Bestand
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/bestand` | Seite „Bestand" (jede Anmeldung) |
+| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus), `limit` (max. 500) und `offset`. Antwort: `zeilen`, `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+
+**Lesen darf jede Anmeldung alle Filialen** (bestätigt am 22.09.2026) — auch
+die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`
+ergibt HTTP 404. Mengen kommen als Text (`"5.00"`), nie als Zahl; ein
+negativer Bestand wird gezeigt, nicht versteckt.
+
 ## Ware von Hand erfassen (ohne Beleg)
 
 | Methode | Pfad | Zweck |

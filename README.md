@@ -33,6 +33,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Erwartete Lieferungen**: Auftragsbestätigungen und Bestellungen kündigen
   Ware nur an — Bestand entsteht erst, wenn jemand die Ankunft bestätigt.
   Kommt weniger an, bleibt die Restmenge sichtbar offen.
+- **Bestand je Filiale** (Seite „Bestand"): aktueller Bestand pro Variante
+  und Lagerort, mit Suche, Filiale-Filter und ältestem Eingangsdatum. Lesen
+  darf jede Anmeldung alle Filialen; Ware an einem externen Standort ist als
+  solche erkennbar, weil sie noch kein Eingangsdatum hat.
 - **Ware von Hand erfassen** (Seite „Erfassen"): scannen oder eintippen,
   ohne Beleg und ohne Parser — für Ware ohne Dokument und für Lieferanten,
   deren Layout noch nicht erkannt wird. Pflicht sind nur Marke, Bezeichnung,
@@ -152,6 +156,7 @@ app/
     erfassung.py       Ware von Hand erfassen (Scanner-Nachschlag über die EAN, Buchen ohne Beleg)
     etiketten.py       EAN nachtragen/erzeugen und Etiketten als PDF drucken
     kategorien.py      Kassenkategorie ansehen und von Hand waehlen (/api/kategorien)
+    bestand.py         Bestand je Filiale ansehen (/bestand, /api/bestand)
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
@@ -172,6 +177,7 @@ app/
     etikett.py          Etikett als PDF in Etikettengroesse (PyMuPDF)
     reduktion.py        Lagerdauer und Reduktionsstufe nach Regel 6
     kategorien.py       Kassenkategorie: Auswahlliste, von Hand setzen, nie ueberschreiben (B8)
+    bestand.py          Bestand lesen: Menge je Variante x Lagerort, Filter und Kennzahlen (C2)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)
