@@ -208,6 +208,7 @@ Kernprinzipien: **Bestand nie überschreiben, sondern als Bewegung buchen.** Fü
 - „Artikelnummer“ = Lieferanten-Artikelnummer (Modell), also über alle Farben/Grössen hinweg.
 - Berechnung **pro Filiale** (D5): Eine Lieferung nach SF2 setzt die Uhr in SF1 nicht zurück.
 - Ware ohne Eingangsdatum (z. B. noch bei GEWA/VEBO oder im Lager Dietikon) erzeugt **keine** Hinweise.
+- Eine **Umlagerung Filiale → Filiale** ist kein Wareneingang und startet die Uhr der Zielfiliale **nicht** neu (bestätigt 22.09.2026, siehe Abschnitt 10). Nur der Weg von einem externen Standort in eine Filiale setzt das Datum erstmals (D13).
 - Zentrale (Admin) sieht die Empfehlungen aller Filialen und kann eine **einheitliche Empfehlung** setzen; jede Filiale übernimmt oder weicht bewusst ab (Abweichungen sichtbar).
 - Hinweise als Liste „Zum Runterschreiben fällig“ + Zähler im Dashboard; Schwellen (18/36 Monate) konfigurierbar.
 
@@ -258,7 +259,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm). Bis das feststeht, ist die Grösse einstellbar; Voreinstellung 50 × 30 mm (Teilaufgabe B7).
 2. ~~**Barcode aufs Etikett?**~~ Vorläufig entschieden und so gebaut (B7): **ja** — ohne Strichcode bliebe genau der Artikel unscannbar, für den die interne EAN gedacht ist (D10). Falls das Etikett ihn doch nicht tragen soll, bitte melden.
 3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
-4. **Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären. Für die Kasse und einen späteren Onlineshop ist sie bestätigt (siehe unten).
+4. ~~**Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären.~~ — beantwortet am 22.09.2026 (siehe unten): warnen, Buchung trotzdem zulassen, wie an der Kasse.
 
 ### Bestätigte Antworten vom 22.09.2026
 
@@ -273,6 +274,14 @@ Quelle: Fabians direkte Antworten, zusätzlich im Main-Vault unter „Sportfabri
 - **Kassenschnittstelle:** Noch keine Rückmeldung von Intersport; Fabian ergänzt Neuigkeiten, sobald vorhanden.
 
 Diese Antworten sind fachliche Entscheidungen, keine Bestätigung neu implementierter Funktionen.
+
+### Bestätigte Antworten vom 22.09.2026 (zweite Runde, für Phase C)
+
+- **Negativer Bestand beim Ausbuchen von Hand:** wie an der Kasse — das System **warnt**, bucht aber trotzdem. Der Bestand darf also ins Minus laufen; blockieren wird nur der spätere Onlineshop (F4). Hintergrund: der migrierte Bestand ist kumulierter Wareneingang ohne Verkäufe, Differenzen sind am Anfang der Normalfall.
+- **Umlagerung Filiale → Filiale und die Reduktionsuhr:** Eine Umlagerung ist in der Zielfiliale **kein** Wareneingang. Die Uhr läuft dort unverändert weiter, die zugeschickte Ware wird auf dem Stand der Zielfiliale mitreduziert (D17: durch Umbuchen wird nichts verjüngt). Unverändert bleibt D13: nur der Weg von einem externen Standort (GEWA/VEBO/Dietikon) in eine Filiale setzt das Eingangsdatum erstmals und startet die Uhr.
+- **Dazu noch offen:** Was gilt, wenn die Zielfiliale diese Lieferanten-Artikelnummer noch **nie** hatte? Dann gibt es dort kein Datum, an das sich die Uhr hängen könnte.
+
+Auch diese beiden Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts (Phase C).
 
 ### Weitere offene Produktfrage
 
