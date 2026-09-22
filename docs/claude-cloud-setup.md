@@ -37,25 +37,30 @@ in das Feld **Setup script** kopieren. Das Skript ist bewusst eigenständig — 
 greift auf nichts aus dem Repo zu, weil die Reihenfolge von Klonen und
 Setup-Skript nicht garantiert ist.
 
-Installiert werden diese Plugins aus `anthropics/claude-plugins-official`:
+Installiert werden diese Plugins:
 
-| Plugin | Wofür |
-| --- | --- |
-| `pyright-lsp` | Typprüfung live, passend zu `pyrightconfig.json` |
-| `code-review` | `/code-review` mit spezialisierten Agenten |
-| `commit-commands` | `/commit`, `/commit-push-pr`, `/clean_gone` |
-| `claude-md-management` | `CLAUDE.md` pflegen |
-| `security-guidance` | Sicherheitshinweise beim Bearbeiten |
-| `frontend-design` | Oberfläche, passend zu Vanilla JS/CSS |
-| `playwright` | Browsersteuerung; Chromium ist im Container vorinstalliert |
+| Plugin | Marktplatz | Wofür |
+| --- | --- | --- |
+| `pyright-lsp` | offiziell | Typprüfung live, passend zu `pyrightconfig.json` |
+| `code-review` | offiziell | `/code-review` mit spezialisierten Agenten |
+| `commit-commands` | offiziell | `/commit`, `/commit-push-pr`, `/clean_gone` |
+| `claude-md-management` | offiziell | `CLAUDE.md` pflegen |
+| `security-guidance` | offiziell | Sicherheitshinweise beim Bearbeiten |
+| `frontend-design` | offiziell | Oberfläche, passend zu Vanilla JS/CSS |
+| `playwright` | offiziell | Browsersteuerung; Chromium ist vorinstalliert |
+| `context7` | offiziell | Bibliotheks-Dokumentation zur Hand |
+| `claude-mem` | `thedotmack` | Gedächtnis über Sessions hinweg |
 
-Alle sieben laufen vollständig im Container — keines schickt Projektdaten nach
-aussen (Regel 1 in `CLAUDE.md`).
+Die ersten sieben laufen vollständig im Container. Die letzten beiden nicht:
+`context7` holt Dokumentation von einem externen Dienst, `claude-mem` überträgt
+Sitzungsdaten an cmem.ai und liest von dort zurück. Das ist eine **bewusste
+Ausnahme von Regel 1** in `CLAUDE.md`, ausdrücklich so gewünscht. Für das
+Produkt selbst gilt Regel 1 unverändert — die Dokumenterkennung der
+Warenwirtschaft bleibt rein lokal. Wer die Ausnahme nicht will, streicht
+`context7` und den zweiten `install_marketplace`-Aufruf aus dem Skript.
 
-**Bewusst nicht dabei:**
+**Nicht dabei:**
 
-- `context7` und `claude-mem` fragen externe Dienste an. Wer sie trotzdem will,
-  trägt sie im Skript nach — dann verlassen aber Daten den Container.
 - Plugins aus einem lokalen Marktplatz (`my-plugins`, `obsidian-skills`,
   `local-desktop-app-uploads`) sind aus der Cloud nicht erreichbar. Dafür müsste
   der Marktplatz in einem Git-Repository liegen; dann lässt er sich mit
@@ -102,11 +107,18 @@ Leere läuft.
 
 In einem frischen HOME, also so wie ein neuer Container startet:
 
-- Setup-Skript läuft durch, Exit-Code 0, alle sieben Plugins installiert.
+- Setup-Skript läuft durch, Exit-Code 0, die sieben rein lokalen Plugins
+  installiert.
 - Eine danach gestartete Session im Projektverzeichnis lädt sie: `code-review:`,
   `commit-commands:` (drei), `claude-md-management:` (zwei), `frontend-design:`.
   `pyright-lsp`, `security-guidance` und `playwright` bringen keine Skills mit,
   sondern LSP, Hooks bzw. einen MCP-Server.
+- `context7` und `claude-mem` wurden **nicht** probeweise installiert — der
+  Auto-Modus der Entwicklungs-Session hat das unterbunden, weil `claude-mem`
+  Sitzungsdaten nach aussen überträgt. Geprüft ist stattdessen, dass beide in
+  ihrem Marktplatz vorhanden sind (`context7` im offiziellen Katalog,
+  `claude-mem` im Manifest von `thedotmack/claude-mem`) und dass das Skript die
+  richtigen Befehle absetzt. Der erste echte Lauf ist der in deiner Umgebung.
 - Abhängigkeits-Skript: Exit-Code 0, 22 Sekunden.
 - Danach `pytest tests/test_ean_etikett.py tests/test_lagerorte.py` → 80 grün,
   `pyright app/services/corrections.py` → 0 Fehler.

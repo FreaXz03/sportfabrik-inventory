@@ -12,28 +12,36 @@
 
 set -uo pipefail
 
-MARKETPLACE_REPO="anthropics/claude-plugins-official"
-MARKETPLACE_NAME="claude-plugins-official"
+install_marketplace() {
+  local repo="$1" name="$2"
+  shift 2
+  claude plugin marketplace add "$repo" \
+    || claude plugin marketplace update "$name" \
+    || true
+  local plugin
+  for plugin in "$@"; do
+    claude plugin install "${plugin}@${name}" || true
+  done
+}
 
-# Nur Plugins ohne externe Dienste (Regel 1 in CLAUDE.md): alles läuft lokal
-# im Container, nichts davon schickt Projektdaten nach aussen.
-PLUGINS=(
-  pyright-lsp           # Typprüfung live, passend zu pyrightconfig.json
-  code-review           # /code-review mit spezialisierten Agenten
-  commit-commands       # /commit, /commit-push-pr, /clean_gone
-  claude-md-management  # CLAUDE.md pflegen
-  security-guidance     # Sicherheitshinweise beim Bearbeiten
-  frontend-design       # Oberfläche, passend zu Vanilla JS/CSS
-  playwright            # Browsersteuerung; Chromium ist vorinstalliert
-)
+# Offizieller Marktplatz von Anthropic.
+install_marketplace anthropics/claude-plugins-official claude-plugins-official \
+  pyright-lsp \
+  code-review \
+  commit-commands \
+  claude-md-management \
+  security-guidance \
+  frontend-design \
+  playwright \
+  context7
 
-claude plugin marketplace add "$MARKETPLACE_REPO" \
-  || claude plugin marketplace update "$MARKETPLACE_NAME" \
-  || true
+# Marktplatz von thedotmack; von dort wird nur claude-mem installiert.
+install_marketplace thedotmack/claude-mem thedotmack \
+  claude-mem
 
-for plugin in "${PLUGINS[@]}"; do
-  claude plugin install "${plugin}@${MARKETPLACE_NAME}" || true
-done
+# Hinweis: context7 und claude-mem fragen externe Dienste an (Kontext-
+# Dokumentation bzw. cmem.ai). Sie sind eine bewusste, ausdrücklich gewünschte
+# Ausnahme von Regel 1 in CLAUDE.md — siehe docs/claude-cloud-setup.md.
 
 claude plugin list || true
 
