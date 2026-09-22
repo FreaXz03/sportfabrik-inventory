@@ -1,20 +1,35 @@
 #!/bin/bash
 # Setup-Skript für Claude-Code-Cloud-Sessions.
-# Einzutragen unter claude.ai/code → Umgebung bearbeiten → Feld "Setup script".
+# Einzutragen unter claude.ai/code → Umgebungs-Wähler → Zahnrad → "Setup script".
 #
-# Warum nicht in .claude/settings.json: eine Cloud-Session installiert die dort
-# unter "enabledPlugins"/"extraKnownMarketplaces" deklarierten Plugins nicht.
-# Nur das Setup-Skript läuft, bevor Claude Code startet — und nur dann sind die
-# Plugins in derselben Session geladen. Danach wird das Dateisystem gecacht,
-# spätere Sessions starten direkt damit. Details: docs/claude-cloud-setup.md
+# Läuft einmal pro Umgebung, bevor Claude Code startet; danach wird das
+# Dateisystem als Abbild gespeichert und spätere Sessions überspringen das
+# Skript. Das Abbild hält **Dateien, keine Prozesse** — laufende Dienste starten
+# je Session im SessionStart-Hook (scripts/claude-session-deps.sh).
+#
+# Plugins gehören genau hierhin: eine Cloud-Session installiert die in
+# .claude/settings.json deklarierten Plugins nicht, und was erst während des
+# Sessionstarts installiert wird, ist in derselben Session noch nicht geladen.
+# Details: docs/claude-cloud-setup.md
 #
 # Das Skript muss mit 0 enden, sonst startet die Session nicht.
 
 set -uo pipefail
 
-# Fabians eigener Marktplatz: bündelt die offiziellen Plugins und die aus
-# fremden Repos an einer Stelle. Er und die dort verlinkten Quell-Repos müssen
-# öffentlich sein — der Container hat keine Git-Anmeldedaten für fremde Repos.
+# --- Systempakete: PostgreSQL und Tesseract (DE/FR) für OCR -----------------
+apt-get update -qq || true
+apt-get install -y -qq postgresql tesseract-ocr tesseract-ocr-deu tesseract-ocr-fra || true
+
+# --- Test-Datenbank anlegen -------------------------------------------------
+# Die Daten landen im Abbild und sind in jeder späteren Session vorhanden;
+# gestartet werden muss der Dienst trotzdem je Session (siehe Hook oben).
+service postgresql start || true
+su postgres -c "psql -c \"CREATE USER sportfabrik WITH PASSWORD 'devpass' SUPERUSER;\"" || true
+su postgres -c "createdb -O sportfabrik sportfabrik_dev" || true
+
+# --- Claude-Code-Plugins ----------------------------------------------------
+# Eigener Marktplatz; er und die dort verlinkten Quell-Repos müssen öffentlich
+# sein, der Container hat keine Git-Anmeldedaten für fremde Repos.
 MARKETPLACE_REPO="FreaXz03/claude-plugin-marketplace"
 MARKETPLACE_NAME="claude-plugin-marketplace"
 
@@ -50,5 +65,10 @@ done
 # Rechnungen aus uploads/ arbeitet, schaltet claude-mem vorher ab.
 
 claude plugin list || true
+
+# Die Python-Abhängigkeiten stehen bewusst NICHT hier: an dieser Stelle
+# scheitert "pip install -r requirements.txt" am Debian-Paket PyYAML, das pip
+# nicht ersetzen darf. Sie kommen über scripts/claude-session-deps.sh in ein
+# .venv, das auch pyrightconfig.json erwartet.
 
 exit 0

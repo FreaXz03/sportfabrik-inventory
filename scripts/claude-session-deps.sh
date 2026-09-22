@@ -1,12 +1,7 @@
 #!/bin/bash
-# Richtet in Cloud-Sessions ein .venv mit den Projekt-Abhängigkeiten ein, damit
-# dort pytest und die App laufen. Lokal passiert nichts — dort gibt es das .venv
+# Bereitet eine Cloud-Session vor: Datenbankdienst starten, .venv mit den
+# Projekt-Abhängigkeiten anlegen. Lokal passiert nichts — dort gibt es beides
 # bereits. Als SessionStart-Hook zu registrieren, siehe docs/claude-cloud-setup.md.
-#
-# Warum ein .venv und nicht der Systempython: der Container bringt die
-# Abhängigkeiten nicht mit, und die Debian-Pakete des Systempythons kollidieren
-# mit den Pins in requirements.txt (pip kann PyYAML nicht ersetzen).
-# pyrightconfig.json zeigt ohnehin auf .venv.
 
 set -euo pipefail
 
@@ -17,6 +12,20 @@ fi
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 cd "$PROJECT_DIR"
 
+# PostgreSQL: das gespeicherte Abbild der Umgebung hält Dateien, keine
+# Prozesse. Die Datenbank sportfabrik_dev ist also da, der Dienst läuft aber
+# nicht — DATABASE_URL zeigt auf localhost:5432.
+if command -v pg_isready >/dev/null 2>&1; then
+  pg_isready --quiet || service postgresql start >/dev/null 2>&1 || true
+  for _ in $(seq 1 10); do
+    pg_isready --quiet && break
+    sleep 1
+  done
+fi
+
+# .venv statt Systempython: dort scheitert "pip install -r requirements.txt"
+# am Debian-Paket PyYAML, das pip nicht ersetzen darf. pyrightconfig.json
+# erwartet ohnehin ein .venv im Projekt.
 if [ ! -x .venv/bin/python ]; then
   python3 -m venv .venv
 fi
