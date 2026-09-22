@@ -279,7 +279,10 @@ sind beide von Anfang an gleich.
 
 ### `lagerbewegungen`
 Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
-`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Jede importierte
+`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Geschrieben wird
+bisher nur `zugang` — Ausbuchen, Korrektur und Umlagerung sind fachlich
+entschieden (siehe `projekt-kontext.md` Abschnitt 10), aber noch nicht gebaut
+(Phase C, Teilaufgaben C3–C5). Jede importierte
 Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`; von Hand
 erfasste Ware ebenso, dort mit `grund = 'manuelle-erfassung'` (ein fester
 Schlüssel, kein UI-Text — übersetzt wird erst bei der Anzeige). Benutzer wird
@@ -291,7 +294,13 @@ Aktueller Bestand je Variante × Filiale (zusammengesetzter Primärschlüssel),
 aus `lagerbewegungen` abgeleitet und dort auch aktuell gehalten (nie direkt
 geschrieben ausser beim Nachführen der Summe). `aeltestes_eingangsdatum`
 dient später der Reduktionslogik (Phase D, 18/36 Monate ab letztem
-Wareneingang derselben Lieferanten-Artikelnummer in dieser Filiale).
+Wareneingang derselben Lieferanten-Artikelnummer in dieser Filiale). Gelesen
+wird der Bestand seit Phase C, Teilaufgabe C2 auf der Seite `/bestand`
+(`app/services/bestand.py`).
+
+Ein **negativer** Bestand ist möglich: beim Ausbuchen von Hand warnt das
+System künftig, bucht aber trotzdem (bestätigt am 22.09.2026). Die Ansicht
+blendet ihn deshalb nie aus.
 
 **Bekannte Einschränkung nach der Migration:** Da das alte System nie
 Verkäufe/Ausbuchungen erfasst hat, entspricht der migrierte `bestand` der
@@ -305,7 +314,8 @@ ganze Modell (alle Farben/Grössen), nicht mehr nur für die beim Erstellen
 angezeigte Variante. Optimistisches Sperren über `version` unverändert.
 
 ### `lagerorte`
-Sieben Einträge: die vier Filialen SF1–SF4 (`verkauf = true`) und drei externe
+Sieben Einträge: die vier Filialen SF1 Volketswil, SF2 Conthey, SF3
+Regensdorf und SF4 Hägendorf (`verkauf = true`) und drei externe
 Standorte ohne Verkauf — die Verarbeitungsstellen `GEWA` und `VEBO` und das
 Lager `DIETIKON`. Verarbeitungsstelle und Lager unterscheidet das Schema
 bewusst **nicht**: Für jede Regel zählt allein `verkauf`. Seed-Daten in
@@ -354,6 +364,7 @@ oben):
 | `a7b8c9d0e1f2` | Manuelle Erfassung (Teilaufgabe B6): `wareneingaenge.dokument_id` und `artikel.lieferant_id` dürfen leer bleiben (Wareneingang ohne Beleg, D27; Artikel ohne Lieferant, D23) |
 | `b8c9d0e1f2a3` | Zwei weitere Lagerorte ohne Verkauf: `VEBO` (Verarbeitungsstelle wie GEWA) und `DIETIKON` (externes Lager); GEWA umbenannt in „GEWA (externe Verarbeitung)“. Idempotent; der Downgrade löscht einen der beiden nur, solange nichts daran hängt |
 | `c9d0e1f2a3b4` | `artikel.kategorie_manuell` (Teilaufgabe B8): merkt, ob die Kategorie von Hand gewählt wurde; Server-Default `false`, weil bestehende Artikel ihre Kategorie ausschliesslich über den FEDAS-Vorschlag bekommen haben |
+| `d0e1f2a3b4c5` | Filialcodes korrigiert (22.09.2026): SF2 ist Conthey, SF3 Regensdorf, SF4 Hägendorf. Getauscht wird nur der `code` der bestehenden Zeile — der Ort bleibt, wo er ist, und Buchungen hängen an `lagerorte.id`. Ringtausch über Zwischencodes, weil `code` eindeutig ist |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

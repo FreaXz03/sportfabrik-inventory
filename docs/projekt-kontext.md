@@ -155,9 +155,10 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 
 ## 7. Abgleich Zielbild ↔ aktuelles Repo
 
-Momentaufnahme nach Abschluss von **Phase B** (22.09.2026). Massgeblich für
-den Stand der Umsetzung ist Abschnitt 11; diese Tabelle fasst ihn nur
-gegenüber dem Zielbild zusammen.
+Momentaufnahme vom 22.09.2026: **Phase B abgeschlossen**, **Phase C
+begonnen** (C1 und C2 erledigt, C3–C5 offen). Massgeblich für den Stand der
+Umsetzung ist Abschnitt 11; diese Tabelle fasst ihn nur gegenüber dem Zielbild
+zusammen.
 
 | Bereich | Heute im Repo | Lücke zum Ziel |
 |---|---|---|
@@ -165,7 +166,7 @@ gegenüber dem Zielbild zusammen.
 | Manuelle Erfassung | ✅ Seite `/erfassen` mit Scanner, ohne Beleg (B6) — inkl. Kategorie (B8) und Etikettendruck (B7) | — |
 | Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
 | Preise | ✅ UVP und EK je Wareneingangsposition (EK optional, Regel 10), Preisverlauf je Variante, Reduktionsstufe als Baustein (`app/services/reduktion.py`, genutzt auf dem Etikett) | Reduktions-Hinweise als eigene Ansicht und die zentrale Empfehlung fehlen → Phase D |
-| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung | Verkauf, Ausbuchen, Umlagerung und Korrekturen fehlen → Phase C. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
+| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung; **Bestandsansicht** `/bestand` je Lagerort, alle Filialen lesbar (C2) | Ausbuchen, Umlagerung und Korrekturen fehlen → Phase C, C3–C5. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
 | Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Leserechte am 22.09.2026 geklärt (Abschnitt 10): Mitarbeiter und Filialleiter sehen Dokumente und Bestände **aller** Filialen. Die bestehenden Ansichten (Dashboard, Rechnungsliste, Artikeldetails) tun das bereits, die künftige Bestandsansicht (Phase C) muss es ebenfalls; der Filialwechsel bleibt bei den zugewiesenen Filialen (D26) |
 | Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
@@ -312,7 +313,8 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 | B — Wareneingang v2, Teilaufgabe 6 (manuelle Erfassung mit Scanner) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 7 (interne EAN + Etikett) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | ✅ abgeschlossen, Branch `claude/awesome-lamport-tivaj9` |
-| C–G | offen |
+| C — Lagerbestand | teilweise: C1 (Warnung bei Mehrlieferung) und C2 (Bestandsansicht) abgeschlossen, Branch `feature/warenwirtschaft-v2`; C3–C5 offen |
+| D–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
 **Phase B — Wareneingang v2, Aufteilung in Teilaufgaben** (aus Roadmap
@@ -908,5 +910,11 @@ einer, plus ein externes Lager.
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*
 
 ## Lokaler Abgleich am 22.09.2026
+
+**Abendstand:** Filialcodes korrigiert (SF2 Conthey, SF3 Regensdorf, SF4
+Hägendorf, Migration `d0e1f2a3b4c5`), Belege dürfen für den Parserbau gezeigt
+werden, Phase C geplant und die Teilaufgaben C1 und C2 gebaut. Lokale Suite:
+438 bestanden, 20 übersprungen (SQLite). Gegen PostgreSQL ist davon noch
+nichts gelaufen. Alles auf dem Branch `feature/warenwirtschaft-v2`, gepusht.
 
 Cloud-main `d1c6533` übernommen. Lokale Suite mit `DATABASE_URL=sqlite:// .venv/bin/pytest -q`: 415 bestanden, 20 übersprungen. Kein neuer PostgreSQL- oder Produktivtest. Codegraph mit `--code-only` frisch aufgebaut und lokal als HTML und Obsidian-Vault exportiert; Graphdateien bleiben gitignored. Bestätigte Antworten aus dem Main-Vault in Abschnitt 10 übernommen.
