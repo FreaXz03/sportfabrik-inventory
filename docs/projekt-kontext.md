@@ -271,7 +271,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 | A — Fundament, Punkt 1 (Lagerorte, Rollen, Benutzer↔Lagerort, Filialwechsel) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkt 2 (i18n DE/FR/EN, Sprachwahl pro Benutzer) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 | A — Fundament, Punkte 3–4 (neues Datenmodell, Migration Altdaten, Live-Import, Tests/Doku) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
-| B — Wareneingang v2: FEDAS-Kategorievorschlag | ⏳ Infrastruktur fertig, restliche Codes offen (siehe unten) |
+| B — Wareneingang v2: FEDAS-Kategorievorschlag | ✅ Vorschlag und Auswahl von Hand fertig (B8); offen bleiben nur die noch nicht bestätigten FEDAS-Codes (siehe unten) |
 | B — Wareneingang v2, Teilaufgabe 1 (Parser-Registry, Lieferanten- und Dokumenttyp-Erkennung) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 2 (Belegnummer je Lieferant eindeutig) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 3 (EAN wirklich optional) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
@@ -279,7 +279,7 @@ Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 | B — Wareneingang v2, Teilaufgabe 5 (erwartet → eingetroffen) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 6 (manuelle Erfassung mit Scanner) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 7 (interne EAN + Etikett) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
-| B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | offen (Aufteilung siehe unten) |
+| B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | ✅ abgeschlossen, Branch `claude/awesome-lamport-tivaj9` |
 | C–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -296,7 +296,13 @@ Commit, Reihenfolge nach Abhängigkeit):
 | B5 | **Erwartet → eingetroffen**: Auftragsbestätigung/Bestellung erzeugen einen *erwarteten* Wareneingang, erst „Ware eingetroffen" (mit Mengenkontrolle) bucht Bestand (Regel 3, D6). Auch Mitarbeiter dürfen bestätigen (D21), Restmengen bleiben offen (D22) | ✅ abgeschlossen |
 | B6 | **Manuelle Erfassung** (Z2) mit Scanner, schnell hintereinander — auch als Weg für unbekannte Layouts (Kopfdaten vorausgefüllt). Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); ohne Beleg (D27) | ✅ abgeschlossen |
 | B7 | **EAN nachtragen/generieren**: interne EAN-13 im GS1-Bereich 20–29 mit Prüfziffer (Regel 5/D10), **auf Knopfdruck** (D24) + Etikett als PDF für den Sato CL4NX Plus (D14/D25) | ✅ abgeschlossen |
-| B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | offen |
+| B8 | **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist (danach dauerhaft gemerkt) — Rest des ersten Teilschritts | ✅ abgeschlossen |
+
+Damit sind alle acht Teilaufgaben von Phase B abgeschlossen. Nächste Phase
+gemäss Roadmap (Abschnitt 9): **C — Lagerbestand**. Innerhalb von Phase B
+bleibt ein Punkt laufend offen: die FEDAS-Codes, die noch nicht aus echten
+Rechnungen bestätigt sind (`app/core/fedas.py`) — bis dahin wird in diesen
+Fällen von Hand gewählt, was seit B8 möglich ist.
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
@@ -327,7 +333,7 @@ Commit, Reihenfolge nach Abhängigkeit):
 **Details zu Phase B, FEDAS-Kategorievorschlag** (erster Teilschritt, siehe Roadmap Abschnitt 9):
 - `app/core/fedas.py`: feste Zuordnung 1. FEDAS-Ziffer → Hauptgruppe (`1`=Hartware, `2`=Textil, `3`=Schuhe) sowie Ziffern 2–3 → Sportbereich, aktuell nur die aus echten Rechnungen bestätigten Codes (`24`=Tennis, `32`=Fussball, `60`=Velo, `64`=Outdoor, `75`=Freizeit — 6 der 11 Sportbereiche fehlen noch: Winter, Kids, Baden, Indoor, Running, Rollsport, ebenso die Produktart-Ziffer(n) für die Hauptgruppen Velo/Food selbst).
 - `app/services/importer.py` setzt `artikel.kategorie_id` automatisch, sobald eine Rechnungsposition einen bekannten FEDAS-Code mitbringt — beim Anlegen eines neuen Artikels ebenso wie beim Nachtragen an einem bestehenden (auch wenn die Variante über ihre EAN gefunden wurde, was für die migrierten Altartikel der Normalfall ist); ist der Code (noch) nicht zugeordnet, bleibt `kategorie_id` leer. Ein bereits gesetzter Wert wird von späteren Rechnungen nie überschrieben („einmal pro Artikel, danach gemerkt"); fehlt er noch, wird er bei einer späteren Rechnung mit bekanntem Code nachträglich gesetzt.
-- Bewusst noch nicht gebaut: eine Oberfläche zur manuellen Kategorie-Wahl, wenn der FEDAS-Code fehlt oder unbekannt ist (nächster Teilschritt) — bis dahin bleibt `kategorie_id` in diesem Fall einfach leer, ohne Auswirkung auf den restlichen Import.
+- ~~Bewusst noch nicht gebaut: eine Oberfläche zur manuellen Kategorie-Wahl~~ — erledigt mit Teilaufgabe B8 (siehe unten): fehlt oder greift der Vorschlag nicht, wird die Kategorie auf der Artikelseite bzw. beim Erfassen von Hand gewählt und ist danach verbindlich.
 - Tests: `tests/test_fedas.py` (reine Zuordnungslogik), `tests/test_importer_fedas.py` (Zusammenspiel mit dem Import: neuer Artikel, unbekannter/fehlender Code, nachträgliches Befüllen, kein Überschreiben) — zusätzlich per Smoke-Test gegen echtes PostgreSQL verifiziert.
 
 **Details zu Phase B, Teilaufgabe B1 — Parser-Registry mit Lieferanten- und
@@ -560,9 +566,10 @@ Hand erfassen"):
   liess die vom Skript erzeugten Texte (Spaltenköpfe, Meldungen) stehen. Beide
   Seiten warten jetzt auf den fertigen Katalog und zeichnen bei jedem
   Sprachwechsel neu.
-- **Offen geblieben:** Kategorie (B8) und interne EAN samt Etikett (B7) fehlen
-  auch hier noch — ein von Hand erfasster Artikel ohne Hersteller-EAN ist an
-  der Kasse noch nicht scannbar.
+- ~~**Offen geblieben:** Kategorie (B8) und interne EAN samt Etikett (B7)
+  fehlen auch hier noch~~ — erledigt: B7 erzeugt die interne EAN und druckt
+  das Etikett gleich nach dem Erfassen, B8 ergänzt die Kassenkategorie als
+  freiwilliges Feld je Position.
 
 **Details zu Phase B, Teilaufgabe B7 — interne EAN und Etikett** (Regel 5/6,
 D10, D14, D24, D25; siehe `docs/architektur.md`, Abschnitt „Interne EAN und
@@ -672,6 +679,67 @@ mit neuen Tests belegt:
   ältestes Eingangsdatum, Regel 6 je externem Standort, Neuberechnung beim Löschen — diese Kernlogik aus Regel 2
   hatte bis dahin keinen einzigen Test) und zwei Katalogtests in `tests/test_i18n.py`, die Keys
   und Platzhalter aller drei Sprachen vergleichen. Gesamtsuite: 145 bestandene Tests.
+
+**Details zu Phase B, Teilaufgabe B8 — Kategorie von Hand wählen** (Regel 4/7/8,
+Regel 9/D21; siehe `docs/architektur.md`, Abschnitt „Kassenkategorie: Vorschlag
+und Wahl von Hand"):
+- Ausgangslage: Den Vorschlag aus dem FEDAS-Code gab es seit dem ersten
+  Teilschritt, aber keinen Weg, die Lücken zu füllen. Und Lücken sind der
+  Normalfall: nur INTERSPORT liefert überhaupt einen FEDAS-Code, von Hand
+  erfasste Ware hat gar keinen Beleg (D27), und von den elf Sportbereichen
+  sind erst fünf Codes aus echten Rechnungen bestätigt.
+- `app/services/kategorien.py`: Auswahlliste in der Reihenfolge der Kasse
+  (Regel 8, nicht alphabetisch), Stand eines Artikels (gesetzte Kategorie,
+  Herkunft, FEDAS-Code und aktueller Vorschlag), setzen und leeren. Dazu
+  `merke_kategorie()` als gemeinsamer Baustein für nebenbei entstehende
+  Artikel: füllt nur, was leer ist, und überschreibt nie.
+- `artikel.kategorie_manuell` (Migration `c9d0e1f2a3b4`) merkt sich die
+  Herkunft: `false` = Vorschlag aus dem FEDAS-Code, `true` = von Hand gewählt.
+  Der Unterschied steht in der Oberfläche, denn die Zuordnungstabelle ist noch
+  nicht vollständig bestätigt — wer die Kategorie von Hand gesetzt hat, soll
+  das später erkennen. Bestehende Artikel bekommen `false` (Server-Default):
+  sie können ihre Kategorie bisher nur vom Vorschlag haben.
+- „Einmal pro Artikel, danach gemerkt" gilt jetzt in beide Richtungen: der
+  Import füllt weiterhin nur eine leere Kategorie, eine Wahl von Hand
+  überschreibt umgekehrt einen falschen Vorschlag. Leeren stellt den
+  Ausgangszustand wieder her (Kategorie offen, `kategorie_manuell = false`) —
+  ein späterer Beleg mit bekanntem Code darf dann wieder vorschlagen.
+- Endpunkte: `GET /api/kategorien` (alle 35 Kategorien),
+  `GET/PUT /api/articles/{id}/kategorie`. Angesprochen wird der Artikel wie
+  bei Notizen und Preisen über die Varianten-Id; die Kategorie gilt für alle
+  Farben und Grössen desselben Modells (Regel 4). Rechte: jede Anmeldung, auch
+  Mitarbeiter — Artikelstamm pflegen ist kein Dokumenten-Upload (Regel 9/D21).
+- Oberfläche an drei Stellen, i18n DE/FR/EN (Regel 7; die Kategorienamen selbst
+  werden nicht übersetzt, sie stehen so in der Kasse):
+  - Artikelseite: eigener Abschnitt „Kassenkategorie" mit aktueller Kategorie,
+    Herkunft („von Hand gewählt" bzw. „Vorschlag aus dem FEDAS-Code") und der
+    Auswahl. Fehlt die Kategorie, sagt die Seite auch warum — kein Code auf dem
+    Beleg oder Code noch nicht zugeordnet.
+  - Manuelle Erfassung: Kategorie je Position, freiwillig (D23), mit Hinweis,
+    dass eine bestehende unverändert bleibt. Ein Scan zeigt die Kategorie des
+    bekannten Artikels gleich mit.
+  - Artikelsuche: neue Spalte (zuhinterst, damit die gemerkten Spaltennummern
+    stimmen) und ein Filter mit „Ohne Kategorie" — erst damit findet man die
+    Artikel, bei denen noch jemand wählen muss. `kategorie_fehlt=true` sticht
+    `kategorie_id`, sonst käme eine leere Liste ohne erkennbaren Grund.
+- Die Auswahllisten sind nach Hauptgruppe gruppiert (35 Einträge sind zu viele
+  für eine flache Liste), tragen aber den vollen Namen („Textil · Winter"):
+  zugeklappt zeigt ein `<select>` nur den Eintrag, und „Winter" allein gibt es
+  dreimal. Gemeinsamer Baustein `app/static/js/kategorien.js`, damit
+  Artikelseite, Erfassung und Suche dieselbe Beschriftung verwenden.
+- Excel-Export bewusst unverändert: seine Spaltenüberschriften sind fest
+  deutsch (offener Punkt, siehe Phase A Punkt 2) — eine neue Spalte gehört in
+  denselben Schritt wie deren Übersetzung.
+- Tests: `tests/test_kategorien.py` (46 Tests: Reihenfolge der Kasse, Vorschlag,
+  setzen/leeren/korrigieren, gilt für alle Varianten des Artikels, nie
+  überschreiben, API samt Rechten und Fehlerfällen, Erfassung mit und ohne
+  Kategorie, Filter der Artikelsuche) und ein weiterer Fall in
+  `tests/test_importer_fedas.py` (eine Wahl von Hand übersteht eine spätere
+  Rechnung mit bekanntem Code). Gesamtsuite: 416 bestandene Tests (vorher 369).
+- Gegen echtes PostgreSQL 16 geprüft: Migration vor und zurück, Auswahlliste,
+  Stand, Setzen und Filter über die API; danach der ganze Ablauf im Browser
+  (Artikel ohne Kategorie wählen und speichern, Artikel mit Vorschlag, Filter
+  „Ohne Kategorie", Kategorie beim Erfassen).
 
 **Details zur Überarbeitung der Oberfläche** (siehe `docs/architektur.md`, Abschnitt
 „Gestaltung: ein Token-Satz für alle Seiten"):

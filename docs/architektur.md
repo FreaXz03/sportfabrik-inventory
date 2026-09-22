@@ -287,6 +287,42 @@ Erfassung** — dort druckt ein Knopf die Etiketten des ganzen Wareneingangs,
 ein Etikett je Stück. Beides dürfen auch **Mitarbeiter** (Regel 9): es ist
 Lagerarbeit, kein Dokument.
 
+## Kassenkategorie: Vorschlag und Wahl von Hand
+
+Jeder Artikel trägt eine Kassenkategorie: Hauptgruppe × Sportbereich, exakt
+wie in der Kasse (Regel 8). Sie kommt auf zwei Wegen an den Artikel, und die
+Reihenfolge ist wichtig.
+
+**Vorschlag aus dem FEDAS-Code.** INTERSPORT-Rechnungen führen je Position
+einen 6-stelligen FEDAS-Code mit; `app/core/fedas.py` übersetzt die erste
+Ziffer in die Hauptgruppe und die Ziffern 2–3 in den Sportbereich. Der
+Importer setzt die Kategorie damit automatisch, sobald der Code bekannt ist.
+In der Tabelle stehen nur die aus echten Rechnungen **bestätigten** Codes -
+geraten wird nichts.
+
+**Wahl von Hand** (`app/services/kategorien.py`) für alles andere, und das ist
+der Normalfall: die meisten Lieferanten liefern keinen FEDAS-Code, von Hand
+erfasste Ware hat gar keinen Beleg (D27), und ein Teil der Codes ist noch
+nicht zugeordnet. Gewählt wird auf der Artikelseite oder gleich beim Erfassen;
+gefunden werden die offenen Artikel über den Filter „Ohne Kategorie" in der
+Artikelsuche.
+
+Zwischen beiden Wegen gilt eine einzige Regel: **überschrieben wird nie.** Der
+Import füllt nur eine leere Kategorie („einmal pro Artikel, danach gemerkt"),
+eine Wahl von Hand darf umgekehrt einen falschen Vorschlag korrigieren und
+bleibt danach stehen - auch wenn später eine Rechnung mit bekanntem Code
+kommt. `artikel.kategorie_manuell` hält fest, woher der Wert stammt, und die
+Oberfläche sagt es dazu: solange die FEDAS-Tabelle unvollständig ist, ist der
+Unterschied zwischen „vorgeschlagen" und „von jemandem bestätigt" eine
+Information wert. Wird die Kategorie geleert, ist der Artikel wieder offen und
+ein späterer Beleg darf erneut vorschlagen.
+
+Die Kategorie hängt am **Artikel**, nicht an der Variante: sie gilt
+filialübergreifend für alle Farben und Grössen desselben Modells (Regel 4).
+Angesprochen wird sie trotzdem über die Varianten-Id, wie Notizen und Preise -
+das ist die Id, die in der Artikelliste angeklickt wird. Pflegen dürfen sie
+auch **Mitarbeiter** (Regel 9/D21): Artikelstamm ist kein Dokument.
+
 ## Lagerort aus der Lieferadresse
 
 Wohin ein Wareneingang gebucht wird, steht auf dem Beleg: der externe Händler

@@ -61,6 +61,7 @@ erDiagram
         string lieferanten_artikelnr
         string bezeichnung
         int kategorie_id FK
+        bool kategorie_manuell
         string fedas_code
     }
     VARIANTEN {
@@ -170,7 +171,10 @@ Kassenkategorien: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) ×
 Sportbereich (Regel 8) — Velo und Food ohne Sportbereich. 35 fixe
 Kombinationen, Seed-Daten in `app/core/kategorien.py`. Ein FEDAS→Kategorie-
 Mapping: `app/core/fedas.py` (Phase B, siehe `projekt-kontext.md` Details zu
-Phase B), aktuell nur die aus echten Rechnungen bestätigten Codes.
+Phase B), aktuell nur die aus echten Rechnungen bestätigten Codes. Was dort
+fehlt, wird von Hand gewählt (`app/services/kategorien.py`, Teilaufgabe B8);
+die Auswahlliste kommt über `GET /api/kategorien` in der Reihenfolge der
+Kasse.
 
 ### `artikel`
 Modell-Ebene, filialübergreifend (Regel 4): Marke + Lieferanten-Artikelnummer
@@ -181,10 +185,17 @@ Fremdschlüsselbeziehung statt der früheren Laufzeit-Gruppierung in
 abfragt). `fedas_code` wird beim Import mitgeschrieben, sofern die Rechnung
 ihn liefert. `kategorie_id` wird beim Anlegen eines neuen Artikels automatisch
 aus dem FEDAS-Code vorgeschlagen (`app/core/fedas.py` + `app/services/
-importer.py`), sofern die Kombination bekannt ist - sonst bleibt sie leer
-(eine manuelle Auswahl-Oberfläche dafür ist noch nicht gebaut). Ein einmal
-gesetzter Wert wird nie überschrieben, ein noch leerer aber bei einer
-späteren Rechnung mit bekanntem Code nachträglich befüllt.
+importer.py`), sofern die Kombination bekannt ist - sonst bleibt sie leer und
+wird von Hand gewählt (Teilaufgabe B8, siehe unten). Ein einmal gesetzter Wert
+wird nie überschrieben, ein noch leerer aber bei einer späteren Rechnung mit
+bekanntem Code nachträglich befüllt.
+
+`kategorie_manuell` (Migration `c9d0e1f2a3b4`) sagt, woher die Kategorie
+stammt: `false` = Vorschlag aus dem FEDAS-Code, `true` = von Hand gewählt
+(Artikelseite oder manuelle Erfassung, `app/services/kategorien.py`). Die
+Oberfläche zeigt den Unterschied an - die FEDAS-Tabelle ist noch nicht
+vollständig bestätigt. Leeren setzt beides zurück: der Artikel ist wieder
+offen, ein späterer Beleg mit bekanntem Code darf wieder vorschlagen.
 
 `lieferant_id` darf seit Migration `a7b8c9d0e1f2` **leer** sein: von Hand
 erfasste Ware braucht keinen Lieferanten (D23) — aus einem Lieferantendokument
@@ -342,6 +353,7 @@ oben):
 | `f6a7b8c9d0e1` | `wareneingang_positionen.menge_eingetroffen` (Teilaufgabe B5) inkl. Auffüllen der Altdaten — die Differenz zu `menge` ist die offene Restmenge (D22) |
 | `a7b8c9d0e1f2` | Manuelle Erfassung (Teilaufgabe B6): `wareneingaenge.dokument_id` und `artikel.lieferant_id` dürfen leer bleiben (Wareneingang ohne Beleg, D27; Artikel ohne Lieferant, D23) |
 | `b8c9d0e1f2a3` | Zwei weitere Lagerorte ohne Verkauf: `VEBO` (Verarbeitungsstelle wie GEWA) und `DIETIKON` (externes Lager); GEWA umbenannt in „GEWA (externe Verarbeitung)“. Idempotent; der Downgrade löscht einen der beiden nur, solange nichts daran hängt |
+| `c9d0e1f2a3b4` | `artikel.kategorie_manuell` (Teilaufgabe B8): merkt, ob die Kategorie von Hand gewählt wurde; Server-Default `false`, weil bestehende Artikel ihre Kategorie ausschliesslich über den FEDAS-Vorschlag bekommen haben |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

@@ -68,7 +68,7 @@ Cloud-Sessions haben den Graphen deshalb nicht. Details:
 
 Phase A ist damit vollständig abgeschlossen.
 
-## Aktuelle Phase: B — Wareneingang v2
+## Abgeschlossen: Phase B — Wareneingang v2
 
 Teilaufgaben (Details und Begründung der Reihenfolge: `docs/projekt-kontext.md`
 Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
@@ -99,7 +99,15 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
    UVP, Reduktionsstufe und Strichcode (D25); Etikettengrösse einstellbar
    (Voreinstellung 50 × 30 mm, echte Rollengrösse noch offen).
 8. **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist.
-   ⬅ **nächster Schritt**
+   ✅ abgeschlossen — Artikelseite, Erfassung und Filter „Ohne Kategorie" in der
+   Artikelsuche, Migration `c9d0e1f2a3b4`; eine Wahl von Hand überschreibt kein
+   Import mehr (`artikel.kategorie_manuell`).
 
-Der FEDAS-Kategorievorschlag selbst ist als Infrastruktur fertig (Abschnitt 11);
-es fehlen die noch nicht bestätigten Codes und die Auswahl-Oberfläche (B8).
+Phase B ist damit vollständig abgeschlossen. Nächste Phase gemäss Roadmap
+(`docs/projekt-kontext.md` Abschnitt 9): **C — Lagerbestand**.
+
+Laufend offen bleibt der FEDAS-Kategorievorschlag selbst: `app/core/fedas.py`
+kennt nur die aus echten Rechnungen bestätigten Codes (6 von 11 Sportbereichen
+fehlen, ebenso die Produktart-Ziffern für Velo/Food). Bis sie bestätigt sind,
+wird in diesen Fällen von Hand gewählt — die Kategorie bleibt also nie
+zwangsläufig leer.
