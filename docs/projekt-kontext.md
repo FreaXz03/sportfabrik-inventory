@@ -336,6 +336,22 @@ bleibt ein Punkt laufend offen: die FEDAS-Codes, die noch nicht aus echten
 Rechnungen bestätigt sind (`app/core/fedas.py`) — bis dahin wird in diesen
 Fällen von Hand gewählt, was seit B8 möglich ist.
 
+**Phase C — Lagerbestand, Aufteilung in Teilaufgaben** (Roadmap Abschnitt 9;
+die fachlichen Antworten dazu stehen in Abschnitt 10, Reihenfolge nach
+Abhängigkeit und Risiko — eine Teilaufgabe = ein Commit):
+
+| # | Teilaufgabe | Status |
+|---|---|---|
+| C1 | **Warnung bei Mehrlieferung**: kommt mehr an als erwartet, warnt das System und bucht trotzdem (bestätigt 22.09.2026). Rest aus B5, klein und fachlich entschieden — deshalb zuerst | offen |
+| C2 | **Bestandsansicht je Lagerort**: aktueller Bestand pro Variante × Lagerort, lesbar für **alle** Filialen (Leserechte 22.09.2026), mit eigener Sicht auf Ware an einem externen Standort (ohne Eingangsdatum). Bisher zeigt keine Seite den Bestand — ohne sie lässt sich alles Folgende nicht kontrollieren | offen |
+| C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026) | offen |
+| C4 | **Umlagerung**: externer Standort → Filiale setzt das Eingangsdatum erstmals (D13), Filiale → Filiale behält es und startet die Uhr der Zielfiliale nicht neu (D17, 22.09.2026). Gebucht wird beim Empfang durch die **empfangende** Filiale (F5). Offen dazu: der Fall, dass die Zielfiliale die Artikelnummer noch nie hatte (Abschnitt 10) | offen |
+| C5 | **Korrekturen**: Differenz von Hand buchen (`typ = korrektur`) — nur mit Grund, damit das Journal nachvollziehbar bleibt (Regel 2). Braucht es besonders am Anfang, weil der migrierte Bestand kumulierter Wareneingang ohne Verkäufe ist | offen |
+
+Alle fünf buchen über dieselbe Stelle wie der Zugang (`buche_zugang()` bzw.
+sein Gegenstück) und dieselbe Datenbank-Sperre, damit die Wege nicht
+auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
+
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
 - `users.role` um `admin` erweitert (Rollen: `mitarbeiter`, `chef` = Filialleiter, `admin` = Zentrale), Rechte gemäss Regel 9 in `app/routers/auth.py` und `app/routers/article_details.py` umgesetzt.

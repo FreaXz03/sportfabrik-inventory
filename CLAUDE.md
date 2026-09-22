@@ -106,6 +106,20 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
 Phase B ist damit vollständig abgeschlossen. Nächste Phase gemäss Roadmap
 (`docs/projekt-kontext.md` Abschnitt 9): **C — Lagerbestand**.
 
+## In Arbeit: Phase C — Lagerbestand
+
+Teilaufgaben und Begründung der Reihenfolge: `docs/projekt-kontext.md`
+Abschnitt 11, „Phase C — Lagerbestand, Aufteilung in Teilaufgaben". Kurz:
+
+1. **Warnung bei Mehrlieferung** — mehr eingetroffen als erwartet: warnen, trotzdem buchen.
+2. **Bestandsansicht je Lagerort** — alle Filialen lesbar, externe Standorte separat sichtbar.
+3. **Ausbuchen per Scan** — Verkauf/Abgang von Hand; reicht der Bestand nicht: warnen, trotzdem buchen.
+4. **Umlagerung** — extern → Filiale setzt das Eingangsdatum (D13), Filiale → Filiale behält es und startet die Reduktionsuhr der Zielfiliale nicht neu.
+5. **Korrekturen** — Differenz mit Grund buchen.
+
+Jede Buchung bleibt eine Zeile in `lagerbewegungen` (Regel 2) und läuft über
+dieselbe Sperre wie der Zugang.
+
 Laufend offen bleibt der FEDAS-Kategorievorschlag selbst: `app/core/fedas.py`
 kennt nur die aus echten Rechnungen bestätigten Codes (6 von 11 Sportbereichen
 fehlen, ebenso die Produktart-Ziffern für Velo/Food). Bis sie bestätigt sind,
