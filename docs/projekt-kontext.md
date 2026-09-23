@@ -718,7 +718,8 @@ Etikett"):
   „Etiketten drucken" für den ganzen Wareneingang, ein Etikett je Stück.
   Beides auch für **Mitarbeiter** (Regel 9). Übersetzungen DE/FR/EN.
 - **Annahmen, solange zwei Fragen offen sind:** Etikettengrösse einstellbar
-  (`GROESSEN`), Voreinstellung 50 × 30 mm; der Strichcode ist drauf (siehe
+  (`GROESSEN`), Voreinstellung damals 50 × 30 mm — seit 23.09.2026
+  84 × 38 mm, die bestätigte Rollengrösse; der Strichcode ist drauf (siehe
   Abschnitt 10, Frage 2). Beides ist an einer Stelle änderbar.
 - Kein Schema-Eingriff nötig: `varianten.ean`/`ean_intern` gab es schon, sie
   werden jetzt benutzt.
