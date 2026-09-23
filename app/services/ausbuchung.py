@@ -24,7 +24,7 @@ damit echte Abgänge nicht darin verschwinden, und lässt sich später gezielt
 wiederfinden.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import select, text
@@ -48,7 +48,7 @@ class AusbuchungRejected(ValueError):
     """Die Ausbuchung ist nicht plausibel - nichts wurde gebucht."""
 
 
-def _zahl(wert) -> str:
+def zahl(wert) -> str:
     return str(Decimal(wert or 0).quantize(Decimal("0.01")))
 
 
@@ -62,12 +62,17 @@ def buche_bewegung(
     grund: str | None,
     benutzer: dict | None,
     zeitpunkt: datetime,
+    eingangsdatum: date | None = None,
+    aeltestes: date | None = None,
 ) -> tuple[Lagerbewegung, Decimal, Decimal]:
-    """Eine Abgangs- oder Gegenbuchung schreiben und den Bestand nachführen
+    """Eine Bewegung ausser dem Zugang schreiben und den Bestand nachführen
     (Regel 2). `menge` ist vorzeichenbehaftet: negativ für einen Abgang.
 
     Ein Abgang ist nie ein Wareneingang - das Eingangsdatum bleibt, wie es
-    ist. Gibt die Bewegung und den Bestand vorher/nachher zurück.
+    ist. Nur eine Umlagerung gibt `eingangsdatum` (startet die Reduktionsuhr,
+    siehe app/services/umlagerung.py) und `aeltestes` (das Datum, das die Ware
+    mitbringt, D17) mit. Gibt die Bewegung und den Bestand vorher/nachher
+    zurück.
     """
     bewegung = Lagerbewegung(
         lagerort_id=lagerort_id,
@@ -75,6 +80,7 @@ def buche_bewegung(
         typ=typ,
         menge=menge,
         grund=grund,
+        eingangsdatum=eingangsdatum,
         benutzer_kassennummer=(benutzer or {}).get("kassennummer"),
         benutzer_name=(benutzer or {}).get("name"),
         zeitpunkt=zeitpunkt,
@@ -90,11 +96,16 @@ def buche_bewegung(
         session.add(bestand)
     vorher = Decimal(bestand.menge or 0)
     bestand.menge = vorher + menge
+    if aeltestes and (
+        bestand.aeltestes_eingangsdatum is None
+        or aeltestes < bestand.aeltestes_eingangsdatum
+    ):
+        bestand.aeltestes_eingangsdatum = aeltestes
     session.flush()
     return bewegung, vorher, Decimal(bestand.menge)
 
 
-def _sperren(session) -> None:
+def sperren(session) -> None:
     if session.bind.dialect.name == "postgresql":
         session.execute(text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})"))
 
@@ -153,8 +164,8 @@ def _antwort(session, bewegung, variante, vorher, nachher) -> dict:
         "groesse": variante.groesse,
         "ean": variante.ean,
         "lagerort": {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
-        "bestand_vorher": _zahl(vorher),
-        "bestand_nachher": _zahl(nachher),
+        "bestand_vorher": zahl(vorher),
+        "bestand_nachher": zahl(nachher),
     }
 
 
@@ -179,7 +190,7 @@ def ausbuchen(
     grund_text = _grund_text(grund, freitext, language)
     typ = "verkauf" if grund == "verkauf" else "ausbuchung"
     with session_factory() as session, session.begin():
-        _sperren(session)
+        sperren(session)
         if session.get(Lagerort, lagerort_id) is None:
             raise AusbuchungRejected(translate("errors.bestand.unknown_lagerort", language))
         variante = _finde_variante(session, ean, varianten_id, language)
@@ -206,7 +217,7 @@ def storniere(
 ) -> dict:
     """Eine Ausbuchung per Gegenbuchung aufheben - einmal, nicht öfter."""
     with session_factory() as session, session.begin():
-        _sperren(session)
+        sperren(session)
         bewegung = session.get(Lagerbewegung, bewegung_id)
         if bewegung is None or bewegung.typ not in ("verkauf", "ausbuchung"):
             raise AusbuchungRejected(

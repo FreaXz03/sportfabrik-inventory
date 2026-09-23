@@ -245,6 +245,27 @@ Sperre, dieselbe Regel 2 — jede Änderung ist eine Zeile in
   ihre Varianten-Id ausgebucht, heute über den vorübergehenden Knopf „−1" in
   der Bestandsansicht (`grund = 'test'`).
 
+## Umlagern
+
+Ware von einem Lagerort an einen anderen (`app/services/umlagerung.py`,
+Seite `/umlagern`, Phase C, Teilaufgabe C4). Gebucht wird **beim Empfang von
+der empfangenden Filiale** (F5): eine Transaktion schreibt je Variante zwei
+Zeilen `typ = umlagerung` — Abgang an der Quelle, Zugang am Ziel.
+
+Welche Datumsregel gilt, entscheidet nur `lagerorte.verkauf`:
+
+| Von → nach | Eingangsdatum / Uhr am Ziel |
+|---|---|
+| extern → Filiale | wird gesetzt (auf Wunsch rückwirkend), Uhr startet (D13) |
+| Filiale → Filiale, Ziel kennt den Artikel | Ware behält ihr Datum (D17), Uhr des Ziels läuft weiter (F10) |
+| Filiale → Filiale, Ziel hatte den Artikel nie | Uhr startet ab Eintreffen (F11) |
+| beliebig → extern | kein Datum, keine Uhr (Regel 6) |
+
+Startet eine Umlagerung die Uhr, steht das Datum an ihrer Zielzeile in
+`lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` nimmt das
+spätere Datum aus Wareneingängen und diesen Umlagerungen. Zu wenig Bestand an
+der Quelle wird gemeldet, aber gebucht.
+
 ## Ware von Hand erfassen
 
 Der zweite Weg, auf dem Ware ins System kommt: **ohne PDF, ohne Parser**

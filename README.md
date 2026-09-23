@@ -41,6 +41,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
   Stück aus — Verkauf, Bruch/Defekt, Diebstahl/Schwund, Eigenbedarf, Retoure
   oder Sonstiges. Reicht der Bestand nicht, warnt die Seite und bucht
   trotzdem; ein Fehlscan lässt sich per Gegenbuchung rückgängig machen.
+- **Umlagern** (Seite „Umlagern"): die empfangende Filiale bucht Ware aus
+  einem anderen Lagerort in einem Schritt — per Scan oder aus dem Bestand der
+  Quelle. Ware aus GEWA, VEBO oder Dietikon bekommt dabei ihr Eingangsdatum;
+  zwischen Filialen behält sie ihr Datum.
 - **Ware von Hand erfassen** (Seite „Erfassen"): scannen oder eintippen,
   ohne Beleg und ohne Parser — für Ware ohne Dokument und für Lieferanten,
   deren Layout noch nicht erkannt wird. Pflicht sind nur Marke, Bezeichnung,
@@ -98,7 +102,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (463 bestanden, 20 übersprungen ohne optionale
+- **Tests**: pytest (488 bestanden, 20 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -162,6 +166,7 @@ app/
     kategorien.py      Kassenkategorie ansehen und von Hand waehlen (/api/kategorien)
     bestand.py         Bestand je Filiale ansehen (/bestand, /api/bestand)
     ausbuchung.py      Ausbuchen per Scan, ein Stueck je Scan, Rueckgaengig (/ausbuchen, /api/ausbuchen)
+    umlagerung.py      Ware beim Empfang umlagern (/umlagern, /api/umlagerung)
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
@@ -184,6 +189,7 @@ app/
     kategorien.py       Kassenkategorie: Auswahlliste, von Hand setzen, nie ueberschreiben (B8)
     bestand.py          Bestand lesen: Menge je Variante x Lagerort, Filter und Kennzahlen (C2)
     ausbuchung.py       Verkauf/Abgang buchen und per Gegenbuchung aufheben (C3)
+    umlagerung.py       Umlagerung mit Datumsregeln D13/D17/F10/F11 (C4)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)

@@ -124,6 +124,7 @@ erDiagram
         string typ
         numeric menge
         string grund
+        date eingangsdatum
         int wareneingang_position_id FK
         string benutzer_kassennummer
         string benutzer_name
@@ -282,8 +283,16 @@ Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
 `verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Geschrieben werden
 bisher `zugang`, seit C3 auch `verkauf` und `ausbuchung` (Menge −1 je Scan,
 Grund in `grund`, z. B. `defekt` oder `sonstiges: …`) sowie `korrektur` als
-Gegenbuchung beim Rückgängigmachen (`grund = 'storno:<id>'`). Allgemeine
-Korrekturen und Umlagerung folgen (Phase C, Teilaufgaben C4–C5). Jede importierte
+Gegenbuchung beim Rückgängigmachen (`grund = 'storno:<id>'`), seit C4
+`umlagerung` (zwei Zeilen je Variante: `−menge` an der Quelle mit
+`grund = 'nach:<Ziel>'`, `+menge` am Ziel mit `grund = 'von:<Quelle>'`).
+Allgemeine Korrekturen folgen (C5).
+
+`eingangsdatum` ist nur an der Zielzeile einer Umlagerung gesetzt, die dort
+die Reduktionsuhr startet — externer Standort → Filiale (D13) oder eine
+Filiale, die den Artikel noch nie hatte (F11); sonst leer. Die Uhr
+(`reduktion.letzter_wareneingang()`) nimmt das spätere Datum aus
+Wareneingängen und solchen Umlagerungen. Jede importierte
 Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`; von Hand
 erfasste Ware ebenso, dort mit `grund = 'manuelle-erfassung'` (ein fester
 Schlüssel, kein UI-Text — übersetzt wird erst bei der Anzeige). Benutzer wird
@@ -366,6 +375,7 @@ oben):
 | `b8c9d0e1f2a3` | Zwei weitere Lagerorte ohne Verkauf: `VEBO` (Verarbeitungsstelle wie GEWA) und `DIETIKON` (externes Lager); GEWA umbenannt in „GEWA (externe Verarbeitung)“. Idempotent; der Downgrade löscht einen der beiden nur, solange nichts daran hängt |
 | `c9d0e1f2a3b4` | `artikel.kategorie_manuell` (Teilaufgabe B8): merkt, ob die Kategorie von Hand gewählt wurde; Server-Default `false`, weil bestehende Artikel ihre Kategorie ausschliesslich über den FEDAS-Vorschlag bekommen haben |
 | `d0e1f2a3b4c5` | Filialcodes korrigiert (22.09.2026): SF2 ist Conthey, SF3 Regensdorf, SF4 Hägendorf. Getauscht wird nur der `code` der bestehenden Zeile — der Ort bleibt, wo er ist, und Buchungen hängen an `lagerorte.id`. Ringtausch über Zwischencodes, weil `code` eindeutig ist |
+| `e1f2a3b4c5d6` | `lagerbewegungen.eingangsdatum` (Teilaufgabe C4): Datum, ab dem eine Umlagerung die Reduktionsuhr der Zielfiliale startet. Bestehende Zeilen sind Zugänge, deren Datum am Wareneingang steht — dort bleibt die Spalte leer |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

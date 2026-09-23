@@ -179,6 +179,14 @@ negativer Bestand wird gezeigt, nicht versteckt.
 Der Grund `test` gehört zum vorübergehenden Knopf „−1" in der
 Bestandsansicht und steht nicht in `gruende`.
 
+## Umlagern
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/umlagern` | Seite „Umlagern" (jede Anmeldung) |
+| GET | `/api/umlagerung/stammdaten` | `quellen` (alle Lagerorte), `ziele` (buchbare, eigene zuerst), `ziel_aktiv`, `heute`; je Lagerort `verkauf` |
+| POST | `/api/umlagerung` | Umlagerung beim Empfang buchen. JSON: `quelle_id`, `ziel_id` (ohne Angabe die aktive Filiale), `eingangsdatum` (optional, `YYYY-MM-DD`, nicht in der Zukunft; zählt nur, wo die Uhr startet), `positionen` (`varianten_id`, `menge` als Text; gleiche Varianten werden zusammengezählt). Antwort: `quelle`, `ziel`, `positionen` (je Variante Bestand vorher/nachher und `uhr_start`), `fehlbestand`, `stueck`. 409 bei gleichem Quell- und Ziel-Lagerort, ungültiger Menge oder unbekannter Variante — dann ist nichts gebucht |
+
 ## Ware von Hand erfassen (ohne Beleg)
 
 | Methode | Pfad | Zweck |

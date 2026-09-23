@@ -378,6 +378,11 @@ class Lagerbewegung(Base):
     typ: Mapped[str] = mapped_column(String(20))
     menge: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     grund: Mapped[str | None] = mapped_column(String(200))
+    # Nur bei einer Umlagerung, die in der Zielfiliale die Reduktionsuhr
+    # startet (D13: externer Standort -> Filiale, F11: Filiale ohne bisherigen
+    # Wareneingang). Sonst leer - das Datum eines Zugangs steht am
+    # Wareneingang.
+    eingangsdatum: Mapped[date | None] = mapped_column(Date)
 
     wareneingang_position_id: Mapped[int | None] = mapped_column(
         ForeignKey("wareneingang_positionen.id")
