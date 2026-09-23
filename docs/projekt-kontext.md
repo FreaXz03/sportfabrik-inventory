@@ -257,7 +257,7 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 
-1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm). Bis das feststeht, ist die Grösse einstellbar; Voreinstellung 50 × 30 mm (Teilaufgabe B7).
+1. ~~**Etikettengrösse** des Sato CL4NX Plus~~ — beantwortet am 23.09.2026: **84 × 38 mm**, jetzt Voreinstellung (siehe unten). Offen ist nur noch die Gestaltung: Fabian kann eine Vorlage des heutigen Etiketts nachreichen.
 2. ~~**Barcode aufs Etikett?**~~ Vorläufig entschieden und so gebaut (B7): **ja** — ohne Strichcode bliebe genau der Artikel unscannbar, für den die interne EAN gedacht ist (D10). Falls das Etikett ihn doch nicht tragen soll, bitte melden.
 3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
 4. ~~**Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären.~~ — beantwortet am 22.09.2026 (siehe unten): warnen, Buchung trotzdem zulassen, wie an der Kasse.
@@ -287,9 +287,19 @@ Diese Antworten sind fachliche Entscheidungen, keine Bestätigung neu implementi
 
 Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts (Phase C).
 
+### Bestätigte Antworten vom 23.09.2026 (dritte Runde)
+
+- **Gründe beim Ausbuchen (F14):** wie vorgeschlagen — Verkauf, Bruch/Defekt, Diebstahl/Schwund, Eigenbedarf, Retoure an den Lieferanten, Sonstiges mit freiem Text.
+- **Scan beim Ausbuchen (F15):** Ein Scan bucht **sofort ein Stück** aus. Mehrere Stück = mehrmals scannen; es gibt keine Mengenabfrage.
+- **Umlagerung in eine Filiale ohne bisherigen Wareneingang (F11):** Die Uhr startet dort **ab Eintreffen der Ware** — das Eingangsdatum ist dann der Tag, an dem die Zielfiliale den Empfang bucht.
+- **Etikettengrösse (F1):** 84 × 38 mm auf dem Sato CL4NX Plus. Eine Vorlage des heutigen Etiketts kann Fabian nachreichen.
+- **Kassenschnittstelle (F2):** weiterhin keine Rückmeldung von Intersport.
+- **FEDAS aus der Praxis lernen (F8):** ja. Es gibt keine FEDAS-Liste, und niemand weiss, ob die Sportfabrik eine hat. Kategorien, die von Hand gewählt werden, sollen deshalb als Vorschlag für die Zuordnungstabelle gesammelt werden — übernommen wird ein Code erst nach Prüfung, nicht automatisch.
+- **Vorübergehender Test-Knopf im Bestand:** je Bestandszeile ein Knopf, der **ein Stück** abbucht (2 Shirts → 1 Shirt). Der Artikel bleibt im Stamm, die Buchung ist eine normale Zeile in `lagerbewegungen` (Regel 2). Sichtbar für alle Rollen. Wird wieder entfernt, sobald das Ausbuchen im Laden erprobt ist.
+
 ### Weitere offene Produktfrage
 
-8. **FEDAS-Codes aus der Praxis lernen?** Wird für einen Artikel mit unbekanntem FEDAS-Code von Hand eine Kategorie gewählt (B8), kennt das System damit faktisch die Zuordnung dieses Codes. Soll daraus ein Vorschlag für `app/core/fedas.py` werden (z. B. eine Liste „diese Codes wurden von Hand so zugeordnet"), oder bleibt die Tabelle bewusst nur das, was aus echten Rechnungen bestätigt ist? Heute: bewusst nur Bestätigtes, jede Wahl von Hand gilt nur für ihren Artikel.
+8. ~~**FEDAS-Codes aus der Praxis lernen?**~~ — beantwortet am 23.09.2026: ja, als geprüfter Vorschlag (siehe oben). Umsetzung noch offen.
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
@@ -346,8 +356,8 @@ Abhängigkeit und Risiko — eine Teilaufgabe = ein Commit):
 |---|---|---|
 | C1 | **Warnung bei Mehrlieferung**: kommt mehr an als erwartet, warnt das System und bucht trotzdem (bestätigt 22.09.2026). Rest aus B5, klein und fachlich entschieden — deshalb zuerst | ✅ abgeschlossen |
 | C2 | **Bestandsansicht je Lagerort**: aktueller Bestand pro Variante × Lagerort, lesbar für **alle** Filialen (Leserechte 22.09.2026), mit eigener Sicht auf Ware an einem externen Standort (ohne Eingangsdatum). Bisher zeigt keine Seite den Bestand — ohne sie lässt sich alles Folgende nicht kontrollieren | ✅ abgeschlossen |
-| C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026) | offen |
-| C4 | **Umlagerung**: externer Standort → Filiale setzt das Eingangsdatum erstmals (D13), Filiale → Filiale behält es und startet die Uhr der Zielfiliale nicht neu (D17, 22.09.2026). Gebucht wird beim Empfang durch die **empfangende** Filiale (F5). Offen dazu: der Fall, dass die Zielfiliale die Artikelnummer noch nie hatte (Abschnitt 10) | offen |
+| C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026). Ein Scan = ein Stück (F15), Gründe gemäss F14 (23.09.2026) | offen |
+| C4 | **Umlagerung**: externer Standort → Filiale setzt das Eingangsdatum erstmals (D13), Filiale → Filiale behält es und startet die Uhr der Zielfiliale nicht neu (D17, 22.09.2026). Gebucht wird beim Empfang durch die **empfangende** Filiale (F5). Hatte die Zielfiliale die Artikelnummer noch nie, startet die Uhr ab Eintreffen (F11, 23.09.2026) | offen |
 | C5 | **Korrekturen**: Differenz von Hand buchen (`typ = korrektur`) — nur mit Grund, damit das Journal nachvollziehbar bleibt (Regel 2). Braucht es besonders am Anfang, weil der migrierte Bestand kumulierter Wareneingang ohne Verkäufe ist | offen |
 
 Alle fünf buchen über dieselbe Stelle wie der Zugang (`buche_zugang()` bzw.
