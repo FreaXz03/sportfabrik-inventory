@@ -179,6 +179,13 @@ negativer Bestand wird gezeigt, nicht versteckt.
 Der Grund `test` gehört zum vorübergehenden Knopf „−1" in der
 Bestandsansicht und steht nicht in `gruende`.
 
+## Korrigieren
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/api/korrektur/gruende` | `gruende`: `inventur`, `falsch_gebucht`, `gefunden`, `sonstiges` |
+| POST | `/api/korrektur` | Gezählte Menge buchen. JSON: `varianten_id`, `lagerort_id` (ohne Angabe die aktive Filiale), `gezaehlt` (Text, ≥ 0), `grund`, `freitext` (Pflicht bei `sonstiges`). Antwort: `bestand_vorher`, `bestand_nachher`, `differenz`, `gebucht` (`false`, wenn der Bestand schon stimmte), `bewegung_id`. 409 bei ungültiger Menge, unbekanntem Grund oder unbekannter Variante |
+
 ## Umlagern
 
 | Methode | Pfad | Zweck |

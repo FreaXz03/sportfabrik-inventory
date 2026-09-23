@@ -106,7 +106,7 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
 Phase B ist damit vollständig abgeschlossen. Nächste Phase gemäss Roadmap
 (`docs/projekt-kontext.md` Abschnitt 9): **C — Lagerbestand**.
 
-## In Arbeit: Phase C — Lagerbestand
+## Abgeschlossen: Phase C — Lagerbestand
 
 Teilaufgaben und Begründung der Reihenfolge: `docs/projekt-kontext.md`
 Abschnitt 11, „Phase C — Lagerbestand, Aufteilung in Teilaufgaben". Kurz:
@@ -115,7 +115,11 @@ Abschnitt 11, „Phase C — Lagerbestand, Aufteilung in Teilaufgaben". Kurz:
 2. **Bestandsansicht je Lagerort** — alle Filialen lesbar, externe Standorte separat sichtbar. ✅ abgeschlossen
 3. **Ausbuchen per Scan** — Verkauf/Abgang von Hand; reicht der Bestand nicht: warnen, trotzdem buchen. ✅ abgeschlossen (ein Scan = ein Stück)
 4. **Umlagerung** — extern → Filiale setzt das Eingangsdatum (D13), Filiale → Filiale behält es und startet die Reduktionsuhr der Zielfiliale nicht neu; hatte die Zielfiliale die Artikelnummer nie, startet die Uhr ab Eintreffen (F11). ✅ abgeschlossen
-5. **Korrekturen** — Differenz mit Grund buchen.
+5. **Korrekturen** — Differenz mit Grund buchen. ✅ abgeschlossen (gezählte Menge eingeben, System bucht die Differenz)
+
+Phase C ist damit vollständig abgeschlossen (23.09.2026). Vorübergehend hat die
+Bestandsansicht einen Test-Knopf „−1"; er wird entfernt, sobald das Ausbuchen
+im Laden erprobt ist. Nächste Phase gemäss Roadmap: **D — Preise & Reduktion**.
 
 Jede Buchung bleibt eine Zeile in `lagerbewegungen` (Regel 2) und läuft über
 dieselbe Sperre wie der Zugang.

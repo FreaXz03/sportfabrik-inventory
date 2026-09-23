@@ -641,5 +641,15 @@
   "errors.umlagerung.too_many_positions": "Too many positions (at most {max}).",
   "errors.umlagerung.invalid_position": "Invalid position.",
   "errors.umlagerung.invalid_quantity": "Invalid quantity – please enter a positive number.",
+  "bestand.count": "Count",
+  "bestand.counted_label": "Counted quantity",
+  "bestand.correction_book": "Book correction",
+  "bestand.correction_reason.inventur": "Stocktake / count",
+  "bestand.correction_reason.falsch_gebucht": "Booked incorrectly",
+  "bestand.correction_reason.gefunden": "Goods found",
+  "bestand.correction_reason.sonstiges": "Other",
+  "bestand.correction_done": "{artikel}: stock corrected from {vorher} to {nachher} ({differenz}).",
+  "bestand.correction_unchanged": "{artikel}: stock is already correct ({menge}) – nothing booked.",
+  "errors.korrektur.invalid_quantity": "Invalid quantity – please enter the counted number of pieces (0 or more).",
   "_end": ""
 }

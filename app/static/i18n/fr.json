@@ -641,5 +641,15 @@
   "errors.umlagerung.too_many_positions": "Trop de positions ({max} au maximum).",
   "errors.umlagerung.invalid_position": "Position invalide.",
   "errors.umlagerung.invalid_quantity": "Quantité invalide – veuillez saisir un nombre positif.",
+  "bestand.count": "Compter",
+  "bestand.counted_label": "Quantité comptée",
+  "bestand.correction_book": "Enregistrer la correction",
+  "bestand.correction_reason.inventur": "Inventaire / comptage",
+  "bestand.correction_reason.falsch_gebucht": "Erreur d'écriture",
+  "bestand.correction_reason.gefunden": "Marchandise retrouvée",
+  "bestand.correction_reason.sonstiges": "Autre",
+  "bestand.correction_done": "{artikel} : stock corrigé de {vorher} à {nachher} ({differenz}).",
+  "bestand.correction_unchanged": "{artikel} : le stock est déjà juste ({menge}) – rien n'a été enregistré.",
+  "errors.korrektur.invalid_quantity": "Quantité invalide – veuillez saisir le nombre de pièces compté (0 ou plus).",
   "_end": ""
 }

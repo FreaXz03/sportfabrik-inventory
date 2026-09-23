@@ -641,5 +641,15 @@
   "errors.umlagerung.too_many_positions": "Zu viele Positionen (höchstens {max}).",
   "errors.umlagerung.invalid_position": "Ungültige Position.",
   "errors.umlagerung.invalid_quantity": "Ungültige Menge – bitte eine positive Zahl eingeben.",
+  "bestand.count": "Zählen",
+  "bestand.counted_label": "Gezählte Menge",
+  "bestand.correction_book": "Korrektur buchen",
+  "bestand.correction_reason.inventur": "Inventur / Zählung",
+  "bestand.correction_reason.falsch_gebucht": "Falsch gebucht",
+  "bestand.correction_reason.gefunden": "Ware gefunden",
+  "bestand.correction_reason.sonstiges": "Sonstiges",
+  "bestand.correction_done": "{artikel}: Bestand korrigiert von {vorher} auf {nachher} ({differenz}).",
+  "bestand.correction_unchanged": "{artikel}: Bestand stimmt schon ({menge}) – nichts gebucht.",
+  "errors.korrektur.invalid_quantity": "Ungültige Menge – bitte die gezählte Stückzahl eingeben (0 oder mehr).",
   "_end": ""
 }

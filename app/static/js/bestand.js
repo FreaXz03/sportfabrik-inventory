@@ -100,7 +100,128 @@
       }
     });
     zelle.append(knopf);
+    const zaehlen = node('button', t('bestand.count'), 'secondary');
+    zaehlen.type = 'button';
+    zaehlen.addEventListener('click', () => zaehlenOeffnen(zeile, tr, mengenZelle));
+    zelle.append(' ', zaehlen);
     return zelle;
+  }
+
+  // Korrektur (Phase C, Teilaufgabe C5): gezählte Menge eingeben, gebucht
+  // wird die Differenz (23.09.2026). Die Gründe kommen vom Server.
+  let korrekturGruende = null;
+
+  async function gruendeLaden() {
+    if (korrekturGruende) return korrekturGruende;
+    const antwort = await fetch('/api/korrektur/gruende');
+    const daten = await antwort.json().catch(() => ({}));
+    if (!antwort.ok) throw new Error(typeof daten.detail === 'string' ? daten.detail : t('common.errors.request_failed'));
+    korrekturGruende = daten.gruende || [];
+    return korrekturGruende;
+  }
+
+  async function zaehlenOeffnen(zeile, tr, mengenZelle) {
+    const offen = tr.nextElementSibling;
+    if (offen && offen.classList.contains('korrektur')) {
+      offen.remove();
+      return;
+    }
+    let gruende;
+    try {
+      gruende = await gruendeLaden();
+    } catch (fehler) {
+      $('status').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+      return;
+    }
+    const editor = node('tr', null, 'korrektur');
+    const zelle = node('td');
+    zelle.colSpan = 6;
+    const form = node('form', null, 'filters');
+    form.noValidate = true;
+
+    const mengenLabel = node('label');
+    mengenLabel.append(node('span', t('bestand.counted_label')));
+    const feld = document.createElement('input');
+    feld.type = 'number';
+    feld.min = '0';
+    feld.step = '1';
+    feld.value = menge(zeile.menge);
+    feld.style.width = '7em';
+    mengenLabel.append(feld);
+
+    const grundLabel = node('label');
+    grundLabel.append(node('span', t('ausbuchen.reason_label')));
+    const auswahl = document.createElement('select');
+    for (const grund of gruende) auswahl.add(new Option(t('bestand.correction_reason.' + grund), grund));
+    grundLabel.append(auswahl);
+
+    const textLabel = node('label');
+    textLabel.hidden = true;
+    textLabel.append(node('span', t('ausbuchen.text_label')));
+    const text = document.createElement('input');
+    text.type = 'text';
+    text.maxLength = 150;
+    textLabel.append(text);
+    auswahl.addEventListener('change', () => { textLabel.hidden = auswahl.value !== 'sonstiges'; });
+
+    const buchen = node('button', t('bestand.correction_book'));
+    buchen.type = 'submit';
+    const abbrechen = node('button', t('common.cancel'), 'secondary');
+    abbrechen.type = 'button';
+    abbrechen.addEventListener('click', () => editor.remove());
+
+    form.append(mengenLabel, grundLabel, textLabel, buchen, abbrechen);
+    // Enter im Mengenfeld bucht - ausdrücklich, wie beim Scanfeld.
+    for (const eingabe of [feld, text]) {
+      eingabe.addEventListener('keydown', (ereignis) => {
+        if (ereignis.key !== 'Enter') return;
+        ereignis.preventDefault();
+        form.requestSubmit();
+      });
+    }
+    form.addEventListener('submit', async (ereignis) => {
+      ereignis.preventDefault();
+      buchen.disabled = true;
+      try {
+        const antwort = await fetch('/api/korrektur', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            varianten_id: zeile.varianten_id,
+            lagerort_id: zeile.lagerort.id,
+            gezaehlt: feld.value.trim(),
+            grund: auswahl.value,
+            freitext: auswahl.value === 'sonstiges' ? text.value.trim() : null
+          })
+        });
+        const ergebnis = await antwort.json().catch(() => ({}));
+        if (!antwort.ok) {
+          throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('common.errors.request_failed'));
+        }
+        zeile.menge = ergebnis.bestand_nachher;
+        mengenZelle.textContent = menge(zeile.menge);
+        tr.className = Number(zeile.menge) < 0 ? 'warning' : '';
+        const name = [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—';
+        const differenz = Number(ergebnis.differenz);
+        $('status').textContent = ergebnis.gebucht
+          ? t('bestand.correction_done', {
+            artikel: name,
+            vorher: menge(ergebnis.bestand_vorher),
+            nachher: menge(ergebnis.bestand_nachher),
+            differenz: (differenz > 0 ? '+' : '') + menge(ergebnis.differenz)
+          })
+          : t('bestand.correction_unchanged', { artikel: name, menge: menge(ergebnis.bestand_nachher) });
+        editor.remove();
+      } catch (fehler) {
+        $('status').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+        buchen.disabled = false;
+      }
+    });
+    zelle.append(form);
+    editor.append(zelle);
+    tr.after(editor);
+    feld.focus();
+    feld.select();
   }
 
   function tabelle(zeilen) {

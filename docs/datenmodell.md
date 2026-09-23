@@ -286,7 +286,7 @@ Grund in `grund`, z. B. `defekt` oder `sonstiges: …`) sowie `korrektur` als
 Gegenbuchung beim Rückgängigmachen (`grund = 'storno:<id>'`), seit C4
 `umlagerung` (zwei Zeilen je Variante: `−menge` an der Quelle mit
 `grund = 'nach:<Ziel>'`, `+menge` am Ziel mit `grund = 'von:<Quelle>'`).
-Allgemeine Korrekturen folgen (C5).
+Seit C5 auch allgemeine `korrektur`-Zeilen: gebucht wird die Differenz zur gezählten Menge, Grund `inventur`, `falsch_gebucht`, `gefunden` oder `sonstiges: …`.
 
 `eingangsdatum` ist nur an der Zielzeile einer Umlagerung gesetzt, die dort
 die Reduktionsuhr startet — externer Standort → Filiale (D13) oder eine

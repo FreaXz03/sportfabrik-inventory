@@ -266,6 +266,15 @@ Startet eine Umlagerung die Uhr, steht das Datum an ihrer Zielzeile in
 spätere Datum aus Wareneingängen und diesen Umlagerungen. Zu wenig Bestand an
 der Quelle wird gemeldet, aber gebucht.
 
+## Korrigieren
+
+Bestand auf die gezählte Menge bringen (`app/services/korrektur.py`, Knopf
+„Zählen" je Zeile in `/bestand`, Phase C, Teilaufgabe C5). Eingegeben wird,
+was im Regal liegt; die Differenz rechnet der Server unter derselben Sperre
+wie jeder Zugang und bucht sie als `typ = korrektur`. Stimmt der Bestand
+schon, wird nichts gebucht. Gründe: Inventur/Zählung, Falsch gebucht, Ware
+gefunden, Sonstiges (mit Text). Das Eingangsdatum ändert sich nie.
+
 ## Ware von Hand erfassen
 
 Der zweite Weg, auf dem Ware ins System kommt: **ohne PDF, ohne Parser**
