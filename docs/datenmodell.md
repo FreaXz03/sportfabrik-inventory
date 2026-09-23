@@ -279,10 +279,11 @@ sind beide von Anfang an gleich.
 
 ### `lagerbewegungen`
 Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
-`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Geschrieben wird
-bisher nur `zugang` — Ausbuchen, Korrektur und Umlagerung sind fachlich
-entschieden (siehe `projekt-kontext.md` Abschnitt 10), aber noch nicht gebaut
-(Phase C, Teilaufgaben C3–C5). Jede importierte
+`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Geschrieben werden
+bisher `zugang`, seit C3 auch `verkauf` und `ausbuchung` (Menge −1 je Scan,
+Grund in `grund`, z. B. `defekt` oder `sonstiges: …`) sowie `korrektur` als
+Gegenbuchung beim Rückgängigmachen (`grund = 'storno:<id>'`). Allgemeine
+Korrekturen und Umlagerung folgen (Phase C, Teilaufgaben C4–C5). Jede importierte
 Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`; von Hand
 erfasste Ware ebenso, dort mit `grund = 'manuelle-erfassung'` (ein fester
 Schlüssel, kein UI-Text — übersetzt wird erst bei der Anzeige). Benutzer wird
@@ -299,7 +300,7 @@ wird der Bestand seit Phase C, Teilaufgabe C2 auf der Seite `/bestand`
 (`app/services/bestand.py`).
 
 Ein **negativer** Bestand ist möglich: beim Ausbuchen von Hand warnt das
-System künftig, bucht aber trotzdem (bestätigt am 22.09.2026). Die Ansicht
+System, bucht aber trotzdem (seit C3) (bestätigt am 22.09.2026). Die Ansicht
 blendet ihn deshalb nie aus.
 
 **Bekannte Einschränkung nach der Migration:** Da das alte System nie

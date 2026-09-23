@@ -37,6 +37,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
   und Lagerort, mit Suche, Filiale-Filter und ältestem Eingangsdatum. Lesen
   darf jede Anmeldung alle Filialen; Ware an einem externen Standort ist als
   solche erkennbar, weil sie noch kein Eingangsdatum hat.
+- **Ausbuchen per Scan** (Seite „Ausbuchen"): jeder Scan bucht sofort ein
+  Stück aus — Verkauf, Bruch/Defekt, Diebstahl/Schwund, Eigenbedarf, Retoure
+  oder Sonstiges. Reicht der Bestand nicht, warnt die Seite und bucht
+  trotzdem; ein Fehlscan lässt sich per Gegenbuchung rückgängig machen.
 - **Ware von Hand erfassen** (Seite „Erfassen"): scannen oder eintippen,
   ohne Beleg und ohne Parser — für Ware ohne Dokument und für Lieferanten,
   deren Layout noch nicht erkannt wird. Pflicht sind nur Marke, Bezeichnung,
@@ -94,7 +98,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (438 bestanden, 20 übersprungen ohne optionale
+- **Tests**: pytest (463 bestanden, 20 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -157,6 +161,7 @@ app/
     etiketten.py       EAN nachtragen/erzeugen und Etiketten als PDF drucken
     kategorien.py      Kassenkategorie ansehen und von Hand waehlen (/api/kategorien)
     bestand.py         Bestand je Filiale ansehen (/bestand, /api/bestand)
+    ausbuchung.py      Ausbuchen per Scan, ein Stueck je Scan, Rueckgaengig (/ausbuchen, /api/ausbuchen)
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
@@ -178,6 +183,7 @@ app/
     reduktion.py        Lagerdauer und Reduktionsstufe nach Regel 6
     kategorien.py       Kassenkategorie: Auswahlliste, von Hand setzen, nie ueberschreiben (B8)
     bestand.py          Bestand lesen: Menge je Variante x Lagerort, Filter und Kennzahlen (C2)
+    ausbuchung.py       Verkauf/Abgang buchen und per Gegenbuchung aufheben (C3)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)

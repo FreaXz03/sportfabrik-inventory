@@ -51,14 +51,61 @@
     tr.append(artikelZelle(zeile));
     tr.append(node('td', [zeile.farbe, zeile.groesse].filter(Boolean).join(' / ') || '—'));
     tr.append(node('td', zeile.lagerort.code + ' · ' + zeile.lagerort.name));
-    tr.append(node('td', menge(zeile.menge)));
+    const mengenZelle = node('td', menge(zeile.menge));
+    tr.append(mengenZelle);
     tr.append(datumsZelle(zeile));
+    tr.append(abbuchenZelle(zeile, tr, mengenZelle));
+    if (Number(zeile.menge) < 0) tr.className = 'warning';
     return tr;
+  }
+
+  // Vorübergehender Test-Knopf (23.09.2026): bucht ein Stück als normale
+  // Lagerbewegung ab (Regel 2) - derselbe Weg wie die Seite „Ausbuchen".
+  // Geht auch für Varianten ohne EAN, die sich nicht scannen lassen.
+  function abbuchenZelle(zeile, tr, mengenZelle) {
+    const zelle = node('td');
+    const knopf = node('button', t('bestand.minus_one'), 'secondary');
+    knopf.type = 'button';
+    knopf.title = t('bestand.minus_one_label');
+    knopf.setAttribute('aria-label', t('bestand.minus_one_label'));
+    knopf.addEventListener('click', async function () {
+      knopf.disabled = true;
+      try {
+        const antwort = await fetch('/api/ausbuchen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            varianten_id: zeile.varianten_id,
+            lagerort_id: zeile.lagerort.id,
+            grund: 'test'
+          })
+        });
+        const ergebnis = await antwort.json().catch(() => ({}));
+        if (!antwort.ok) {
+          throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('common.errors.request_failed'));
+        }
+        zeile.menge = ergebnis.bestand_nachher;
+        mengenZelle.textContent = menge(zeile.menge);
+        tr.className = Number(zeile.menge) < 0 ? 'warning' : '';
+        const name = [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—';
+        $('status').textContent = t(
+          ergebnis.bestand_reicht_nicht ? 'bestand.minus_one_negative' : 'bestand.minus_one_done',
+          { artikel: name, lagerort: zeile.lagerort.code, menge: menge(zeile.menge) }
+        );
+      } catch (fehler) {
+        $('status').textContent =
+          fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+      } finally {
+        knopf.disabled = false;
+      }
+    });
+    zelle.append(knopf);
+    return zelle;
   }
 
   function tabelle(zeilen) {
     const kopf = document.createElement('tr');
-    for (const key of ['table_article', 'table_variant', 'table_lagerort', 'table_quantity', 'table_arrival_date']) {
+    for (const key of ['table_article', 'table_variant', 'table_lagerort', 'table_quantity', 'table_arrival_date', 'table_actions']) {
       kopf.append(node('th', t('bestand.' + key)));
     }
     const thead = document.createElement('thead');

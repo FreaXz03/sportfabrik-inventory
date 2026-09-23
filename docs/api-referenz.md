@@ -167,6 +167,18 @@ die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`
 ergibt HTTP 404. Mengen kommen als Text (`"5.00"`), nie als Zahl; ein
 negativer Bestand wird gezeigt, nicht versteckt.
 
+## Ausbuchen
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/ausbuchen` | Seite „Ausbuchen" (jede Anmeldung) |
+| GET | `/api/ausbuchen/stammdaten` | Buchbare Lagerorte (`lagerorte`, eigene zuerst), `lagerort_aktiv`, `gruende` (`verkauf`, `defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges`) |
+| POST | `/api/ausbuchen` | Ein Stück ausbuchen. JSON: `grund`, genau eines von `ean` oder `varianten_id`, `freitext` (Pflicht bei `sonstiges`), `lagerort_id` (ohne Angabe die aktive Filiale). Antwort: `bewegung_id`, `typ`, `grund`, Artikeldaten, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 bei unbekannter EAN/Variante oder unbekanntem Grund — dann ist nichts gebucht |
+| POST | `/api/ausbuchen/{bewegung_id}/storno` | Ausbuchung per Gegenbuchung (`korrektur`, `storno:<id>`) aufheben; 409, wenn schon aufgehoben oder keine Ausbuchung |
+
+Der Grund `test` gehört zum vorübergehenden Knopf „−1" in der
+Bestandsansicht und steht nicht in `gruende`.
+
 ## Ware von Hand erfassen (ohne Beleg)
 
 | Methode | Pfad | Zweck |

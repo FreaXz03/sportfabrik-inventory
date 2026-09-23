@@ -18,6 +18,7 @@ from .routers.wareneingang import router as wareneingang_router
 from .routers.erfassung import router as erfassung_router
 from .routers.etiketten import router as etiketten_router
 from .routers.kategorien import router as kategorien_router
+from .routers.ausbuchung import router as ausbuchung_router
 from .routers.bestand import router as bestand_router
 
 app = FastAPI(title="Sport-Fabrik Inventory")
@@ -35,6 +36,7 @@ app.include_router(article_details_router)
 app.include_router(dashboard_router)
 app.include_router(wareneingang_router)
 app.include_router(bestand_router)
+app.include_router(ausbuchung_router)
 app.include_router(erfassung_router)
 app.include_router(etiketten_router)
 app.include_router(kategorien_router)

@@ -156,7 +156,7 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 ## 7. Abgleich Zielbild ↔ aktuelles Repo
 
 Momentaufnahme vom 22.09.2026: **Phase B abgeschlossen**, **Phase C
-begonnen** (C1 und C2 erledigt, C3–C5 offen). Massgeblich für den Stand der
+begonnen** (C1–C3 erledigt, C4 und C5 offen). Massgeblich für den Stand der
 Umsetzung ist Abschnitt 11; diese Tabelle fasst ihn nur gegenüber dem Zielbild
 zusammen.
 
@@ -166,7 +166,7 @@ zusammen.
 | Manuelle Erfassung | ✅ Seite `/erfassen` mit Scanner, ohne Beleg (B6) — inkl. Kategorie (B8) und Etikettendruck (B7) | — |
 | Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
 | Preise | ✅ UVP und EK je Wareneingangsposition (EK optional, Regel 10), Preisverlauf je Variante, Reduktionsstufe als Baustein (`app/services/reduktion.py`, genutzt auf dem Etikett) | Reduktions-Hinweise als eigene Ansicht und die zentrale Empfehlung fehlen → Phase D |
-| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung; **Bestandsansicht** `/bestand` je Lagerort, alle Filialen lesbar (C2) | Ausbuchen, Umlagerung und Korrekturen fehlen → Phase C, C3–C5. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
+| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung; **Bestandsansicht** `/bestand` je Lagerort, alle Filialen lesbar (C2); **Ausbuchen per Scan** `/ausbuchen` (C3) | Umlagerung und Korrekturen fehlen → Phase C, C4–C5. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
 | Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Leserechte am 22.09.2026 geklärt (Abschnitt 10): Mitarbeiter und Filialleiter sehen Dokumente und Bestände **aller** Filialen. Die bestehenden Ansichten (Dashboard, Rechnungsliste, Artikeldetails) tun das bereits, die künftige Bestandsansicht (Phase C) muss es ebenfalls; der Filialwechsel bleibt bei den zugewiesenen Filialen (D26) |
 | Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
@@ -323,7 +323,7 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 | B — Wareneingang v2, Teilaufgabe 6 (manuelle Erfassung mit Scanner) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 7 (interne EAN + Etikett) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | ✅ abgeschlossen, Branch `claude/awesome-lamport-tivaj9` |
-| C — Lagerbestand | teilweise: C1 (Warnung bei Mehrlieferung) und C2 (Bestandsansicht) abgeschlossen, Branch `feature/warenwirtschaft-v2`; C3–C5 offen |
+| C — Lagerbestand | teilweise: C1 (Warnung bei Mehrlieferung), C2 (Bestandsansicht) und C3 (Ausbuchen per Scan) abgeschlossen, Branch `feature/warenwirtschaft-v2`; C4–C5 offen |
 | D–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -356,7 +356,7 @@ Abhängigkeit und Risiko — eine Teilaufgabe = ein Commit):
 |---|---|---|
 | C1 | **Warnung bei Mehrlieferung**: kommt mehr an als erwartet, warnt das System und bucht trotzdem (bestätigt 22.09.2026). Rest aus B5, klein und fachlich entschieden — deshalb zuerst | ✅ abgeschlossen |
 | C2 | **Bestandsansicht je Lagerort**: aktueller Bestand pro Variante × Lagerort, lesbar für **alle** Filialen (Leserechte 22.09.2026), mit eigener Sicht auf Ware an einem externen Standort (ohne Eingangsdatum). Bisher zeigt keine Seite den Bestand — ohne sie lässt sich alles Folgende nicht kontrollieren | ✅ abgeschlossen |
-| C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026). Ein Scan = ein Stück (F15), Gründe gemäss F14 (23.09.2026) | offen |
+| C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026). Ein Scan = ein Stück (F15), Gründe gemäss F14 (23.09.2026) | ✅ abgeschlossen |
 | C4 | **Umlagerung**: externer Standort → Filiale setzt das Eingangsdatum erstmals (D13), Filiale → Filiale behält es und startet die Uhr der Zielfiliale nicht neu (D17, 22.09.2026). Gebucht wird beim Empfang durch die **empfangende** Filiale (F5). Hatte die Zielfiliale die Artikelnummer noch nie, startet die Uhr ab Eintreffen (F11, 23.09.2026) | offen |
 | C5 | **Korrekturen**: Differenz von Hand buchen (`typ = korrektur`) — nur mit Grund, damit das Journal nachvollziehbar bleibt (Regel 2). Braucht es besonders am Anfang, weil der migrierte Bestand kumulierter Wareneingang ohne Verkäufe ist | offen |
 
@@ -416,6 +416,43 @@ auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
   obwohl die Sitzungsleiste SF1 anzeigte. Die Seite merkt sich die Wahl jetzt
   selbst und überlässt die erste Abfrage dem Server. Gegen PostgreSQL steht
   der Durchgang noch aus.
+
+**Details zu Phase C, Teilaufgabe C3 — Ausbuchen per Scan** (siehe
+`docs/architektur.md`, Abschnitt „Ausbuchen"):
+- Neu `app/services/ausbuchung.py`, `app/routers/ausbuchung.py`
+  (`/ausbuchen`, `/api/ausbuchen/stammdaten`, `/api/ausbuchen`,
+  `/api/ausbuchen/{id}/storno`), Seite `app/templates/ausbuchen.html` mit
+  `app/static/js/ausbuchen.js`, Navigationseintrag „Ausbuchen" auf allen
+  Seiten. Kein Schema-Eingriff: `lagerbewegungen` kannte `verkauf` und
+  `ausbuchung` schon.
+- **Ein Scan = ein Stück** (F15): der Scan bucht sofort, ohne Mengenabfrage.
+  Schnelle Scans werden im Browser gesammelt und der Reihe nach gebucht.
+- **Gründe** (F14): Verkauf wird als `typ = verkauf` gebucht, Bruch/Defekt,
+  Diebstahl/Schwund, Eigenbedarf, Retoure und Sonstiges als `ausbuchung`;
+  der Grund steht in `lagerbewegungen.grund`, bei Sonstiges mit dem freien
+  Text (`sonstiges: …`, Pflicht, höchstens 150 Zeichen).
+- **Zu wenig Bestand** (F9): gebucht wird trotzdem, die Antwort meldet
+  `bestand_reicht_nicht` und die Seite warnt. Fehlt die Bestandszeile ganz,
+  entsteht sie mit negativer Menge und ohne Eingangsdatum. Ein Abgang ändert
+  das Eingangsdatum nie.
+- **Rückgängig** statt Löschen (Regel 2): eine Gegenbuchung `typ = korrektur`
+  mit `grund = 'storno:<id>'`, je Ausbuchung höchstens einmal.
+- Gebucht wird unter derselben Sperre wie der Zugang; welcher Lagerort
+  gebucht werden darf, prüft der Server (`resolve_wareneingang_lagerort`,
+  vorgewählt die aktive Filiale). Ausbuchen dürfen alle Rollen (Regel 9).
+- **Vorübergehender Test-Knopf** (Wunsch vom 23.09.2026): in der
+  Bestandsansicht je Zeile „−1", bucht über denselben Weg ein Stück ab
+  (`grund = 'test'`, in der Ausbuchen-Seite nicht wählbar). Funktioniert auch
+  für Varianten ohne EAN. Sichtbar für alle Rollen; wird entfernt, sobald das
+  Ausbuchen im Laden erprobt ist.
+- Tests: `tests/test_ausbuchung.py` (24 Fälle: ein Stück je Scan, Gründe und
+  Typ, Pflichttext bei Sonstiges, unbekannte EAN/Grund buchen nichts,
+  Variante ohne EAN, negativer Bestand mit Warnung, Eingangsdatum bleibt,
+  Bestand = Summe der Bewegungen, Storno einmalig und nur für Abgänge, API
+  inklusive Rechte). Gesamtsuite: 463 bestandene Tests (vorher 438).
+- Im Browser gegen eine SQLite-Testdatenbank durchgespielt: Scan mit Enter,
+  Scan ins Minus mit Warnung, Rückgängig, „−1" in der Bestandsansicht bis ins
+  Minus. Gegen PostgreSQL steht der Durchgang noch aus.
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.

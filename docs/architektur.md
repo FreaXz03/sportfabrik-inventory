@@ -221,6 +221,29 @@ Drei Dinge sind bewusst so gebaut:
 
 Seite: **/bestand** (Navigation „Bestand"), Filter für Filiale, Suche und
 „nur Zeilen mit Bestand", nachladen über `offset` (Phase C, Teilaufgabe C2).
+Vorübergehend hat jede Zeile einen Knopf „−1" zum Testen des Ausbuchens
+(siehe nächster Abschnitt).
+
+## Ausbuchen
+
+Verkauf oder Abgang von Hand (`app/services/ausbuchung.py`, Seite
+`/ausbuchen`, Phase C, Teilaufgabe C3). Das Gegenstück zum Zugang: dieselbe
+Sperre, dieselbe Regel 2 — jede Änderung ist eine Zeile in
+`lagerbewegungen`, der Bestand wird im selben Schritt nachgeführt.
+
+- **Ein Scan = ein Stück** (F15, 23.09.2026). Die Seite sammelt schnelle
+  Scans und bucht sie der Reihe nach; nach jedem Scan ist das Feld sofort
+  wieder frei.
+- **Gründe** (F14): `verkauf` wird als `typ = verkauf` gebucht, alle anderen
+  (`defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges: <Text>`) als
+  `ausbuchung`. So bleiben Verkäufe von Schwund trennbar.
+- **Zu wenig Bestand** (F9): warnen, trotzdem buchen. Ein Abgang ändert das
+  Eingangsdatum nie.
+- **Rückgängig**: Gegenbuchung `korrektur` mit `grund = 'storno:<id>'`,
+  höchstens einmal je Ausbuchung — nichts wird gelöscht.
+- Varianten **ohne EAN** (Regel 5) lassen sich nicht scannen; sie werden über
+  ihre Varianten-Id ausgebucht, heute über den vorübergehenden Knopf „−1" in
+  der Bestandsansicht (`grund = 'test'`).
 
 ## Ware von Hand erfassen
 

@@ -1008,6 +1008,8 @@ td.id { white-space: nowrap; }
 
 tr.warning td { background: var(--accent-soft-bg); }
 
+.warning-text { color: var(--danger-text); font-weight: 600; }
+
 th.sortable {
   cursor: pointer;
   user-select: none;
