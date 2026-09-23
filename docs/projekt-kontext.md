@@ -300,7 +300,7 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 - **Korrekturen, Rechte:** alle Rollen (Regel 9 — nur Dokumente sind Filialleitern vorbehalten).
 - **Begriff „Beleg" statt „Rechnung" in der Oberfläche:** hochgeladen werden nicht nur Rechnungen, sondern auch Lieferscheine und Auftragsbestätigungen. Oberbegriff überall „Beleg" (FR „justificatif", EN „document"); „Rechnung" bleibt nur, wo wirklich der Dokumenttyp gemeint ist.
 - **Etikettengrösse korrigiert:** 84 × 47 mm (nicht 84 × 38 mm).
-- **Kopfbereich:** aufräumen, hochwertiger und benutzerfreundlicher machen.
+- **Kopfbereich:** aufräumen, hochwertiger und benutzerfreundlicher machen. Umgesetzt am 23.09.2026: eine Kopfzeile statt zwei, Navigation in Gruppen (Ware, Belege) mit Erklärung je Eintrag, Filial-Pille und Konto-Menü rechts, Menü-Knopf auf schmalen Bildschirmen.
 - **Vorübergehender Test-Knopf im Bestand:** je Bestandszeile ein Knopf, der **ein Stück** abbucht (2 Shirts → 1 Shirt). Der Artikel bleibt im Stamm, die Buchung ist eine normale Zeile in `lagerbewegungen` (Regel 2). Sichtbar für alle Rollen. Wird wieder entfernt, sobald das Ausbuchen im Laden erprobt ist.
 
 ### Weitere offene Produktfrage

@@ -198,6 +198,8 @@ app/
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)
     js/i18n.js           Katalog laden, data-i18n anwenden, window.SportfabrikI18n.t()
+    js/nav.js            Hauptnavigation (gruppiert, aktive Seite, Menü auf schmalen Bildschirmen)
+    js/session.js        Kopfzeile rechts: Filiale und Konto-Menü
     i18n/{de,fr,en}.json Übersetzungs-Katalog (einzige Quelle, auch vom Backend gelesen)
     fonts/, img/        Selbst gehostete Schriftart, Logo
     BRAND-SOURCES.md    Herkunft von Logo/Schriftart, Markenfarben

@@ -97,7 +97,7 @@ als filialübergreifend.
 Die aktuell aktive Filiale liegt in der Session (`active_lagerort_id`) und
 wird über `POST /api/active-lagerort` gewechselt — die Auswahl dafür zeigt
 `GET /api/me` (`lagerort` = aktiv, `lagerorte` = wählbar). Die Oberfläche
-rendert dafür ein `<select>` in der Session-Leiste
+rendert dafür ein `<select>` in der Filial-Pille rechts in der Kopfzeile
 (`app/static/js/session.js`), sichtbar sobald mehr als eine Filiale zur Wahl
 steht oder der Benutzer Admin ist (dann zusätzlich „Alle Filialen“, also
 kein aktiver Lagerort). Serverseitig wird bei jedem Wechsel geprüft, dass
@@ -646,11 +646,20 @@ zwei Skripte werden aber seitenübergreifend eingebunden:
   `app.css` (folgt standardmässig der Systemeinstellung, manuell
   umschaltbar, per `localStorage` gemerkt) und liefert den Umschalt-Knopf
   als Factory-Funktion.
-- `session.js` baut daraus auf jeder Seite mit aktiver Anmeldung die
-  Kopfzeile (Name/Kassennummer, Rolle, Filial-Umschalter sofern mehr als
-  eine Filiale wählbar ist, „Abmelden", Einstellungen-Menü mit dem
-  Hell/Dunkel-Umschalter) und blendet für Mitarbeiter die Upload-Funktionen
-  aus.
+- `nav.js` baut die Hauptnavigation an **einer** Stelle (die Templates
+  enthalten nur ein leeres `<nav>`): Übersicht, Bestand, Gruppe „Ware"
+  (Erfassen, Lieferungen, Umlagern, Ausbuchen), Artikel, Gruppe „Belege"
+  (Alle Belege, Beleg hochladen). Die Gruppen klappen mit je einer kurzen
+  Erklärung pro Eintrag auf; die aktive Seite trägt `aria-current="page"`.
+  „Beleg hochladen" sehen nur Filialleiter und Zentrale (Regel 9). Unter
+  900 px Breite steckt alles hinter dem Knopf „Menü".
+- `session.js` baut die rechte Seite der Kopfzeile: die **Filial-Pille**
+  (aktive Filiale, bei mehreren wählbaren als Auswahl) und das
+  **Konto-Menü** hinter dem Initialen-Knopf (Name, Kassennummer, Rolle,
+  Sprache, Hell/Dunkel, auf der Artikelseite der Excel-Export, Abmelden).
+  Es meldet die Anmeldung als Ereignis `sportfabrik:me`, damit `nav.js`
+  nach Rolle filtern kann, und blendet für Mitarbeiter die Upload-Kachel
+  auf der Übersicht aus.
 
 Für ältere oder sehbeeinträchtigte Mitarbeitende bietet die Artikelsuche
 zusätzlich eine Spalten-Auswahl (einzelne Spalten ausblenden) und grössere
@@ -682,9 +691,12 @@ Dunkelmodus-Regeln. Wer eine Farbe ändern will, ändert sie an genau einer
 Stelle. `color-scheme` ist mitgesetzt, damit auch native Bedienelemente
 (Datumsfelder, Bildlaufleisten) zum Modus passen.
 
-Die Kopfzeile ist zweizeilig und bleibt beim Scrollen stehen (`sticky` mit
-`backdrop-filter`): Zeile 1 Marke + Navigation, Zeile 2 die von `session.js`
-erzeugte Sitzungsleiste. Ändert sich die Datei, muss der Cache-Parameter
+Die Kopfzeile ist seit dem 23.09.2026 **einzeilig** und bleibt beim Scrollen
+stehen (`sticky` mit `backdrop-filter`): links die Marke, daneben die
+Navigation aus `nav.js`, rechts Filial-Pille und Konto-Menü aus `session.js`.
+Aufklapp-Menüs werden über die Klasse `is-open` gesteuert, nicht über
+`hidden` — die globale Regel `[hidden] { display: none !important }` liesse
+sich sonst auf schmalen Bildschirmen nicht übersteuern. Ändert sich die Datei, muss der Cache-Parameter
 (`?v=…`) in den Templates mitgezogen werden — sonst sehen Filialrechner noch
 die alte Fassung.
 
