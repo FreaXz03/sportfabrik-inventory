@@ -298,6 +298,9 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 - **Korrekturen (C5), Eingabe:** gezählt wird die **Menge im Regal**; das System rechnet die Differenz zum Bestand selbst aus und bucht sie (eine Mini-Inventur je Zeile).
 - **Korrekturen, Gründe:** Inventur/Zählung, Falsch gebucht, Ware gefunden, Sonstiges mit freiem Text.
 - **Korrekturen, Rechte:** alle Rollen (Regel 9 — nur Dokumente sind Filialleitern vorbehalten).
+- **Begriff „Beleg" statt „Rechnung" in der Oberfläche:** hochgeladen werden nicht nur Rechnungen, sondern auch Lieferscheine und Auftragsbestätigungen. Oberbegriff überall „Beleg" (FR „justificatif", EN „document"); „Rechnung" bleibt nur, wo wirklich der Dokumenttyp gemeint ist.
+- **Etikettengrösse korrigiert:** 84 × 47 mm (nicht 84 × 38 mm).
+- **Kopfbereich:** aufräumen, hochwertiger und benutzerfreundlicher machen.
 - **Vorübergehender Test-Knopf im Bestand:** je Bestandszeile ein Knopf, der **ein Stück** abbucht (2 Shirts → 1 Shirt). Der Artikel bleibt im Stamm, die Buchung ist eine normale Zeile in `lagerbewegungen` (Regel 2). Sichtbar für alle Rollen. Wird wieder entfernt, sobald das Ausbuchen im Laden erprobt ist.
 
 ### Weitere offene Produktfrage
