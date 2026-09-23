@@ -361,7 +361,7 @@ ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
 einer, den die Kasse nicht annimmt.
 
 **Etikettengrösse:** einstellbar (`GROESSEN` in `app/services/etikett.py`),
-Voreinstellung 84 × 38 mm — die Rollen im Sato CL4NX Plus (bestätigt am
+Voreinstellung 84 × 47 mm — die Rollen im Sato CL4NX Plus (bestätigt am
 23.09.2026); 50 × 30 mm und die übrigen Grössen bleiben wählbar. Die Modulbreite
 des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
 masslos in die Breite gezogen wird.

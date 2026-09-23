@@ -6,7 +6,7 @@ der EAN-Strichcode: ohne ihn bliebe genau der Artikel an der Kasse
 unscannbar, für den die interne EAN (D10) gedacht ist - die Nummer allein
 nützt an der Kasse nichts.
 
-Gedruckt wird auf dem Sato CL4NX Plus (D14), Rollen 84 × 38 mm (bestätigt
+Gedruckt wird auf dem Sato CL4NX Plus (D14), Rollen 84 × 47 mm (bestätigt
 am 23.09.2026). Die Grösse bleibt **einstellbar** (`GROESSEN`); die PDF-Seite ist
 exakt so gross wie das Etikett, damit der Drucker 1:1 druckt und nichts
 skaliert werden muss.
@@ -35,17 +35,17 @@ from .barcode import (
 )
 from .reduktion import letzter_wareneingang, stufe
 
-# Breite × Höhe in Millimetern. Voreinstellung 84 × 38 mm - die Rollen im
+# Breite × Höhe in Millimetern. Voreinstellung 84 × 47 mm - die Rollen im
 # Sato CL4NX Plus der Sportfabrik (bestätigt am 23.09.2026). Die übrigen
 # Grössen bleiben wählbar, falls einmal andere Rollen eingelegt sind.
 GROESSEN = {
-    "84x38": (84, 38),
+    "84x47": (84, 47),
     "50x30": (50, 30),
     "57x32": (57, 32),
     "70x40": (70, 40),
     "100x50": (100, 50),
 }
-STANDARD_GROESSE = "84x38"
+STANDARD_GROESSE = "84x47"
 
 MM = 72 / 25.4  # Millimeter → PDF-Punkte
 

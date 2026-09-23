@@ -257,7 +257,7 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 
-1. ~~**Etikettengrösse** des Sato CL4NX Plus~~ — beantwortet am 23.09.2026: **84 × 38 mm**, jetzt Voreinstellung (siehe unten). Offen ist nur noch die Gestaltung: Fabian kann eine Vorlage des heutigen Etiketts nachreichen.
+1. ~~**Etikettengrösse** des Sato CL4NX Plus~~ — beantwortet am 23.09.2026: **84 × 47 mm**, jetzt Voreinstellung (siehe unten). Offen ist nur noch die Gestaltung: Fabian kann eine Vorlage des heutigen Etiketts nachreichen.
 2. ~~**Barcode aufs Etikett?**~~ Vorläufig entschieden und so gebaut (B7): **ja** — ohne Strichcode bliebe genau der Artikel unscannbar, für den die interne EAN gedacht ist (D10). Falls das Etikett ihn doch nicht tragen soll, bitte melden.
 3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
 4. ~~**Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären.~~ — beantwortet am 22.09.2026 (siehe unten): warnen, Buchung trotzdem zulassen, wie an der Kasse.
@@ -292,7 +292,7 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 - **Gründe beim Ausbuchen (F14):** wie vorgeschlagen — Verkauf, Bruch/Defekt, Diebstahl/Schwund, Eigenbedarf, Retoure an den Lieferanten, Sonstiges mit freiem Text.
 - **Scan beim Ausbuchen (F15):** Ein Scan bucht **sofort ein Stück** aus. Mehrere Stück = mehrmals scannen; es gibt keine Mengenabfrage.
 - **Umlagerung in eine Filiale ohne bisherigen Wareneingang (F11):** Die Uhr startet dort **ab Eintreffen der Ware** — das Eingangsdatum ist dann der Tag, an dem die Zielfiliale den Empfang bucht.
-- **Etikettengrösse (F1):** 84 × 38 mm auf dem Sato CL4NX Plus. Eine Vorlage des heutigen Etiketts kann Fabian nachreichen.
+- **Etikettengrösse (F1):** 84 × 47 mm auf dem Sato CL4NX Plus (am Morgen zuerst 84 × 38 mm gemeldet, am selben Tag korrigiert). Eine Vorlage des heutigen Etiketts kann Fabian nachreichen.
 - **Kassenschnittstelle (F2):** weiterhin keine Rückmeldung von Intersport.
 - **FEDAS aus der Praxis lernen (F8):** ja. Es gibt keine FEDAS-Liste, und niemand weiss, ob die Sportfabrik eine hat. Kategorien, die von Hand gewählt werden, sollen deshalb als Vorschlag für die Zuordnungstabelle gesammelt werden — übernommen wird ein Code erst nach Prüfung, nicht automatisch.
 - **Korrekturen (C5), Eingabe:** gezählt wird die **Menge im Regal**; das System rechnet die Differenz zum Bestand selbst aus und bucht sie (eine Mini-Inventur je Zeile).
@@ -822,7 +822,7 @@ Etikett"):
   Beides auch für **Mitarbeiter** (Regel 9). Übersetzungen DE/FR/EN.
 - **Annahmen, solange zwei Fragen offen sind:** Etikettengrösse einstellbar
   (`GROESSEN`), Voreinstellung damals 50 × 30 mm — seit 23.09.2026
-  84 × 38 mm, die bestätigte Rollengrösse; der Strichcode ist drauf (siehe
+  84 × 47 mm, die bestätigte Rollengrösse; der Strichcode ist drauf (siehe
   Abschnitt 10, Frage 2). Beides ist an einer Stelle änderbar.
 - Kein Schema-Eingriff nötig: `varianten.ean`/`ean_intern` gab es schon, sie
   werden jetzt benutzt.

@@ -373,10 +373,10 @@ def test_pdf_hat_etikettengroesse_und_inhalt():
     )
     assert pdf.startswith(b"%PDF")
     seite = pymupdf.open("pdf", pdf)[0]
-    # Voreinstellung 84 × 38 mm (Rollen im Laden, bestätigt 23.09.2026) in
+    # Voreinstellung 84 × 47 mm (Rollen im Laden, bestätigt 23.09.2026) in
     # PDF-Punkten (1 mm = 72/25.4 pt).
     assert round(seite.rect.width, 1) == 238.1
-    assert round(seite.rect.height, 1) == 107.7
+    assert round(seite.rect.height, 1) == 133.2
     text = seite.get_text()
     for erwartet in ("Nike", "2024", "INTERSPORT Schweiz AG", "CHF 39.90", "-50%", "2000000000077"):
         assert erwartet in text
