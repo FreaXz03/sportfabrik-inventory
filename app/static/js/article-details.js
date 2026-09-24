@@ -41,14 +41,30 @@
   function drawStock(){
     if(!stock)return;
     const table=document.createElement('table');const hr=document.createElement('tr');
-    for(const key of ['bestand.table_lagerort','bestand.table_color','bestand.table_size','fields.ean','bestand.table_quantity','bestand.table_arrival_date'])hr.append(node('th',t(key)));
+    for(const key of ['bestand.table_lagerort','bestand.table_color','bestand.table_size','fields.ean','bestand.table_quantity','bestand.table_arrival_date','reduktion_wahl.heading'])hr.append(node('th',t(key)));
     const head=document.createElement('thead');head.append(hr);table.append(head);const body=document.createElement('tbody');
     for(const z of stock.zeilen){const tr=document.createElement('tr');const arrival=z.aeltestes_eingangsdatum?date(z.aeltestes_eingangsdatum):t(z.lagerort.verkauf?'bestand.no_arrival_date':'bestand.external_no_date');
-      tr.append(node('td',z.lagerort.code+' · '+z.lagerort.name),node('td',z.farbe),node('td',z.groesse),node('td',z.ean),node('td',new Intl.NumberFormat('de-CH').format(Number(z.menge))),node('td',arrival));body.append(tr);}
+      tr.append(node('td',z.lagerort.code+' · '+z.lagerort.name),node('td',z.farbe),node('td',z.groesse),node('td',z.ean),node('td',new Intl.NumberFormat('de-CH').format(Number(z.menge))),node('td',arrival),node('td',window.SportfabrikReduktion.text(z.reduktion)));body.append(tr);}
     table.append(body);$('stockTable').replaceChildren(table);$('stockTable').hidden=!stock.zeilen.length;
     $('stockStatus').textContent=stock.zeilen.length?t('bestand.count_line',{anzahl:stock.total,summe:new Intl.NumberFormat('de-CH').format(Number(stock.summe))}):t('article_details.stock_empty');
   }
   async function loadStock(){$('stockStatus').textContent=t('bestand.loading');try{const r=await fetch('/api/bestand?alle=true&limit=500&artikel_von='+match[1]);const data=await r.json();if(!r.ok)throw new Error(typeof data.detail==='string'?data.detail:t('bestand.load_error'));stock=data;drawStock();}catch(e){$('stockStatus').textContent=e.message==='Failed to fetch'?t('common.connection_lost'):e.message;}}
-  $('priceUnit').addEventListener('change',drawPrices);loadPrices();loadStock();
-  document.addEventListener('sportfabrik:i18n-ready',()=>{if(prices.length)drawPrices();drawStock();});
+
+  let reduktion=null;
+  function drawReduktion(){
+    if(!reduktion)return;
+    const table=document.createElement('table');const hr=document.createElement('tr');
+    for(const key of ['bestand.table_lagerort','reduktion_wahl.col_recommendation','reduktion_wahl.col_effective','reduktion_wahl.col_choice'])hr.append(node('th',t(key)));
+    const head=document.createElement('thead');head.append(hr);table.append(head);const body=document.createElement('tbody');
+    for(const f of reduktion.filialen){const tr=document.createElement('tr');
+      tr.append(node('td',f.lagerort.code+' · '+f.lagerort.name),node('td',f.empfehlung?'−'+f.empfehlung+' %':t('reduktion_wahl.none')),node('td',window.SportfabrikReduktion.text(f)));
+      const td=document.createElement('td');
+      if(f.darf_aendern)td.append(window.SportfabrikReduktion.knoepfe(match[1],f.lagerort.id,f,neu=>{Object.assign(f,neu);$('reduktionStatus').textContent=t('reduktion_wahl.saved',{filiale:f.lagerort.code,stufe:window.SportfabrikReduktion.text(f)});drawReduktion();loadStock();},$('reduktionStatus')));
+      else td.append(node('span',t('reduktion_wahl.no_right'),'muted'));
+      tr.append(td);body.append(tr);}
+    table.append(body);$('reduktionTable').replaceChildren(table);
+  }
+  async function loadReduktion(){try{reduktion=await api('/reduktion');drawReduktion();}catch(e){$('reduktionStatus').textContent=e.message;}}
+  $('priceUnit').addEventListener('change',drawPrices);loadPrices();loadReduktion();loadStock();
+  document.addEventListener('sportfabrik:i18n-ready',()=>{if(prices.length)drawPrices();drawReduktion();drawStock();});
 })();

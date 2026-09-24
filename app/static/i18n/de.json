@@ -752,5 +752,27 @@
   "lieferant_gruppe.extern": "Händler",
   "lieferant_gruppe.intern": "Intern",
   "lieferant_gruppe.ecom": "ECOM",
-  "lieferant_gruppe.drittanbieter": "Dritt-Händler"
+  "lieferant_gruppe.drittanbieter": "Dritt-Händler",
+
+  "bestand.table_reduction": "Reduktion",
+  "reduktion_wahl.heading": "Reduktion",
+  "reduktion_wahl.hint": "Empfehlung nach Lagerdauer je Filiale. In deinen Filialen kannst du −30, −50 oder −70 % von Hand wählen; „Empfehlung“ hebt die Wahl wieder auf.",
+  "reduktion_wahl.none": "keine",
+  "reduktion_wahl.manual_marker": "(von Hand)",
+  "reduktion_wahl.group_aria": "Reduktion wählen",
+  "reduktion_wahl.recommendation": "Empfehlung ({stufe})",
+  "reduktion_wahl.save_error": "Die Reduktion konnte nicht gespeichert werden.",
+  "reduktion_wahl.saved": "Gespeichert: {filiale} jetzt {stufe}.",
+  "reduktion_wahl.no_right": "Nur in eigenen Filialen",
+  "reduktion_wahl.col_recommendation": "Empfehlung",
+  "reduktion_wahl.col_effective": "Gilt jetzt",
+  "reduktion_wahl.col_choice": "Ändern",
+  "reduktion_wahl.col_set_by": "Gewählt von",
+  "reduktion_wahl.pick_heading": "Artikel von Hand reduzieren",
+  "reduktion_wahl.pick_hint": "EAN scannen oder Namen eingeben – ohne Eingabe zeigt die Liste den ganzen Bestand dieser Filiale.",
+  "reduktion_wahl.pick_label": "EAN oder Suche",
+  "reduktion_wahl.pick_placeholder": "Barcode scannen oder Artikel suchen …",
+  "reduktion_wahl.pick_none": "Kein Artikel mit Bestand in dieser Filiale gefunden.",
+  "reduktion_wahl.manual_heading": "Von Hand gewählt",
+  "reduktion_wahl.manual_empty": "In dieser Filiale ist nichts von Hand reduziert."
 }

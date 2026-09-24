@@ -752,5 +752,27 @@
   "lieferant_gruppe.extern": "Commerçants",
   "lieferant_gruppe.intern": "Interne",
   "lieferant_gruppe.ecom": "ECOM",
-  "lieferant_gruppe.drittanbieter": "Revendeurs tiers"
+  "lieferant_gruppe.drittanbieter": "Revendeurs tiers",
+
+  "bestand.table_reduction": "Réduction",
+  "reduktion_wahl.heading": "Réduction",
+  "reduktion_wahl.hint": "Recommandation selon la durée en stock, par succursale. Dans tes succursales, tu peux choisir −30, −50 ou −70 % ; « Recommandation » annule ce choix.",
+  "reduktion_wahl.none": "aucune",
+  "reduktion_wahl.manual_marker": "(manuel)",
+  "reduktion_wahl.group_aria": "Choisir la réduction",
+  "reduktion_wahl.recommendation": "Recommandation ({stufe})",
+  "reduktion_wahl.save_error": "La réduction n'a pas pu être enregistrée.",
+  "reduktion_wahl.saved": "Enregistré : {filiale} maintenant {stufe}.",
+  "reduktion_wahl.no_right": "Uniquement dans tes succursales",
+  "reduktion_wahl.col_recommendation": "Recommandation",
+  "reduktion_wahl.col_effective": "En vigueur",
+  "reduktion_wahl.col_choice": "Modifier",
+  "reduktion_wahl.col_set_by": "Choisi par",
+  "reduktion_wahl.pick_heading": "Réduire un article manuellement",
+  "reduktion_wahl.pick_hint": "Scanner l'EAN ou saisir un nom – sans saisie, la liste montre tout le stock de cette succursale.",
+  "reduktion_wahl.pick_label": "EAN ou recherche",
+  "reduktion_wahl.pick_placeholder": "Scanner le code-barres ou chercher un article …",
+  "reduktion_wahl.pick_none": "Aucun article en stock trouvé dans cette succursale.",
+  "reduktion_wahl.manual_heading": "Choisi manuellement",
+  "reduktion_wahl.manual_empty": "Rien n'est réduit manuellement dans cette succursale."
 }

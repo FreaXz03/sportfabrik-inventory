@@ -93,6 +93,7 @@
       daten = ergebnis;
       filialenFuellen();
       zeichnen();
+      manuellZeichnen();
     } catch (fehler) {
       $('gruppen').replaceChildren();
       $('status').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
@@ -100,13 +101,91 @@
     }
   }
 
+
+  // Von Hand reduzieren (24.09.2026): Auswahl per EAN-Scan oder aus der
+  // Bestandsliste dieser Filiale; je Modell eine Zeile, weil die Stufe für
+  // alle Farben und Grössen gilt.
+  function tabelle(kopfKeys, zeilen) {
+    const kopf = document.createElement('tr');
+    for (const key of kopfKeys) kopf.append(node('th', t(key)));
+    const thead = document.createElement('thead');
+    thead.append(kopf);
+    const tbody = document.createElement('tbody');
+    for (const tr of zeilen) tbody.append(tr);
+    const tab = document.createElement('table');
+    tab.append(thead, tbody);
+    return tab;
+  }
+
+  function artikelZelle(marke, bezeichnung, nummer) {
+    const zelle = node('td');
+    zelle.append(node('strong', [marke, bezeichnung].filter(Boolean).join(' ') || '—'));
+    if (nummer) zelle.append(document.createElement('br'), node('span', nummer, 'muted'));
+    return zelle;
+  }
+
+  async function suchen() {
+    if (!daten) return;
+    const q = $('sucheFeld').value.trim();
+    $('sucheStatus').textContent = t('bestand.loading');
+    try {
+      const parameter = new URLSearchParams({ lagerort_id: String(daten.lagerort.id), limit: '500' });
+      if (q) parameter.set('q', q);
+      const antwort = await fetch('/api/bestand?' + parameter);
+      const ergebnis = await antwort.json();
+      if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('bestand.load_error'));
+      const modelle = new Map();
+      for (const z of ergebnis.zeilen) {
+        const m = modelle.get(z.artikel_id) || { ...z, stueck: 0 };
+        m.stueck += Number(z.menge);
+        modelle.set(z.artikel_id, m);
+      }
+      const zeilen = [];
+      for (const m of modelle.values()) {
+        const tr = document.createElement('tr');
+        const stand = node('td', window.SportfabrikReduktion.text(m.reduktion));
+        const wahl = node('td');
+        if (m.reduktion) {
+          wahl.append(window.SportfabrikReduktion.knoepfe(m.varianten_id, daten.lagerort.id, m.reduktion, (neu) => {
+            $('sucheStatus').textContent = t('reduktion_wahl.saved', { filiale: daten.lagerort.code, stufe: window.SportfabrikReduktion.text(neu) });
+            laden().then(suchen);
+          }, $('sucheStatus')));
+        }
+        tr.append(artikelZelle(m.marke, m.bezeichnung, m.lieferanten_artikelnr), node('td', stueck(m.stueck)), stand, wahl);
+        zeilen.push(tr);
+      }
+      $('sucheListe').replaceChildren(zeilen.length ? tabelle(['reduktion.table_article', 'reduktion.table_pieces', 'reduktion_wahl.col_effective', 'reduktion_wahl.col_choice'], zeilen) : '');
+      $('sucheStatus').textContent = zeilen.length ? t('reduktion.count_line', { anzahl: zeilen.length }) : t('reduktion_wahl.pick_none');
+    } catch (fehler) {
+      $('sucheStatus').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+    }
+  }
+
+  function manuellZeichnen() {
+    const zeilen = (daten.manuell || []).map((a) => {
+      const tr = document.createElement('tr');
+      tr.append(artikelZelle(a.marke, a.bezeichnung, a.lieferanten_artikelnr), node('td', '−' + a.prozent + ' %'), node('td', [a.gesetzt_von, datum((a.gesetzt_am || '').slice(0, 10))].filter(Boolean).join(' · ')));
+      return tr;
+    });
+    $('manuellLeer').hidden = zeilen.length > 0;
+    $('manuellListe').replaceChildren(zeilen.length ? tabelle(['reduktion.table_article', 'reduktion_wahl.col_effective', 'reduktion_wahl.col_set_by'], zeilen) : '');
+  }
+
+  $('suche').addEventListener('submit', (event) => {
+    event.preventDefault();
+    suchen();
+    $('sucheFeld').select();
+  });
+
   $('lagerort').addEventListener('change', () => {
     wahl = $('lagerort').value;
+    $('sucheListe').replaceChildren();
+    $('sucheStatus').textContent = '';
     laden();
   });
   $('retry').addEventListener('click', laden);
   window.SportfabrikI18n.ready.then(() => {
     laden();
-    document.addEventListener('sportfabrik:i18n-ready', () => { if (daten) zeichnen(); });
+    document.addEventListener('sportfabrik:i18n-ready', () => { if (daten) { zeichnen(); manuellZeichnen(); } });
   });
 })();

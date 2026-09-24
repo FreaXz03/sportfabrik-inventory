@@ -2000,3 +2000,8 @@ th button:hover {
   .button:active,
   .metric:hover,
 }
+
+/* Manuelle Reduktion (24.09.2026): grosse, gut treffbare Knöpfe. */
+.reduktion-wahl { display: flex; flex-wrap: wrap; gap: 6px; }
+.reduktion-wahl button { min-width: 72px; padding: 8px 12px; }
+.reduktion-stufe { font-weight: 700; color: var(--danger-text); }

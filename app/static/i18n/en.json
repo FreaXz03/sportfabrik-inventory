@@ -752,5 +752,27 @@
   "lieferant_gruppe.extern": "Retailers",
   "lieferant_gruppe.intern": "Internal",
   "lieferant_gruppe.ecom": "ECOM",
-  "lieferant_gruppe.drittanbieter": "Third-party dealers"
+  "lieferant_gruppe.drittanbieter": "Third-party dealers",
+
+  "bestand.table_reduction": "Reduction",
+  "reduktion_wahl.heading": "Reduction",
+  "reduktion_wahl.hint": "Recommendation by time in stock, per branch. In your branches you can choose −30, −50 or −70 % by hand; “Recommendation” removes the choice.",
+  "reduktion_wahl.none": "none",
+  "reduktion_wahl.manual_marker": "(manual)",
+  "reduktion_wahl.group_aria": "Choose reduction",
+  "reduktion_wahl.recommendation": "Recommendation ({stufe})",
+  "reduktion_wahl.save_error": "The reduction could not be saved.",
+  "reduktion_wahl.saved": "Saved: {filiale} now {stufe}.",
+  "reduktion_wahl.no_right": "Only in your own branches",
+  "reduktion_wahl.col_recommendation": "Recommendation",
+  "reduktion_wahl.col_effective": "In effect",
+  "reduktion_wahl.col_choice": "Change",
+  "reduktion_wahl.col_set_by": "Chosen by",
+  "reduktion_wahl.pick_heading": "Reduce an article by hand",
+  "reduktion_wahl.pick_hint": "Scan the EAN or enter a name – without input the list shows the whole stock of this branch.",
+  "reduktion_wahl.pick_label": "EAN or search",
+  "reduktion_wahl.pick_placeholder": "Scan barcode or search article …",
+  "reduktion_wahl.pick_none": "No article in stock found in this branch.",
+  "reduktion_wahl.manual_heading": "Chosen by hand",
+  "reduktion_wahl.manual_empty": "Nothing is reduced by hand in this branch."
 }
