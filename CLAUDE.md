@@ -53,7 +53,10 @@ Cloud-Sessions haben den Graphen deshalb nicht. Details:
 
 ## Tests
 
-- `pytest` im Projektordner; Tests für jede neue Logik (Lagerbewegungen, Reduktionsregeln, EAN-Prüfziffer, Parser, Rechte).
+- `DATABASE_URL=sqlite:// .venv/bin/pytest -q` im Projektordner; Tests für jede neue Logik (Lagerbewegungen, Reduktionsregeln, EAN-Prüfziffer, Parser, Rechte).
+- **Tests zuerst** (Entscheid 24.09.2026): für jede neue Funktion zuerst den Test schreiben, ihn rot sehen, dann die Funktion bauen, bis er grün ist.
+- **Wenige, grosse Tests** (Entscheid 24.09.2026): ein Ablauf-Test deckt einen ganzen Hauptablauf ab (z. B. Beleg hochladen → Import → Bestand). Kleine Einzeltests nur für harte Regeln (EAN-Prüfziffer, Reduktionsuhr, Eingangsdatum, Parser). Keine Tests für Nebensächliches.
+- **Belege nie ins Repo** (öffentlich): Parser-Tests mit echten Belegen lesen die Dateien über eine Umgebungsvariable und werden ohne sie übersprungen.
 - Vor jedem Commit: alle Tests grün.
 
 ## Arbeitsweise
@@ -133,3 +136,7 @@ kennt nur die aus echten Rechnungen bestätigten Codes (6 von 11 Sportbereichen
 fehlen, ebenso die Produktart-Ziffern für Velo/Food). Bis sie bestätigt sind,
 wird in diesen Fällen von Hand gewählt — die Kategorie bleibt also nie
 zwangsläufig leer.
+
+## Inbox-Präzisierungen vom 24.09.2026
+
+Aktuelle Etikettenvorgabe: **47 mm Breite × 83 mm Höhe**, vorgedruckte Rollen 30 % gelb / 50 % rot / 70 % grün. Die früher dokumentierte Voreinstellung ist noch anzupassen. Eine deutsche FEDAS-Quelle und ein Alpina-Papierscan wurden nachgereicht; FEDAS-Inhalt noch nicht geprüft. Testbereinigung ist ein dokumentierter Arbeitswunsch, keine bereits ausgeführte Änderung. Details: `docs/anforderungen-inbox-2026-09-24.md`.
