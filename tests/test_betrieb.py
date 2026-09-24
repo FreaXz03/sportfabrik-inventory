@@ -48,6 +48,8 @@ def test_migrationen_offline_fuer_postgres_und_online_auf_sqlite(tmp_path):
         assert codes == ["DIETIKON", "GEWA", "SF1", "SF2", "SF3", "SF4", "VEBO"]
         parser = {row[0] for row in db.execute("SELECT parser_key FROM lieferanten WHERE parser_key IS NOT NULL")}
         assert parser == {"intersport", "alpina", "chrissports", "cmp"}
+        spalten = {row[1] for row in db.execute("PRAGMA table_info(users)")}
+        assert {"fehlversuche", "gesperrt_bis"} <= spalten  # Login-Sperre (S2)
 
 
 def _skripte_der_seite(html: str) -> list[str]:

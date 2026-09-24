@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Integer,
     ForeignKey,
     Numeric,
     String,
@@ -62,6 +63,11 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+    # Sicherheit S2 (Entscheid 24.09.2026): falsche Passwörter zählen, nach 5
+    # ist das Konto 20 Minuten gesperrt (app/services/anmeldung.py).
+    fehlversuche: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    gesperrt_bis: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Lagerort(Base):

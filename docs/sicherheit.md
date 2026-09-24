@@ -8,7 +8,7 @@ Rechte, Konfiguration (Docker, Header, Endpunkte), Abhängigkeiten
 
 **Ergebnis:** keine kritischen und keine hohen Befunde. Vier mittlere Punkte
 sollten **vor dem Einsatz im Laden** (Roadmap Phase F — Betrieb) erledigt
-sein, dazu fünf niedrige. Noch ist nichts davon behoben.
+sein, dazu fünf niedrige. Behoben: die Login-Sperre aus S2 (24.09.2026).
 
 Diese Datei wird bei jeder Behebung nachgeführt (Status-Spalte).
 
@@ -17,7 +17,7 @@ Diese Datei wird bei jeder Behebung nachgeführt (Status-Spalte).
 | # | Stufe | Thema | Massnahme | Status |
 |---|---|---|---|---|
 | S1 | mittel | Anmeldung über HTTP, Sitzung 5 Jahre | HTTPS über lokalen Reverse-Proxy (z. B. Caddy mit internem Zertifikat), Cookie mit `https_only=True`; Sitzungen bei Passwortwechsel serverseitig ungültig machen | offen — vor Einsatz im Laden |
-| S2 | mittel | Login ohne Begrenzung von Fehlversuchen | Fehlversuche je Gerät und Kassennummer begrenzen, einheitliche Fehlermeldung, Mindestlänge Passwort 10 statt 6; Server nur im Laden-Netz erreichbar | offen — **Entscheid nötig** (ändert das Login-Verhalten) |
+| S2 | mittel | Login ohne Begrenzung von Fehlversuchen | Sperre nach 5 falschen Passwörtern für 20 Minuten (Entscheid 24.09.2026); Server nur im Laden-Netz erreichbar. Nicht entschieden: Passwort-Mindestlänge 10 statt 6, einheitliche Fehlermeldung | **Sperre umgesetzt** (24.09.2026, Migration `b9c0d1e2f3a4`); Netztrennung beim Serverumzug |
 | S3 | mittel | Pillow 12.2.0 mit 13 bekannten Lücken | Update auf 12.3.0 (`requirements-server.txt`, `requirements.txt`) | offen |
 | S4 | mittel | Backups unverschlüsselt | Backup vor dem Kopieren auf den externen Datenträger verschlüsseln (`age` oder `gpg --symmetric`), Schlüssel getrennt aufbewahren | offen |
 | S5 | niedrig | API-Doku ohne Anmeldung | `/docs`, `/redoc`, `/openapi.json` im Betrieb abschalten | offen |
@@ -36,7 +36,7 @@ bewusst „bis zur Abmeldung" wie an der Kasse) und enthält nur die Benutzer-ID
 eine abgefangene Kopie bleibt darum auch nach Abmelden oder Passwortwechsel
 gültig. Mit HTTPS im Laden-Netz ist das Abfangen praktisch ausgeschlossen.
 
-**S2 — Login.** `/login` zählt keine Fehlversuche. Jeder Passwortversuch
+**S2 — Login.** *Umgesetzt am 24.09.2026:* nach 5 falschen Passwörtern ist ein Konto 20 Minuten gesperrt (Antwort 429, auch für das richtige Passwort; gezählt je Konto in der Datenbank, `app/services/anmeldung.py`). Vorher zählte `/login` keine Fehlversuche. Jeder Passwortversuch
 kostet den Server wegen PBKDF2 (600 000 Runden) rund eine halbe Sekunde
 Rechenzeit, und es läuft nur ein Worker. Die Antworten unterscheiden
 „Kassennummer unbekannt" und „Passwort nötig". Mitarbeiter melden sich

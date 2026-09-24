@@ -350,6 +350,7 @@
   "errors.auth.chef_required": "Un compte responsable de filiale est nécessaire.",
   "errors.auth.unknown_kassennummer": "Numéro de caisse inconnu.",
   "errors.auth.wrong_password": "Mot de passe incorrect.",
+  "errors.auth.locked": "Trop de mots de passe erronés – le compte est bloqué. Veuillez réessayer dans {minuten} minutes.",
   "errors.auth.admin_required_all_lagerorte": "Seule la centrale peut afficher toutes les filiales à la fois.",
   "errors.auth.no_lagerort_access": "Aucun accès à cette filiale.",
   "errors.auth.invalid_language": "Langue invalide.",

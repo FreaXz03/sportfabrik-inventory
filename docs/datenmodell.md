@@ -335,7 +335,10 @@ bewusst **nicht**: Für jede Regel zählt allein `verkauf`. Seed-Daten in
 `app/core/lagerorte.py` (einzige Quelle, Migration und Tests nutzen sie).
 
 ### `users`, `benutzer_lagerorte`
-Unverändert seit Phase A Punkt 1/2 (siehe Migrationshistorie unten).
+Seit Phase A Punkt 1/2 unverändert, ausser der Login-Sperre (Sicherheit S2,
+Migration `b9c0d1e2f3a4`): `users.fehlversuche` zählt falsche Passwörter,
+`users.gesperrt_bis` (UTC) sperrt das Konto nach 5 Fehlversuchen für
+20 Minuten (`app/services/anmeldung.py`).
 
 ## Migration der Altdaten (`c3d4e5f6a7b8`)
 
@@ -380,6 +383,8 @@ oben):
 | `d0e1f2a3b4c5` | Filialcodes korrigiert (22.09.2026): SF2 ist Conthey, SF3 Regensdorf, SF4 Hägendorf. Getauscht wird nur der `code` der bestehenden Zeile — der Ort bleibt, wo er ist, und Buchungen hängen an `lagerorte.id`. Ringtausch über Zwischencodes, weil `code` eindeutig ist |
 | `e1f2a3b4c5d6` | `lagerbewegungen.eingangsdatum` (Teilaufgabe C4): Datum, ab dem eine Umlagerung die Reduktionsuhr der Zielfiliale startet. Bestehende Zeilen sind Zugänge, deren Datum am Wareneingang steht — dort bleibt die Spalte leer |
 | `f2a3b4c5d6e7` | Lieferantengruppen (Anforderung 23.09.2026, umgesetzt 24.09.2026): `lieferanten.typ` kennt neu `intern` (Direktbestellung bei Nike, adidas, The North Face); je Gruppe ein Lieferant für die Erfassung von Hand. Der Etikett-Code (111/555/333/999/444) wird aus `typ` abgeleitet (`app/core/lieferanten.py`), nicht gespeichert |
+| `a8b9c0d1e2f3` | Lieferanten mit eigenem Parser (24.09.2026): ALPINA SPORTS Schweiz AG, CHRIS sports AG, CMP (F.lli Campagnolo S.p.A.) mit `parser_key`, Gruppe Dritte-Händler (999). Nur Daten |
+| `b9c0d1e2f3a4` | Login-Sperre (Sicherheit S2, 24.09.2026): `users.fehlversuche`, `users.gesperrt_bis` |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

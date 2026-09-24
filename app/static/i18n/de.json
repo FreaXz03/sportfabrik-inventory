@@ -350,6 +350,7 @@
   "errors.auth.chef_required": "Dafür ist ein Filialleiter-Konto nötig.",
   "errors.auth.unknown_kassennummer": "Unbekannte Kassennummer.",
   "errors.auth.wrong_password": "Falsches Passwort.",
+  "errors.auth.locked": "Zu viele falsche Passwörter – das Konto ist gesperrt. Bitte in {minuten} Minuten erneut versuchen.",
   "errors.auth.admin_required_all_lagerorte": "Nur die Zentrale kann alle Filialen zugleich sehen.",
   "errors.auth.no_lagerort_access": "Kein Zugriff auf diese Filiale.",
   "errors.auth.invalid_language": "Ungültige Sprache.",

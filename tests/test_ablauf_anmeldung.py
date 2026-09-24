@@ -76,3 +76,39 @@ def test_anmelden_rollen_filialwahl_sprache(welt):
     assert client.get("/api/me").json()["language"] == "en"
     client.post("/logout")
     assert client.post("/api/language", json={"language": "fr"}).status_code == 401
+
+
+def test_login_sperrt_nach_fuenf_fehlversuchen_fuer_20_minuten(welt, monkeypatch):
+    """Sicherheit S2 (Entscheid 24.09.2026): nach 5 falschen Passwörtern ist das
+    Konto 20 Minuten gesperrt - auch das richtige Passwort hilft dann nicht.
+    Ein erfolgreicher Login setzt den Zähler zurück; andere Konten sind nicht
+    betroffen."""
+    from datetime import datetime, timedelta, timezone
+
+    import app.services.anmeldung as anmeldung
+
+    jetzt = datetime(2026, 9, 24, 10, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(anmeldung, "jetzt", lambda: jetzt)
+    client = welt.client
+
+    def login(kassennummer, passwort):
+        return client.post("/login", data={"kassennummer": kassennummer, "password": passwort})
+
+    # Vier Fehler, dann richtig: Zähler zurück, danach wieder vier Fehler erlaubt.
+    for _ in range(4):
+        assert login(CHEF, "falsch").status_code == 401
+    assert login(CHEF, "geheim123").status_code == 200
+    for _ in range(4):
+        assert login(CHEF, "falsch").status_code == 401
+    # Der fünfte Fehler sperrt.
+    assert login(CHEF, "falsch").status_code == 429
+    gesperrt = login(CHEF, "geheim123")
+    assert gesperrt.status_code == 429
+    assert gesperrt.json()["detail"] == translate("errors.auth.locked", "de", minuten=20)
+    # Andere Konten bleiben frei.
+    assert login(ZENTRALE, "zentrale123").status_code == 200
+
+    jetzt += timedelta(minutes=19)
+    assert login(CHEF, "geheim123").json()["detail"] == translate("errors.auth.locked", "de", minuten=1)
+    jetzt += timedelta(minutes=1)
+    assert login(CHEF, "geheim123").status_code == 200

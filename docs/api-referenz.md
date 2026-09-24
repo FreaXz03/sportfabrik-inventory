@@ -16,7 +16,7 @@ Kontosprache des Benutzers, sonst (z. B. `/login`) nach dem
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/login` | Login-Seite |
-| POST | `/login` | Kassennummer (+ Passwort bei Filialleitern/Admin) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-/Admin-Kassennummer ohne Passwort gesendet wurde |
+| POST | `/login` | Kassennummer (+ Passwort bei Filialleitern/Admin) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-/Admin-Kassennummer ohne Passwort gesendet wurde. Nach 5 falschen Passwörtern ist das Konto 20 Minuten gesperrt: Antwort **429** mit der restlichen Wartezeit, auch bei richtigem Passwort (Sicherheit S2) |
 | POST | `/logout` | Session beenden, Redirect zu `/login` |
 | GET | `/api/me` | Angemeldete Person: `{kassennummer, name, role, role_label, language, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `role_label` und Fehlermeldungen sind in `language` (`de`/`fr`/`en`) übersetzt. `lagerort` ist die aktive Filiale (`{id, code, name}` oder `null` = „alle Filialen", nur für Admin möglich), `lagerorte` die Filialen, zwischen denen gewechselt werden darf (Admin: alle) |
 | POST | `/api/active-lagerort` | Aktive Filiale für die Session wechseln. Body `{"lagerort_id": <id oder null>}`; `null` nur für Admin erlaubt (= „alle Filialen"), sonst muss die Filiale dem Benutzer zugewiesen sein (sonst 403) |

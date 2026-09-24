@@ -350,6 +350,7 @@
   "errors.auth.chef_required": "This requires a store manager account.",
   "errors.auth.unknown_kassennummer": "Unknown till number.",
   "errors.auth.wrong_password": "Wrong password.",
+  "errors.auth.locked": "Too many wrong passwords – the account is locked. Please try again in {minuten} minutes.",
   "errors.auth.admin_required_all_lagerorte": "Only head office can view all stores at once.",
   "errors.auth.no_lagerort_access": "No access to this store.",
   "errors.auth.invalid_language": "Invalid language.",

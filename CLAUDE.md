@@ -143,7 +143,7 @@ Etikett: **47 mm Breite × 83 mm Höhe**, vorgedruckte Rollen 30 % gelb / 50 % r
 
 ## Sicherheit
 
-Befunde und offene Massnahmen der Sicherheitsprüfung vom 24.09.2026 stehen in `docs/sicherheit.md` (S1–S9, mit Status). Bei jeder Behebung dort den Status nachführen. Vor dem Einsatz im Laden (Phase F) Pflicht: HTTPS, Login-Begrenzung (Entscheid von Fabian offen), Netztrennung, verschlüsselte Backups.
+Befunde und offene Massnahmen der Sicherheitsprüfung vom 24.09.2026 stehen in `docs/sicherheit.md` (S1–S9, mit Status). Bei jeder Behebung dort den Status nachführen. Vor dem Einsatz im Laden (Phase F) Pflicht: HTTPS, Login-Sperre (umgesetzt: 5 Fehlversuche → 20 Minuten), Netztrennung, verschlüsselte Backups.
 
 ## Visuelle Dokumentation mitpflegen
 

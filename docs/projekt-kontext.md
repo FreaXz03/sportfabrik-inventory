@@ -328,7 +328,7 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 
 ### Sicherheit (Prüfung vom 24.09.2026)
 
-Keine kritischen oder hohen Befunde; vier mittlere und fünf niedrige Punkte sind offen, Einzelheiten und Status in [`sicherheit.md`](sicherheit.md) (S1–S9). **Offene Frage an Fabian:** Soll das Login Fehlversuche begrenzen (S2)? Das ändert das Verhalten an der Anmeldung (z. B. kurze Sperre nach 5 Fehlversuchen) und die Mindestlänge der Filialleiter-Passwörter (10 statt 6).
+Keine kritischen oder hohen Befunde; vier mittlere und fünf niedrige Punkte sind offen, Einzelheiten und Status in [`sicherheit.md`](sicherheit.md) (S1–S9). **S2 entschieden (24.09.2026):** nach 5 falschen Passwörtern 20 Minuten Sperre — umgesetzt. Nicht entschieden: Mindestlänge der Filialleiter-Passwörter (10 statt 6).
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
