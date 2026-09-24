@@ -10,6 +10,8 @@ Umgebungsvariable und werden ohne sie übersprungen.
 import hashlib
 import os
 import shutil
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pymupdf
@@ -20,9 +22,10 @@ from testbelege import POSITIONEN, rechnung_pdf, text_pdf
 
 from app.core.i18n import LANGUAGES, translate
 from app.core.lieferanten import LIEFERANTEN_SEED
-from app.core.models import Lagerort, Variante
+from app.core.models import Lagerort, Lieferant, Variante, Wareneingang, WareneingangPosition
 from app.services import ocr
 from app.services.importer import ImportRejected, import_invoice
+from app.services.lagerorte import lade_adressen
 from app.services.parsers import (
     PARSERS,
     DocumentParseError,
@@ -230,3 +233,110 @@ def test_intersport_originalrechnung(intersport_original):
         assert session.scalar(select(func.count()).select_from(Variante)) == 203
     with pytest.raises(ImportRejected):
         import_invoice(intersport_original, "anders.pdf", digest, sessions, sf1)
+
+
+# --- Beispielbelege der Lieferanten (nur lokal, Freigabe 24.09.2026) ------
+#
+# BELEGE_DIR zeigt auf den Ordner mit den Originalen (bei Fabian der Ordner
+# „Anhänge" im Obsidian-Vault). Erwartet sind die Werte, die im Beleg stehen;
+# „menge" ist die Summe aller Stück, wie sie der Beleg selbst ausweist.
+
+AB = "auftragsbestaetigung"
+BELEGE = {
+    "SF1 Volketswil-1.pdf": dict(
+        lieferant="ALPINA SPORTS Schweiz AG", typ=AB, nummer="160165", datum=date(2026, 9, 7),
+        lagerort="SF1", positionen=10, menge="31", artikel={"A9801", "A9802", "A9809"},
+        erste=dict(brand="Alpina", supplier_article_no="A9801", article_no="A9801132", description="TAUNUS",
+                   color="burro-brown matt", size="52-56", quantity="4", unit="Stück", uvp="89.90", ek="22.50", ean=""),
+    ),
+    # Referenz SF3 Regensdorf, geliefert wird aber nach Volketswil (D19: der
+    # Vorschlag folgt der Lieferadresse und bleibt änderbar).
+    "SF3 Regensdorf.pdf": dict(
+        lieferant="ALPINA SPORTS Schweiz AG", typ=AB, nummer="160166", datum=date(2026, 9, 7),
+        lagerort="SF1", positionen=10, menge="30", artikel={"A9801", "A9802", "A9809"},
+    ),
+    "CS-12809663_AB_SF1 1.pdf": dict(
+        lieferant="CHRIS sports AG", typ=AB, nummer="CS-12809663", datum=date(2026, 4, 22),
+        lagerort="SF1", positionen=22, menge="152",
+        erste=dict(brand="Giro", supplier_article_no="3605000007", description="Seasonal Merino Sock",
+                   color="black/lime breakdown", size="S", ean="768686495908", unit="Paar",
+                   quantity="9", uvp="13.00", ek="3.90"),
+    ),
+    "CS-12809656_AB_SF1 1.pdf": dict(
+        lieferant="CHRIS sports AG", typ=AB, nummer="CS-12809656", datum=date(2026, 4, 22),
+        lagerort="SF1", positionen=32, menge="188",
+    ),
+    "AB-AW26 SPORT-FABRIK VOLKETSWIL BOYS OUTDOOR_BILD 2.pdf": dict(
+        lieferant="CMP (F.lli Campagnolo S.p.A.)", typ=AB, nummer="2026A-F30-246", datum=date(2025, 12, 9),
+        lagerort="GEWA", menge="660",
+        erste=dict(brand="CMP", supplier_article_no="30A1494", description="KID LONG PANT",
+                   color="OLIVE ANTRACITE", size="98", quantity="4", unit="Stk", uvp="69.90", ek="31.75", ean=""),
+    ),
+    "AB-AW26 SPORT-FABRIK VOLKETSWIL GIRLS OUTDOOR_BILD 2.pdf": dict(
+        lieferant="CMP (F.lli Campagnolo S.p.A.)", typ=AB, nummer="2026A-F30-245", datum=date(2025, 12, 9),
+        lagerort="GEWA", menge="572",
+    ),
+    "AB-AW26 SPORT-FABRIK VOLKETSWIL DAMEN OUTDOOR_BILD 2.pdf": dict(
+        lieferant="CMP (F.lli Campagnolo S.p.A.)", typ=AB, nummer="2026A-F30-247", datum=date(2025, 12, 9),
+        lagerort="GEWA", menge="1280",
+    ),
+    "AB-AW26 SPORT-FABRIK VOLKETSWIL HERREN OUTDOOR_BILD 2.pdf": dict(
+        lieferant="CMP (F.lli Campagnolo S.p.A.)", typ=AB, nummer="2026A-F30-248", datum=date(2025, 12, 9),
+        lagerort="GEWA", menge="928",
+    ),
+    "AB-AW26 SPORT-FABRIK VOLKETSWIL DAMEN HERREN GIRLS BOYS RAINWEAR_BILD 2.pdf": dict(
+        lieferant="CMP (F.lli Campagnolo S.p.A.)", typ=AB, nummer="2026A-F30-249", datum=date(2025, 12, 9),
+        lagerort="GEWA", menge="1908",
+    ),
+}
+
+
+def _beleg(name):
+    ordner = os.environ.get("BELEGE_DIR")
+    if not ordner or not (Path(ordner) / name).exists():
+        pytest.skip("BELEGE_DIR auf den Ordner mit den Beispielbelegen setzen")
+    return (Path(ordner) / name).read_bytes()
+
+
+@pytest.mark.parametrize("name", BELEGE, ids=lambda n: n[:24])
+def test_beispielbeleg_wird_gelesen_und_importiert(name):
+    soll = BELEGE[name]
+    pdf = _beleg(name)
+    sessions = neue_datenbank()
+    with sessions() as session:
+        lagerorte = lade_adressen(session)
+    ergebnis = parse_document(pdf, lagerorte=lagerorte)
+    assert ergebnis["supplier_name"] == soll["lieferant"]
+    assert (ergebnis["document_type"], ergebnis["invoice_number"]) == (soll["typ"], soll["nummer"])
+    assert ergebnis["warnings"] == [] and ergebnis["rows_with_warnings"] == 0, (
+        ergebnis["warnings"], [i["warnings"] for i in ergebnis["items"] if i["warnings"]][:3]
+    )
+    assert ergebnis["lagerort_suggestion"]["code"] == soll["lagerort"]
+    assert format(sum(Decimal(i["quantity"]) for i in ergebnis["items"]).normalize(), "f") == soll["menge"]
+    if "positionen" in soll:
+        assert ergebnis["item_count"] == soll["positionen"]
+    if "artikel" in soll:
+        assert {i["supplier_article_no"] for i in ergebnis["items"]} == soll["artikel"]
+    for feld, wert in soll.get("erste", {}).items():
+        assert ergebnis["items"][0][feld] == wert, feld
+    document, parser = read_and_detect(pdf)
+    assert parser.dates(document) == {"invoice_date": soll["datum"], "document_date": soll["datum"]}
+
+    # Import: Auftragsbestätigung = erwartete Ware, noch kein Bestand (Regel 3).
+    with sessions() as session:
+        ziel = session.scalar(select(Lagerort.id).where(Lagerort.code == soll["lagerort"]))
+    import_invoice(pdf, name, hashlib.sha256(pdf).hexdigest(), sessions, ziel)
+    with sessions() as session:
+        wareneingang = session.scalar(select(Wareneingang))
+        assert wareneingang.status == "erwartet"
+        erwartet = session.scalar(select(func.sum(WareneingangPosition.menge)))
+        assert format(erwartet.normalize(), "f") == soll["menge"]
+        lieferant = session.scalar(select(Lieferant).where(Lieferant.name == soll["lieferant"]))
+        assert lieferant.typ == "drittanbieter"  # Code 999 (Fabian, 24.09.2026)
+
+
+def test_bolle_rechnung_ohne_uvp_wird_nicht_gelesen():
+    """Die Bollé-Rechnung (FaGu) nennt nur den Einkaufspreis, keinen UVP -
+    damit lässt sich nichts auszeichnen; sie bleibt aussen vor (24.09.2026)."""
+    with pytest.raises(UnknownLayoutError):
+        parse_document(_beleg("FaGu00072586-1.pdf"))

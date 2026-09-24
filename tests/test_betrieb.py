@@ -46,6 +46,8 @@ def test_migrationen_offline_fuer_postgres_und_online_auf_sqlite(tmp_path):
         assert db.execute("SELECT version_num FROM alembic_version").fetchone()
         codes = [row[0] for row in db.execute("SELECT code FROM lagerorte ORDER BY code")]
         assert codes == ["DIETIKON", "GEWA", "SF1", "SF2", "SF3", "SF4", "VEBO"]
+        parser = {row[0] for row in db.execute("SELECT parser_key FROM lieferanten WHERE parser_key IS NOT NULL")}
+        assert parser == {"intersport", "alpina", "chrissports", "cmp"}
 
 
 def _skripte_der_seite(html: str) -> list[str]:
@@ -114,15 +116,16 @@ def _migration(datei):
 
 def test_datenmigrationen_passen_zu_den_stammdaten():
     """Migrationen, die bestehende Daten umbauen, und die Stammdaten für neue
-    Datenbanken dürfen nicht auseinanderlaufen: Filialcodes (F13) und
-    Lieferantengruppen (23.09.2026)."""
+    Datenbanken dürfen nicht auseinanderlaufen: Filialcodes (F13),
+    Lieferantengruppen (23.09.2026) und Lieferanten mit Parser (24.09.2026)."""
     from app.core.lagerorte import LAGERORTE_SEED
     from app.core.lieferanten import LIEFERANTEN_SEED
 
     filialcodes = _migration("d0e1f2a3b4c5_filialcodes_korrigieren")
     assert filialcodes.RICHTIG == {e["ort"]: e["code"] for e in LAGERORTE_SEED if e["code"] in ("SF2", "SF3", "SF4")}
     gruppen = _migration("f2a3b4c5d6e7_lieferantengruppen")
-    assert gruppen._NEUE_LIEFERANTEN == [e for e in LIEFERANTEN_SEED if e["name"] != "INTERSPORT Schweiz AG"]
+    parser = _migration("a8b9c0d1e2f3_lieferanten_mit_parser")
+    assert [LIEFERANTEN_SEED[0]] + gruppen._NEUE_LIEFERANTEN + parser._NEUE_LIEFERANTEN == LIEFERANTEN_SEED
 
 
 def test_filialcodes_werden_im_ring_getauscht():

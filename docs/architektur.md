@@ -581,6 +581,21 @@ entscheidet, wer zuständig ist:
 | `<lieferant>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
 | `__init__.py` | `PARSERS`-Liste, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
 
+**Registrierte Layouts (24.09.2026):**
+
+| Modul | Lieferant | Belege | Besonderheiten |
+|---|---|---|---|
+| `intersport.py` | INTERSPORT Schweiz AG | Rechnung | FEDAS-Code; Referenz „ret.Ecom" → Lieferant ECOM (Code 555); Spalte „Preis" = EK |
+| `alpina.py` | ALPINA SPORTS Schweiz AG | Auftragsbestätigung | keine EAN; Artikel = Modell (erste 5 Zeichen der Produktnummer), Farbe und Grösse aus der Beschreibung; Menge × Einzelpreis = Positionswert geprüft |
+| `chrissports.py` | CHRIS sports AG | Auftragsbestätigung | „Preis" = UVP (D12), EK = Betrag/Menge; Marke ohne Sparte („Giro"); „Total Menge" geprüft |
+| `cmp.py` | CMP (F.lli Campagnolo S.p.A.) | Auftragsbestätigung | Grössenraster, Werte über den rechten Rand der Grösse zugeordnet; stornierte Blöcke übersprungen; jede Blocksumme geprüft |
+
+Die neueren Module lassen ihre Positionen einheitlich von
+`base.pruefe_position()` prüfen (Pflichtfelder, EAN, Zahlen) und bauen das
+Ergebnis mit `base.ergebnis()`. Tests: `tests/test_parser.py` mit den
+Beispielbelegen aus `BELEGE_DIR` (nur lokal, nie im Repo). Bewusst **kein**
+Parser: die Bollé-Rechnung (FaGu) nennt nur den Einkaufspreis, keinen UVP.
+
 **Erkennung** (`detect()`): Jedes Modul bewertet das Dokument mit einer
 Punktzahl oder lehnt es ab (`None`); die höchste Punktzahl gewinnt. Bei
 Gleichstand bricht die Erkennung mit einer klaren Meldung ab, statt einen

@@ -17,14 +17,14 @@ Ablauf:
    lesen (projekt-kontext.md Abschnitt 6, Punkt 1).
 """
 
-from . import intersport
+from . import alpina, chrissports, cmp, intersport
 from ...core.lieferanten import LIEFERANTEN_SEED
 from .base import Document, DocumentParseError, decimal_value, read_document
 from ..lieferadresse import erkenne_lagerort
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
 # Reihenfolge ohne Bedeutung - es gewinnt die höchste Punktzahl aus detect().
-PARSERS = (intersport,)
+PARSERS = (intersport, alpina, chrissports, cmp)
 
 
 class UnknownLayoutError(DocumentParseError):

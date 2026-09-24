@@ -186,7 +186,10 @@ app/
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
       __init__.py        Registry: Layout/Lieferant erkennen (parse_document, UnknownLayoutError)
       base.py            Gemeinsame Bausteine: PDF einmal einlesen (inkl. OCR), Zeilen/Zahlen
-      intersport.py      INTERSPORT-Rechnungen (auch ECOM) in Positionen umwandeln (inkl. FEDAS-Code)
+      intersport.py      INTERSPORT-Rechnungen (auch ECOM-Retouren, Code 555) inkl. FEDAS-Code und EK
+      alpina.py          ALPINA-Auftragsbestätigungen (Artikel = Modell, Farbe/Grösse als Variante)
+      chrissports.py     CHRIS-sports-Auftragsbestätigungen (Preis = UVP, D12; EK = Betrag/Menge)
+      cmp.py             CMP-Auftragsbestätigungen (Grössenraster, Blocksummen gegengerechnet)
     ocr.py              OCR-Fallback (Tesseract) für gescannte Seiten ohne Textebene
     corrections.py      Manuelle Korrekturen in der Vorschau validieren
     article_groups.py  Farb-/Grössenvarianten desselben Artikels über die echte artikel_id-Beziehung gruppieren

@@ -390,6 +390,8 @@
   "errors.parser.hint_ocr": " (read via OCR from a scan; please check image quality/orientation)",
   "errors.parser.hint_other_layout": " (scan/other layout)",
   "errors.parser.unknown_layout": "The system does not know this document layout yet{hint}. It cannot be read automatically - please pass the document on as a sample so the matching parser can be added.",
+  "errors.parser.total_mismatch": "The positions add up to {summe} pieces, the document states {beleg} - please check whether a line is missing.",
+  "errors.parser.position_value_mismatch": "Quantity × price does not match the position value in the document - please check.",
   "errors.parser.ambiguous_layout": "Supplier detection is not conclusive: several layouts match equally well ({suppliers}).",
   "errors.parser.missing_table_header": "Page {page}: INTERSPORT table header missing or ambiguous{hint}.",
   "errors.parser.article_columns_not_detected": "Article columns could not be detected.",
