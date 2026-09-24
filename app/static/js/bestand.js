@@ -40,7 +40,12 @@
 
   function artikelZelle(zeile) {
     const zelle = node('td');
-    zelle.append(node('strong', [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—'));
+    // Name führt zu den Artikeldetails (24.09.2026).
+    const link = node('a', [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—');
+    link.href = '/articles/' + zeile.varianten_id + '/history';
+    const name = document.createElement('strong');
+    name.append(link);
+    zelle.append(name);
     const nummern = [zeile.lieferanten_artikelnr, zeile.ean].filter(Boolean).join(' · ');
     if (nummern) zelle.append(document.createElement('br'), node('span', nummern, 'muted'));
     return zelle;
