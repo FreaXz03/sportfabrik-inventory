@@ -321,6 +321,10 @@ kumulierten historischen Wareneingänge, nicht dem tatsächlichen physischen
 Bestand — wird erst mit dem manuellen Ausbuchen (Phase C) bzw. einer
 Inventur korrigiert.
 
+### `reduktionen_manuell`
+
+Von Hand gewählte Reduktionsstufe je Modell (`artikel_id`) × Filiale (`lagerort_id`), eindeutig pro Paar, `prozent` nur 30/50/70. Ohne Zeile gilt die Empfehlung nach Regel 6; mit Zeile ist sie die wirksame Stufe (auch unter der Empfehlung). Benutzer als Momentaufnahme (`benutzer_kassennummer`, `benutzer_name`), dazu `gesetzt_am`. Wird beim Löschen eines von Hand erfassten Artikels mitgelöscht.
+
 ### `article_notes`
 Wie zuvor, jetzt an `artikel_id` statt `product_id` — eine Notiz gilt für das
 ganze Modell (alle Farben/Grössen), nicht mehr nur für die beim Erstellen
@@ -385,6 +389,7 @@ oben):
 | `f2a3b4c5d6e7` | Lieferantengruppen (Anforderung 23.09.2026, umgesetzt 24.09.2026): `lieferanten.typ` kennt neu `intern` (Direktbestellung bei Nike, adidas, The North Face); je Gruppe ein Lieferant für die Erfassung von Hand. Der Etikett-Code (111/555/333/999/444) wird aus `typ` abgeleitet (`app/core/lieferanten.py`), nicht gespeichert |
 | `a8b9c0d1e2f3` | Lieferanten mit eigenem Parser (24.09.2026): ALPINA SPORTS Schweiz AG, CHRIS sports AG, CMP (F.lli Campagnolo S.p.A.) mit `parser_key`, Gruppe Dritte-Händler (999). Nur Daten |
 | `b9c0d1e2f3a4` | Login-Sperre (Sicherheit S2, 24.09.2026): `users.fehlversuche`, `users.gesperrt_bis` |
+| `c0d1e2f3a4b5` | Manuelle Reduktion (24.09.2026): neue Tabelle `reduktionen_manuell` |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

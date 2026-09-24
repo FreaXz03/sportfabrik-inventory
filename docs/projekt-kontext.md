@@ -1167,7 +1167,7 @@ Im lokalen Code umgesetzt: serverseitige Prüfung und passende Navigation, Schne
 
 ### Umsetzungsstand Artikeldetails und Auswertungen – 24.09.2026, abends
 
-Gebaut und im Browser gegen eine Testdatenbank geprüft (nicht im Laden, kein PostgreSQL-Durchgang), Suite 126 bestanden / 12 übersprungen:
+Gebaut und im Browser gegen eine Testdatenbank geprüft (nicht im Laden, kein PostgreSQL-Durchgang), Suite 127 bestanden / 12 übersprungen:
 
 - **Punkte 1–6 Artikeldetails:** UVP-Verlauf zuoberst und kompakt, Preisliste ausklappbar (zu); Kassenkategorie über „Editieren“, EAN & Etikett über eigenen Knopf (beide zu); Notizen aus der Oberfläche entfernt (Daten und API bleiben); unten der aktuelle Bestand aller Grössen und Farben in allen Lagerorten (`/api/bestand?artikel_von=`); „Artikel löschen“ mit rotem Hinweis ganz unten.
 - **Punkt 10:** Artikelname im Bestand führt zu den Artikeldetails.
@@ -1176,4 +1176,7 @@ Gebaut und im Browser gegen eine Testdatenbank geprüft (nicht im Laden, kein Po
 
 Entschieden (Punkt 13): Wird ein Konto gelöscht, bleiben alle Buchungen in der Datenbank; der Name bleibt stehen, nur die Verknüpfung zum Konto entfällt.
 
-Offen: Punkte 7, 11, 12, 16 (manuelle Reduktion, Auswahl per Bestandsliste), 8 (Aktuelles), 14 (Schnellzugriffe), 9 (Statistik), 13 (Kontoverwaltung).
+- **Punkte 7, 11, 12 manuelle Reduktion:** neue Tabelle `reduktionen_manuell` (Migration `c0d1e2f3a4b5`), je Modell × Filiale 30/50/70 %, „Empfehlung“ hebt die Wahl auf. Artikeldetails zeigen je Filiale Empfehlung und wirksame Stufe mit Knöpfen (nur eigene Filialen änderbar), Bestandsliste hat die Spalte „Reduktion“, Runterschreiben hat „Artikel von Hand reduzieren“ (EAN-Scan oder ganze Bestandsliste) und die Liste „Von Hand gewählt“. Das Etikett schlägt die wirksame Stufe vor.
+- **Punkt 16:** Ausbuchen bietet unter „Aus dem Bestand wählen“ eine Suche/Bestandsliste mit „1 Stück ausbuchen“ je Zeile (gleicher Grund, gleiche Rechte).
+
+Offen: Punkte 8 (Aktuelles), 14 (Schnellzugriffe), 9 (Statistik), 13 (Kontoverwaltung).

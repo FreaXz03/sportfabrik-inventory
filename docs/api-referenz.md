@@ -160,7 +160,7 @@ HTTP 422; gebucht wird in beiden Fällen nichts.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/bestand` | Seite „Bestand" (jede Anmeldung) |
-| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `nur_negativ=true` (nur negativer Bestand), `reduktion` (50/70) mit `reduktion_status` (`faellig`/`bald`, braucht eine Filiale; dieselbe Auswahl, die die Übersicht unter „Anstehend“ zählt), `artikel_von` (Varianten-Id; zeigt alle Grössen und Farben desselben Artikels, für die Artikeldetails, 404 bei unbekannter Id), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `nur_negativ=true` (nur negativer Bestand), `reduktion` (50/70) mit `reduktion_status` (`faellig`/`bald`, braucht eine Filiale; dieselbe Auswahl, die die Übersicht unter „Anstehend“ zählt), `artikel_von` (Varianten-Id; zeigt alle Grössen und Farben desselben Artikels, für die Artikeldetails, 404 bei unbekannter Id), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`, `artikel_id` und `reduktion` mit `empfehlung`/`manuell`/`wirksam`, bei externen Lagern `null`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
 
 **Lesen darf jede Anmeldung alle Filialen** (bestätigt am 22.09.2026) — auch
 die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`
@@ -252,7 +252,10 @@ Lagerort ohne Zugriff ergibt HTTP 403, ein ungültiges Datumsformat HTTP 422.
 | GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (nur `47x83`, die vorgedruckte Rolle), `reduktion` (0/30/50/70, bestimmt die Rolle), `anzahl` (1–100), `muster=true` zeichnet den Vordruck zur Vorschau mit |
 | GET | `/api/wareneingaenge/{id}/etiketten.pdf` | Alle Etiketten eines Wareneingangs — `je_stueck=true` (Voreinstellung) druckt eines pro Stück, sonst eines je Position |
 | GET | `/api/artikel/{artikel_id}/etiketten.pdf` | Runterschreiben (Phase D): ein Etikett je Stück im Bestand der Filiale, für alle Farben und Grössen des Artikels. Parameter `reduktion` (bestimmt die Rolle), `lagerort_id` (ohne Angabe die aktive Filiale). 404 ohne Bestand |
-| GET | `/api/reduktionen` | Runterschreiben (Phase D): Artikel einer Filiale (`lagerort_id`, sonst die aktive), die −70 %/−50 % erreicht haben (`stand: faellig`) oder in 30 Tagen erreichen (`bald`), je mit `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; dazu die wählbaren Filialen |
+| GET | `/api/reduktionen` | Runterschreiben (Phase D): Artikel einer Filiale (`lagerort_id`, sonst die aktive), die −70 %/−50 % erreicht haben (`stand: faellig`) oder in 30 Tagen erreichen (`bald`), je mit `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; dazu die wählbaren Filialen und `manuell` (von Hand gewählte Stufen der Filiale mit `prozent`, `gesetzt_von`, `gesetzt_am`) |
+| GET | `/api/articles/{varianten_id}/reduktion` | Je Filiale mit Verkauf: `empfehlung` (Regel 6), `manuell` (30/50/70 oder `null`), `wirksam`, `darf_aendern` (eigene Filiale wie bei Erfassung/Korrektur) |
+| PUT | `/api/reduktion/manuell` | Stufe von Hand setzen: `varianten_id`, `lagerort_id`, `prozent` (30/50/70, sonst 422). Alle Rollen, Mitarbeiter nur in zugewiesenen Filialen (403); externe Lager 409. Antwort: `empfehlung`, `manuell`, `wirksam` |
+| DELETE | `/api/reduktion/manuell?varianten_id=&lagerort_id=` | Zurück zur Empfehlung; gleiche Rechte |
 
 Beide PDF-Antworten kommen als `application/pdf` mit `Content-Disposition:
 inline`, eine Seite je Etikett; die Seitengrösse ist die Etikettengrösse,
