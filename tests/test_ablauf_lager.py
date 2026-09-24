@@ -6,12 +6,12 @@ Deckt Phase C (C2–C5), Regel 2, 6, 9 sowie D13, D17, F9–F11, F14, F15 über
 die echte App mit Anmeldung ab.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from conftest import ANNA, CHEF
 from sqlalchemy import func, select, update
-from testbelege import importieren, rechnung_pdf
+from testbelege import POSITIONEN, importieren, kopf, rechnung_pdf
 
 from app.core.models import Bestand, Lagerbewegung, Variante
 from app.services.reduktion import letzter_wareneingang
@@ -189,3 +189,45 @@ def test_gewa_filiale_umlagern_ausbuchen_zaehlen(welt):
         assert client.post(pfad, json={}).status_code in (401, 422), pfad
     assert client.get("/api/bestand").status_code == 401
     assert client.get("/ausbuchen", follow_redirects=False).status_code == 303
+
+
+def test_anstehend_fuehrt_zur_gefilterten_liste(welt):
+    """Inbox 24.09.2026: ein Klick auf einen Punkt unter „Anstehend" zeigt
+    genau die gezählten Einträge. Darum muss jede Zahl der Übersicht gleich
+    der Trefferzahl der verlinkten, gefilterten Liste sein."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    vor_40_monaten = date(heute.year - 3, heute.month, 1) - timedelta(days=150)  # > 36 Monate
+    vor_20_monaten = date(heute.year - 2, heute.month, 1) + timedelta(days=150)  # 18–36 Monate
+    welt.anmelden(CHEF)
+    alt = rechnung_pdf(header_lines=kopf(nummer="9000000021", datum=vor_40_monaten.strftime("%d.%m.%Y")), rows=POSITIONEN[:2])
+    mittel = rechnung_pdf(header_lines=kopf(nummer="9000000022", datum=vor_20_monaten.strftime("%d.%m.%Y")), rows=POSITIONEN[2:])
+    assert importieren(client, alt, lagerort_id=str(codes["SF1"])).status_code == 200
+    assert importieren(client, mittel, lagerort_id=str(codes["SF1"])).status_code == 200
+    # Von Hand: ohne EAN und ohne Kategorie; eine Variante ins Minus.
+    client.post("/api/erfassen", json={"positionen": [{"marke": "CMP", "bezeichnung": "Jacke", "menge": "1", "uvp": "99"}]})
+    for _ in range(6):
+        client.post("/api/ausbuchen", json={"ean": POLO_M, "grund": "verkauf"})
+
+    uebersicht = client.get("/api/dashboard").json()
+    filiale, stamm = uebersicht["filiale"], uebersicht["stamm"]
+    assert filiale["negativ"] == 1
+    assert stamm["ohne_ean"] == 1 and stamm["ohne_kategorie"] == 1
+    assert filiale["reduktionen"]["70"]["faellig"] == 1  # Poloshirt L (M ist negativ)
+    assert filiale["reduktionen"]["50"]["faellig"] == 1  # Laufschuh
+
+    def treffer(pfad):
+        antwort = client.get(pfad)
+        assert antwort.status_code == 200, (pfad, antwort.text)
+        return antwort.json()["total"]
+
+    assert treffer("/api/articles?ohne_ean=true") == stamm["ohne_ean"]
+    assert treffer("/api/articles?kategorie_fehlt=true") == stamm["ohne_kategorie"]
+    assert treffer("/api/bestand?nur_negativ=true") == filiale["negativ"]
+    for stufe in ("50", "70"):
+        for stand in ("faellig", "bald"):
+            pfad = f"/api/bestand?reduktion={stufe}&reduktion_status={stand}"
+            assert treffer(pfad) == filiale["reduktionen"][stufe][stand], pfad
+    zeilen = client.get("/api/bestand?reduktion=50&reduktion_status=faellig").json()["zeilen"]
+    assert [z["bezeichnung"] for z in zeilen] == ["Laufschuh"]
+    assert client.get("/api/bestand?reduktion=40&reduktion_status=faellig").status_code == 422

@@ -7,6 +7,7 @@ vorausgewählt ist und wohin gebucht wird.
 """
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -17,6 +18,8 @@ from ..core.i18n import translate
 from ..core.models import Lagerort
 from ..services.bestand import STANDARD_LIMIT, liste_bestand
 from ..services.lagerorte import list_all_lagerorte
+from ..services.reduktion import STUFEN
+from ..services.uebersicht import reduktions_varianten
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -40,6 +43,9 @@ def api_bestand(
     alle: bool = False,
     q: str | None = None,
     nur_vorhanden: bool = True,
+    nur_negativ: bool = False,
+    reduktion: int | None = None,
+    reduktion_status: Literal["faellig", "bald"] = "faellig",
     limit: int = STANDARD_LIMIT,
     offset: int = 0,
     user=Depends(require_login_api),
@@ -60,6 +66,14 @@ def api_bestand(
     else:
         gewaehlt = None if aktiver_lagerort is None else aktiver_lagerort.id
 
+    # Links aus „Anstehend" der Übersicht (24.09.2026): dieselbe Auswahl wie
+    # dort gezählt. Reduktion gilt je Filiale, braucht also eine.
+    varianten_ids = None
+    if reduktion is not None:
+        if str(reduktion) not in {str(prozent) for _, prozent in STUFEN} or gewaehlt is None:
+            raise HTTPException(422, translate("errors.bestand.unknown_reduction", language))
+        varianten_ids = reduktions_varianten(session, gewaehlt)[str(reduktion)][reduktion_status]
+
     ergebnis = liste_bestand(
         session,
         lagerort_id=gewaehlt,
@@ -67,6 +81,8 @@ def api_bestand(
         nur_vorhanden=nur_vorhanden,
         limit=limit,
         offset=offset,
+        nur_negativ=nur_negativ,
+        varianten_ids=varianten_ids,
     )
     ergebnis["gewaehlt"] = gewaehlt
     ergebnis["lagerorte"] = [

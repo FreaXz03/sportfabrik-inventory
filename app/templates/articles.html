@@ -41,6 +41,8 @@
               </select></label><label data-i18n="articles.filter.last_delivery_from">Letzte Lieferung von<input type="date" name="last_delivery_from"></label><label data-i18n="articles.filter.last_delivery_to">Letzte Lieferung bis<input type="date" name="last_delivery_to"></label><label class="check"><input type="checkbox" name="nur_manuell" value="true"><span data-i18n="articles.filter.only_manual">Nur von Hand erfasst</span></label></div>
         </details>
       </form>
+      <p id="vorgabe" class="notice filter-hint" hidden><span id="vorgabeText"></span> <button type="button" class="secondary"
+          id="vorgabeWeg" data-i18n="filter_active.show_all">Alle zeigen</button></p>
       <div id="status" role="status" aria-live="polite"></div>
       <p class="muted" data-i18n="articles.hint">Gelieferte Mengen werden je Einheit summiert und entsprechen nicht dem aktuellen Lagerbestand. UVP: zuletzt erfasster Wert nach Belegdatum.</p>
       <details id="columnPicker" class="column-picker">
@@ -184,8 +186,41 @@
       }
     }
 
+    // Filter aus der Adresse - die Links unter „Anstehend" in der Übersicht
+    // (24.09.2026). Gut sichtbar angezeigt, mit einem Knopf zurück zu allen.
+    const VORGABEN = { ohne_ean: 'articles.filter_active.no_ean', kategorie_fehlt: 'articles.filter_active.no_category' };
+    let vorgabe = null;
+    for (const key of Object.keys(VORGABEN)) {
+      if (new URLSearchParams(location.search).get(key) === 'true') {
+        vorgabe = key;
+        filters.set(key, 'true');
+      }
+    }
+    if (vorgabe === 'kategorie_fehlt') $('kategorien').value = 'ohne';
+    function vorgabeZeigen() {
+      $('vorgabe').hidden = !vorgabe;
+      if (vorgabe) $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(VORGABEN[vorgabe]);
+    }
+    function vorgabeWeg() {
+      vorgabe = null;
+      vorgabeZeigen();
+      history.replaceState(null, '', location.pathname);
+    }
+    $('vorgabeWeg').addEventListener('click', () => {
+      filters.delete('ohne_ean');
+      filters.delete('kategorie_fehlt');
+      $('kategorien').value = '';
+      vorgabeWeg();
+      page = 1;
+      load();
+    });
+    document.addEventListener('sportfabrik:i18n-ready', vorgabeZeigen);
+    vorgabeZeigen();
+
     $('filters').addEventListener('submit', (event) => {
       event.preventDefault();
+      // Eine neue Suche ersetzt den Filter aus der Übersicht.
+      if (vorgabe) vorgabeWeg();
       filters = new URLSearchParams([...new FormData(event.target)].filter(([, value]) => value !== ''));
       // Ein Auswahlfeld, zwei Server-Parameter: „ohne" ist keine Kategorie-Id.
       const kategorie = filters.get('kategorie');
@@ -211,6 +246,7 @@
 
     $('resetBtn').addEventListener('click', () => {
       $('filters').reset();
+      if (vorgabe) vorgabeWeg();
       $('eanSuche').focus();
       filters = new URLSearchParams();
       page = 1;

@@ -83,6 +83,7 @@ def articles(
     kategorie_id: int | None = Query(None, ge=1),
     kategorie_fehlt: bool = Query(False),
     nur_manuell: bool = Query(False),
+    ohne_ean: bool = Query(False),
     last_delivery_from: str | None = Query(None),
     last_delivery_to: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -146,6 +147,9 @@ def articles(
         conditions.append(Artikel.kategorie_id.is_(None))
     elif kategorie_id is not None:
         conditions.append(Artikel.kategorie_id == kategorie_id)
+    # Varianten ohne EAN (Link aus „Anstehend" in der Übersicht, 24.09.2026).
+    if ohne_ean:
+        conditions.append(Variante.ean.is_(None))
     # Nur von Hand erfasste Artikel (24.09.2026): an keiner Variante hängt eine
     # Position aus einem Beleg - genau die, die sich wieder löschen lassen.
     if nur_manuell:

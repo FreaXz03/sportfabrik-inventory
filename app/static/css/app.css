@@ -1233,6 +1233,19 @@ th button:hover {
   white-space: pre-wrap;
 }
 
+/* Filter aus der Übersicht (24.09.2026): gross und deutlich, damit niemand
+   eine gefilterte Liste für die ganze Liste hält. */
+.notice.filter-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: normal;
+}
+.notice.filter-hint[hidden] { display: none; }
+
 .notice.error,
 .error {
   background: var(--danger-bg);
