@@ -34,7 +34,7 @@ from sqlalchemy import select
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.lieferanten import etikett_code
-from ..core.models import Artikel, Lieferant, Preis, Variante
+from ..core.models import Artikel, Lieferant, Preis, ReduktionManuell, Variante
 from .barcode import (
     RUHEZONE_LINKS,
     RUHEZONE_RECHTS,
@@ -172,6 +172,15 @@ def sammle_etikett(
         if lagerort_id is not None
         else None
     )
+    if reduktion is None and lagerort_id is not None:
+        # Von Hand gewählte Stufe dieser Filiale geht der Empfehlung vor
+        # (24.09.2026).
+        reduktion = session.scalar(
+            select(ReduktionManuell.prozent).where(
+                ReduktionManuell.artikel_id == artikel.id,
+                ReduktionManuell.lagerort_id == lagerort_id,
+            )
+        )
     return Etikett(
         marke=artikel.marke,
         bezeichnung=artikel.bezeichnung,

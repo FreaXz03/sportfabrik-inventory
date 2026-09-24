@@ -114,6 +114,8 @@ def test_manuelle_reduktion_je_filiale(welt):
     # Nochmals setzen ändert die Stufe, legt keine zweite an.
     assert client.put(url, json={"varianten_id": cap, "lagerort_id": codes["SF1"], "prozent": 50}).json()["wirksam"] == 50
 
+    # Das Etikett schlägt die wirksame Stufe vor (Rolle mit rotem Punkt).
+    assert client.get(f"/api/varianten/{cap}/etikett").json()["rolle"]["prozent"] == 50
     # Bestand zeigt Empfehlung, Wahl von Hand und wirksame Stufe.
     zeilen = {z["ean"]: z["reduktion"] for z in client.get(f"/api/bestand?lagerort_id={codes['SF1']}").json()["zeilen"]}
     assert zeilen["5901234123457"] == {"empfehlung": 0, "manuell": 50, "wirksam": 50}
