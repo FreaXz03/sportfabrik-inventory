@@ -93,10 +93,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
   `docs/datenmodell.md`) — Wareneingänge werden nie direkt überschrieben.
 - **FEDAS-Kategorievorschlag**: erkennt der Lieferant eine passende
   FEDAS-Warengruppe, wird die Kassenkategorie beim Import automatisch
-  vorgeschlagen (aktuell mit einer Teilmenge bestätigter Codes, siehe
-  `app/core/fedas.py`).
-- **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder noch nicht
-  zugeordnet ist — auf der Artikelseite oder gleich beim Erfassen. Die
+  vorgeschlagen (alle 54 FEDAS-Erlebnisbereiche den 11 Sportbereichen der
+  Kasse zugeordnet, dazu Velo und Food; siehe `app/core/fedas.py`).
+- **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder nichts
+  hergibt (z. B. Kids) — auf der Artikelseite oder gleich beim Erfassen. Die
   Oberfläche sagt dazu, ob die Kategorie vorgeschlagen oder von Hand gewählt
   wurde; eine Wahl von Hand überschreibt kein späterer Import. Der Filter
   „Ohne Kategorie" in der Artikelsuche zeigt, wo noch etwas fehlt.

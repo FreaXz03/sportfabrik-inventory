@@ -407,15 +407,16 @@ Reihenfolge ist wichtig.
 
 **Vorschlag aus dem FEDAS-Code.** INTERSPORT-Rechnungen führen je Position
 einen 6-stelligen FEDAS-Code mit; `app/core/fedas.py` übersetzt die erste
-Ziffer in die Hauptgruppe und die Ziffern 2–3 in den Sportbereich. Der
-Importer setzt die Kategorie damit automatisch, sobald der Code bekannt ist.
-In der Tabelle stehen nur die aus echten Rechnungen **bestätigten** Codes -
-geraten wird nichts.
+Ziffer in die Hauptgruppe und die Ziffern 2–3 (Erlebnisbereich) in den
+Sportbereich; ganze Fahrräder (Warengruppen 16001–16008) werden Velo,
+Sportnahrung (10020) Food. Die Zuordnung aller 54 Erlebnisbereiche aus der
+FEDAS-Liste hat Fabian am 24.09.2026 bestätigt; die Liste selbst liegt nicht
+im Repo. Kids lässt sich aus FEDAS nicht ableiten.
 
 **Wahl von Hand** (`app/services/kategorien.py`) für alles andere, und das ist
 der Normalfall: die meisten Lieferanten liefern keinen FEDAS-Code, von Hand
-erfasste Ware hat gar keinen Beleg (D27), und ein Teil der Codes ist noch
-nicht zugeordnet. Gewählt wird auf der Artikelseite oder gleich beim Erfassen;
+erfasste Ware hat gar keinen Beleg (D27), und Kids ist aus FEDAS nicht
+ableitbar. Gewählt wird auf der Artikelseite oder gleich beim Erfassen;
 gefunden werden die offenen Artikel über den Filter „Ohne Kategorie" in der
 Artikelsuche.
 
@@ -424,8 +425,7 @@ Import füllt nur eine leere Kategorie („einmal pro Artikel, danach gemerkt"),
 eine Wahl von Hand darf umgekehrt einen falschen Vorschlag korrigieren und
 bleibt danach stehen - auch wenn später eine Rechnung mit bekanntem Code
 kommt. `artikel.kategorie_manuell` hält fest, woher der Wert stammt, und die
-Oberfläche sagt es dazu: solange die FEDAS-Tabelle unvollständig ist, ist der
-Unterschied zwischen „vorgeschlagen" und „von jemandem bestätigt" eine
+Oberfläche sagt es dazu: der zwischen „vorgeschlagen" und „von jemandem bestätigt" eine
 Information wert. Wird die Kategorie geleert, ist der Artikel wieder offen und
 ein späterer Beleg darf erneut vorschlagen.
 

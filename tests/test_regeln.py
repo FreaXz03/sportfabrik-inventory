@@ -143,19 +143,59 @@ def test_lagerorte_mit_richtigen_codes_und_nur_filialen_verkaufen():
 @pytest.mark.parametrize(
     "fedas_code,erwartet",
     [
+        # Bestätigte Zuordnung vom 24.09.2026 (FEDAS-Liste, Erlebnisbereich →
+        # Kassen-Sportbereich).
         ("124100", ("Hartware", "Tennis")),
         ("224100", ("Textil", "Tennis")),
         ("324100", ("Schuhe", "Tennis")),
         ("232000", ("Textil", "Fussball")),
-        ("164500", ("Hartware", "Outdoor")),
+        ("201700", ("Textil", "Winter")),  # Ski Alpin
+        ("311000", ("Schuhe", "Winter")),  # Eisstock / Curling
+        ("214370", ("Textil", "Outdoor")),  # Freizeit / Mode Winter
+        ("264000", ("Textil", "Outdoor")),  # Bergsport / Wandern
+        ("215000", ("Textil", "Baden")),
+        ("121000", ("Hartware", "Baden")),  # Kajak / Kanu
+        ("278000", ("Textil", "Indoor")),  # Fitness
+        ("182000", ("Hartware", "Indoor")),  # Kampfsport
+        ("335000", ("Schuhe", "Indoor")),  # Handball
+        ("346000", ("Schuhe", "Running")),
+        ("356000", ("Schuhe", "Running")),  # Triathlon
+        ("362700", ("Schuhe", "Rollsport")),  # Funwheel
+        ("260000", ("Textil", "Velo")),  # Bike-Bekleidung
+        ("160200", ("Hartware", "Velo")),  # Lenker: Zubehör, kein Velo
+        ("149000", ("Hartware", "Freizeit")),  # Golf
+        ("171000", ("Hartware", "Freizeit")),  # Reiten
+        ("275000", ("Textil", "Freizeit")),
+        ("100010", ("Hartware", "Freizeit")),  # Multisport
+        # Ganze Fahrräder und Anhänger sind die Hauptgruppe Velo, Sportnahrung
+        # ist Food - beide ohne Sportbereich.
+        ("160010", ("Velo", None)),
+        ("160080", ("Velo", None)),
+        ("100201", ("Food", None)),
+        # Kids lässt sich aus FEDAS nicht ableiten (kein Alter im Code).
         (None, None),
         ("12", None),
         ("999999", None),  # unbekannte Produktart
-        ("199999", None),  # bekannte Produktart, unbekannte Sportart
+        ("199999", None),  # unbekannter Erlebnisbereich
     ],
 )
 def test_fedas_vorschlag(fedas_code, erwartet):
     assert suggest_kategorie(fedas_code) == erwartet
+
+
+def test_fedas_vorschlag_passt_zu_den_kassenkategorien():
+    """Jeder Vorschlag muss eine Kategorie der Kasse sein (Regel 8), und alle
+    54 Erlebnisbereiche der FEDAS-Liste sind zugeordnet."""
+    from app.core.fedas import SPORTBEREICH_NACH_ERLEBNISBEREICH
+    from app.services.kategorien import kategorie_vorschlag
+
+    assert len(SPORTBEREICH_NACH_ERLEBNISBEREICH) == 54
+    sessions = neue_datenbank()
+    with sessions() as session:
+        for code in ("160010", "100201", "214370", "282000"):
+            kategorie = kategorie_vorschlag(session, code)
+            assert kategorie is not None, code
+            assert (kategorie.hauptgruppe, kategorie.sportbereich) == suggest_kategorie(code)
 
 
 def test_lieferantencodes_fuers_etikett():

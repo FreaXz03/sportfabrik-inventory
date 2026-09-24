@@ -131,12 +131,12 @@ im Laden erprobt ist. Nächste Phase gemäss Roadmap: **D — Preise & Reduktion
 Jede Buchung bleibt eine Zeile in `lagerbewegungen` (Regel 2) und läuft über
 dieselbe Sperre wie der Zugang.
 
-Laufend offen bleibt der FEDAS-Kategorievorschlag selbst: `app/core/fedas.py`
-kennt nur die aus echten Rechnungen bestätigten Codes (6 von 11 Sportbereichen
-fehlen, ebenso die Produktart-Ziffern für Velo/Food). Bis sie bestätigt sind,
-wird in diesen Fällen von Hand gewählt — die Kategorie bleibt also nie
-zwangsläufig leer.
+Der FEDAS-Kategorievorschlag (`app/core/fedas.py`) ist seit 24.09.2026
+vollständig: alle 54 Erlebnisbereiche der FEDAS-Liste sind einem der 11
+Sportbereiche zugeordnet (von Fabian bestätigt), dazu Velo (ganze Fahrräder)
+und Food (Sportnahrung). Nur **Kids** lässt sich aus FEDAS nicht ableiten und
+wird von Hand gewählt.
 
 ## Inbox-Präzisierungen vom 24.09.2026
 
-Aktuelle Etikettenvorgabe: **47 mm Breite × 83 mm Höhe**, vorgedruckte Rollen 30 % gelb / 50 % rot / 70 % grün. Die früher dokumentierte Voreinstellung ist noch anzupassen. Eine deutsche FEDAS-Quelle und ein Alpina-Papierscan wurden nachgereicht; FEDAS-Inhalt noch nicht geprüft. Testbereinigung ist ein dokumentierter Arbeitswunsch, keine bereits ausgeführte Änderung. Details: `docs/anforderungen-inbox-2026-09-24.md`.
+Etikett: **47 mm Breite × 83 mm Höhe**, vorgedruckte Rollen 30 % gelb / 50 % rot / 70 % grün — umgesetzt (gedruckt werden nur UVP, Lieferantencode, Jahrgang, Strichcode; Positionen in `LAYOUT` von `app/services/etikett.py`). FEDAS-Liste geprüft und zugeordnet (siehe oben). Tests aufgeräumt (siehe „Tests"). Details: `docs/anforderungen-inbox-2026-09-24.md`.
