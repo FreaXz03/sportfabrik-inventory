@@ -248,6 +248,11 @@
   "articles.errors.brands_failed": "Marken konnten nicht geladen werden. Bitte Seite neu laden; die Schnellsuche bleibt verfügbar.",
   "articles.errors.kategorien_failed": "Kategorien konnten nicht geladen werden.",
 
+  "article_details.edit": "Editieren",
+  "article_details.price_list_toggle": "Preisliste anzeigen",
+  "article_details.stock_heading": "Aktueller Bestand",
+  "article_details.stock_hint": "Alle Grössen und Farben dieses Artikels in allen Filialen und Lagern.",
+  "article_details.stock_empty": "Dieser Artikel ist zurzeit nirgends an Lager.",
   "article_details.no_date": "Ohne Datum",
   "article_details.errors.note_length": "Bitte einen Text mit 1 bis 2000 Zeichen eingeben.",
   "article_details.price_table.invoice_date": "Datum",
@@ -301,8 +306,8 @@
   "history.loading": "Daten werden geladen …",
   "history.invoice_title_prefix": "Beleg {number}",
   "history.invoice_intro": "{supplier} · Datum {invoice_date} · Belegdatum {document_date} · Datei: {filename} · Importiert von {imported_by}",
-  "history.product_intro_with_supplier_no": "Lief. Art. Nr. {number} · Alle gelieferten Grössen und Farben, neuester Beleg zuerst.",
-  "history.product_intro_without_supplier_no": "EAN {ean} · Ohne Lieferanten-Artikelnummer: Lieferungen dieser Variante.",
+  "history.product_intro_with_supplier_no": "Lief. Art. Nr. {number}",
+  "history.product_intro_without_supplier_no": "EAN {ean}",
   "history.list.col_invoice": "Beleg",
   "history.list.col_date": "Datum",
   "history.list.col_supplier": "Lieferant",
@@ -430,6 +435,7 @@
   "errors.importer.invoice_not_found": "Beleg {id} wurde nicht gefunden.",
 
   "errors.bestand.unknown_lagerort": "Unbekannte Filiale.",
+  "errors.bestand.unknown_article": "Unbekannter Artikel.",
 
   "errors.bestand.unknown_reduction": "Unbekannte Reduktionsstufe - erlaubt sind 50 und 70, und es muss eine Filiale gewählt sein.",
   "errors.wareneingang.not_found": "Lieferung {id} wurde nicht gefunden.",

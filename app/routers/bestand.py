@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from ..core.database import get_session
 from ..core.i18n import translate
-from ..core.models import Lagerort
+from ..core.models import Lagerort, Variante
 from ..services.bestand import STANDARD_LIMIT, liste_bestand
 from ..services.lagerorte import list_all_lagerorte, list_wareneingang_lagerorte
 from ..services.reduktion import STUFEN
@@ -46,6 +46,7 @@ def api_bestand(
     nur_negativ: bool = False,
     reduktion: int | None = None,
     reduktion_status: Literal["faellig", "bald"] = "faellig",
+    artikel_von: int | None = None,
     limit: int = STANDARD_LIMIT,
     offset: int = 0,
     user=Depends(require_login_api),
@@ -73,6 +74,15 @@ def api_bestand(
         if str(reduktion) not in {str(prozent) for _, prozent in STUFEN} or gewaehlt is None:
             raise HTTPException(422, translate("errors.bestand.unknown_reduction", language))
         varianten_ids = reduktions_varianten(session, gewaehlt)[str(reduktion)][reduktion_status]
+
+    # Artikeldetails (24.09.2026): alle Grössen und Farben des Artikels, zu
+    # dem die angeklickte Variante gehört.
+    if artikel_von is not None:
+        artikel_id = session.scalar(select(Variante.artikel_id).where(Variante.id == artikel_von))
+        if artikel_id is None:
+            raise HTTPException(404, translate("errors.bestand.unknown_article", language))
+        alle_varianten = session.scalars(select(Variante.id).where(Variante.artikel_id == artikel_id)).all()
+        varianten_ids = [v for v in alle_varianten if varianten_ids is None or v in varianten_ids]
 
     ergebnis = liste_bestand(
         session,

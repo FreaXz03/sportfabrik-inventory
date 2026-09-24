@@ -58,6 +58,13 @@ def test_suchen_exportieren_historie_preise_notizen(welt):
     assert [p["uvp"] for p in preise] == ["49.90", "54.90"]
     assert client.get("/api/articles/999999/history").status_code == 404
 
+    # Artikeldetails unten (24.09.2026): aktueller Bestand dieses Artikels mit
+    # allen Grössen und Farben, nicht nur der angeklickten Variante.
+    bestand = client.get(f"/api/bestand?alle=true&artikel_von={polo['id']}").json()
+    assert bestand["total"] == 2
+    assert {z["bezeichnung"] for z in bestand["zeilen"]} == {polo["description"]}
+    assert client.get("/api/bestand?alle=true&artikel_von=999999").status_code == 404
+
     # Notizen: Anna schreibt, Beat darf lesen, aber nicht ändern; der
     # Filialleiter darf; veraltete Version wird abgelehnt.
     url = f"/api/articles/{polo['id']}/notes"

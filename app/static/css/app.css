@@ -1650,11 +1650,16 @@ th button:hover {
 #priceChart svg {
   display: block;
   width: 100%;
-  max-height: 320px;
-  margin-top: 8px;
+  max-height: 200px;
+  margin-top: 4px;
 }
 
-#priceTable { margin-top: 16px; max-height: 300px; }
+/* UVP-Verlauf kompakt, Liste ausklappbar (24.09.2026). */
+.price-panel #priceStatus { margin: 4px 0; }
+#priceDetails { margin-top: 8px; }
+#priceDetails > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+#priceTable { margin-top: 8px; max-height: 300px; }
+#articleActions { margin: 0 0 16px; }
 
 #noteForm,
 .note-editor {

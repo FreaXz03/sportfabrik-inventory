@@ -248,6 +248,11 @@
   "articles.errors.brands_failed": "Les marques n'ont pas pu être chargées. Veuillez recharger la page ; la recherche rapide reste disponible.",
   "articles.errors.kategorien_failed": "Les catégories n'ont pas pu être chargées.",
 
+  "article_details.edit": "Modifier",
+  "article_details.price_list_toggle": "Afficher la liste des prix",
+  "article_details.stock_heading": "Stock actuel",
+  "article_details.stock_hint": "Toutes les tailles et couleurs de cet article dans toutes les succursales et entrepôts.",
+  "article_details.stock_empty": "Cet article n'est actuellement en stock nulle part.",
   "article_details.no_date": "Sans date",
   "article_details.errors.note_length": "Veuillez saisir un texte de 1 à 2000 caractères.",
   "article_details.price_table.invoice_date": "Date",
@@ -301,8 +306,8 @@
   "history.loading": "Chargement des données …",
   "history.invoice_title_prefix": "Justificatif {number}",
   "history.invoice_intro": "{supplier} · Date {invoice_date} · Date du document {document_date} · Fichier : {filename} · Importé par {imported_by}",
-  "history.product_intro_with_supplier_no": "N° art. fournisseur {number} · Toutes les tailles et couleurs livrées, justificatif le plus récent en premier.",
-  "history.product_intro_without_supplier_no": "EAN {ean} · Sans numéro d'article fournisseur : livraisons de cette variante.",
+  "history.product_intro_with_supplier_no": "N° art. fournisseur {number}",
+  "history.product_intro_without_supplier_no": "EAN {ean}",
   "history.list.col_invoice": "Justificatif",
   "history.list.col_date": "Date",
   "history.list.col_supplier": "Fournisseur",
@@ -430,6 +435,7 @@
   "errors.importer.invoice_not_found": "Le justificatif {id} est introuvable.",
 
   "errors.bestand.unknown_lagerort": "Succursale inconnue.",
+  "errors.bestand.unknown_article": "Article inconnu.",
 
   "errors.bestand.unknown_reduction": "Palier de réduction inconnu - 50 et 70 sont autorisés, et une filiale doit être choisie.",
   "errors.wareneingang.not_found": "La livraison {id} est introuvable.",

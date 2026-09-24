@@ -248,6 +248,11 @@
   "articles.errors.brands_failed": "Brands could not be loaded. Please reload the page; quick search stays available.",
   "articles.errors.kategorien_failed": "Categories could not be loaded.",
 
+  "article_details.edit": "Edit",
+  "article_details.price_list_toggle": "Show price list",
+  "article_details.stock_heading": "Current stock",
+  "article_details.stock_hint": "All sizes and colours of this article in all branches and warehouses.",
+  "article_details.stock_empty": "This article is currently not in stock anywhere.",
   "article_details.no_date": "No date",
   "article_details.errors.note_length": "Please enter text between 1 and 2000 characters.",
   "article_details.price_table.invoice_date": "Date",
@@ -301,8 +306,8 @@
   "history.loading": "Loading data …",
   "history.invoice_title_prefix": "Document {number}",
   "history.invoice_intro": "{supplier} · Date {invoice_date} · Document date {document_date} · File: {filename} · Imported by {imported_by}",
-  "history.product_intro_with_supplier_no": "Supplier item no. {number} · All delivered sizes and colours, most recent document first.",
-  "history.product_intro_without_supplier_no": "EAN {ean} · No supplier item number: deliveries of this variant.",
+  "history.product_intro_with_supplier_no": "Supplier item no. {number}",
+  "history.product_intro_without_supplier_no": "EAN {ean}",
   "history.list.col_invoice": "Document",
   "history.list.col_date": "Date",
   "history.list.col_supplier": "Supplier",
@@ -430,6 +435,7 @@
   "errors.importer.invoice_not_found": "Document {id} was not found.",
 
   "errors.bestand.unknown_lagerort": "Unknown branch.",
+  "errors.bestand.unknown_article": "Unknown article.",
 
   "errors.bestand.unknown_reduction": "Unknown markdown step - 50 and 70 are allowed, and a branch must be selected.",
   "errors.wareneingang.not_found": "Delivery {id} was not found.",
