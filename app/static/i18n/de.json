@@ -438,6 +438,7 @@
 
   "errors.bestand.unknown_lagerort": "Unbekannte Filiale.",
   "errors.bestand.unknown_article": "Unbekannter Artikel.",
+  "errors.reduktion.no_sales_location": "Nur in Filialen mit Verkauf gibt es eine Reduktion.",
 
   "errors.bestand.unknown_reduction": "Unbekannte Reduktionsstufe - erlaubt sind 50 und 70, und es muss eine Filiale gewählt sein.",
   "errors.wareneingang.not_found": "Lieferung {id} wurde nicht gefunden.",

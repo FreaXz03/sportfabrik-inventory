@@ -109,6 +109,7 @@ def liste_bestand(
         "zeilen": [
             {
                 "varianten_id": variante.id,
+                "artikel_id": artikel.id,
                 "marke": artikel.marke,
                 "bezeichnung": artikel.bezeichnung,
                 "lieferanten_artikelnr": artikel.lieferanten_artikelnr,

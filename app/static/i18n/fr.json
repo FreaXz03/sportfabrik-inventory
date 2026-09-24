@@ -438,6 +438,7 @@
 
   "errors.bestand.unknown_lagerort": "Succursale inconnue.",
   "errors.bestand.unknown_article": "Article inconnu.",
+  "errors.reduktion.no_sales_location": "Seules les succursales avec vente ont une réduction.",
 
   "errors.bestand.unknown_reduction": "Palier de réduction inconnu - 50 et 70 sont autorisés, et une filiale doit être choisie.",
   "errors.wareneingang.not_found": "La livraison {id} est introuvable.",

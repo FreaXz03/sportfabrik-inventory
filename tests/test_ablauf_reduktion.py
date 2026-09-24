@@ -82,3 +82,47 @@ def test_runterschreiben_liste_und_etiketten(welt):
     client.post("/logout")
     assert client.get("/api/reduktionen").status_code == 401
     assert client.get("/runterschreiben", follow_redirects=False).status_code == 303
+
+
+def test_manuelle_reduktion_je_filiale(welt):
+    """Manuelle Reduktion (24.09.2026): alle Mitarbeitenden dürfen je Filiale
+    30/50/70 % setzen, aber nur in ihren zugewiesenen Filialen. Empfehlung und
+    Wahl von Hand bleiben getrennt; der Bestand zeigt die wirksame Stufe."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    welt.anmelden(CHEF)
+    for nummer, eingang, zeilen in [
+        ("9000000051", _monate_zurueck(heute, 40), [_zeile("1", "A1", "4006632041234", "Poloshirt", "5")]),
+        ("9000000052", _monate_zurueck(heute, 1), [_zeile("2", "D4", "5901234123457", "Cap", "4")]),
+    ]:
+        pdf = rechnung_pdf(header_lines=kopf(nummer=nummer, datum=eingang.strftime("%d.%m.%Y")), rows=zeilen)
+        assert importieren(client, pdf, lagerort_id=str(codes["SF1"])).status_code == 200
+    cap = client.get("/api/articles?ean=5901234123457").json()["items"][0]["id"]
+    polo = client.get("/api/articles?ean=4006632041234").json()["items"][0]["id"]
+
+    welt.anmelden(ANNA)
+    stand = {e["lagerort"]["code"]: e for e in client.get(f"/api/articles/{cap}/reduktion").json()["filialen"]}
+    assert set(stand) == {"SF1", "SF2", "SF3", "SF4"}  # nur Filialen, keine externen Lager
+    assert stand["SF1"] == {**stand["SF1"], "empfehlung": 0, "manuell": None, "wirksam": 0, "darf_aendern": True}
+    assert stand["SF2"]["darf_aendern"] is False
+
+    url = "/api/reduktion/manuell"
+    assert client.put(url, json={"varianten_id": cap, "lagerort_id": codes["SF1"], "prozent": 40}).status_code == 422
+    assert client.put(url, json={"varianten_id": cap, "lagerort_id": codes["SF2"], "prozent": 30}).status_code == 403
+    gesetzt = client.put(url, json={"varianten_id": cap, "lagerort_id": codes["SF1"], "prozent": 30})
+    assert gesetzt.status_code == 200 and gesetzt.json()["wirksam"] == 30
+    # Nochmals setzen ändert die Stufe, legt keine zweite an.
+    assert client.put(url, json={"varianten_id": cap, "lagerort_id": codes["SF1"], "prozent": 50}).json()["wirksam"] == 50
+
+    # Bestand zeigt Empfehlung, Wahl von Hand und wirksame Stufe.
+    zeilen = {z["ean"]: z["reduktion"] for z in client.get(f"/api/bestand?lagerort_id={codes['SF1']}").json()["zeilen"]}
+    assert zeilen["5901234123457"] == {"empfehlung": 0, "manuell": 50, "wirksam": 50}
+    assert zeilen["4006632041234"] == {"empfehlung": 70, "manuell": None, "wirksam": 70}
+    # Runterschreiben listet die Wahl von Hand separat.
+    manuell = client.get("/api/reduktionen").json()["manuell"]
+    assert [(a["lieferanten_artikelnr"], a["prozent"], a["gesetzt_von"]) for a in manuell] == [("D4", 50, "Anna")]
+
+    # Zurück zur Empfehlung; eine Stufe unter der Empfehlung ist erlaubt.
+    assert client.delete(f"{url}?varianten_id={cap}&lagerort_id={codes['SF1']}").json()["wirksam"] == 0
+    assert client.put(url, json={"varianten_id": polo, "lagerort_id": codes["SF1"], "prozent": 30}).json()["wirksam"] == 30
+    assert client.get("/api/reduktionen").json()["manuell"][0]["lieferanten_artikelnr"] == "A1"

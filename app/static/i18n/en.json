@@ -438,6 +438,7 @@
 
   "errors.bestand.unknown_lagerort": "Unknown branch.",
   "errors.bestand.unknown_article": "Unknown article.",
+  "errors.reduktion.no_sales_location": "Only branches with sales have a reduction.",
 
   "errors.bestand.unknown_reduction": "Unknown markdown step - 50 and 70 are allowed, and a branch must be selected.",
   "errors.wareneingang.not_found": "Delivery {id} was not found.",
