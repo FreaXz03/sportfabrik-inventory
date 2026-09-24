@@ -287,6 +287,28 @@ main > p { max-width: 68ch; }
   color: var(--text-muted);
 }
 
+/* Welche vorgedruckte Etikettenrolle einzulegen ist - gross und mit dem
+   Farbpunkt der Rolle, damit es auch mit Brille auf einen Blick klar ist. */
+.roll-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.roll-hint:empty { display: none; }
+.roll-hint::before {
+  content: "";
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  flex: none;
+}
+.roll-hint[data-farbe="gelb"]::before { background: #f7e23e; }
+.roll-hint[data-farbe="rot"]::before { background: #e3342a; }
+.roll-hint[data-farbe="gruen"]::before { background: #58b24b; }
+
 a {
   color: var(--link);
   text-decoration: underline;

@@ -29,6 +29,7 @@ from ..services.etikett import (
     EtikettError,
     EtikettNichtGefunden,
     etiketten_pdf,
+    rolle,
     sammle_etikett,
 )
 from ..services.reduktion import ERLAUBTE_STUFEN
@@ -134,6 +135,8 @@ def api_etikett_daten(
         "lagerort": None
         if lagerort is None
         else {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
+        # Welche vorgedruckte Rolle einzulegen ist (24.09.2026).
+        "rolle": rolle(etikett.reduktion),
         "groessen": list(GROESSEN),
         "reduktionsstufen": list(ERLAUBTE_STUFEN),
     }
@@ -145,6 +148,7 @@ def api_etikett(
     groesse: str | None = Query(default=None),
     reduktion: int | None = Query(default=None),
     anzahl: int = Query(default=1, ge=1, le=100),
+    muster: bool = Query(default=False),
     user=Depends(require_login_api),
     lagerort=Depends(get_active_lagerort),
     session=Depends(get_session),
@@ -152,7 +156,8 @@ def api_etikett(
 ):
     """Etikett einer Variante. Jahrgang und Reduktionsvorschlag kommen aus dem
     letzten Wareneingang in der aktiven Filiale (Regel 6); `reduktion`
-    überschreibt den Vorschlag (z. B. die 30 % aus D25)."""
+    überschreibt den Vorschlag (z. B. die 30 % aus D25) und bestimmt die
+    Rolle; `muster` zeichnet den Vordruck der Rolle zur Vorschau mit."""
     try:
         etikett = sammle_etikett(
             session,
@@ -163,7 +168,7 @@ def api_etikett(
             hinweis_ohne_ean=translate("etikett.no_ean", language),
             language=language,
         )
-        inhalt = etiketten_pdf([etikett], _groesse(groesse, language), language)
+        inhalt = etiketten_pdf([etikett], _groesse(groesse, language), language, muster)
     except EtikettNichtGefunden as exc:
         raise HTTPException(404, str(exc)) from exc
     except EtikettError as exc:

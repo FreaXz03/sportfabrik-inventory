@@ -59,12 +59,14 @@
                               <h3 data-i18n="etikett.print_heading">Etikett drucken</h3>
                          </div>
                          <p id="etikettPreview" class="muted"></p>
+                         <p id="etikettRolle" class="roll-hint" role="status" aria-live="polite"></p>
                          <div class="filters lagerort-choice">
                               <label><span data-i18n="etikett.size_label">Etikettengrösse (mm)</span><select id="etikettGroesse"></select></label>
                               <label><span data-i18n="etikett.reduction_label">Reduktion</span><select id="etikettReduktion"></select></label>
                               <label><span data-i18n="etikett.count_label">Anzahl</span><input id="etikettAnzahl" type="number" min="1"
                                              max="100" value="1"></label>
                               <button type="button" id="printEtikett" data-i18n="etikett.print">Etikett öffnen</button>
+                              <button type="button" id="sampleEtikett" class="secondary" data-i18n="etikett.sample">Muster ansehen</button>
                          </div>
                     </div>
                </section>
@@ -484,7 +486,7 @@
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>
      <script src="/static/js/article-details.js?v=i18n-1"></script>
-     <script src="/static/js/etikett.js?v=2"></script>
+     <script src="/static/js/etikett.js?v=3"></script>
      <script src="/static/js/kategorien.js?v=1"></script>
      <script src="/static/js/kategorie.js?v=1"></script>
 </body>

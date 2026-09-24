@@ -8,12 +8,14 @@ Deckt D10, D23–D25, D27, Regel 4, 5, 7, 9, B8 und die Artikellöschung vom
 from datetime import date
 from decimal import Decimal
 
+import pymupdf
 from conftest import ANNA, CHEF, ZENTRALE
 from sqlalchemy import select
 from testbelege import importieren, rechnung_pdf
 
 from app.core.i18n import translate
 from app.core.models import Bestand, Lagerbewegung, Variante, Wareneingang
+from app.services.etikett import MM
 
 
 def _position(**felder):
@@ -92,15 +94,9 @@ def test_erfassen_ean_etikett_kategorie(welt):
     assert intern.json()["ean_intern"] is True and intern.json()["ean"].startswith("2")
     assert client.post(f"/api/varianten/{jacke}/ean", json={"generieren": True}).status_code == 409
 
-    # Etikett (D25): Jahrgang, Lieferantencode, UVP, Stufe, Strichcode.
+    # Etikett: Details prüft test_etikett_fuer_die_vorgedruckte_rolle.
     etikett = client.get(f"/api/varianten/{jacke}/etikett").json()
-    assert etikett["uvp"] == "89.90"
-    assert etikett["jahrgang"] == date.today().year
-    assert etikett["barcode"] is True
-    assert etikett["ean"] == intern.json()["ean"]
-    pdf = client.get(f"/api/varianten/{jacke}/etikett.pdf?reduktion=30&anzahl=2")
-    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
-    assert client.get(f"/api/varianten/{jacke}/etikett.pdf?reduktion=40").status_code == 422
+    assert etikett["ean"] == intern.json()["ean"] and etikett["barcode"] is True
     # Regel 7: Fehlermeldungen in der Sprache des Kontos.
     client.post("/api/language", json={"language": "fr"})
     fehlt = client.get("/api/varianten/999999/etikett")
@@ -130,6 +126,58 @@ def test_erfassen_ean_etikett_kategorie(welt):
     assert client.post("/api/erfassen", json={"positionen": [_position()]}).status_code == 401
     seite = client.get("/erfassen", follow_redirects=False)
     assert seite.status_code == 303 and seite.headers["location"] == "/login?next=/erfassen"
+
+
+def _pdf_text(inhalt):
+    with pymupdf.open(stream=inhalt, filetype="pdf") as pdf:
+        return [(round(seite.rect.width / MM), round(seite.rect.height / MM), seite.get_text()) for seite in pdf]
+
+
+def test_etikett_fuer_die_vorgedruckte_rolle(welt):
+    """Etikett vom 24.09.2026: Rolle 47 × 83 mm (hoch) mit vorgedrucktem Logo,
+    Prozent-Punkt und Bergen. Gedruckt werden nur UVP (durchgestrichen),
+    Lieferantencode links, Jahrgang zweistellig rechts und unter den Bergen
+    der Strichcode. Die Reduktion bestimmt, welche Rolle einzulegen ist:
+    30 % gelb, 50 % rot, 70 % grün - neue Ware kommt auf die 30er-Rolle."""
+    client = welt.client
+    welt.anmelden(ANNA)
+    drittanbieter = next(
+        e["id"] for e in client.get("/api/erfassen/stammdaten").json()["lieferanten"] if e["code"] == "999"
+    )
+    client.post(
+        "/api/erfassen",
+        json={"positionen": [_position(marke="Salomon", uvp="499")], "lieferant_id": drittanbieter},
+    )
+    with welt.sessions() as session:
+        schuh = session.scalar(select(Variante.id))
+    ean = client.post(f"/api/varianten/{schuh}/ean", json={"generieren": True}).json()["ean"]
+
+    daten = client.get(f"/api/varianten/{schuh}/etikett").json()
+    assert daten["lieferant_code"] == "999" and daten["uvp"] == "499.00"
+    assert daten["groessen"] == ["47x83"]
+    assert daten["rolle"] == {"prozent": 30, "farbe": "gelb"}  # neu: Rolle -30 %
+    assert client.get(f"/api/varianten/{schuh}/etikett?reduktion=50").json()["rolle"] == {"prozent": 50, "farbe": "rot"}
+    assert client.get(f"/api/varianten/{schuh}/etikett?reduktion=70").json()["rolle"] == {"prozent": 70, "farbe": "gruen"}
+
+    druck = client.get(f"/api/varianten/{schuh}/etikett.pdf?reduktion=50&anzahl=2")
+    assert druck.status_code == 200
+    seiten = _pdf_text(druck.content)
+    assert len(seiten) == 2
+    breite, hoehe, text = seiten[0]
+    assert (breite, hoehe) == (47, 83)
+    jahrgang = f"{date.today().year % 100:02d}"
+    for teil in ("499.00", "999", jahrgang, ean):
+        assert teil in text, teil
+    # Vorgedrucktes und Nebensächliches kommt nicht aufs Etikett.
+    for teil in ("SPORT-FABRIK", "%", "CHF", "Poloshirt", "Salomon"):
+        assert teil not in text, teil
+
+    # Muster mit angedeutetem Vordruck, damit man das Ergebnis vorher sieht.
+    muster = _pdf_text(client.get(f"/api/varianten/{schuh}/etikett.pdf?reduktion=70&muster=true").content)
+    assert "SPORT-FABRIK" in muster[0][2] and "-70%" in muster[0][2] and "499.00" in muster[0][2]
+
+    assert client.get(f"/api/varianten/{schuh}/etikett.pdf?reduktion=40").status_code == 422
+    assert client.get(f"/api/varianten/{schuh}/etikett.pdf?groesse=84x47").status_code == 422
 
 
 def test_nur_von_hand_erfasste_artikel_sind_loeschbar(welt):

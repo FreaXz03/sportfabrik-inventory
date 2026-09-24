@@ -382,9 +382,14 @@ eine EAN-14 (Umkarton) ist ITF-14 und wird deshalb nur als Zahl gedruckt,
 ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
 einer, den die Kasse nicht annimmt.
 
-**Etikettengrösse:** einstellbar (`GROESSEN` in `app/services/etikett.py`),
-Voreinstellung 84 × 47 mm; rechts neben dem Lieferanten steht fett der Code der Lieferantengruppe (111/555/333/999/444, aus `lieferanten.typ` abgeleitet) — die Rollen im Sato CL4NX Plus (bestätigt am
-23.09.2026); 50 × 30 mm und die übrigen Grössen bleiben wählbar. Die Modulbreite
+**Etikett (neu am 24.09.2026):** vorgedruckte Rollen im Sato CL4NX Plus,
+47 × 83 mm hoch, mit Logo, Prozent-Punkt und Bergen — je Reduktion eine Rolle
+(30 % gelb, 50 % rot, 70 % grün, `ROLLEN`). Gedruckt werden nur UVP
+(durchgestrichen), links der Code der Lieferantengruppe (111/555/333/999/444,
+aus `lieferanten.typ`), rechts der Jahrgang zweistellig und unter den Bergen
+der Strichcode. Alle Positionen stehen in `LAYOUT` (Millimeter), weil die
+Rolle gerade neu gestaltet wird; `muster=True` zeichnet den Vordruck zur
+Vorschau mit. Die Modulbreite
 des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
 masslos in die Breite gezogen wird.
 

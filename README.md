@@ -63,10 +63,12 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Interne EAN auf Knopfdruck**: Artikel ohne Hersteller-Barcode bekommen
   eine hauseigene EAN-13 (GS1-Bereich 20–29, mit Prüfziffer) und werden damit
   an der Kasse scannbar.
-- **Preisetikett als PDF** in Etikettengrösse (84 × 47 mm) für den
-  Etikettendrucker: mit Jahrgang, Lieferant samt Gruppen-Code
-  (111/555/333/999/444), UVP, Reduktionsstufe und EAN-Strichcode — einzeln oder
-  für einen ganzen Wareneingang auf einmal.
+- **Preisetikett als PDF** für die vorgedruckten Rollen (47 × 83 mm, Hochformat;
+  Logo, Prozent-Punkt und Berge sind vorgedruckt): gedruckt werden UVP
+  (durchgestrichen), Gruppen-Code des Lieferanten (111/555/333/999/444),
+  Jahrgang und EAN-Strichcode — einzeln oder für einen ganzen Wareneingang.
+  Die Oberfläche sagt, welche Rolle einzulegen ist (30 % gelb, 50 % rot,
+  70 % grün); „Muster ansehen" zeigt das Etikett mit angedeutetem Vordruck.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
 - **Artikelsuche**: vorne nur „EAN scannen" (sofort aktiv) und Schnellsuche,
