@@ -1,7 +1,7 @@
-"""Seed-Daten für Lieferanten. Aktuell nur INTERSPORT Schweiz AG (der einzige
-Lieferant mit funktionierendem Parser, siehe app/services/parsers/) - ECOM
-läuft über dasselbe Layout (siehe projekt-kontext.md Abschnitt 6, Punkt 7),
-braucht daher (noch) keinen eigenen Lieferanten-Eintrag. Weitere Lieferanten
+"""Seed-Daten für Lieferanten. ECOM-Retouren laufen über das INTERSPORT-Layout
+(projekt-kontext.md Abschnitt 6, Punkt 7); der Parser erkennt sie an der
+Referenz „ret.Ecom" und der Import bucht sie auf den Lieferanten der Gruppe
+ECOM (`lieferant_typ` im Parser-Ergebnis). Weitere Lieferanten
 (Alpina, Chris Sports, CMP, externe Händler, jeweils eigenes Parser-Modul)
 folgen in Phase E. `parser_key` muss zum KEY des Parser-Moduls passen, sonst
 findet der Import den Lieferanten nicht (siehe app/services/importer.py).

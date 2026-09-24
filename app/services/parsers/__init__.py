@@ -18,6 +18,7 @@ Ablauf:
 """
 
 from . import intersport
+from ...core.lieferanten import LIEFERANTEN_SEED
 from .base import Document, DocumentParseError, decimal_value, read_document
 from ..lieferadresse import erkenne_lagerort
 from ...core.i18n import DEFAULT_LANGUAGE, translate
@@ -78,10 +79,11 @@ def parse_with_parser(
     von Datenbankwissen.
     """
     treffer = erkenne_lagerort(document.text, lagerorte)
+    parsed = parser.parse(document, language)
     return {
-        **parser.parse(document, language),
+        **parsed,
         "parser_key": parser.KEY,
-        "supplier_name": parser.LIEFERANT_NAME,
+        "supplier_name": _lieferant_name(parser, parsed.get("lieferant_typ")),
         "lagerort_suggestion": (
             None
             if treffer is None
@@ -94,6 +96,16 @@ def parse_with_parser(
             }
         ),
     }
+
+
+def _lieferant_name(parser, lieferant_typ: str | None) -> str:
+    """Anzeigename: der Parser-Lieferant, ausser das Dokument gehört zu einer
+    anderen Lieferantengruppe (z. B. ECOM-Retoure im INTERSPORT-Layout)."""
+    if lieferant_typ:
+        for eintrag in LIEFERANTEN_SEED:
+            if eintrag["typ"] == lieferant_typ:
+                return eintrag["name"]
+    return parser.LIEFERANT_NAME
 
 
 def read_and_detect(pdf_data: bytes, language: str = DEFAULT_LANGUAGE):

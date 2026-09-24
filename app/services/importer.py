@@ -165,9 +165,19 @@ def import_invoice(
             # `parser_key` verbindet Parser-Modul und Lieferanten-Stammdaten.
             # Muss vor der Duplikatsprüfung stehen, weil die Belegnummer nur
             # beim jeweiligen Lieferanten eindeutig ist.
-            lieferant = session.scalar(
-                select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
-            )
+            # Gehört das Dokument zu einer anderen Lieferantengruppe als der
+            # Parser (ECOM-Retoure im INTERSPORT-Layout), zählt die Gruppe.
+            if parsed.get("lieferant_typ"):
+                lieferant = session.scalar(
+                    select(Lieferant)
+                    .where(Lieferant.typ == parsed["lieferant_typ"])
+                    .order_by(Lieferant.id)
+                    .limit(1)
+                )
+            else:
+                lieferant = session.scalar(
+                    select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
+                )
             if lieferant is None:
                 raise ImportRejected(
                     translate("errors.importer.supplier_not_configured", language)
@@ -333,6 +343,8 @@ def import_invoice(
                     Preis(
                         varianten_id=variante.id,
                         uvp=uvp,
+                        # Regel 10: Einkaufspreis nur, wenn er im Beleg steht.
+                        ek=Decimal(item["ek"]) if item.get("ek") else None,
                         datum=dates["invoice_date"],
                         dokument_id=dokument.id,
                     )

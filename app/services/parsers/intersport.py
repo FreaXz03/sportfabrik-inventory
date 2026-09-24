@@ -51,6 +51,11 @@ HEADER_WORDS = frozenset(
 # die Rechnungsnummer und die beiden Datumsfelder.
 INVOICE_NUMBER_PATTERN = re.compile(r"Rechnung\s+Nr\.\s*(\d+)")
 
+# ECOM-Retouren (Onlineshop intersport.ch) kommen im selben Layout, tragen aber
+# „ret.Ecom" in der Referenz. Sie gehören zur Lieferantengruppe ECOM (Code 555,
+# Anforderungen vom 23.09.2026), nicht zu INTERSPORT (111).
+ECOM_PATTERN = re.compile(r"ret\.\s*ecom", re.IGNORECASE)
+
 # A short "Preise inkl. MwSt."-style disclaimer note prints right above the
 # item table on this INTERSPORT paper-invoice layout (a "Lieferschein"
 # enclosed in the package rather than the standard emailed PDF, which does
@@ -150,6 +155,9 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
             h["Menge"][2] + 3,
             h["Einheit"][2] + 3,
             h["UVP"][2] + 3,
+            # Spalte „Preis" = Nettopreis je Stück (Einkaufspreis, Regel 10);
+            # rechts davon folgen Rabatt und Total.
+            h["Rabatt"][0] - 3 if "Rabatt" in h else float("inf"),
         ]
         top = max(w[3] for w in header)
         stop = min(
@@ -172,7 +180,7 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
         for row in body:
             cells = [
                 joined([w for w in row if bounds[i] <= w[0] < bounds[i + 1]])
-                for i in range(9)
+                for i in range(10)
             ]
             # Detect even malformed/missing EANs through independent ID columns.
             anchor = bool(cells[3] or cells[4] or (cells[1] and cells[2]))
@@ -187,6 +195,7 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                     quantity=cells[6],
                     unit=cells[7],
                     uvp=cells[8],
+                    ek=cells[9],
                     page=page.number,
                     source_y=round(row[0][1], 2),
                     description_lines=[cells[5]],
@@ -279,6 +288,11 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                         )
                     )
                     item[key] = None
+            # Einkaufspreis ist nie Pflicht (Regel 10): unleserlich = leer.
+            try:
+                item["ek"] = decimal_value(item["ek"]) if item["ek"] else None
+            except (ValueError, InvalidOperation):
+                item["ek"] = None
             item["row_number"] = len(items) + 1
             items.append(item)
         counts.append(len(page_items))
@@ -315,6 +329,8 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
         preview_only=True,
         ocr_used=document.ocr_used,
         ocr_pages=document.ocr_pages,
+        # Ohne Angabe gilt der Lieferant mit passendem parser_key.
+        lieferant_typ="ecom" if ECOM_PATTERN.search(document.text) else None,
     )
 
 

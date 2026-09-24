@@ -216,6 +216,9 @@ def test_intersport_originalrechnung(intersport_original):
     assert ergebnis["items"][7]["brand"] == "Red Bull Spect Eyewear"
     assert ergebnis["items"][4]["size"] == "S 51-55 CM"
     assert ergebnis["duplicate_eans"]["0725882069647"] == 4
+    # Referenz „SCH-SF ret.Ecom": eine ECOM-Retoure (Code 555), mit EK.
+    assert ergebnis["lieferant_typ"] == "ecom"
+    assert ergebnis["items"][0]["ek"] == "37.15"
 
     sessions = neue_datenbank()
     with sessions() as session:

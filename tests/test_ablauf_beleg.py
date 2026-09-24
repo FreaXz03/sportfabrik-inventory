@@ -18,6 +18,7 @@ from app.core.models import (
     Kategorie,
     Lagerbewegung,
     Lieferant,
+    Preis,
     Variante,
     Wareneingang,
 )
@@ -245,3 +246,24 @@ def test_positionen_ohne_ean_und_kategorie_von_hand(welt):
     with sessions() as session:
         artikel = session.scalar(select(Artikel))
         assert artikel.kategorie_id == schuhe and artikel.kategorie_manuell is True
+
+
+def test_ecom_retoure_und_einkaufspreis(welt):
+    """ECOM-Retouren kommen im INTERSPORT-Layout, erkennbar an der Referenz
+    „ret.Ecom" - sie gehören zur Gruppe ECOM (Code 555, 23.09.2026). Regel 10:
+    der Einkaufspreis (Spalte „Preis") wird gespeichert, wenn er dasteht."""
+    client, sessions = welt.client, welt.sessions
+    welt.anmelden(CHEF)
+    retoure = rechnung_pdf(header_lines=kopf(nummer="9000000011") + [[(30, "Referenz"), (200, "SCH-SF"), (260, "ret.Ecom")]])
+    assert hochladen(client, retoure).json()["supplier_name"] == "ECOM (Retouren Intersport-Onlineshop)"
+    assert importieren(client, retoure).status_code == 200
+    normal = rechnung_pdf(header_lines=kopf(nummer="9000000012"), rows=[["Nike", "224100", "C3", "1", "4006381333931", "Hoodie", "1", "Stk", "89.90", "45.00"]])
+    assert importieren(client, normal).status_code == 200
+    with sessions() as session:
+        lieferanten = {
+            d.dokumentnummer: session.get(Lieferant, d.lieferant_id).typ for d in session.scalars(select(Dokument))
+        }
+        assert lieferanten == {"9000000011": "ecom", "9000000012": "intersport"}
+        assert sorted(str(p.ek) for p in session.scalars(select(Preis))) == ["30.00", "30.00", "45.00", "80.00"]
+    polo = client.get("/api/erfassen/variante?ean=4006632041234").json()["variante"]["varianten_id"]
+    assert client.get(f"/api/varianten/{polo}/etikett").json()["lieferant_code"] == "555"
