@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="bestand.page_title">Bestand · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=header-10">
+     <link rel="stylesheet" href="/static/css/app.css?v=bedienung-11">
 </head>
 
 <body>
@@ -16,7 +16,7 @@
           <nav data-i18n-aria-label="nav.main_aria" aria-label="Hauptnavigation"></nav>
      </header>
      <main>
-          <h1 data-i18n="bestand.heading">Bestand</h1>
+          <h1><span data-i18n="bestand.heading">Bestand</span> <span id="titelFiliale" class="title-branch"></span></h1>
           <p data-i18n="bestand.intro">Aktueller Bestand je Filiale. Ware an einem externen Standort hat noch kein
                Eingangsdatum — die Lagerdauer beginnt erst in einer Filiale.</p>
           <form id="filters" class="filters" onsubmit="return false;"><label data-i18n="bestand.filter_lagerort">Filiale<select id="lagerort">
@@ -33,7 +33,7 @@
           <button id="mehr" class="secondary" hidden data-i18n="bestand.more">Weitere Zeilen laden</button>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/bestand.js?v=6"></script>
+     <script src="/static/js/bestand.js?v=7"></script>
      <script src="/static/js/nav.js?v=2"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>

@@ -293,6 +293,14 @@
     history.replaceState(null, '', location.pathname);
   }
 
+  // Welche Filiale gezeigt wird, steht gross im Titel (Inbox 24.09.2026) -
+  // die kleine Auswahl darunter bleibt zum Wechseln.
+  function titelZeigen() {
+    const auswahl = $('lagerort');
+    const option = auswahl.options[auswahl.selectedIndex];
+    $('titelFiliale').textContent = lagerorteGesetzt && option ? '· ' + option.textContent : '';
+  }
+
   function anfrage(neuerOffset) {
     const parameter = new URLSearchParams(vorgabe || {});
     if (wahl === 'alle') parameter.set('alle', 'true');
@@ -313,6 +321,7 @@
         throw new Error(typeof daten.detail === 'string' ? daten.detail : t('bestand.load_error'));
       }
       lagerorteFuellen(daten.lagerorte || [], daten.gewaehlt);
+      titelZeigen();
       if (anhaengen && $('zeilen')) {
         for (const zeile of daten.zeilen) $('zeilen').append(bestandsZeile(zeile));
       } else {
