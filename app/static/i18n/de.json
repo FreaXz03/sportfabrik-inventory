@@ -221,6 +221,8 @@
   "articles.filter.reset": "Zurücksetzen",
   "articles.hint": "Gelieferte Mengen werden je Einheit summiert und entsprechen nicht dem aktuellen Lagerbestand. UVP: zuletzt erfasster Wert nach Belegdatum.",
   "articles.columns.summary": "Spalten anzeigen",
+  "articles.columns.article": "Artikel",
+  "articles.columns.numbers": "Lief. Art. Nr. / EAN",
   "articles.columns.brand": "Marke",
   "articles.columns.description": "Bezeichnung",
   "articles.columns.supplier_article_no": "Lief. Art. Nr.",

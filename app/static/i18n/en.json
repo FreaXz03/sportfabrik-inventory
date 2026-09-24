@@ -221,6 +221,8 @@
   "articles.filter.reset": "Reset",
   "articles.hint": "Delivered quantities are summed per unit and do not reflect current stock. RRP: most recently recorded value by document date.",
   "articles.columns.summary": "Show columns",
+  "articles.columns.article": "Article",
+  "articles.columns.numbers": "Supplier no. / EAN",
   "articles.columns.brand": "Brand",
   "articles.columns.description": "Description",
   "articles.columns.supplier_article_no": "Supplier item no.",

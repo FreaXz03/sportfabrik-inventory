@@ -221,6 +221,8 @@
   "articles.filter.reset": "Réinitialiser",
   "articles.hint": "Les quantités livrées sont additionnées par unité et ne correspondent pas au stock actuel. PPR : dernière valeur enregistrée selon la date du justificatif.",
   "articles.columns.summary": "Afficher les colonnes",
+  "articles.columns.article": "Article",
+  "articles.columns.numbers": "N° art. fourn. / EAN",
   "articles.columns.brand": "Marque",
   "articles.columns.description": "Désignation",
   "articles.columns.supplier_article_no": "N° art. fournisseur",

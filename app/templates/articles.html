@@ -42,16 +42,7 @@
           <!-- Spaltenauswahl gehört zu den selten gebrauchten Einstellungen (Inbox 24.09.2026). -->
           <details id="columnPicker" class="column-picker">
             <summary data-i18n="articles.columns.summary">Spalten anzeigen</summary>
-            <div class="column-picker-body"><label><input type="checkbox" data-col="1" checked><span data-i18n="articles.columns.brand">Marke</span></label><label><input
-                  type="checkbox" data-col="2" checked><span data-i18n="articles.columns.description">Bezeichnung</span></label><label><input type="checkbox" data-col="3"
-                  checked><span data-i18n="articles.columns.supplier_article_no">Lief. Art.
-                Nr.</span></label><label><input type="checkbox" data-col="4" checked><span data-i18n="articles.columns.ean">EAN</span></label><label><input type="checkbox"
-                  data-col="5" checked><span data-i18n="articles.columns.color">Farbe</span></label><label><input type="checkbox" data-col="6"
-                  checked><span data-i18n="articles.columns.size">Grösse</span></label><label><input type="checkbox" data-col="7" checked><span data-i18n="articles.columns.delivered_total">Geliefert
-                gesamt</span></label><label><input type="checkbox" data-col="8" checked><span data-i18n="articles.columns.latest_uvp">Letzter UVP</span></label><label><input
-                  type="checkbox" data-col="9" checked><span data-i18n="articles.columns.uvp_date">UVP vom</span></label><label><input type="checkbox" data-col="10"
-                  checked><span data-i18n="articles.columns.first_seen">Erste Lieferung</span></label><label><input type="checkbox" data-col="11" checked><span data-i18n="articles.columns.last_seen">Letzte
-                Lieferung</span></label><label><input type="checkbox" data-col="12" checked><span data-i18n="articles.columns.kategorie">Kategorie</span></label></div>
+            <div class="column-picker-body"><label><input type="checkbox" data-col="1" checked><span data-i18n="articles.columns.kategorie">Kategorie</span></label><label><input type="checkbox" data-col="2" checked><span data-i18n="articles.columns.article">Artikel</span></label><label><input type="checkbox" data-col="3" checked><span data-i18n="articles.columns.numbers">Lief. Art. Nr. / EAN</span></label><label><input type="checkbox" data-col="4" checked><span data-i18n="articles.columns.color">Farbe</span></label><label><input type="checkbox" data-col="5" checked><span data-i18n="articles.columns.size">Grösse</span></label><label><input type="checkbox" data-col="6" checked><span data-i18n="articles.columns.delivered_total">Geliefert gesamt</span></label><label><input type="checkbox" data-col="7" checked><span data-i18n="articles.columns.latest_uvp">Letzter UVP</span></label><label><input type="checkbox" data-col="8" checked><span data-i18n="articles.columns.uvp_date">UVP vom</span></label><label><input type="checkbox" data-col="9" checked><span data-i18n="articles.columns.first_seen">Erste Lieferung</span></label><label><input type="checkbox" data-col="10" checked><span data-i18n="articles.columns.last_seen">Letzte Lieferung</span></label></div>
           </details>
         </details>
       </form>
@@ -64,11 +55,9 @@
         <table id="articlesTable">
           <thead>
             <tr>
-
-              <th class="sortable" data-sort="brand" data-i18n="articles.columns.brand">Marke</th>
-              <th class="sortable" data-sort="description" data-i18n="articles.columns.description">Bezeichnung</th>
-              <th class="sortable" data-sort="supplier_article_no" data-i18n="articles.columns.supplier_article_no">Lief. Art. Nr.</th>
-              <th class="sortable" data-sort="ean" data-i18n="articles.columns.ean">EAN</th>
+              <th data-i18n="articles.columns.kategorie">Kategorie</th>
+              <th class="sortable" data-sort="brand" data-i18n="articles.columns.article">Artikel</th>
+              <th class="sortable" data-sort="supplier_article_no" data-i18n="articles.columns.numbers">Lief. Art. Nr. / EAN</th>
               <th class="sortable" data-sort="color" data-i18n="articles.columns.color">Farbe</th>
               <th class="sortable" data-sort="size" data-i18n="articles.columns.size">Grösse</th>
               <th data-i18n="articles.columns.delivered_total">Geliefert gesamt</th>
@@ -76,7 +65,6 @@
               <th data-i18n="articles.columns.uvp_date">UVP vom</th>
               <th class="sortable" data-sort="first_seen" data-i18n="articles.columns.first_seen">Erste Lieferung</th>
               <th class="sortable" data-sort="last_seen" data-i18n="articles.columns.last_seen">Letzte Lieferung</th>
-              <th data-i18n="articles.columns.kategorie">Kategorie</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -139,18 +127,27 @@
         const fragment = document.createDocumentFragment();
 
         for (const item of data.items) {
+          // Aufbau wie im Bestand (24.09.2026): Kategorie zuerst, Marke und
+          // Bezeichnung in einer Zelle, Lieferanten-Nr. und EAN in einer.
           const tr = document.createElement('tr');
+          tr.append(cell(window.SportfabrikKategorien.name(item.kategorie) || null));
           const link = document.createElement('a');
           link.href = '/articles/' + item.id + '/history';
-          link.textContent = item.description || t('articles.view_article');
-
-          const td = document.createElement('td');
-          td.append(link);
-          tr.append(cell(item.brand), td);
+          link.textContent = [item.brand, item.description].filter(Boolean).join(' ') || t('articles.view_article');
+          const name = document.createElement('strong');
+          name.append(link);
+          const artikel = document.createElement('td');
+          artikel.append(name);
+          const nummern = cell(item.supplier_article_no);
+          if (item.ean) {
+            const ean = document.createElement('span');
+            ean.className = 'muted';
+            ean.textContent = item.ean;
+            nummern.append(document.createElement('br'), ean);
+          }
+          tr.append(artikel, nummern);
 
           for (const value of [
-            item.supplier_article_no,
-            item.ean,
             item.color,
             item.size,
             item.delivered
@@ -159,8 +156,7 @@
             item.latest_uvp !== null ? `${item.latest_uvp} CHF` : null,
             date(item.uvp_date),
             date(item.first_seen),
-            date(item.last_seen),
-            window.SportfabrikKategorien.name(item.kategorie) || null
+            date(item.last_seen)
           ]) {
             tr.append(cell(value));
           }
@@ -326,7 +322,7 @@
 
     updateSortIndicators();
 
-    const COLUMN_STORAGE_KEY = 'sportfabrikArticlesHiddenColumnsV3';
+    const COLUMN_STORAGE_KEY = 'sportfabrikArticlesHiddenColumnsV4';
 
     function loadHiddenColumns() {
       try {
