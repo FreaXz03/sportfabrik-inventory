@@ -137,6 +137,8 @@ Dieses README ist der Schnelleinstieg. Ausführlichere Dokumentation liegt in
 - [`docs/SERVER-SETUP.md`](docs/SERVER-SETUP.md) — Docker-Build,
   Server-Einrichtung, Datenumzug, Betrieb
 - [`docs/BACKUPS.md`](docs/BACKUPS.md) — automatisierte, geprüfte Backups
+- [`docs/sicherheit.md`](docs/sicherheit.md) — Sicherheitsprüfung vom
+  24.09.2026 mit offenen Massnahmen (HTTPS, Login-Begrenzung, Backups …)
 - [`docs/obsidian-graphify.md`](docs/obsidian-graphify.md) — Wissensgraph
   des Codes mit Graphify erzeugen und in Obsidian öffnen; warum
   `graphify-out/` nicht ins Repo gehört

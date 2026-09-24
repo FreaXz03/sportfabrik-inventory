@@ -78,7 +78,11 @@ Kassennummer an, Chefs zusätzlich mit Passwort. Nur Chef-Konten dürfen
 Rechnungen hochladen, importieren und löschen; Mitarbeiter können Artikel
 suchen und Rechnungen ansehen. Netzwerkzugriff trotzdem nur für berechtigte
 Laden-PCs freigeben, keine Internet-Portweiterleitung. Serververwaltung muss
-Docker-Portfreigaben und Firewallregeln gemeinsam prüfen. HTTPS bei Bedarf vor
+Docker-Portfreigaben und Firewallregeln gemeinsam prüfen. Laut Sicherheitsprüfung
+vom 24.09.2026 ist HTTPS **Pflicht vor dem Einsatz im Laden** (Passwörter und
+Sitzungen sonst im Klartext im Netz), ebenso eine Begrenzung von Login-
+Fehlversuchen und die Netztrennung vom Gäste-WLAN — siehe
+[`sicherheit.md`](sicherheit.md), S1/S2/S5–S7. Ursprünglicher Hinweis: HTTPS bei Bedarf vor
 Freigabe ergänzen.
 
 ### Erste Konten anlegen

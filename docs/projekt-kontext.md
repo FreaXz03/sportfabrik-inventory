@@ -255,7 +255,7 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 | **C — Lagerbestand** | Lagerbewegungen, Bestand je Lagerort, Umlagerung externer Standort → Filiale, Ausbuchen per Scan, Korrekturen | aktueller Bestand |
 | **D — Preise & Reduktion** | UVP/EK-Verlauf, Reduktionsstufen, zentrale Empfehlung, 18-/36-Monats-Hinweise | Runterschreiben unterstützt |
 | **E — Weitere Lieferanten** | Parser für Alpina, Chris Sports, CMP (Text + Scan), externer Händler; weitere laufend nach Beispielen | Upload für alle bekannten Lieferanten |
-| **F — Betrieb** | Server Volketswil, VPN, externe Backups, Datenumzug | alle 4 Filialen produktiv |
+| **F — Betrieb** | Server Volketswil, VPN, externe Backups, Datenumzug; Pflichtpunkte aus der [Sicherheitsprüfung](sicherheit.md): HTTPS, Login-Begrenzung, Netztrennung, verschlüsselte Backups | alle 4 Filialen produktiv |
 | **G — Kasse** | Anbindung Intersport-Kasse (abhängig von Abklärung mit Intersport) | kein manuelles Eintippen mehr |
 
 ## 10. Offene Fragen
@@ -325,6 +325,10 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 ### Weitere offene Produktfrage
 
 8. ~~**FEDAS-Codes aus der Praxis lernen?**~~ — beantwortet am 23.09.2026: ja, als geprüfter Vorschlag (siehe oben). Umsetzung noch offen.
+
+### Sicherheit (Prüfung vom 24.09.2026)
+
+Keine kritischen oder hohen Befunde; vier mittlere und fünf niedrige Punkte sind offen, Einzelheiten und Status in [`sicherheit.md`](sicherheit.md) (S1–S9). **Offene Frage an Fabian:** Soll das Login Fehlversuche begrenzen (S2)? Das ändert das Verhalten an der Anmeldung (z. B. kurze Sperre nach 5 Fehlversuchen) und die Mindestlänge der Filialleiter-Passwörter (10 statt 6).
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
@@ -1101,6 +1105,14 @@ einer, plus ein externes Lager.
   PostgreSQL-Durchgang.
 - Offen: gescannte Lieferscheine (warten auf mehr Beispiele), PostgreSQL-
   Prüfung, Phase D.
+
+**Sicherheitsprüfung vom 24.09.2026:** Geheimnisse, Einschleusung, Rechte,
+Konfiguration, Abhängigkeiten (`pip-audit`) und Datenschutz geprüft. Keine
+kritischen oder hohen Befunde. Offen (S1–S9, siehe [`sicherheit.md`](sicherheit.md)):
+HTTPS und kürzere bzw. widerrufbare Sitzungen, Begrenzung von Login-
+Fehlversuchen, Pillow 12.3.0, verschlüsselte Backups, API-Doku und `/db-test`
+im Betrieb, Sicherheits-Header, Hash-Pins, Google Fonts in den
+Übersichtsseiten.
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*
 

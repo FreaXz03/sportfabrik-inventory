@@ -33,6 +33,11 @@ Wenn ein Ziel bereitsteht:
 .\.venv\Scripts\python.exe scripts/backup_inventory.py --external "E:\InventoryBackups"
 ```
 
+**Offen (Sicherheitsprüfung 24.09.2026, S4):** Das Backup liegt auch auf dem
+externen Datenträger unverschlüsselt (Datenbank-Dump und alle Original-PDFs).
+Vor dem ersten externen Backup Verschlüsselung ergänzen, siehe
+[`sicherheit.md`](sicherheit.md).
+
 Der externe Ordner muss existieren. Nach dem Kopieren werden die Prüfsummen
 verglichen. Ein Kopierfehler lässt das lokale Backup erhalten und meldet einen
 Fehler. Bei Einrichtung des Ziels auch die Codex-Automation aktualisieren.

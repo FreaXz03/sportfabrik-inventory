@@ -141,6 +141,10 @@ wird von Hand gewählt.
 
 Etikett: **47 mm Breite × 83 mm Höhe**, vorgedruckte Rollen 30 % gelb / 50 % rot / 70 % grün — umgesetzt (gedruckt werden nur UVP, Lieferantencode, Jahrgang, Strichcode; Positionen in `LAYOUT` von `app/services/etikett.py`). FEDAS-Liste geprüft und zugeordnet (siehe oben). Tests aufgeräumt (siehe „Tests"). Details: `docs/anforderungen-inbox-2026-09-24.md`.
 
+## Sicherheit
+
+Befunde und offene Massnahmen der Sicherheitsprüfung vom 24.09.2026 stehen in `docs/sicherheit.md` (S1–S9, mit Status). Bei jeder Behebung dort den Status nachführen. Vor dem Einsatz im Laden (Phase F) Pflicht: HTTPS, Login-Begrenzung (Entscheid von Fabian offen), Netztrennung, verschlüsselte Backups.
+
 ## Visuelle Dokumentation mitpflegen
 
 Bei Änderungen an Kontext, Status, Progress, Decisions oder sonstiger Projektdokumentation beide lokalen HTML-Übersichten aktualisieren: `/Users/fabianmorf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Main/Anhänge/Sportfabrik Warenwirtschaft.html` und `Sportfabrik Warenfluss.html` im gleichen Ordner. Ist-Stand, Anforderungen und Ideen trennen. Neue Bedienungswünsche und mobile Planungsfragen stehen in `docs/anforderungen-inbox-2026-09-24.md`.
