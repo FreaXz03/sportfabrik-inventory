@@ -40,6 +40,7 @@ Quellen im lokalen Obsidian-Vault Main: `01 Projekte/Sportfabrik Inventory/Sport
 - **Bestandsansicht** (24.09.2026): Farbe und Grösse in eigenen Spalten, dazu die Hauptgruppe (unübersetzt wie in der Kasse). Zeilen mit Menge 0 erscheinen nicht mehr, der Schalter dafür ist weg; bucht man eine Zeile auf 0, verschwindet sie sofort. Der Artikel bleibt im Stamm, ein negativer Bestand bleibt sichtbar.
 - **Liste der Ausbuchungen** (24.09.2026): auf der Seite „Ausbuchen" alle Verkäufe und Abgänge aus dem Journal, neueste zuerst, mit Zeit, Artikel, Filiale, Grund und Person; filterbar nach Filiale, mit „Rückgängig". API `GET /api/ausbuchungen`.
 - **Artikelsuche** (24.09.2026): oben nur zwei grosse Felder — „EAN scannen" (beim Öffnen aktiv, Scan + Enter sucht sofort und markiert das Feld für den nächsten Scan) und „Schnellsuche"; Marke, Lieferanten-Artikelnummer, Bezeichnung, Kategorie und Lieferdatum stehen unter „Weitere Filter".
+- **Übersicht** (24.09.2026): Begrüssung mit Filiale und Datum, grosse Schnellzugriffe (Ausbuchen, Erfassen, Umlagern, Lieferungen, Beleg hochladen), Kennzahlen der aktiven Filiale (Stück im Bestand, heute verkauft), „Anstehend" (angekündigte Lieferungen, negativer Bestand zum Zählen, Artikel im Alter für −50 %/−70 % oder in den nächsten 30 Tagen, Artikel ohne Kategorie, Varianten ohne EAN) und „Aktuelles" (letzte Buchungen mit Person). Service `app/services/uebersicht.py`.
 
 ## Entscheid vom 24.09.2026 zur Artikellöschung
 
