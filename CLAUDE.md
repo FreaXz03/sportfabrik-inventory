@@ -25,6 +25,10 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 9. **Rechte (vorerst):** Mitarbeiter dürfen alles **ausser Dokumente hochladen/bearbeiten/löschen** — Lagerarbeit wie „Ware eingetroffen" bestätigen ist ausdrücklich erlaubt (D21). Filialleiter zusätzlich Dokumente. Admin/Zentrale filialübergreifend.
 10. **Einkaufspreis (EK)** optional speichern, wenn im Dokument vorhanden — nie Pflicht.
 
+## Ergänzende Produktanforderungen vom 23.09.2026
+
+Benutzerfreundlichkeit und gute Lesbarkeit sind besonders wichtig: mehrere Mitarbeitende nutzen eine Brille und/oder haben wenig PC-Erfahrung. Oberflächen übersichtlich halten, Suche vereinfachen und Scanner-Abläufe unterstützen. Die neuen Anforderungen und Lieferantencodes stehen in `docs/anforderungen-inbox-2026-09-23.md`. Der Wunsch nach vollständiger Artikellöschung ist dort dokumentiert; die Behandlung bestehender Belege und Lagerbewegungen muss vor Umsetzung geklärt werden.
+
 ## Technik & Konventionen
 
 - Python 3.10+, FastAPI, SQLAlchemy 2.0, PostgreSQL, Jinja-Templates, Vanilla JS/CSS (kein Framework, keine Build-Pipeline).

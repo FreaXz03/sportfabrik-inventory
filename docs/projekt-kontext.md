@@ -5,6 +5,10 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`; Phase B inkl. B8
 
 ---
 
+## Ergänzung vom 23.09.2026, abends
+
+Neue fachliche Anforderungen: [Inbox-Anforderungen vom 23.09.2026](anforderungen-inbox-2026-09-23.md). Dort stehen die aktuelle Lieferantengruppierung (111/555/333/999/444), Bedienungsanforderungen und der noch zu klärende Konflikt zwischen vollständiger Artikellöschung und dauerhafter Stammhaltung. Die neue Gruppierung präzisiert die ältere Warenquellen-Tabelle unten. Benutzerfreundlichkeit und gute Lesbarkeit für Mitarbeitende mit Brille oder wenig PC-Erfahrung sind zentrale Anforderungen. Keine dieser Ergänzungen ist durch diesen Doku-Abgleich als umgesetzt bestätigt.
+
 ## 1. Unternehmen & Geschäftsmodell
 
 | Punkt | Beschreibung |
