@@ -70,7 +70,9 @@
       if (daten.lagerort_aktiv) auswahl.value = String(daten.lagerort_aktiv);
       const lieferanten = $('lieferant');
       lieferanten.replaceChildren(new Option(t('erfassen.supplier_none'), ''));
-      for (const lieferant of daten.lieferanten || []) lieferanten.add(new Option(lieferant.name, lieferant.id));
+      for (const lieferant of daten.lieferanten || []) {
+        lieferanten.add(new Option((lieferant.code ? lieferant.code + ' · ' : '') + lieferant.name, lieferant.id));
+      }
       // Kassenkategorie (Teilaufgabe B8): freiwillig - ohne Beleg gibt es
       // keinen FEDAS-Code, der sie vorschlagen könnte.
       kategorien = daten.kategorien || [];

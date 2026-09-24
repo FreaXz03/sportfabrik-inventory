@@ -66,7 +66,9 @@
     reduktion.value = gewaehlt;
     $('etikettPreview').textContent = t('etikett.preview', {
       jahrgang: daten.jahrgang || t('etikett.year_unknown'),
-      lieferant: daten.lieferant || t('etikett.supplier_unknown'),
+      lieferant: daten.lieferant
+        ? (daten.lieferant_code ? daten.lieferant_code + ' · ' : '') + daten.lieferant
+        : t('etikett.supplier_unknown'),
       uvp: daten.uvp ? 'CHF ' + daten.uvp : t('etikett.price_unknown')
     });
   }

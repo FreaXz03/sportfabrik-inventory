@@ -375,6 +375,7 @@ oben):
 | `b8c9d0e1f2a3` | Zwei weitere Lagerorte ohne Verkauf: `VEBO` (Verarbeitungsstelle wie GEWA) und `DIETIKON` (externes Lager); GEWA umbenannt in „GEWA (externe Verarbeitung)“. Idempotent; der Downgrade löscht einen der beiden nur, solange nichts daran hängt |
 | `c9d0e1f2a3b4` | `artikel.kategorie_manuell` (Teilaufgabe B8): merkt, ob die Kategorie von Hand gewählt wurde; Server-Default `false`, weil bestehende Artikel ihre Kategorie ausschliesslich über den FEDAS-Vorschlag bekommen haben |
 | `d0e1f2a3b4c5` | Filialcodes korrigiert (22.09.2026): SF2 ist Conthey, SF3 Regensdorf, SF4 Hägendorf. Getauscht wird nur der `code` der bestehenden Zeile — der Ort bleibt, wo er ist, und Buchungen hängen an `lagerorte.id`. Ringtausch über Zwischencodes, weil `code` eindeutig ist |
+| `f2a3b4c5d6e7` | Lieferantengruppen (23.09.2026): `lieferanten.typ` kennt neu `intern` (Direktbestellung bei Nike, adidas, The North Face); je Gruppe ein Lieferant für die Erfassung von Hand. Der Etikett-Code (111/555/333/999/444) wird aus `typ` abgeleitet (`app/core/lieferanten.py`), nicht gespeichert |
 | `e1f2a3b4c5d6` | `lagerbewegungen.eingangsdatum` (Teilaufgabe C4): Datum, ab dem eine Umlagerung die Reduktionsuhr der Zielfiliale startet. Bestehende Zeilen sind Zugänge, deren Datum am Wareneingang steht — dort bleibt die Spalte leer |
 
 Schema-Änderungen laufen ausschliesslich über Alembic

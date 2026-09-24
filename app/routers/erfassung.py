@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from ..core.database import get_session
 from ..core.i18n import translate
+from ..core.lieferanten import etikett_code
 from ..core.models import Lieferant
 from ..services.kategorien import liste_kategorien
 from ..services.lagerorte import list_wareneingang_lagerorte
@@ -71,7 +72,8 @@ def api_stammdaten(
         ],
         "lagerort_aktiv": None if lagerort is None else lagerort.id,
         "lieferanten": [
-            {"id": eintrag.id, "name": eintrag.name} for eintrag in lieferanten
+            {"id": eintrag.id, "name": eintrag.name, "code": etikett_code(eintrag.typ)}
+            for eintrag in lieferanten
         ],
         # Kassenkategorien in der Reihenfolge der Kasse (Regel 8).
         "kategorien": liste_kategorien(session),

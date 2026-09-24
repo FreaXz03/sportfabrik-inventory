@@ -129,15 +129,17 @@ class ArticleNote(Base):
 
 
 class Lieferant(Base):
-    """Lieferant/Quelle eines Dokuments (Intersport, ECOM, Dritthändler, Extern
-    - siehe projekt-kontext.md Abschnitt 1 „Warenquellen"). `parser_key`
+    """Lieferant/Quelle eines Dokuments (Intersport, ECOM, Dritthändler, Extern,
+    Intern - siehe projekt-kontext.md Abschnitt 1 „Warenquellen"). `typ` ist
+    zugleich die Lieferantengruppe; der Etikett-Code dazu steht in
+    app/core/lieferanten.py. `parser_key`
     verweist auf das zuständige Parser-Modul; `None` = noch kein
     automatischer Parser (Lieferanten-Erkennung ist Phase B)."""
 
     __tablename__ = "lieferanten"
     __table_args__ = (
         CheckConstraint(
-            "typ IN ('intersport', 'ecom', 'drittanbieter', 'extern')",
+            "typ IN ('intersport', 'ecom', 'drittanbieter', 'extern', 'intern')",
             name="ck_lieferanten_typ",
         ),
     )

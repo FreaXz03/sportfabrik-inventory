@@ -123,6 +123,7 @@ def api_etikett_daten(
         "farbe": etikett.farbe,
         "groesse": etikett.groesse,
         "lieferant": etikett.lieferant,
+        "lieferant_code": etikett.lieferant_code,
         # Betrag als Text - nie über float (CLAUDE.md „Technik").
         "uvp": None if etikett.uvp is None else str(etikett.uvp),
         "jahrgang": etikett.jahrgang,

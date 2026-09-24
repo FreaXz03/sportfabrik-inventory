@@ -34,6 +34,10 @@ Gewünschtes Verhalten bei Menge 0: Artikel aus der Bestandsansicht entfernen, i
 
 Quellen im lokalen Obsidian-Vault Main: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Anforderungen vom 23.09.2026.md` und `03 Ressourcen/Bilder Kassensystem Sportfabrik.md` (acht Screenshots). Originale bleiben lokal im Vault; keine Bilder oder Belege ins Repository kopiert.
 
+## Umsetzung
+
+- **Lieferantengruppen und Codes** (24.09.2026): Gruppe = `lieferanten.typ`, Code daraus abgeleitet (`app/core/lieferanten.py`), fett rechts neben dem Lieferanten auf dem Etikett und in der Lieferantenauswahl der Erfassung. Je Gruppe ein Lieferant für Ware von Hand. **Einschränkung:** ECOM-Retouren kommen im Intersport-Layout und werden vom Parser noch dem Lieferanten INTERSPORT zugeordnet (Code 111), bis der Parser sie erkennt (Referenz „ret.Ecom").
+
 ## Entscheid vom 24.09.2026 zur Artikellöschung
 
 Löschen braucht es vor allem für **von Hand erfasste** Artikel: trägt jemand einen Artikel falsch neu ein, muss ihn jemand wieder herausnehmen können. Umsetzung:
