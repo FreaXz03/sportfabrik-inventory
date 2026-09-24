@@ -774,5 +774,11 @@
   "reduktion_wahl.pick_placeholder": "Barcode scannen oder Artikel suchen …",
   "reduktion_wahl.pick_none": "Kein Artikel mit Bestand in dieser Filiale gefunden.",
   "reduktion_wahl.manual_heading": "Von Hand gewählt",
-  "reduktion_wahl.manual_empty": "In dieser Filiale ist nichts von Hand reduziert."
+  "reduktion_wahl.manual_empty": "In dieser Filiale ist nichts von Hand reduziert.",
+
+  "ausbuchen.pick_heading": "Aus dem Bestand wählen",
+  "ausbuchen.pick_hint": "Für Artikel ohne EAN oder ohne Scanner: Artikel suchen oder den ganzen Bestand durchsehen, dann „1 Stück ausbuchen“. Es gilt der Grund von oben.",
+  "ausbuchen.pick_label": "Suche",
+  "ausbuchen.pick_placeholder": "Marke, Bezeichnung, Artikelnummer …",
+  "ausbuchen.pick_show": "Bestand zeigen"
 }

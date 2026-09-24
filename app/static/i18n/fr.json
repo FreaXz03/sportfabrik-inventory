@@ -774,5 +774,11 @@
   "reduktion_wahl.pick_placeholder": "Scanner le code-barres ou chercher un article …",
   "reduktion_wahl.pick_none": "Aucun article en stock trouvé dans cette succursale.",
   "reduktion_wahl.manual_heading": "Choisi manuellement",
-  "reduktion_wahl.manual_empty": "Rien n'est réduit manuellement dans cette succursale."
+  "reduktion_wahl.manual_empty": "Rien n'est réduit manuellement dans cette succursale.",
+
+  "ausbuchen.pick_heading": "Choisir dans le stock",
+  "ausbuchen.pick_hint": "Pour les articles sans EAN ou sans scanner : chercher l'article ou parcourir tout le stock, puis « Sortir 1 pièce ». Le motif ci-dessus s'applique.",
+  "ausbuchen.pick_label": "Recherche",
+  "ausbuchen.pick_placeholder": "Marque, désignation, numéro …",
+  "ausbuchen.pick_show": "Afficher le stock"
 }

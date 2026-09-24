@@ -201,12 +201,9 @@
     }
   }
 
-  $('scanForm').addEventListener('submit', (ereignis) => {
-    ereignis.preventDefault();
-    const ean = $('ean').value.trim();
-    $('ean').value = '';
-    $('ean').focus();
-    if (!ean || !geladen) return;
+  // Ein Stück in die Warteschlange - per EAN (Scan) oder per Variante
+  // (Auswahl aus dem Bestand, 24.09.2026). Der Grund gilt für beide Wege.
+  function einreihen(ziel) {
     const grund = $('grund').value;
     const freitext = $('freitext').value.trim();
     if (grund === 'sonstiges' && !freitext) {
@@ -216,12 +213,74 @@
       return;
     }
     warteschlange.push({
-      ean: ean,
+      ...ziel,
       grund: grund,
       freitext: grund === 'sonstiges' ? freitext : null,
       lagerort_id: Number($('lagerort').value) || null
     });
     abarbeiten();
+  }
+
+  $('scanForm').addEventListener('submit', (ereignis) => {
+    ereignis.preventDefault();
+    const ean = $('ean').value.trim();
+    $('ean').value = '';
+    $('ean').focus();
+    if (!ean || !geladen) return;
+    einreihen({ ean: ean });
+  });
+
+  async function bestandZeigen() {
+    if (!geladen) return;
+    $('pickStatus').textContent = t('bestand.loading');
+    try {
+      const parameter = new URLSearchParams({ limit: '500' });
+      if ($('lagerort').value) parameter.set('lagerort_id', $('lagerort').value);
+      const q = $('pickFeld').value.trim();
+      if (q) parameter.set('q', q);
+      const antwort = await fetch('/api/bestand?' + parameter.toString());
+      const daten = await antwort.json();
+      if (!antwort.ok) throw new Error(typeof daten.detail === 'string' ? daten.detail : t('bestand.load_error'));
+      const kopf = document.createElement('tr');
+      for (const key of ['bestand.table_article', 'bestand.table_color', 'bestand.table_size', 'bestand.table_quantity', 'bestand.table_actions']) kopf.append(node('th', t(key)));
+      const thead = document.createElement('thead');
+      thead.append(kopf);
+      const tbody = document.createElement('tbody');
+      for (const zeile of daten.zeilen) {
+        const tr = document.createElement('tr');
+        const name = node('td');
+        name.append(node('strong', [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—'));
+        const nummern = [zeile.lieferanten_artikelnr, zeile.ean].filter(Boolean).join(' · ');
+        if (nummern) name.append(document.createElement('br'), node('span', nummern, 'muted'));
+        const mengenZelle = node('td', menge(zeile.menge));
+        const aktion = node('td');
+        const knopf = node('button', t('ausbuchen.book'));
+        knopf.type = 'button';
+        knopf.addEventListener('click', () => {
+          einreihen({ varianten_id: zeile.varianten_id });
+          // Sofort sichtbar weniger; die genaue Zahl kommt mit der Meldung oben.
+          zeile.menge = String(Number(zeile.menge) - 1);
+          mengenZelle.textContent = menge(zeile.menge);
+        });
+        aktion.append(knopf);
+        tr.append(name, node('td', zeile.farbe || '—'), node('td', zeile.groesse || '—'), mengenZelle, aktion);
+        tbody.append(tr);
+      }
+      const tabelle = document.createElement('table');
+      tabelle.append(thead, tbody);
+      $('pickListe').replaceChildren(tabelle);
+      $('pickListe').hidden = !daten.zeilen.length;
+      $('pickStatus').textContent = daten.zeilen.length ? t('bestand.count_line', { anzahl: daten.total, summe: menge(daten.summe) }) : t('bestand.empty');
+    } catch (fehler) {
+      $('pickStatus').textContent = fehlertext(fehler);
+    }
+  }
+  $('pickForm').addEventListener('submit', (ereignis) => {
+    ereignis.preventDefault();
+    bestandZeigen();
+  });
+  $('lagerort').addEventListener('change', () => {
+    if ($('pickListe').childElementCount) bestandZeigen();
   });
   // Scanner schicken nach dem Barcode ein Enter - ausdrücklich abfangen,
   // statt sich auf das implizite Absenden des Formulars zu verlassen.

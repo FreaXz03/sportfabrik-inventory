@@ -774,5 +774,11 @@
   "reduktion_wahl.pick_placeholder": "Scan barcode or search article …",
   "reduktion_wahl.pick_none": "No article in stock found in this branch.",
   "reduktion_wahl.manual_heading": "Chosen by hand",
-  "reduktion_wahl.manual_empty": "Nothing is reduced by hand in this branch."
+  "reduktion_wahl.manual_empty": "Nothing is reduced by hand in this branch.",
+
+  "ausbuchen.pick_heading": "Choose from stock",
+  "ausbuchen.pick_hint": "For articles without EAN or without a scanner: search or browse the whole stock, then “Book out 1 piece”. The reason above applies.",
+  "ausbuchen.pick_label": "Search",
+  "ausbuchen.pick_placeholder": "Brand, description, item number …",
+  "ausbuchen.pick_show": "Show stock"
 }
