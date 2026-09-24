@@ -810,3 +810,10 @@ deutsch, unabhängig von der UI-Sprache), Pydantic-Feldvalidierungsfehler
 wird vom Frontend ohnehin nie direkt anzeigt, sondern durch eine generische
 übersetzte Meldung ersetzt —, sowie die Spaltenüberschriften im
 Excel-Export (`article_export.py`, eigenes Dokumentformat, noch offen).
+
+
+## Buchungsrechte ab 24.09.2026
+
+Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert.
+
+`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`, `POST /api/ausbuchen/{id}/storno` sowie `/umlagern` und alle `/api/umlagerung`-Endpunkte verlangen Filialleiter/Zentrale. Die Ausbuchungsliste (`GET /api/ausbuchungen`) bleibt für alle lesbar. `GET /api/erfassen/stammdaten` bietet Mitarbeitern nur zugewiesene Filialen an; Erfassung/Korrektur prüfen diese Grenze auch serverseitig. `GET /api/bestand` liefert zusätzlich `rechte.ausbuchen` und `rechte.korrektur_lagerorte`, anhand derer die Aktionen angezeigt werden.

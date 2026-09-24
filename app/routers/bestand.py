@@ -17,7 +17,7 @@ from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import Lagerort
 from ..services.bestand import STANDARD_LIMIT, liste_bestand
-from ..services.lagerorte import list_all_lagerorte
+from ..services.lagerorte import list_all_lagerorte, list_wareneingang_lagerorte
 from ..services.reduktion import STUFEN
 from ..services.uebersicht import reduktions_varianten
 from .auth import (
@@ -84,6 +84,10 @@ def api_bestand(
         nur_negativ=nur_negativ,
         varianten_ids=varianten_ids,
     )
+    ergebnis["rechte"] = {
+        "ausbuchen": user.role in ("chef", "admin"),
+        "korrektur_lagerorte": [lo.id for lo in list_wareneingang_lagerorte(session, user)],
+    }
     ergebnis["gewaehlt"] = gewaehlt
     ergebnis["lagerorte"] = [
         {

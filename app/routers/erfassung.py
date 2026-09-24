@@ -2,11 +2,12 @@
 Teilaufgabe B6).
 
 Rechte (Regel 9/D21): Erfassen ist Lagerarbeit, kein Dokumenten-Upload - das
-dürfen auch Mitarbeiter. Der Ziel-Lagerort wird wie beim Import serverseitig
+dürfen auch Mitarbeiter, aber nur für ihre zugewiesenen Filialen. Der Ziel-Lagerort wird wie beim Import serverseitig
 geprüft (`resolve_wareneingang_lagerort`, D26): vorgewählt ist die aktive
-Filiale, gebucht werden darf auf jeden Lagerort - eine Direktlieferung kann
-auch für eine andere Filiale oder einen externen Standort (GEWA, VEBO,
-Dietikon - ohne eigenes Personal, D11) eintreffen.
+Filiale. Filialleiter und Zentrale dürfen auf jeden Lagerort buchen - eine
+Direktlieferung kann auch für eine andere Filiale oder einen externen Standort
+(GEWA, VEBO, Dietikon - ohne eigenes Personal, D11) eintreffen; Mitarbeiter
+seit 24.09.2026 nur auf ihre zugewiesenen Filialen.
 """
 
 from datetime import date

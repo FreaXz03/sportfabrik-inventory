@@ -4,6 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const t = (...a) => window.SportfabrikI18n.t(...a);
   let offset = 0;
+  let rechte = { ausbuchen: false, korrektur_lagerorte: [] };
   let lagerorteGesetzt = false;
   let suchTimer = null;
   // Welche Filiale gezeigt wird: null heisst „noch nichts gewählt" - dann
@@ -120,7 +121,8 @@
         knopf.disabled = false;
       }
     });
-    zelle.append(knopf);
+    if (rechte.ausbuchen) zelle.append(knopf);
+    if (!rechte.korrektur_lagerorte.includes(zeile.lagerort.id)) return zelle;
     const zaehlen = node('button', t('bestand.count'), 'secondary');
     zaehlen.type = 'button';
     zaehlen.addEventListener('click', () => zaehlenOeffnen(zeile, tr, mengenZelle));
@@ -320,6 +322,7 @@
       if (!antwort.ok) {
         throw new Error(typeof daten.detail === 'string' ? daten.detail : t('bestand.load_error'));
       }
+      rechte = daten.rechte || { ausbuchen: false, korrektur_lagerorte: [] };
       lagerorteFuellen(daten.lagerorte || [], daten.gewaehlt);
       titelZeigen();
       if (anhaengen && $('zeilen')) {

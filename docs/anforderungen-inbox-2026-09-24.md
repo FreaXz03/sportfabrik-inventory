@@ -1,5 +1,16 @@
 # Inbox-Ergänzungen vom 24.09.2026
 
+## Verbindliche Priorität – 24.09.2026
+
+Fabian hat entschieden: **Zuerst die neuen Wünsche aus der Inbox umsetzen, danach Phase D weiterführen.** Die bereits gebaute Runterschreiben-Seite bleibt bestehen; Phase D wird dadurch weder zurückgesetzt noch als abgeschlossen markiert.
+
+Vorrang hat der gesamte neue Anforderungskatalog „Artikeldetails und Auswertungen“: Artikeldetails aufräumen, Listen und Arbeitsabläufe vereinfachen, Übersicht und Schnellzugriffe personalisieren, Statistik und Kontoverwaltung ergänzen. Auch die ausdrücklich gewünschten manuellen Reduktionen (alle Mitarbeitenden je Filiale, 30/50/70 %, Auswahl per EAN oder Bestand, Anzeige in Artikeldetails und Bestand) gehören zu diesem vorgezogenen Paket, obwohl sie fachlich Phase D berühren.
+
+Erst danach folgen die übrigen Arbeiten und offenen Entscheidungen von Phase D. Die Handynutzung bleibt wie vereinbart für das Projektende geplant. Erforderliche Prüfungen vor dem Ladeneinsatz bleiben bestehen. Dies ist eine Prioritätsentscheidung, keine Implementierungsbestätigung.
+
+Anforderungskatalog: [Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md).
+
+
 Status: Dokumentationsabgleich; keine Code-, Parser- oder Teständerung.
 
 ## Etiketten – aktuelle Vorgabe
@@ -38,12 +49,16 @@ Status: alle fünf Punkte umgesetzt am 24.09.2026 (Commits `431dc6f`, `fd95054`)
 - [x] Aktuell ausgewählte Filiale gross im Titel der Bestandsseite anzeigen; der kleinere Filialwechsler bleibt bestehen.
 - [x] Schnellzugriffsknöpfe auf der Übersicht einheitlich gross gestalten.
 
-### Handynutzung – offene Planung
+### Handynutzung – abgestimmte Planung für das Projektende
 
-Fabian fragt nach einer mobilen App, nach lokalem WLAN versus VPN und nach EAN-Scannen über die Handykamera. Diese Fragen ergänzen die bestehende Idee. Keine native App, Netzwerkarchitektur oder Kameralösung entschieden; weiterhin nur Planung.
+Am 24.09.2026 mit Fabian abgestimmt; **ausschliesslich Planung, Umsetzung erst gegen Projektende**. Web-App auf privaten Handys mit Kamera-Scan und Lagerabläufen. Mitarbeitende nur im Geschäfts-WLAN; Filialleiter und Geschäftsleitung/Zentrale zusätzlich von ausserhalb. Bestehende Rechte und zentrale Datenhaltung bleiben erhalten. Technische VPN-/WLAN-Lösung noch offen. Vollständiger Plan: [Handynutzung](handynutzung.md).
 
 ### Visuelle Dokumentation gemeinsam pflegen
 
 Bei jeder Änderung an Kontext, Progress, Decisions oder sonstiger Projektdokumentation auch beide HTML-Dokumente im lokalen Obsidian-Vault Main aktualisieren: `Anhänge/Sportfabrik Warenwirtschaft.html` und `Anhänge/Sportfabrik Warenfluss.html`. Ist-Stand, offene Anforderungen und Ideen ausdrücklich unterscheiden. Keine private Bilddatei in das öffentliche Repository kopieren.
 
 Quellen im Vault: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Bedienungswünsche vom 24.09.2026.md`, `Sportfabrik inventory aufs Handy.md` im gleichen Ordner sowie `03 Ressourcen/Sportfabrik Inventory – Visuelle Übersichten.md`.
+
+## Weitere Anforderungen: Artikeldetails und Auswertungen
+
+17 neue Punkte aus zwei Inbox-Notizen sind in [Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md) integriert. Bestätigt: Einnahmen als Schätzung zum damaligen reduzierten Preis, manuelle Reduktion durch alle Mitarbeitenden je Filiale auf 30/50/70 %, Schnellzugriffe pro Benutzer. Keine Implementierungsbestätigung.

@@ -32,7 +32,7 @@ def test_erfassen_ean_etikett_kategorie(welt):
     client, sessions, codes = welt.client, welt.sessions, welt.codes
     welt.anmelden(ANNA)
 
-    # Stammdaten: alle Lagerorte buchbar (D26), je Lieferantengruppe ein Eintrag.
+    # Stammdaten: eigene Filiale buchbar, je Lieferantengruppe ein Eintrag.
     stamm = client.get("/api/erfassen/stammdaten").json()
     assert stamm["lagerort_aktiv"] == codes["SF1"]
     assert {e["code"] for e in stamm["lieferanten"]} == {"111", "555", "333", "999", "444"}
@@ -79,6 +79,7 @@ def test_erfassen_ean_etikett_kategorie(welt):
 
     # Ohne Verkauf (GEWA) kein Eingangsdatum, rückwirkendes Datum erlaubt,
     # Datum in der Zukunft nicht (Regel 6).
+    welt.anmelden(CHEF)
     gewa = client.post(
         "/api/erfassen", json={"positionen": [_position()], "lagerort_id": codes["GEWA"]}
     )
@@ -87,6 +88,7 @@ def test_erfassen_ean_etikett_kategorie(welt):
         "/api/erfassen", json={"positionen": [_position()], "eingangsdatum": "2099-01-01"}
     ).status_code == 409
 
+    welt.anmelden(ANNA)
     # EAN nachtragen: Prüfziffer muss stimmen, sonst intern erzeugen (D10/D24).
     assert client.post(f"/api/varianten/{jacke}/ean", json={"ean": "5901234123458"}).status_code == 409
     intern = client.post(f"/api/varianten/{jacke}/ean", json={"generieren": True})

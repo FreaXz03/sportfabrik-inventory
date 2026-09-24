@@ -12,9 +12,7 @@ SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf) sowie die externen Standorte ohne
 Verkauf — die Verarbeitungsstellen GEWA und VEBO und das Lager Dietikon —
 greifen im internen Netz über den Browser darauf zu. Anmeldung nach
 Kassensystem-Muster: Mitarbeiter mit blosser Kassennummer, Filialleiter und
-Admin/Zentrale zusätzlich mit Passwort. Mitarbeiter dürfen alles ausser
-Dokumente hochladen/bearbeiten/löschen; das bleibt Filialleitern und der
-Zentrale vorbehalten. Admin/Zentrale-Konten sind filialübergreifend, alle
+Admin/Zentrale zusätzlich mit Passwort. Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert. Dokumente hochladen/bearbeiten/löschen bleibt Filialleitern und Zentrale vorbehalten. Admin/Zentrale-Konten sind filialübergreifend, alle
 anderen Benutzer sind einer oder mehreren Filialen zugeordnet und können in
 der Oberfläche zwischen ihren Filialen wechseln.
 

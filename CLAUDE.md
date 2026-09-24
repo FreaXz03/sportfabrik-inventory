@@ -22,7 +22,7 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
    - Reduktions-Hinweise pro Filiale: 18 Monate → 50 %, 36 Monate → 70 %, gerechnet ab letztem Wareneingang derselben Lieferanten-Artikelnummer **in dieser Filiale**; Nachlieferung startet die Uhr neu.
 7. **Mehrsprachig DE / FR / EN.** Keine neuen hartcodierten UI-Texte — immer Übersetzungs-Keys (Templates + JS + Fehlermeldungen). Deutsch ist Standard. Artikeldaten aus Lieferantendokumenten werden nicht übersetzt.
 8. **Kassenkategorien** exakt wie in der Kasse: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) × Sportbereich (Velo, Freizeit, Tennis, Winter, Outdoor, Fussball, Kids, Baden, Indoor, Running, Rollsport); Velo und Food ohne Sportbereich.
-9. **Rechte (vorerst):** Mitarbeiter dürfen alles **ausser Dokumente hochladen/bearbeiten/löschen** — Lagerarbeit wie „Ware eingetroffen" bestätigen ist ausdrücklich erlaubt (D21). Filialleiter zusätzlich Dokumente. Admin/Zentrale filialübergreifend.
+9. **Rechte (24.09.2026):** Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert. Dokumente hochladen/bearbeiten/löschen bleibt Filialleitern/Zentrale vorbehalten. „Ware eingetroffen“ bestätigen bleibt erlaubt (D21).
 10. **Einkaufspreis (EK)** optional speichern, wenn im Dokument vorhanden — nie Pflicht.
 
 ## Ergänzende Produktanforderungen vom 23.09.2026
@@ -148,3 +148,13 @@ Befunde und offene Massnahmen der Sicherheitsprüfung vom 24.09.2026 stehen in `
 ## Visuelle Dokumentation mitpflegen
 
 Bei Änderungen an Kontext, Status, Progress, Decisions oder sonstiger Projektdokumentation beide lokalen HTML-Übersichten aktualisieren: `/Users/fabianmorf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Main/Anhänge/Sportfabrik Warenwirtschaft.html` und `Sportfabrik Warenfluss.html` im gleichen Ordner. Ist-Stand, Anforderungen und Ideen trennen. Neue Bedienungswünsche und mobile Planungsfragen stehen in `docs/anforderungen-inbox-2026-09-24.md`.
+
+## Verbindliche Priorität – 24.09.2026
+
+Fabian hat entschieden: **Zuerst die neuen Wünsche aus der Inbox umsetzen, danach Phase D weiterführen.** Die bereits gebaute Runterschreiben-Seite bleibt bestehen; Phase D wird dadurch weder zurückgesetzt noch als abgeschlossen markiert.
+
+Vorrang hat der gesamte neue Anforderungskatalog „Artikeldetails und Auswertungen“: Artikeldetails aufräumen, Listen und Arbeitsabläufe vereinfachen, Übersicht und Schnellzugriffe personalisieren, Statistik und Kontoverwaltung ergänzen. Auch die ausdrücklich gewünschten manuellen Reduktionen (alle Mitarbeitenden je Filiale, 30/50/70 %, Auswahl per EAN oder Bestand, Anzeige in Artikeldetails und Bestand) gehören zu diesem vorgezogenen Paket, obwohl sie fachlich Phase D berühren.
+
+Erst danach folgen die übrigen Arbeiten und offenen Entscheidungen von Phase D. Die Handynutzung bleibt wie vereinbart für das Projektende geplant. Erforderliche Prüfungen vor dem Ladeneinsatz bleiben bestehen. Dies ist eine Prioritätsentscheidung, keine Implementierungsbestätigung.
+
+Details: `docs/anforderungen-artikeldetails-auswertungen-2026-09-24.md`.

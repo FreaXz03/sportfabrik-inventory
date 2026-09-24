@@ -61,9 +61,9 @@ def test_gewa_filiale_umlagern_ausbuchen_zaehlen(welt):
     assert _menge(sessions, polo, gewa) == Decimal("5")
     assert _uhr(sessions, polo, gewa) is None
 
-    # GEWA → SF1: die empfangende Filiale bucht (F5), die Mitarbeiterin darf.
+    # GEWA → SF1: die empfangende Filiale bucht (F5), der Filialleiter bucht.
     # Das Eingangsdatum wird erst jetzt gesetzt, auch rückwirkend (D13).
-    welt.anmelden(ANNA)
+    welt.anmelden(CHEF)
     stamm = client.get("/api/umlagerung/stammdaten").json()
     assert stamm["ziel_aktiv"] == sf1
     antwort = client.post(
@@ -120,7 +120,7 @@ def test_gewa_filiale_umlagern_ausbuchen_zaehlen(welt):
     assert _menge(sessions, polo, sf1) == Decimal("4")
 
     # Ausbuchen per Scan: ein Scan = ein Stück (F15), Gründe nach F14.
-    welt.anmelden(ANNA)
+    welt.anmelden(CHEF)
     assert client.get("/api/ausbuchen/stammdaten").json()["gruende"][0] == "verkauf"
     verkauf = client.post("/api/ausbuchen", json={"ean": POLO_M, "grund": "verkauf"})
     assert verkauf.status_code == 200, verkauf.text
@@ -152,9 +152,11 @@ def test_gewa_filiale_umlagern_ausbuchen_zaehlen(welt):
     assert sorted(z["grund"] for z in liste["zeilen"]) == [
         "defekt", "diebstahl", "diebstahl", "diebstahl", "sonstiges: Musterteil", "verkauf"
     ]
-    assert {z["benutzer_name"] for z in liste["zeilen"]} == {"Anna"}
+    assert {z["benutzer_name"] for z in liste["zeilen"]} == {"Chef"}
     assert sum(z["storniert"] for z in liste["zeilen"]) == 1
 
+    # Mitarbeiterin darf weiterhin die eigene Filiale zählen.
+    welt.anmelden(ANNA)
     # Korrektur (C5): gezählte Menge eingeben, System bucht die Differenz.
     zaehlen = client.post(
         "/api/korrektur",

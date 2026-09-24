@@ -34,7 +34,7 @@ def test_anmelden_rollen_filialwahl_sprache(welt):
     assert [lo["code"] for lo in me["lagerorte"]] == ["SF1"]
     assert me["kann_alle_filialen_waehlen"] is False
     # Alles ansehen, aber keine Belege hochladen (Regel 9).
-    for pfad in ("/articles", "/invoices", "/bestand", "/ausbuchen", "/umlagern", "/wareneingaenge"):
+    for pfad in ("/articles", "/invoices", "/bestand", "/wareneingaenge"):
         assert client.get(pfad).status_code == 200, pfad
     assert client.get("/preview", follow_redirects=False).status_code == 303
     assert client.post("/api/active-lagerort", json={"lagerort_id": None}).status_code == 400

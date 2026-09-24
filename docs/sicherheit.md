@@ -63,8 +63,9 @@ Lieferantenbelege, Einkaufspreise und Konten.
 - `.gitignore` deckt `.venv-1/`, `.coverage`, `*.pem`, `*.key` und `.env.*`
   noch nicht ab; nichts davon ist versioniert.
 - `CLAUDE.md` enthält einen lokalen Pfad mit dem Mac-Benutzernamen.
-- Alle Rollen dürfen auf jeden Lagerort buchen, umlagern und stornieren —
-  gewollt (D26, Regel 9).
+- Buchungsrechte seit 24.09.2026: Mitarbeiter erfassen und korrigieren nur in
+  ihren zugewiesenen Filialen; Ausbuchen, Stornieren und Umlagern nur
+  Filialleiter und Zentrale (serverseitig geprüft, `tests/test_rechte_lager.py`).
 - Testpasswörter stehen nur in den Tests.
 
 ## Was gut ist

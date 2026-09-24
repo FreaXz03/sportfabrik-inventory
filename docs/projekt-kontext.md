@@ -1,7 +1,18 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
+## Verbindliche Priorität – 24.09.2026
+
+Fabian hat entschieden: **Zuerst die neuen Wünsche aus der Inbox umsetzen, danach Phase D weiterführen.** Die bereits gebaute Runterschreiben-Seite bleibt bestehen; Phase D wird dadurch weder zurückgesetzt noch als abgeschlossen markiert.
+
+Vorrang hat der gesamte neue Anforderungskatalog „Artikeldetails und Auswertungen“: Artikeldetails aufräumen, Listen und Arbeitsabläufe vereinfachen, Übersicht und Schnellzugriffe personalisieren, Statistik und Kontoverwaltung ergänzen. Auch die ausdrücklich gewünschten manuellen Reduktionen (alle Mitarbeitenden je Filiale, 30/50/70 %, Auswahl per EAN oder Bestand, Anzeige in Artikeldetails und Bestand) gehören zu diesem vorgezogenen Paket, obwohl sie fachlich Phase D berühren.
+
+Erst danach folgen die übrigen Arbeiten und offenen Entscheidungen von Phase D. Die Handynutzung bleibt wie vereinbart für das Projektende geplant. Erforderliche Prüfungen vor dem Ladeneinsatz bleiben bestehen. Dies ist eine Prioritätsentscheidung, keine Implementierungsbestätigung.
+
+Anforderungskatalog: [Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md).
+
+
 Stand: 2026-09-24 (Rev. 6 vom 21.09.2026: zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon, Eingangsdatum startet erst in einer Filiale; ergänzt um die bestätigten Antworten vom 22.–24.09.2026 in Abschnitt 10) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
-Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`: bis Phase C und Inbox 23.09.2026, übernommen mit PR #10, Merge-Commit `922cd71`. Die Arbeiten vom 24.09.2026 — Tests, Etikett 47 × 83, FEDAS, Parser Alpina/Chris Sports/CMP — liegen auf `feature/warenwirtschaft-v2`, noch nicht in `main`).
+Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`: bis Phase C und Inbox 23.09.2026, übernommen mit PR #10, Merge-Commit `922cd71`. Die Arbeiten vom 24.09.2026 — Tests, Etikett 47 × 83, FEDAS, Parser Alpina/Chris Sports/CMP, Bedienungswünsche, Login-Sperre, Runterschreiben (Phase D Teil 1), Buchungsrechte — liegen auf `feature/warenwirtschaft-v2`, noch nicht in `main`).
 
 ---
 
@@ -82,7 +93,7 @@ Neue fachliche Anforderungen: [Inbox-Anforderungen vom 23.09.2026](anforderungen
 | D5 | Reduktion | **Jede Filiale entscheidet selbst**, aber es gibt eine **zentrale Empfehlung**, damit möglichst alle Filialen gleich reduzieren. Regeln siehe 8.3: Eingang ‑30 %, nach **18 Monaten** Hinweis ‑50 %, nach **36 Monaten** ‑70 % — gerechnet **pro Filiale** ab **letztem Wareneingang derselben Artikelnummer in dieser Filiale**; Nachlieferung startet die Uhr für **beide** Stufen neu |
 | D6 | Dokumente | Es kommen Rechnungen, Lieferscheine **und Auftragsbestätigungen**; weitere Beispiele werden laufend nachgereicht. **Bestand wird erst gebucht, wenn die Ware eingetroffen ist** |
 | D7 | Einkaufspreis | **Optional** speichern, falls im Dokument vorhanden — keine Priorität |
-| D8 | Rechte | Mitarbeiter dürfen vorerst **alles ausser Dokumente hochladen/bearbeiten**. Feinere Rechte später |
+| D8 | Rechte (präzisiert 24.09.2026) | Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert. |
 | D9 | **Belegdaten bleiben lokal** | Rechnungen, Lieferscheine und Auftragsbestätigungen werden **lokal auf dem eigenen Server** von eigenen Parsern gelesen — keine Weitergabe an Drittanbieter, keine KI-Extraktion. Ausserhalb der Belegverarbeitung ist KI erlaubt, auch extern (präzisiert 22.09.2026; vorher galt „keine KI, keine externen Dienste" für alles). Für den **Parserbau** darf Fabian einzelne Belege bewusst zeigen (22.09.2026); im fertigen System liest sie weiterhin nur der eigene Parser, später auch ohne Internet |
 | D10 | EAN | EAN muss **nachträglich erfassbar** sein. Wird nie eine nachgetragen, **generiert das System eine interne EAN** (inkl. Etikett) |
 | D11 | Externe Standorte | Zwei Verarbeitungsstellen (GEWA, VEBO) und ein externes Lager (Dietikon) → je ein eigener Lagerort ohne Verkauf, Ware wird von dort an Filialen umgelagert |
@@ -302,7 +313,7 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 - **FEDAS aus der Praxis lernen (F8):** ja. Es gibt keine FEDAS-Liste, und niemand weiss, ob die Sportfabrik eine hat. Kategorien, die von Hand gewählt werden, sollen deshalb als Vorschlag für die Zuordnungstabelle gesammelt werden — übernommen wird ein Code erst nach Prüfung, nicht automatisch.
 - **Korrekturen (C5), Eingabe:** gezählt wird die **Menge im Regal**; das System rechnet die Differenz zum Bestand selbst aus und bucht sie (eine Mini-Inventur je Zeile).
 - **Korrekturen, Gründe:** Inventur/Zählung, Falsch gebucht, Ware gefunden, Sonstiges mit freiem Text.
-- **Korrekturen, Rechte:** alle Rollen (Regel 9 — nur Dokumente sind Filialleitern vorbehalten).
+- **Korrekturen, Rechte:** alle Rollen (Regel 9 — nur Dokumente sind Filialleitern vorbehalten). *Präzisiert am 24.09.2026:* Mitarbeiter nur in ihren zugewiesenen Filialen.
 - **Begriff „Beleg" statt „Rechnung" in der Oberfläche:** hochgeladen werden nicht nur Rechnungen, sondern auch Lieferscheine und Auftragsbestätigungen. Oberbegriff überall „Beleg" (FR „justificatif", EN „document"); „Rechnung" bleibt nur, wo wirklich der Dokumenttyp gemeint ist.
 - **Etikettengrösse korrigiert:** 84 × 47 mm (nicht 84 × 38 mm).
 - **Kopfbereich:** aufräumen, hochwertiger und benutzerfreundlicher machen. Umgesetzt am 23.09.2026: eine Kopfzeile statt zwei, Navigation in Gruppen (Ware, Belege) mit Erklärung je Eintrag, Filial-Pille und Konto-Menü rechts, Menü-Knopf auf schmalen Bildschirmen.
@@ -361,6 +372,7 @@ Keine kritischen oder hohen Befunde; vier mittlere und fünf niedrige Punkte sin
 | B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | ✅ abgeschlossen, Branch `claude/awesome-lamport-tivaj9` |
 | C — Lagerbestand | ✅ abgeschlossen: C1 (Warnung bei Mehrlieferung), C2 (Bestandsansicht), C3 (Ausbuchen per Scan), C4 (Umlagerung) und C5 (Korrekturen), Branch `feature/warenwirtschaft-v2` |
 | Inbox-Anforderungen vom 23.09.2026 | ✅ abgeschlossen am 24.09.2026 (Lieferantengruppen-Codes, Bestandsspalten, Ausbuchungsliste, Artikelsuche, Übersicht, Artikel löschen), Branch `feature/warenwirtschaft-v2`; offen: Parser für die Beispielbelege, ECOM-Erkennung, Tests aufräumen |
+| Buchungsrechte (24.09.2026) | ✅ umgesetzt: Mitarbeiter erfassen und korrigieren nur in zugewiesenen Filialen; Ausbuchen, Stornieren, Umlagern nur Filialleiter/Zentrale (`tests/test_rechte_lager.py`); noch nicht auf dem Server |
 | Arbeiten vom 24.09.2026 | ✅ Tests aufgeräumt (wenige Ablauf-Tests), Etikett 47 × 83 mm für vorgedruckte Rollen, FEDAS vollständig zugeordnet, ECOM-Erkennung (555) und EK-Speicherung, Parser Alpina/Chris Sports/CMP (Phase E teilweise), Papierrechnung INTERSPORT per OCR — siehe unten |
 | D — Preise & Reduktion | 🔶 Teil 1 umgesetzt (24.09.2026): Seite „Runterschreiben“ je Filiale mit fälligen/bald fälligen Artikeln und Etikettendruck je Artikel. Offen: „erledigt“ festhalten, zentrale Empfehlung, einstellbare Schwellen — Fragen an Fabian in Abschnitt 10 |
 | E–G | offen (E teilweise: Alpina, Chris Sports, CMP fertig; gescannte Lieferscheine offen) |
@@ -478,7 +490,7 @@ auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
   mit `grund = 'storno:<id>'`, je Ausbuchung höchstens einmal.
 - Gebucht wird unter derselben Sperre wie der Zugang; welcher Lagerort
   gebucht werden darf, prüft der Server (`resolve_wareneingang_lagerort`,
-  vorgewählt die aktive Filiale). Ausbuchen dürfen alle Rollen (Regel 9).
+  vorgewählt die aktive Filiale). Ausbuchen durften anfangs alle Rollen; *seit 24.09.2026 nur Filialleiter und Zentrale* (Buchungsrechte, siehe unten).
 - **Vorübergehender Test-Knopf** (Wunsch vom 23.09.2026): in der
   Bestandsansicht je Zeile „−1", bucht über denselben Weg ein Stück ab
   (`grund = 'test'`, in der Ausbuchen-Seite nicht wählbar). Funktioniert auch
@@ -541,7 +553,7 @@ auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
   zählt der Stand von jetzt. Stimmt der Bestand schon, entsteht keine Zeile.
   Die gebuchte Zeile ist `typ = korrektur`, `menge` = Differenz.
 - **Gründe:** `inventur`, `falsch_gebucht`, `gefunden`, `sonstiges: …`
-  (Pflichttext). **Rechte:** alle Rollen (Regel 9).
+  (Pflichttext). **Rechte:** alle Rollen (Regel 9); *seit 24.09.2026* Mitarbeiter nur in ihren zugewiesenen Filialen.
 - Eine Korrektur ist kein Wareneingang: das Eingangsdatum bleibt, auch wenn
   eine neue Bestandszeile entsteht.
 - Tests: `tests/test_korrektur.py` (19 Fälle: Differenz minus/plus, nichts
@@ -1137,3 +1149,18 @@ Cloud-main `d1c6533` übernommen. Lokale Suite mit `DATABASE_URL=sqlite:// .venv
 ## Inbox-Nachtrag – 24.09.2026, nachmittags
 
 Bedienungsanforderungen (Filterlisten aus „Anstehend“, Autofokus im Bestand, Spaltenauswahl unter „Weitere Filter“, Filiale im Seitentitel, gleich grosse Übersichtsknöpfe), Handy-Planungsfragen und verbindliche gemeinsame Pflege der zwei HTML-Übersichten: siehe [Inbox-Anforderungen 24.09.2026](anforderungen-inbox-2026-09-24.md#weitere-inbox-anforderungen--24092026-nachmittags). Die fünf Bedienungswünsche sind am 24.09.2026 umgesetzt (Commits `431dc6f`, `fd95054`): Klick auf „Anstehend“ öffnet die gefilterte Liste mit genau den gezählten Einträgen (gezählt wird jetzt je Variante), Suchfeld im Bestand sofort aktiv, „Spalten anzeigen“ unter „Weitere Filter“, Filiale gross im Titel der Bestandsseite, gleich grosse Schnellzugriffe. Die Handy-Fragen bleiben Planung.
+
+## Handynutzung – abgestimmte Planung für das Projektende
+
+**Nur Planung; Umsetzung erst gegen Ende des Projekts, aktuell kein Implementierungsauftrag.** Web-App auf privaten Handys: Suche/Kamera-Scan, Preis- und Bestandsauskunft, Zählen/Korrigieren, Wareneingang, Umlagern und Ausbuchen. Mitarbeitende ausschliesslich im freigegebenen Geschäfts-WLAN; Filialleiter und Geschäftsleitung/Zentrale zusätzlich über geschützten Fernzugriff. Bestehende Rechte bleiben erhalten; Zugang serverseitig prüfen, keine GPS-Ortung. Gemeinsame zentrale Datenbank, zunächst keine Offline-Buchungen. VPN/WLAN und genauer Zeitpunkt innerhalb der späten Projektphasen bleiben offen. Vollständige Festlegung: [Handynutzung](handynutzung.md).
+
+
+### Berechtigungen präzisiert am 24.09.2026
+
+Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert.
+
+Im lokalen Code umgesetzt: serverseitige Prüfung und passende Navigation, Schnellzugriffe und Bestandsaktionen. Fremde Lagerort-IDs werden bei manueller Erfassung/Korrektur mit HTTP 403 abgelehnt. Ohne Filialzuordnung ist keine manuelle Buchung möglich. Frühere Aussagen „alle Rollen“ bei Ausbuchen/Umlagern sind damit überholt. Keine Serverbereitstellung im Rahmen dieser Änderung.
+
+## Neue Anforderungen: Artikeldetails und Auswertungen – 24.09.2026
+
+[Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md) beschreibt die neue Gestaltung der Artikeldetails, manuelle Reduktion, zusammengefasste Aktivitäten, Statistik nur für Leitung/Zentrale, Kontoverwaltung durch Zentrale und weitere Bedienungsverbesserungen. Alle 17 Punkte sind in die Aufgabenplanung aufgenommen, Umsetzung offen. Die drei Rückfragen sind beantwortet: geschätzte Einnahmen zum damaligen reduzierten Verkaufspreis; manuelle Reduktion durch alle Mitarbeitenden je Filiale auf 30/50/70 %; Schnellzugriffe pro Benutzer. Bestehende Rechte für Ausbuchungen und Artikellöschung bleiben gültig.

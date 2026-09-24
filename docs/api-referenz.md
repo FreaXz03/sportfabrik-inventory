@@ -171,7 +171,7 @@ negativer Bestand wird gezeigt, nicht versteckt.
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/ausbuchen` | Seite „Ausbuchen" (jede Anmeldung) |
+| GET | `/ausbuchen` | Seite „Ausbuchen" (Filialleiter/Zentrale) |
 | GET | `/api/ausbuchen/stammdaten` | Buchbare Lagerorte (`lagerorte`, eigene zuerst), `lagerort_aktiv`, `gruende` (`verkauf`, `defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges`) |
 | POST | `/api/ausbuchen` | Ein Stück ausbuchen. JSON: `grund`, genau eines von `ean` oder `varianten_id`, `freitext` (Pflicht bei `sonstiges`), `lagerort_id` (ohne Angabe die aktive Filiale). Antwort: `bewegung_id`, `typ`, `grund`, Artikeldaten, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 bei unbekannter EAN/Variante oder unbekanntem Grund — dann ist nichts gebucht |
 | GET | `/api/ausbuchungen` | Verkäufe und Abgänge, neueste zuerst. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true`, `limit` (max. 200), `offset`. Je Zeile Zeitpunkt, Artikel, Lagerort, Grund, Person (`benutzer_name`), `storniert` |
@@ -199,7 +199,7 @@ Bestandsansicht und steht nicht in `gruende`.
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/umlagern` | Seite „Umlagern" (jede Anmeldung) |
+| GET | `/umlagern` | Seite „Umlagern" (Filialleiter/Zentrale) |
 | GET | `/api/umlagerung/stammdaten` | `quellen` (alle Lagerorte), `ziele` (buchbare, eigene zuerst), `ziel_aktiv`, `heute`; je Lagerort `verkauf` |
 | POST | `/api/umlagerung` | Umlagerung beim Empfang buchen. JSON: `quelle_id`, `ziel_id` (ohne Angabe die aktive Filiale), `eingangsdatum` (optional, `YYYY-MM-DD`, nicht in der Zukunft; zählt nur, wo die Uhr startet), `positionen` (`varianten_id`, `menge` als Text; gleiche Varianten werden zusammengezählt). Antwort: `quelle`, `ziel`, `positionen` (je Variante Bestand vorher/nachher und `uhr_start`), `fehlbestand`, `stueck`. 409 bei gleichem Quell- und Ziel-Lagerort, ungültiger Menge oder unbekannter Variante — dann ist nichts gebucht |
 
@@ -283,3 +283,10 @@ Typische Statuscodes: `400` (z. B. Import ohne gewählte Filiale), `401`
 Duplikat oder Hash-Konflikt; oder Notiz wurde zwischenzeitlich geändert),
 `413` (Datei zu gross), `422` (PDF konnte nicht gelesen/geparst werden, oder
 ungültige Korrekturdaten), `503` (Datenbank nicht erreichbar).
+
+
+## Buchungsrechte ab 24.09.2026
+
+Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert.
+
+`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`, `POST /api/ausbuchen/{id}/storno` sowie `/umlagern` und alle `/api/umlagerung`-Endpunkte verlangen Filialleiter/Zentrale. Die Ausbuchungsliste (`GET /api/ausbuchungen`) bleibt für alle lesbar. `GET /api/erfassen/stammdaten` bietet Mitarbeitern nur zugewiesene Filialen an; Erfassung/Korrektur prüfen diese Grenze auch serverseitig. `GET /api/bestand` liefert zusätzlich `rechte.ausbuchen` und `rechte.korrektur_lagerorte`, anhand derer die Aktionen angezeigt werden.
