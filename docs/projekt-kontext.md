@@ -1,7 +1,7 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
 Stand: 2026-09-24 (Rev. 6 vom 21.09.2026: zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon, Eingangsdatum startet erst in einer Filiale; ergänzt um die bestätigten Antworten vom 22.–24.09.2026 in Abschnitt 10) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
-Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`: Phase B inkl. B8, übernommen mit PR #9, Merge-Commit `d1c6533`. Phase C und die Inbox-Anforderungen vom 23.09.2026 liegen auf `feature/warenwirtschaft-v2`, noch nicht in `main`).
+Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`: bis Phase C und Inbox 23.09.2026, übernommen mit PR #10, Merge-Commit `922cd71`. Die Arbeiten vom 24.09.2026 — Tests, Etikett 47 × 83, FEDAS, Parser Alpina/Chris Sports/CMP — liegen auf `feature/warenwirtschaft-v2`, noch nicht in `main`).
 
 ---
 
@@ -88,7 +88,7 @@ Neue fachliche Anforderungen: [Inbox-Anforderungen vom 23.09.2026](anforderungen
 | D11 | Externe Standorte | Zwei Verarbeitungsstellen (GEWA, VEBO) und ein externes Lager (Dietikon) → je ein eigener Lagerort ohne Verkauf, Ware wird von dort an Filialen umgelagert |
 | D12 | Chris Sports | „Preis“ auf deren Dokumenten = **UVP** (Rabatt 70 % → EK = 30 % des UVP) |
 | D13 | Eingangsdatum bei externer Ware | Ware, die an GEWA, VEBO oder das Lager Dietikon geht, bekommt **noch kein Eingangsdatum**. Das Datum wird gesetzt/nachgetragen, **sobald die Ware in einer Filiale (SF1–SF4) angekommen ist** — erst ab dann zählt die Lagerdauer |
-| D14 | Etikettendrucker | **Sato CL4NX Plus** (Industrie-Etikettendrucker), alle PCs im WLAN können darauf drucken. Etikettengrösse noch offen (siehe Abschnitt 10) |
+| D14 | Etikettendrucker | **Sato CL4NX Plus** (Industrie-Etikettendrucker), alle PCs im WLAN können darauf drucken. Breite 47 mm × Höhe 83 mm (Präzisierung 24.09.2026, siehe Abschnitt 10) |
 | D15 | Scanner | Heute nur an den 2 Kassen-PCs. Für Wareneingang/EAN-Nachtrag werden **Funk-Scanner** angeschafft |
 | D16 | Kategorien | Velo und Food haben **keine** Unterkategorien; „Hartware“ bestätigt |
 | D17 | Umlagerung Filiale → Filiale | Ware **behält ihr ursprüngliches Eingangsdatum** (wird durch Umbuchen nicht „verjüngt“). Nur der Weg von einem externen Standort (GEWA/VEBO/Dietikon) in eine Filiale setzt das Datum erstmals (D13) |
@@ -262,8 +262,8 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 
-1. ~~**Etikettengrösse** des Sato CL4NX Plus~~ — beantwortet am 23.09.2026: **84 × 47 mm**, jetzt Voreinstellung (siehe unten). Offen ist nur noch die Gestaltung: Fabian kann eine Vorlage des heutigen Etiketts nachreichen.
-2. ~~**Barcode aufs Etikett?**~~ Vorläufig entschieden und so gebaut (B7): **ja** — ohne Strichcode bliebe genau der Artikel unscannbar, für den die interne EAN gedacht ist (D10). Falls das Etikett ihn doch nicht tragen soll, bitte melden.
+1. ~~**Etikettengrösse** des Sato CL4NX Plus~~ — beantwortet am 24.09.2026: **47 mm breit × 83 mm hoch**, vorgedruckte Rollen, umgesetzt (siehe unten).
+2. ~~**Barcode aufs Etikett?**~~ — bestätigt am 24.09.2026: **ja**, unter den Bergen (die Rolle wird dafür gerade neu gestaltet).
 3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
 4. ~~**Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären.~~ — beantwortet am 22.09.2026 (siehe unten): warnen, Buchung trotzdem zulassen, wie an der Kasse.
 
@@ -310,6 +310,15 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 
 ### Bestätigte Antworten vom 24.09.2026
 
+- **Etikett:** **47 mm breit, 83 mm hoch**; drei vorgedruckte Rollen (30 % gelb, 50 % rot, 70 % grün) mit Logo, Punkt und Bergen. Gedruckt werden nur UVP (durchgestrichen), Lieferantencode, Jahrgang zweistellig und der Strichcode unter den Bergen; die Rolle wird dafür gerade neu gestaltet (alles etwas nach oben). Die Oberfläche sagt, welche Rolle einzulegen ist. Umgesetzt.
+- **FEDAS-Zuordnung** (Liste von Fabian, lokal im Vault): alle 54 Erlebnisbereiche den 11 Sportbereichen zugeordnet. Fitness und Kampfsport → Indoor, Golf und Reiten → Freizeit, Freizeit/Mode Winter → Outdoor. Ganze Fahrräder → Velo, Sportnahrung → Food. Kids nicht ableitbar (von Hand). Die Liste selbst kommt nicht ins Repo. Umgesetzt.
+- **Lieferantencodes:** Alpina, CMP, Chris Sports und Bollé sind **999** — das meiste, was hereinkommt, ist 999.
+- **Bollé-Rechnung (FaGu):** nennt nur den Einkaufspreis, keinen UVP → **kein Parser**, solche Ware von Hand erfassen.
+- **Alpina: alle Grössen eines Modells zählen zusammen** (ein Artikel, auch für die Reduktionsuhr).
+- **Gescannte Lieferscheine** (Alpina 119719, CMP-Nachbestellung): vorerst **von Hand erfassen**; ein Parser folgt, wenn mehr Beispiele da sind.
+- **Tests:** zuerst den Test, dann die Funktion; wenige grosse Ablauf-Tests. Umgesetzt (CLAUDE.md, „Tests"). Quellen: [Inbox-Ergänzungen vom 24.09.2026](anforderungen-inbox-2026-09-24.md).
+
+
 - **Artikel löschen:** gebraucht vor allem für falsch **von Hand erfasste** Artikel. Löschen dürfen nur Filialleiter und Zentrale, und nur Artikel **ohne Beleg**; dann verschwinden Artikel, Bestand und Buchungen ganz (bewusste Ausnahme von Regel 2 und 4, protokolliert). Artikel aus Belegen bleiben im Stamm. Umgesetzt, siehe Abschnitt 11.
 - Die übrigen Inbox-Anforderungen vom 23.09.2026 (Lieferantengruppen 111/555/333/999/444, Bedienung, Übersicht) stehen in [`anforderungen-inbox-2026-09-23.md`](anforderungen-inbox-2026-09-23.md).
 
@@ -319,7 +328,7 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
-- **FEDAS-Codes bestätigen**: 6 der 11 Sportbereiche und die Produktart-Ziffern für Velo/Food fehlen noch in `app/core/fedas.py` (siehe Abschnitt 11). Bis dahin wird in diesen Fällen von Hand gewählt.
+- FEDAS: vollständig zugeordnet (24.09.2026); F8 (von Hand gewählte Kategorien als Vorschlag sammeln) ist damit kaum noch nötig — nur Kids bleibt Handarbeit.
 - Funk-Scanner: 1 Testgerät beschaffen.
 
 ## 11. Stand der Umsetzung
@@ -341,7 +350,8 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 | B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | ✅ abgeschlossen, Branch `claude/awesome-lamport-tivaj9` |
 | C — Lagerbestand | ✅ abgeschlossen: C1 (Warnung bei Mehrlieferung), C2 (Bestandsansicht), C3 (Ausbuchen per Scan), C4 (Umlagerung) und C5 (Korrekturen), Branch `feature/warenwirtschaft-v2` |
 | Inbox-Anforderungen vom 23.09.2026 | ✅ abgeschlossen am 24.09.2026 (Lieferantengruppen-Codes, Bestandsspalten, Ausbuchungsliste, Artikelsuche, Übersicht, Artikel löschen), Branch `feature/warenwirtschaft-v2`; offen: Parser für die Beispielbelege, ECOM-Erkennung, Tests aufräumen |
-| D–G | offen |
+| Arbeiten vom 24.09.2026 | ✅ Tests aufgeräumt (wenige Ablauf-Tests), Etikett 47 × 83 mm für vorgedruckte Rollen, FEDAS vollständig zugeordnet, ECOM-Erkennung (555) und EK-Speicherung, Parser Alpina/Chris Sports/CMP (Phase E teilweise), Papierrechnung INTERSPORT per OCR — siehe unten |
+| D–G | offen (E teilweise: Alpina, Chris Sports, CMP fertig; gescannte Lieferscheine offen) |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
 **Phase B — Wareneingang v2, Aufteilung in Teilaufgaben** (aus Roadmap
@@ -1069,6 +1079,28 @@ einer, plus ein externes Lager.
 - **Offen**: die Adressen von VEBO und Dietikon fehlen noch und sind in
   `app/core/lagerorte.py` als offen markiert. Bis sie da sind, wird VEBO nur
   über seinen Namen erkannt und Dietikon nur über den Ortsnamen.
+
+**Arbeiten vom 24.09.2026** (Branch `feature/warenwirtschaft-v2`, Commits
+`f4693f0` … `dd9b3aa`):
+
+- **Tests aufgeräumt**: 36 Dateien / 553 Tests / ~8000 Zeilen → 10 Dateien /
+  rund 120 Tests / ~2000 Zeilen, Laufzeit 22 s → 12 s. Fünf Ablauf-Tests über
+  die echte App (`tests/test_ablauf_*.py`), Tabellen-Tests für harte Regeln
+  (`test_regeln.py`), Parser (`test_parser.py`), Betrieb (`test_betrieb.py`).
+  Echte Belege über `BELEGE_DIR` bzw. `INTERSPORT_TEST_PDF`, nie im Repo.
+- **Etikett** 47 × 83 mm (`app/services/etikett.py`, `LAYOUT`, `ROLLEN`),
+  Rollen-Hinweis und „Muster ansehen" auf der Artikelseite.
+- **FEDAS** vollständig (`app/core/fedas.py`).
+- **Import**: ECOM-Retouren („ret.Ecom") → Lieferant ECOM (555); EK aus dem
+  Beleg wird gespeichert (Regel 10); bei Rechnungsrabatt kein EK je Position,
+  dafür Gegenprobe Warenwert − Rabatt = Total.
+- **Parser** `alpina.py`, `chrissports.py`, `cmp.py` (je mit Prüfsumme gegen
+  den Beleg), Lieferanten per Migration `a8b9c0d1e2f3` (Code 999). Die
+  Papierrechnung 9001665373 liest der INTERSPORT-Parser per Tesseract.
+- Tests: 118 bestanden ohne Belege, 131 mit Belegen (SQLite). Kein
+  PostgreSQL-Durchgang.
+- Offen: gescannte Lieferscheine (warten auf mehr Beispiele), PostgreSQL-
+  Prüfung, Phase D.
 
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*
 
