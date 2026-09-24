@@ -1113,3 +1113,7 @@ werden, Phase C geplant und die Teilaufgaben C1 und C2 gebaut. Lokale Suite:
 nichts gelaufen. Alles auf dem Branch `feature/warenwirtschaft-v2`, gepusht.
 
 Cloud-main `d1c6533` übernommen. Lokale Suite mit `DATABASE_URL=sqlite:// .venv/bin/pytest -q`: 415 bestanden, 20 übersprungen. Kein neuer PostgreSQL- oder Produktivtest. Codegraph mit `--code-only` frisch aufgebaut und lokal als HTML und Obsidian-Vault exportiert; Graphdateien bleiben gitignored. Bestätigte Antworten aus dem Main-Vault in Abschnitt 10 übernommen.
+
+## Inbox-Nachtrag – 24.09.2026, nachmittags
+
+Bedienungsanforderungen (Filterlisten aus „Anstehend“, Autofokus im Bestand, Spaltenauswahl unter „Weitere Filter“, Filiale im Seitentitel, gleich grosse Übersichtsknöpfe), Handy-Planungsfragen und verbindliche gemeinsame Pflege der zwei HTML-Übersichten: siehe [Inbox-Anforderungen 24.09.2026](anforderungen-inbox-2026-09-24.md#weitere-inbox-anforderungen--24092026-nachmittags). Die fünf Bedienungswünsche sind am 24.09.2026 umgesetzt (Commits `431dc6f`, `fd95054`): Klick auf „Anstehend“ öffnet die gefilterte Liste mit genau den gezählten Einträgen (gezählt wird jetzt je Variante), Suchfeld im Bestand sofort aktiv, „Spalten anzeigen“ unter „Weitere Filter“, Filiale gross im Titel der Bestandsseite, gleich grosse Schnellzugriffe. Die Handy-Fragen bleiben Planung.

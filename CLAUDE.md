@@ -140,3 +140,7 @@ wird von Hand gewählt.
 ## Inbox-Präzisierungen vom 24.09.2026
 
 Etikett: **47 mm Breite × 83 mm Höhe**, vorgedruckte Rollen 30 % gelb / 50 % rot / 70 % grün — umgesetzt (gedruckt werden nur UVP, Lieferantencode, Jahrgang, Strichcode; Positionen in `LAYOUT` von `app/services/etikett.py`). FEDAS-Liste geprüft und zugeordnet (siehe oben). Tests aufgeräumt (siehe „Tests"). Details: `docs/anforderungen-inbox-2026-09-24.md`.
+
+## Visuelle Dokumentation mitpflegen
+
+Bei Änderungen an Kontext, Status, Progress, Decisions oder sonstiger Projektdokumentation beide lokalen HTML-Übersichten aktualisieren: `/Users/fabianmorf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Main/Anhänge/Sportfabrik Warenwirtschaft.html` und `Sportfabrik Warenfluss.html` im gleichen Ordner. Ist-Stand, Anforderungen und Ideen trennen. Neue Bedienungswünsche und mobile Planungsfragen stehen in `docs/anforderungen-inbox-2026-09-24.md`.
