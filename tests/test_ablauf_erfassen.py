@@ -35,7 +35,9 @@ def test_erfassen_ean_etikett_kategorie(welt):
     # Stammdaten: eigene Filiale buchbar, je Lieferantengruppe ein Eintrag.
     stamm = client.get("/api/erfassen/stammdaten").json()
     assert stamm["lagerort_aktiv"] == codes["SF1"]
-    assert {e["code"] for e in stamm["lieferanten"]} == {"111", "555", "333", "999", "444"}
+    # Auswahl nur nach Gruppe (24.09.2026): genau fünf Einträge, keine Marken.
+    assert [e["code"] for e in stamm["lieferanten"]] == ["111", "333", "444", "555", "999"]
+    assert all(e["gruppe"] for e in stamm["lieferanten"])
 
     # Pflicht sind nur Marke, Bezeichnung, Menge, UVP (D23). Eine falsche
     # Position bucht nichts, auch nicht die richtigen daneben.

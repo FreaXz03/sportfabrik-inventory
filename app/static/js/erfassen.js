@@ -71,7 +71,9 @@
       const lieferanten = $('lieferant');
       lieferanten.replaceChildren(new Option(t('erfassen.supplier_none'), ''));
       for (const lieferant of daten.lieferanten || []) {
-        lieferanten.add(new Option((lieferant.code ? lieferant.code + ' · ' : '') + lieferant.name, lieferant.id));
+        const option = new Option(lieferant.code + ' · ' + t('lieferant_gruppe.' + lieferant.gruppe), lieferant.id);
+        option.dataset.code = lieferant.code;
+        lieferanten.add(option);
       }
       // Kassenkategorie (Teilaufgabe B8): freiwillig - ohne Beleg gibt es
       // keinen FEDAS-Code, der sie vorschlagen könnte.
@@ -107,7 +109,7 @@
     // Lieferant nur setzen, solange keiner gewählt ist: die Wahl gilt für den
     // ganzen Wareneingang, ein Scan soll sie nicht überschreiben.
     if (variante.lieferant && !$('lieferant').value) {
-      const passend = Array.from($('lieferant').options).find((option) => option.value === String(variante.lieferant.id));
+      const passend = Array.from($('lieferant').options).find((option) => option.dataset.code === variante.lieferant.code);
       if (passend) $('lieferant').value = passend.value;
     }
   }

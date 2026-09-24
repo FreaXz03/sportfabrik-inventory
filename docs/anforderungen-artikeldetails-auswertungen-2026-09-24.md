@@ -39,6 +39,8 @@ Status: Anforderungen integriert; keine Codeänderung durch diesen Abgleich. Vor
 - **Manuelle Reduktion:** Alle Mitarbeitenden dürfen je Filiale zwischen **30 %, 50 % und 70 %** wechseln. Die Entscheidung erweitert nicht die bestehenden Filialzuordnungen; keine freien Prozentsätze. Empfehlung und manuell gewählte Stufe getrennt behandeln; Bestand zeigt die wirksame Stufe.
 - **Schnellzugriffe:** Fünf Funktionen und ihre Reihenfolge **pro Benutzer** speichern.
 
+- **Konto löschen (Punkt 13, beantwortet am 24.09.2026 abends):** Alle Buchungen bleiben in der Datenbank. Der Name des Benutzers bleibt bei den alten Buchungen stehen, es ist aber kein Konto mehr damit verknüpft.
+
 Die drei Rückfragen sind beantwortet. Anforderungen noch nicht implementiert; dieser Auftrag betrifft die Dokumentation.
 
 ## Referenzen

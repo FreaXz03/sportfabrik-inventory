@@ -737,5 +737,11 @@
   "reduktion.table_pieces": "Pièces",
   "reduktion.table_arrival": "Dernière entrée",
   "reduktion.table_actions": "Étiquettes",
-  "reduktion.print": "Imprimer {anzahl} étiquettes"
+  "reduktion.print": "Imprimer {anzahl} étiquettes",
+
+  "lieferant_gruppe.intersport": "Intersport",
+  "lieferant_gruppe.extern": "Commerçants",
+  "lieferant_gruppe.intern": "Interne",
+  "lieferant_gruppe.ecom": "ECOM",
+  "lieferant_gruppe.drittanbieter": "Revendeurs tiers"
 }

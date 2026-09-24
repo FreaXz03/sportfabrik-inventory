@@ -59,7 +59,14 @@ def api_stammdaten(
     heutige Datum vom Server - die Kasse im Laden muss dafür keine richtige
     Uhr haben."""
     lagerorte = list_wareneingang_lagerorte(session, user)
-    lieferanten = session.scalars(select(Lieferant).order_by(Lieferant.name)).all()
+    # Auswahl nur nach Lieferantengruppe (24.09.2026): je Gruppe ein Eintrag,
+    # keine einzelnen Marken. Gebucht wird auf den ältesten Lieferanten der
+    # Gruppe - für das Etikett zählt ohnehin nur der Code der Gruppe.
+    gruppen = {}
+    for eintrag in session.scalars(select(Lieferant).order_by(Lieferant.id)):
+        if etikett_code(eintrag.typ):
+            gruppen.setdefault(eintrag.typ, eintrag)
+    lieferanten = sorted(gruppen.values(), key=lambda eintrag: etikett_code(eintrag.typ))
     return {
         "lagerorte": [
             {
@@ -73,7 +80,7 @@ def api_stammdaten(
         ],
         "lagerort_aktiv": None if lagerort is None else lagerort.id,
         "lieferanten": [
-            {"id": eintrag.id, "name": eintrag.name, "code": etikett_code(eintrag.typ)}
+            {"id": eintrag.id, "gruppe": eintrag.typ, "code": etikett_code(eintrag.typ)}
             for eintrag in lieferanten
         ],
         # Kassenkategorien in der Reihenfolge der Kasse (Regel 8).

@@ -737,5 +737,11 @@
   "reduktion.table_pieces": "Pieces",
   "reduktion.table_arrival": "Last arrival",
   "reduktion.table_actions": "Labels",
-  "reduktion.print": "Print {anzahl} labels"
+  "reduktion.print": "Print {anzahl} labels",
+
+  "lieferant_gruppe.intersport": "Intersport",
+  "lieferant_gruppe.extern": "Retailers",
+  "lieferant_gruppe.intern": "Internal",
+  "lieferant_gruppe.ecom": "ECOM",
+  "lieferant_gruppe.drittanbieter": "Third-party dealers"
 }
