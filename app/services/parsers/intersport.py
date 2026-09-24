@@ -23,7 +23,7 @@ Import nicht.
 """
 
 from collections import Counter
-from decimal import InvalidOperation
+from decimal import Decimal, InvalidOperation
 from datetime import datetime
 import re
 
@@ -55,6 +55,13 @@ INVOICE_NUMBER_PATTERN = re.compile(r"Rechnung\s+Nr\.\s*(\d+)")
 # „ret.Ecom" in der Referenz. Sie gehören zur Lieferantengruppe ECOM (Code 555,
 # Anforderungen vom 23.09.2026), nicht zu INTERSPORT (111).
 ECOM_PATTERN = re.compile(r"ret\.\s*ecom", re.IGNORECASE)
+
+# Fuss der Papierrechnung: Rabatt auf die ganze Rechnung und Total. Steht ein
+# Rechnungsrabatt da, ist „Preis" ein Bruttopreis - der Einkaufspreis je
+# Position ist dann nicht ablesbar. Beide Beträge dienen als Gegenprobe:
+# Warenwert - Rechnungsrabatt = Total (fängt falsch gelesene Zahlen ab).
+RECHNUNGSRABATT = re.compile(r"Rechnungsrabatt\b.*?-\s*([\d'’.,]+\.\d{2})")
+TOTAL_INKL = re.compile(r"Total\s+CHF\s+inkl\.?\s+MwSt\.?\s+([\d'’.,]+\.\d{2})", re.IGNORECASE)
 
 # A short "Preise inkl. MwSt."-style disclaimer note prints right above the
 # item table on this INTERSPORT paper-invoice layout (a "Lieferschein"
@@ -306,6 +313,7 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
         raise DocumentParseError(
             translate("errors.parser.no_positions_detected", language)
         )
+    warnings += _gegenprobe(document.text, items, language)
     duplicates = {
         ean: count
         for ean, count in Counter(i["ean"] for i in items if i["ean"]).items()
@@ -332,6 +340,44 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
         # Ohne Angabe gilt der Lieferant mit passendem parser_key.
         lieferant_typ="ecom" if ECOM_PATTERN.search(document.text) else None,
     )
+
+
+def _gegenprobe(text: str, items: list, language: str) -> list:
+    """Rechnungsrabatt: EK leeren und Warenwert - Rabatt gegen das Total
+    prüfen (auf 5 Rappen genau, die Rechnung rundet je Zeile)."""
+    rabatt = RECHNUNGSRABATT.search(text)
+    if not rabatt:
+        return []
+    try:
+        rabatt_betrag = Decimal(decimal_value(rabatt[1]))
+    except (ValueError, InvalidOperation):
+        return []
+    if rabatt_betrag == 0:
+        return []
+    warenwert = Decimal(0)
+    for item in items:
+        try:
+            warenwert += Decimal(item["quantity"]) * Decimal(item["ek"])
+        except (TypeError, InvalidOperation):
+            warenwert = None
+            break
+        finally:
+            item["ek"] = None
+    total = TOTAL_INKL.search(text)
+    if total is None or warenwert is None:
+        return []
+    soll = Decimal(decimal_value(total[1]))
+    if abs(warenwert - rabatt_betrag - soll) <= Decimal("0.05"):
+        return []
+    return [
+        translate(
+            "errors.parser.total_value_mismatch",
+            language,
+            warenwert=warenwert,
+            rabatt=rabatt_betrag,
+            total=soll,
+        )
+    ]
 
 
 def dates(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:

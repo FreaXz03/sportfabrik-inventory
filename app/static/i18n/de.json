@@ -391,6 +391,7 @@
   "errors.parser.hint_other_layout": " (Scan/anderes Layout)",
   "errors.parser.unknown_layout": "Dieses Dokumentlayout kennt das System noch nicht{hint}. Es kann darum nicht automatisch gelesen werden - bitte das Dokument als Beispiel weitergeben, damit der passende Parser ergänzt wird.",
   "errors.parser.total_mismatch": "Die Positionen ergeben {summe} Stück, der Beleg nennt {beleg} - bitte prüfen, ob eine Zeile fehlt.",
+  "errors.parser.total_value_mismatch": "Warenwert {warenwert} minus Rechnungsrabatt {rabatt} ergibt nicht das Total {total} - wahrscheinlich ist eine Zahl falsch gelesen, bitte prüfen.",
   "errors.parser.position_value_mismatch": "Menge × Preis ergibt nicht den Positionswert im Beleg - bitte prüfen.",
   "errors.parser.ambiguous_layout": "Die Lieferanten-Erkennung ist nicht eindeutig: mehrere Layouts passen gleich gut ({suppliers}).",
   "errors.parser.missing_table_header": "Seite {page}: INTERSPORT-Tabellenkopf fehlt oder ist mehrdeutig{hint}.",

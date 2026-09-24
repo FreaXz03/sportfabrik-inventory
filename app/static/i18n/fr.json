@@ -391,6 +391,7 @@
   "errors.parser.hint_other_layout": " (scan/autre mise en page)",
   "errors.parser.unknown_layout": "Le système ne connaît pas encore la mise en page de ce document{hint}. Il ne peut donc pas être lu automatiquement - merci de transmettre le document comme exemple afin que l'analyseur correspondant soit ajouté.",
   "errors.parser.total_mismatch": "Les positions donnent {summe} pièces, le justificatif en indique {beleg} - veuillez vérifier s'il manque une ligne.",
+  "errors.parser.total_value_mismatch": "La valeur des marchandises {warenwert} moins la remise {rabatt} ne donne pas le total {total} - un chiffre a probablement été mal lu, veuillez vérifier.",
   "errors.parser.position_value_mismatch": "Quantité × prix ne correspond pas à la valeur de la position - veuillez vérifier.",
   "errors.parser.ambiguous_layout": "La reconnaissance du fournisseur n'est pas univoque : plusieurs mises en page correspondent aussi bien ({suppliers}).",
   "errors.parser.missing_table_header": "Page {page} : en-tête de tableau INTERSPORT manquant ou ambigu{hint}.",

@@ -243,6 +243,16 @@ def test_intersport_originalrechnung(intersport_original):
 
 AB = "auftragsbestaetigung"
 BELEGE = {
+    # Papierrechnung ohne Textebene (Texterkennung). „Preis" ist hier brutto,
+    # der Rabatt steht unten als Rechnungsrabatt - darum kein EK je Position.
+    # Gegenprobe: Warenwert 10'835.40 - Rabatt 6'501.24 = Total 4'334.15.
+    "9001665373 SF 1.pdf": dict(
+        lieferant="INTERSPORT Schweiz AG", typ="rechnung", nummer="9001665373",
+        datum=date(2025, 12, 19), belegdatum=date(2025, 12, 18), status="eingetroffen", gruppe="intersport",
+        lagerort="SF1", positionen=31, menge="41", ocr=True,
+        erste=dict(brand="Giro", fedas_code="101921", ean="196178062282", description="Tor Spherical Helmet",
+                   color="matte dark shark", size="M 55.5-59 CM", quantity="1", uvp="300.00", ek=None),
+    ),
     "SF1 Volketswil-1.pdf": dict(
         lieferant="ALPINA SPORTS Schweiz AG", typ=AB, nummer="160165", datum=date(2026, 9, 7),
         lagerort="SF1", positionen=10, menge="31", artikel={"A9801", "A9802", "A9809"},
@@ -320,19 +330,43 @@ def test_beispielbeleg_wird_gelesen_und_importiert(name):
     for feld, wert in soll.get("erste", {}).items():
         assert ergebnis["items"][0][feld] == wert, feld
     document, parser = read_and_detect(pdf)
-    assert parser.dates(document) == {"invoice_date": soll["datum"], "document_date": soll["datum"]}
+    assert parser.dates(document) == {
+        "invoice_date": soll["datum"], "document_date": soll.get("belegdatum", soll["datum"])
+    }
+    assert ergebnis["ocr_used"] is soll.get("ocr", False)
 
-    # Import: Auftragsbestätigung = erwartete Ware, noch kein Bestand (Regel 3).
+    # Import: Auftragsbestätigung = erwartete Ware, noch kein Bestand (Regel 3);
+    # eine Rechnung bucht sofort.
     with sessions() as session:
         ziel = session.scalar(select(Lagerort.id).where(Lagerort.code == soll["lagerort"]))
     import_invoice(pdf, name, hashlib.sha256(pdf).hexdigest(), sessions, ziel)
     with sessions() as session:
         wareneingang = session.scalar(select(Wareneingang))
-        assert wareneingang.status == "erwartet"
+        assert wareneingang.status == soll.get("status", "erwartet")
         erwartet = session.scalar(select(func.sum(WareneingangPosition.menge)))
         assert format(erwartet.normalize(), "f") == soll["menge"]
         lieferant = session.scalar(select(Lieferant).where(Lieferant.name == soll["lieferant"]))
-        assert lieferant.typ == "drittanbieter"  # Code 999 (Fabian, 24.09.2026)
+        # Alpina, Chris Sports, CMP: Code 999 (Fabian, 24.09.2026).
+        assert lieferant.typ == soll.get("gruppe", "drittanbieter")
+
+
+def test_rechnungsrabatt_wird_gegengerechnet():
+    """Warenwert - Rechnungsrabatt muss das Total ergeben (Schutz gegen falsch
+    gelesene Zahlen, besonders bei Scans); sonst sperrt eine Warnung."""
+    gut = rechnung_pdf(rows=POSITIONEN[:1])  # 5 × Preis 30.00 = 150.00
+    assert parse_document(gut)["warnings"] == []
+    with pymupdf.open(stream=gut, filetype="pdf") as pdf:
+        seite = pdf[0]
+        seite.insert_text((30, 600), "Rechnungsrabatt 60% - 90.00")
+        seite.insert_text((30, 620), "Total CHF inkl. MwSt. 60.00")
+        richtig = pdf.tobytes()
+    ergebnis = parse_document(richtig)
+    assert ergebnis["warnings"] == [] and ergebnis["items"][0]["ek"] is None
+    with pymupdf.open(stream=gut, filetype="pdf") as pdf:
+        pdf[0].insert_text((30, 600), "Rechnungsrabatt 60% - 90.00")
+        pdf[0].insert_text((30, 620), "Total CHF inkl. MwSt. 59.00")
+        falsch = pdf.tobytes()
+    assert parse_document(falsch)["warnings"]
 
 
 def test_bolle_rechnung_ohne_uvp_wird_nicht_gelesen():
