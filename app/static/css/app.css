@@ -626,6 +626,10 @@ nav {
 
 .account-panel .account-logout { color: var(--danger-text); }
 
+button.danger { color: var(--danger-text); border-color: var(--danger-border); }
+
+button.danger:hover { background: var(--danger-bg); color: var(--danger-text); }
+
 footer {
   width: 100%;
   padding: 22px max(var(--page-pad), calc((100% - var(--content-max)) / 2 + var(--page-pad))) 34px;

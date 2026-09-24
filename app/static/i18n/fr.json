@@ -692,5 +692,13 @@
   "dashboard.movement.ausbuchung": "Sortie",
   "dashboard.movement.korrektur": "Correction",
   "dashboard.movement.umlagerung": "Transfert",
+  "articles.filter.only_manual": "Seulement saisis à la main",
+  "artikel_loeschen.button": "Supprimer l'article",
+  "artikel_loeschen.hint": "Seulement pour les articles saisis par erreur : supprime l'article avec toutes ses couleurs, tailles, stocks et écritures.",
+  "artikel_loeschen.confirm": "Supprimer définitivement « {artikel} » ? Le stock et les écritures de cet article disparaissent aussi. Impossible d'annuler.",
+  "artikel_loeschen.in_progress": "Suppression de l'article …",
+  "artikel_loeschen.has_document_hint": "Cet article provient d'un justificatif et reste dans la base. Corrigez le justificatif ou supprimez-le.",
+  "errors.artikel_loeschen.has_document": "Cet article provient d'un justificatif et ne peut pas être supprimé – seuls les articles saisis à la main peuvent l'être.",
+  "errors.artikel_loeschen.failed": "L'article n'a pas pu être supprimé. Veuillez réessayer.",
   "_end": ""
 }

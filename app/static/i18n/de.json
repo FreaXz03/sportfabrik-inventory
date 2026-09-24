@@ -692,5 +692,13 @@
   "dashboard.movement.ausbuchung": "Abgang",
   "dashboard.movement.korrektur": "Korrektur",
   "dashboard.movement.umlagerung": "Umlagerung",
+  "articles.filter.only_manual": "Nur von Hand erfasst",
+  "artikel_loeschen.button": "Artikel löschen",
+  "artikel_loeschen.hint": "Nur für falsch erfasste Artikel: entfernt den Artikel mit allen Farben, Grössen, Beständen und Buchungen.",
+  "artikel_loeschen.confirm": "„{artikel}“ wirklich ganz löschen? Bestand und Buchungen dieses Artikels verschwinden ebenfalls. Das lässt sich nicht rückgängig machen.",
+  "artikel_loeschen.in_progress": "Artikel wird gelöscht …",
+  "artikel_loeschen.has_document_hint": "Dieser Artikel stammt aus einem Beleg und bleibt im Stamm. Falsche Angaben im Beleg korrigieren oder den Beleg löschen.",
+  "errors.artikel_loeschen.has_document": "Dieser Artikel stammt aus einem Beleg und kann nicht gelöscht werden – nur von Hand erfasste Artikel lassen sich löschen.",
+  "errors.artikel_loeschen.failed": "Der Artikel konnte nicht gelöscht werden. Bitte erneut versuchen.",
   "_end": ""
 }

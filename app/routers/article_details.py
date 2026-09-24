@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import get_language, require_login_api
+from .auth import get_language, require_chef_api, require_login_api
 from ..services.article_groups import article_group
+from ..services.artikel_loeschen import LoeschenRejected, loesche_artikel
 from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import ArticleNote, Dokument, Wareneingang, WareneingangPosition
@@ -274,3 +275,29 @@ def edit_note(
         raise HTTPException(
             503, translate("errors.article_details.note_update_failed", language)
         ) from exc
+
+
+@router.delete("/api/articles/{product_id}")
+def delete_article(
+    product_id: int,
+    user=Depends(require_chef_api),
+    language: str = Depends(get_language),
+):
+    """Falsch erfassten Artikel ganz entfernen - nur Filialleiter/Zentrale und
+    nur ohne Beleg (Entscheid vom 24.09.2026)."""
+    from ..core.database import SessionLocal
+
+    try:
+        return loesche_artikel(
+            SessionLocal,
+            product_id,
+            {"kassennummer": user.kassennummer, "name": user.name},
+            language,
+        )
+    except LoeschenRejected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, translate("errors.artikel_loeschen.failed", language)
+        ) from exc
+

@@ -4,7 +4,8 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from fastapi.responses import FileResponse
-from sqlalchemy import select, func, or_
+from sqlalchemy import exists, select, func, or_
+from sqlalchemy.orm import aliased
 from sqlalchemy.exc import SQLAlchemyError
 from .auth import get_language, require_login_api, require_login_page
 from ..core.database import get_session
@@ -81,6 +82,7 @@ def articles(
     description: str = Query("", max_length=500),
     kategorie_id: int | None = Query(None, ge=1),
     kategorie_fehlt: bool = Query(False),
+    nur_manuell: bool = Query(False),
     last_delivery_from: str | None = Query(None),
     last_delivery_to: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -144,6 +146,17 @@ def articles(
         conditions.append(Artikel.kategorie_id.is_(None))
     elif kategorie_id is not None:
         conditions.append(Artikel.kategorie_id == kategorie_id)
+    # Nur von Hand erfasste Artikel (24.09.2026): an keiner Variante hängt eine
+    # Position aus einem Beleg - genau die, die sich wieder löschen lassen.
+    if nur_manuell:
+        beleg_variante = aliased(Variante)
+        conditions.append(
+            ~exists()
+            .where(WareneingangPosition.wareneingang_id == Wareneingang.id)
+            .where(WareneingangPosition.varianten_id == beleg_variante.id)
+            .where(beleg_variante.artikel_id == Artikel.id)
+            .where(Wareneingang.dokument_id.is_not(None))
+        )
     try:
         base_query = (
             select(Variante, Artikel, Kategorie)

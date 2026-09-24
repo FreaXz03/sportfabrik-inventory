@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="history.page_title">Belege &amp; Historie · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=header-7">
+     <link rel="stylesheet" href="/static/css/app.css?v=header-8">
 </head>
 
 <body>
@@ -129,6 +129,48 @@
                     canDelete = !!(m && (m.role === 'chef' || m.role === 'admin'));
                })
                .catch(() => { });
+
+          // Artikel löschen (24.09.2026): nur Filialleiter/Zentrale und nur
+          // von Hand erfasste Artikel ohne Beleg - der Server prüft beides.
+          function renderArticleDeleteBox(product) {
+               const box = $('deleteBox');
+               if (!canDelete) {
+                    box.hidden = true;
+                    return;
+               }
+               box.hidden = false;
+               box.replaceChildren();
+               if (!product.manuell) {
+                    box.append(el('p', t('artikel_loeschen.has_document_hint')));
+                    return;
+               }
+               const btn = document.createElement('button');
+               btn.type = 'button';
+               btn.className = 'secondary danger';
+               btn.textContent = t('artikel_loeschen.button');
+               const msg = document.createElement('span');
+               msg.className = 'muted';
+               msg.textContent = t('artikel_loeschen.hint');
+               btn.addEventListener('click', async () => {
+                    const name = [product.brand, product.description].filter(Boolean).join(' ');
+                    if (!confirm(t('artikel_loeschen.confirm', { artikel: name }))) return;
+                    btn.disabled = true;
+                    msg.textContent = t('artikel_loeschen.in_progress');
+                    try {
+                         const response = await fetch('/api/articles/' + product.id, { method: 'DELETE' });
+                         const result = await response.json().catch(() => ({}));
+                         if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : t('errors.artikel_loeschen.failed'));
+                         location.href = '/articles';
+                    } catch (error) {
+                         msg.textContent = error.message === 'Failed to fetch' ? t('common.connection_lost') : error.message;
+                         btn.disabled = false;
+                    }
+               });
+               const wrap = document.createElement('div');
+               wrap.className = 'filters';
+               wrap.append(btn, msg);
+               box.append(wrap);
+          }
 
           function renderDeleteBox(invoice) {
                const box = $('deleteBox');
@@ -274,6 +316,7 @@
                          $('intro').textContent = data.product.supplier_article_no?.trim()
                               ? t('history.product_intro_with_supplier_no', { number: data.product.supplier_article_no })
                               : t('history.product_intro_without_supplier_no', { ean: data.product.ean ?? '—' });
+                         renderArticleDeleteBox(data.product);
                     }
 
                     const headers = list

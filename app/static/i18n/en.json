@@ -692,5 +692,13 @@
   "dashboard.movement.ausbuchung": "Removed",
   "dashboard.movement.korrektur": "Correction",
   "dashboard.movement.umlagerung": "Transfer",
+  "articles.filter.only_manual": "Only entered by hand",
+  "artikel_loeschen.button": "Delete item",
+  "artikel_loeschen.hint": "Only for items entered by mistake: removes the item with all colours, sizes, stock and bookings.",
+  "artikel_loeschen.confirm": "Really delete “{artikel}” completely? Its stock and bookings are removed too. This cannot be undone.",
+  "artikel_loeschen.in_progress": "Deleting item …",
+  "artikel_loeschen.has_document_hint": "This item comes from a document and stays in the master data. Correct the document or delete it.",
+  "errors.artikel_loeschen.has_document": "This item comes from a document and cannot be deleted – only items entered by hand can be deleted.",
+  "errors.artikel_loeschen.failed": "The item could not be deleted. Please try again.",
   "_end": ""
 }

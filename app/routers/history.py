@@ -11,6 +11,7 @@ from .catalog import contains
 from ..services.article_groups import article_group
 from ..core.database import SessionLocal, get_session
 from ..core.i18n import translate
+from ..services.artikel_loeschen import hat_beleg
 from ..services.importer import delete_invoice, DeleteRejected
 from ..core.models import (
     Artikel,
@@ -278,6 +279,9 @@ def article_history(
                 "description": artikel.bezeichnung,
                 "ean": variante.ean,
                 "supplier_article_no": artikel.lieferanten_artikelnr,
+                # Von Hand erfasst, kein Beleg - nur dann darf ein
+                # Filialleiter den Artikel löschen (24.09.2026).
+                "manuell": not hat_beleg(session, artikel.id),
             },
             **positions(
                 session,

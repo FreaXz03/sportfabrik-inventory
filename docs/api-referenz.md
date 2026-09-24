@@ -180,6 +180,14 @@ negativer Bestand wird gezeigt, nicht versteckt.
 Der Grund `test` gehört zum vorübergehenden Knopf „−1" in der
 Bestandsansicht und steht nicht in `gruende`.
 
+## Artikel löschen
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| DELETE | `/api/articles/{id}` | Falsch erfassten Artikel (Varianten-Id) ganz entfernen — nur Filialleiter/Zentrale, nur ohne Beleg (sonst 409). Entfernt Artikel, Varianten, Preise, Notizen, manuelle Wareneingangspositionen, Bestand und Lagerbewegungen. `GET /api/articles/{id}/history` meldet dafür `product.manuell` |
+
+`GET /api/articles` kennt dazu den Filter `nur_manuell=true` (nur Artikel ohne Beleg).
+
 ## Korrigieren
 
 | Methode | Pfad | Zweck |
