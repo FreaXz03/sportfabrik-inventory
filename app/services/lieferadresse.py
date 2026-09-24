@@ -53,7 +53,7 @@ ANKER_FENSTER = 200
 # Punkte je Merkmal: die Postleitzahl ist das schärfste Signal (eindeutig je
 # Ort), Ortsname und ein eigener Lagerort-Name („GEWA", „VEBO") sind fast so gut, der
 # Strassenname ist nur eine Bestätigung. MINDESTPUNKTE sorgt dafür, dass eine
-# Strasse allein nie genügt: „Industriestrasse" steht bei SF1 *und* SF3 im
+# Strasse allein nie genügt: „Industriestrasse" steht bei SF1 *und* SF4 im
 # Adressfeld - und auf dem Briefkopf vieler Lieferanten.
 PUNKTE = {"plz": 3, "ort": 2, "name": 2, "strasse": 1}
 MINDESTPUNKTE = 2

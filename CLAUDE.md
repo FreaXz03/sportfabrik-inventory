@@ -4,17 +4,17 @@ Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` le
 
 ## Worum es geht
 
-Warenwirtschaftssystem für die **Sportfabrik** (Intersport-Outlet, 4 Filialen in der Schweiz: SF1 Volketswil, SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey). Dazu drei externe Standorte ohne Verkauf: die Verarbeitungsstellen **GEWA** und **VEBO** (fachlich gleichwertig) und das **Lager Dietikon**.
+Warenwirtschaftssystem für die **Sportfabrik** (Intersport-Outlet, 4 Filialen in der Schweiz: SF1 Volketswil, SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf). Dazu drei externe Standorte ohne Verkauf: die Verarbeitungsstellen **GEWA** und **VEBO** (fachlich gleichwertig) und das **Lager Dietikon**.
 Ware wird per Upload (Rechnung / Lieferschein / Auftragsbestätigung) oder manuell erfasst, der Artikelstamm bleibt für immer, Bestand wird pro Filiale geführt, Filialen bekommen Runterschreib-Hinweise (30/50/70 %). Später Anbindung an die Intersport-Kasse.
 
 Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbasis und wird **umgebaut**, nicht neu geschrieben: Parser, zweistufiger Import, Hash-Prüfung, Audit-Snapshot, Advisory-Lock, Auth und Tests weiterverwenden.
 
 ## Harte Regeln
 
-1. **Belegdaten bleiben lokal — sonst ist KI erlaubt.** Rechnungen, Lieferscheine und Auftragsbestätigungen werden von **eigenen Parsern** gelesen, die vollständig auf dem Server laufen (PyMuPDF, Tesseract, OpenCV o. ä.): kein Sprachmodell, kein Cloud-Dienst bekommt Belegdaten zu sehen, und ein unbekanntes Layout wird gemeldet statt geraten. Ausserhalb der Belegverarbeitung ist KI zulässig, auch extern. Entwicklungswerkzeuge nach demselben Kriterium: Graphify nur mit `--code-only` laufen lassen, sonst gehen Rechnungen aus `uploads/` bzw. `Rechnungen/` an ein Sprachmodell (siehe `docs/obsidian-graphify.md`). Unabhängig von KI bleibt das Frontend **ohne externe CDNs** — es muss im Ladennetz ohne Internet laufen.
+1. **Belegdaten bleiben lokal — sonst ist KI erlaubt.** Rechnungen, Lieferscheine und Auftragsbestätigungen werden von **eigenen Parsern** gelesen, die vollständig auf dem Server laufen (PyMuPDF, Tesseract, OpenCV o. ä.): kein Sprachmodell, kein Cloud-Dienst bekommt Belegdaten zu sehen, und ein unbekanntes Layout wird gemeldet statt geraten. Das gilt für den **Betrieb**. Für den **Parserbau** darf Fabian einzelne Belege bewusst zeigen (Entscheid 22.09.2026) — der Inhalt geht damit an den Modellanbieter, dient nur diesem Zweck und wird nirgends veröffentlicht. Belege massenhaft oder unbemerkt einlesen bleibt verboten (siehe Graphify). Ausserhalb der Belegverarbeitung ist KI zulässig, auch extern. Entwicklungswerkzeuge nach demselben Kriterium: Graphify nur mit `--code-only` laufen lassen, sonst gehen Rechnungen aus `uploads/` bzw. `Rechnungen/` an ein Sprachmodell (siehe `docs/obsidian-graphify.md`). Unabhängig von KI bleibt das Frontend **ohne externe CDNs** — es muss im Ladennetz ohne Internet laufen.
 2. **Bestand nie direkt überschreiben** — jede Änderung ist eine Zeile in `lagerbewegungen` (Zugang, Verkauf, Ausbuchung, Korrektur, Umlagerung). Bestand wird daraus abgeleitet bzw. konsistent mitgeführt.
 3. **Bestand erst buchen, wenn Ware eingetroffen ist** — Auftragsbestätigungen erzeugen nur einen *erwarteten* Wareneingang.
-4. **Artikelstamm ist filialübergreifend**, Bestand / Wareneingänge / Reduktionen sind filialbezogen (`lagerort_id`).
+4. **Artikelstamm ist filialübergreifend**, Bestand / Wareneingänge / Reduktionen sind filialbezogen (`lagerort_id`). Der Stamm bleibt — einzige Ausnahme: einen von Hand erfassten Artikel ohne Beleg dürfen Filialleiter/Zentrale ganz löschen (Fehleintrag, Entscheid 24.09.2026).
 5. **EAN ist optional.** Varianten ohne EAN müssen funktionieren (Schlüssel: Lieferant + Artikelnr. + Farbe + Grösse). Interne EANs: EAN-13 im GS1-Bereich 20–29 mit korrekter Prüfziffer, als intern markiert.
 6. **Eingangsdatum-Regeln** (für Lagerdauer / Reduktion):
    - Ware an einen externen Standort (GEWA, VEBO, Dietikon — alle `verkauf = false`): noch **kein** Eingangsdatum; gesetzt bei Ankunft in einer Filiale SF1–SF4 (auch rückwirkend). Massgeblich ist immer `lagerorte.verkauf`, nie der einzelne Code.
@@ -24,6 +24,10 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 8. **Kassenkategorien** exakt wie in der Kasse: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) × Sportbereich (Velo, Freizeit, Tennis, Winter, Outdoor, Fussball, Kids, Baden, Indoor, Running, Rollsport); Velo und Food ohne Sportbereich.
 9. **Rechte (vorerst):** Mitarbeiter dürfen alles **ausser Dokumente hochladen/bearbeiten/löschen** — Lagerarbeit wie „Ware eingetroffen" bestätigen ist ausdrücklich erlaubt (D21). Filialleiter zusätzlich Dokumente. Admin/Zentrale filialübergreifend.
 10. **Einkaufspreis (EK)** optional speichern, wenn im Dokument vorhanden — nie Pflicht.
+
+## Ergänzende Produktanforderungen vom 23.09.2026
+
+Benutzerfreundlichkeit und gute Lesbarkeit sind besonders wichtig: mehrere Mitarbeitende nutzen eine Brille und/oder haben wenig PC-Erfahrung. Oberflächen übersichtlich halten, Suche vereinfachen und Scanner-Abläufe unterstützen. Die neuen Anforderungen und Lieferantencodes stehen in `docs/anforderungen-inbox-2026-09-23.md`. Die Artikellöschung ist am 24.09.2026 geklärt und umgesetzt (nur von Hand erfasste Artikel ohne Beleg, nur Filialleiter/Zentrale — siehe Regel 4).
 
 ## Technik & Konventionen
 
@@ -105,6 +109,24 @@ Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
 
 Phase B ist damit vollständig abgeschlossen. Nächste Phase gemäss Roadmap
 (`docs/projekt-kontext.md` Abschnitt 9): **C — Lagerbestand**.
+
+## Abgeschlossen: Phase C — Lagerbestand
+
+Teilaufgaben und Begründung der Reihenfolge: `docs/projekt-kontext.md`
+Abschnitt 11, „Phase C — Lagerbestand, Aufteilung in Teilaufgaben". Kurz:
+
+1. **Warnung bei Mehrlieferung** — mehr eingetroffen als erwartet: warnen, trotzdem buchen. ✅ abgeschlossen
+2. **Bestandsansicht je Lagerort** — alle Filialen lesbar, externe Standorte separat sichtbar. ✅ abgeschlossen
+3. **Ausbuchen per Scan** — Verkauf/Abgang von Hand; reicht der Bestand nicht: warnen, trotzdem buchen. ✅ abgeschlossen (ein Scan = ein Stück)
+4. **Umlagerung** — extern → Filiale setzt das Eingangsdatum (D13), Filiale → Filiale behält es und startet die Reduktionsuhr der Zielfiliale nicht neu; hatte die Zielfiliale die Artikelnummer nie, startet die Uhr ab Eintreffen (F11). ✅ abgeschlossen
+5. **Korrekturen** — Differenz mit Grund buchen. ✅ abgeschlossen (gezählte Menge eingeben, System bucht die Differenz)
+
+Phase C ist damit vollständig abgeschlossen (23.09.2026). Vorübergehend hat die
+Bestandsansicht einen Test-Knopf „−1"; er wird entfernt, sobald das Ausbuchen
+im Laden erprobt ist. Nächste Phase gemäss Roadmap: **D — Preise & Reduktion**.
+
+Jede Buchung bleibt eine Zeile in `lagerbewegungen` (Regel 2) und läuft über
+dieselbe Sperre wie der Zugang.
 
 Laufend offen bleibt der FEDAS-Kategorievorschlag selbst: `app/core/fedas.py`
 kennt nur die aus echten Rechnungen bestätigten Codes (6 von 11 Sportbereichen

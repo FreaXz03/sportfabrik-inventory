@@ -38,7 +38,7 @@ KOPF = [
     [(30, "Rechnungsdatum"), (200, "05.08.2026")],
     [(30, "Belegdatum"), (200, "04.08.2026")],
 ]
-# Rechnungsadresse Volketswil (SF1), Lieferadresse Conthey (SF4) - der Fall aus
+# Rechnungsadresse Volketswil (SF1), Lieferadresse Conthey (SF2) - der Fall aus
 # projekt-kontext.md Abschnitt 6 beim externen Händler.
 LIEFERADRESSE_CONTHEY = [
     [(30, "Rechnungsadresse: Sport Fabrik AG, Industriestrasse 21, 8604 Volketswil")],
@@ -118,8 +118,8 @@ def test_preview_suggests_the_lagerort_from_the_delivery_address(umgebung):
     pdf = _invoice_pdf(header_lines=KOPF + LIEFERADRESSE_CONTHEY)
     body = _upload(client, pdf).json()
     vorschlag = body["lagerort_suggestion"]
-    assert vorschlag["code"] == "SF4"
-    assert vorschlag["id"] == codes["SF4"]
+    assert vorschlag["code"] == "SF2"
+    assert vorschlag["id"] == codes["SF2"]
     assert vorschlag["from_delivery_address"] is True
     assert "plz" in vorschlag["matched"]
     # Die aktive Filiale bleibt daneben sichtbar - der Vorschlag entscheidet
@@ -158,12 +158,12 @@ def test_preview_offers_every_lagerort_with_the_own_branch_first(umgebung):
 def test_import_books_to_the_chosen_lagerort(umgebung):
     client, sessions, codes = umgebung
     pdf = _invoice_pdf(header_lines=KOPF + LIEFERADRESSE_CONTHEY)
-    antwort = _import(client, pdf, lagerort_id=str(codes["SF4"]))
+    antwort = _import(client, pdf, lagerort_id=str(codes["SF2"]))
     assert antwort.status_code == 200, antwort.text
     with sessions() as session:
         dokument = session.scalar(select(Dokument))
-        assert dokument.lagerort_id == codes["SF4"]
-        assert session.scalar(select(Wareneingang)).lagerort_id == codes["SF4"]
+        assert dokument.lagerort_id == codes["SF2"]
+        assert session.scalar(select(Wareneingang)).lagerort_id == codes["SF2"]
 
 
 def test_import_without_a_choice_uses_the_active_branch(umgebung):

@@ -63,7 +63,7 @@ def test_delivery_address_wins_over_the_billing_address():
         "Lieferadresse: Sport Fabrik AG, Route Cantonale 7, 1964 Conthey"
     )
     treffer = erkenne_lagerort(text, LAGERORTE)
-    assert treffer.lagerort.code == "SF4"
+    assert treffer.lagerort.code == "SF2"
     assert treffer.aus_lieferadresse is True
 
 
@@ -73,7 +73,7 @@ def test_delivery_address_wins_over_the_billing_address():
 )
 def test_common_delivery_anchors_are_understood(anker):
     text = f"Sport Fabrik AG, 8604 Volketswil\n{anker}: Sportfabrik, 8105 Regensdorf"
-    assert code(text) == "SF2"
+    assert code(text) == "SF3"
 
 
 def test_lieferschein_is_not_mistaken_for_a_delivery_anchor():
@@ -109,7 +109,7 @@ def test_empty_input():
 def test_umlauts_written_either_way(schreibweise):
     """Belege schreiben Umlaute mal als „ä", mal als „ae" (die Sportfabrik
     selbst benutzt haegendorf@sportfabrik.ch)."""
-    assert code(f"Lieferadresse Sportfabrik {schreibweise}") == "SF3"
+    assert code(f"Lieferadresse Sportfabrik {schreibweise}") == "SF4"
 
 
 def test_vebo_is_recognised_by_its_name_alone():
@@ -136,8 +136,8 @@ def test_postcode_alone_is_enough():
     assert code("Lieferadresse 3322") == "GEWA"
 
 
-def test_street_alone_is_not_enough_to_separate_sf1_and_sf3():
-    """„Industriestrasse" kommt bei SF1 und SF3 vor - ohne PLZ oder Ort bleibt
+def test_street_alone_is_not_enough_to_separate_sf1_and_sf4():
+    """„Industriestrasse" kommt bei SF1 und SF4 vor - ohne PLZ oder Ort bleibt
     es offen."""
     assert erkenne_lagerort("Lieferadresse Industriestrasse", LAGERORTE) is None
 

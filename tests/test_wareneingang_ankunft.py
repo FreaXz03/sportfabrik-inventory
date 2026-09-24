@@ -306,6 +306,50 @@ def test_nothing_entered_is_refused(daten):
 # --- Über die API, mit Anmeldung als Mitarbeiter (D21) --------------------
 
 
+# --- Mehr eingetroffen als erwartet (bestätigt 22.09.2026) ----------------
+
+
+def test_mehrlieferung_wird_gebucht_und_gemeldet(daten):
+    """Der Bestand ist, was physisch da ist - die Meldung sorgt dafür, dass
+    trotzdem jemand nachschaut."""
+    sessions, codes = daten
+    wareneingang_id, positionen = _erwarteter_wareneingang(sessions, codes)
+    ergebnis = bestaetige_ankunft(
+        wareneingang_id, {positionen[0]: "7", positionen[1]: "3"}, sessions
+    )
+    assert ergebnis["status"] == "eingetroffen"
+    assert ergebnis["mehrlieferungen"] == [
+        {
+            "position_id": positionen[0],
+            "menge_erwartet": "5.00",
+            "menge_eingetroffen": "7.00",
+            "menge_zuviel": "2.00",
+        }
+    ]
+    with sessions() as session:
+        assert str(session.scalar(select(func.sum(Bestand.menge)))) == "10.00"
+
+
+def test_genaue_lieferung_meldet_keine_mehrlieferung(daten):
+    sessions, codes = daten
+    wareneingang_id, positionen = _erwarteter_wareneingang(sessions, codes)
+    ergebnis = bestaetige_ankunft(
+        wareneingang_id, {positionen[0]: "5", positionen[1]: "3"}, sessions
+    )
+    assert ergebnis["mehrlieferungen"] == []
+
+
+def test_mehrlieferung_erst_durch_die_nachlieferung(daten):
+    """Die Warnung hängt am Gesamtstand der Position: erst die zweite Lieferung
+    führt über die erwartete Menge hinaus."""
+    sessions, codes = daten
+    wareneingang_id, positionen = _erwarteter_wareneingang(sessions, codes)
+    erste = bestaetige_ankunft(wareneingang_id, {positionen[0]: "4"}, sessions)
+    assert erste["mehrlieferungen"] == []
+    zweite = bestaetige_ankunft(wareneingang_id, {positionen[0]: "2"}, sessions)
+    assert [m["menge_zuviel"] for m in zweite["mehrlieferungen"]] == ["1.00"]
+
+
 @pytest.fixture
 def client(daten, monkeypatch):
     sessions, codes = daten

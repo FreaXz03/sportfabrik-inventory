@@ -2,6 +2,9 @@
 Lager Dietikon) und die Zuordnungslogik in app/services/lagerorte.py
 (Filialwechsel, Rechte gemäss Regel 9)."""
 
+import importlib.util
+import pathlib
+
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -37,6 +40,17 @@ def test_seed_creates_expected_codes(session):
     session.flush()
     codes = {lo.code for lo in session.scalars(select(Lagerort)).all()}
     assert codes == set(ALLE_CODES)
+
+
+def test_seed_maps_every_code_to_the_right_branch():
+    """Die Zuordnung war bis zum 22.09.2026 falsch (SF2 Regensdorf,
+    SF3 Hägendorf, SF4 Conthey). Bestätigt ist die Reihenfolge hier - ein
+    echter Beleg nennt ebenfalls „SF3 Regensdorf" (ALPINA 160166)."""
+    orte = {e["code"]: e["ort"] for e in LAGERORTE_SEED}
+    assert orte["SF1"] == "Volketswil"
+    assert orte["SF2"] == "Conthey"
+    assert orte["SF3"] == "Regensdorf"
+    assert orte["SF4"] == "Hägendorf"
 
 
 def test_only_filialen_have_verkauf(session):
@@ -112,3 +126,49 @@ def test_user_without_assignment_has_no_primary_lagerort(session):
     mitarbeiter = _make_user(session, "mitarbeiter")
     assert list_user_lagerorte(session, mitarbeiter) == []
     assert get_primary_lagerort(session, mitarbeiter) is None
+# --- Migration d0e1f2a3b4c5: Filialcodes korrigieren -----------------------
+
+MIGRATION = (
+    pathlib.Path(__file__).resolve().parents[1]
+    / "migrations"
+    / "versions"
+    / "d0e1f2a3b4c5_filialcodes_korrigieren.py"
+)
+
+
+def _migration():
+    spec = importlib.util.spec_from_file_location("filialcodes_migration", MIGRATION)
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def test_migration_und_seed_meinen_dasselbe():
+    """Migration und Seed dürfen nicht auseinanderlaufen: beide beschreiben,
+    welche Filiale welchen Code trägt."""
+    aus_seed = {e["ort"]: e["code"] for e in LAGERORTE_SEED if e["code"] in ("SF2", "SF3", "SF4")}
+    assert _migration().RICHTIG == aus_seed
+
+
+def test_migration_dreht_die_codes_im_ring(session):
+    """SF2 → SF3 → SF4 → SF2: weil `code` eindeutig ist, muss der Tausch über
+    Zwischencodes laufen - sonst kollidiert die zweite Zeile mit dem Code, den
+    die erste noch trägt. Der Ort bleibt, wo er ist, damit gebuchte Ware ihre
+    Filiale behält."""
+    mig = _migration()
+    vorher = {"Regensdorf": "SF2", "Hägendorf": "SF3", "Conthey": "SF4"}
+    for ort, code in vorher.items():
+        session.add(Lagerort(code=code, name=ort, ort=ort))
+    session.flush()
+
+    mig._codes_setzen(session.connection(), mig.RICHTIG)
+    session.expire_all()
+    assert {lo.ort: lo.code for lo in session.scalars(select(Lagerort)).all()} == {
+        "Conthey": "SF2",
+        "Regensdorf": "SF3",
+        "Hägendorf": "SF4",
+    }
+
+    mig._codes_setzen(session.connection(), mig.VORHER)
+    session.expire_all()
+    assert {lo.ort: lo.code for lo in session.scalars(select(Lagerort)).all()} == vorher

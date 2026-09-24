@@ -537,7 +537,10 @@ def test_api_stammdaten_liefert_lagerorte_und_lieferanten(client):
         "DIETIKON",
     }
     assert daten["lagerort_aktiv"] == codes["SF1"]
-    assert daten["lieferanten"][0]["name"] == "INTERSPORT Schweiz AG"
+    codes_je_name = {eintrag["name"]: eintrag["code"] for eintrag in daten["lieferanten"]}
+    assert codes_je_name["INTERSPORT Schweiz AG"] == "111"
+    # Je Lieferantengruppe ein Eintrag für die Erfassung von Hand (23.09.2026).
+    assert set(codes_je_name.values()) == {"111", "555", "333", "999", "444"}
     assert daten["heute"] == date.today().isoformat()
 
 

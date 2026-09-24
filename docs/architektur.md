@@ -97,7 +97,7 @@ als filialübergreifend.
 Die aktuell aktive Filiale liegt in der Session (`active_lagerort_id`) und
 wird über `POST /api/active-lagerort` gewechselt — die Auswahl dafür zeigt
 `GET /api/me` (`lagerort` = aktiv, `lagerorte` = wählbar). Die Oberfläche
-rendert dafür ein `<select>` in der Session-Leiste
+rendert dafür ein `<select>` in der Filial-Pille rechts in der Kopfzeile
 (`app/static/js/session.js`), sichtbar sobald mehr als eine Filiale zur Wahl
 steht oder der Benutzer Admin ist (dann zusätzlich „Alle Filialen“, also
 kein aktiver Lagerort). Serverseitig wird bei jedem Wechsel geprüft, dass
@@ -179,6 +179,14 @@ weiter `erwartet` (D22) — so ist fehlende Ware sichtbar; eine Nachlieferung
 wird einfach nochmals bestätigt. Erst wenn keine Position mehr offen ist,
 wechselt der Status auf `eingetroffen`.
 
+Kommt **mehr** an als erwartet, wird die tatsächliche Menge gebucht — der
+Bestand ist, was physisch im Laden steht — und die Antwort meldet die
+betroffenen Positionen in `mehrlieferungen` (Positions-Id, erwartete Menge,
+eingetroffene Menge, Differenz). Die Seite hängt daraus einen Warnsatz an die
+Erfolgsmeldung. Gemessen wird am Gesamtstand der Position, nicht an der
+einzelnen Buchung: über die erwartete Menge hinaus kommt man auch mit einer
+Nachlieferung (bestätigt 22.09.2026, Phase C, Teilaufgabe C1).
+
 Zwei Dinge sind bewusst gleich gehalten: Import und Ankunft buchen über
 **dieselbe** Funktion (`buche_zugang`), und beide nehmen dieselbe
 `pg_advisory_xact_lock`, damit sich Zugänge zwischen Arbeitsplätzen nicht
@@ -189,6 +197,105 @@ Bedient wird das auf der Seite **/wareneingaenge** (Navigation „Lieferungen"):
 die offenen Lieferungen der aktiven Filiale, je Position erwartet / bereits da
 / offen und ein Feld für die jetzt eingetroffene Menge. Das dürfen auch
 **Mitarbeiter** (D21) — Ankunft bestätigen ist Lagerarbeit, kein Dokumentrecht.
+
+## Bestand ansehen
+
+`app/services/bestand.py` liest, was `lagerbewegungen` gebucht hat — es
+schreibt nichts (Regel 2). Eine Zeile ist eine **Variante × Lagerort** mit
+Menge und ältestem Eingangsdatum; dieselbe Abfrage liefert Anzahl und
+Gesamtmenge der ganzen Auswahl, damit die Seite nicht rechnen muss.
+
+Drei Dinge sind bewusst so gebaut:
+
+- **Alle Filialen sind lesbar** (bestätigt 22.09.2026). Vorausgewählt ist die
+  aktive Filiale, wählbar sind alle Standorte — der Filialwechsel in der
+  Sitzungsleiste bleibt davon unberührt, er entscheidet weiter darüber, wohin
+  gebucht wird.
+- **Zeilen mit Menge 0** erscheinen nicht (seit 24.09.2026 ohne Schalter;
+  die API kennt `nur_vorhanden` weiterhin), aber nichts wird gelöscht:
+  ausverkaufte Ware bleibt im Stamm. Farbe, Grösse und Hauptgruppe stehen in
+  eigenen Spalten. Ein **negativer** Bestand wird
+  dagegen immer gezeigt — er ist möglich (bestätigt 22.09.2026) und genau dann
+  interessant.
+- **Ware an einem Standort ohne Verkauf** (GEWA, VEBO, Dietikon) hat kein
+  Eingangsdatum (Regel 6/D13). Die Seite schreibt dort keinen leeren Strich
+  hin, sondern sagt, warum: das Datum kommt mit der Ankunft in einer Filiale.
+
+Seite: **/bestand** (Navigation „Bestand"), Filter für Filiale, Suche und
+„nur Zeilen mit Bestand", nachladen über `offset` (Phase C, Teilaufgabe C2).
+Vorübergehend hat jede Zeile einen Knopf „−1" zum Testen des Ausbuchens
+(siehe nächster Abschnitt).
+
+## Ausbuchen
+
+Verkauf oder Abgang von Hand (`app/services/ausbuchung.py`, Seite
+`/ausbuchen`, Phase C, Teilaufgabe C3). Das Gegenstück zum Zugang: dieselbe
+Sperre, dieselbe Regel 2 — jede Änderung ist eine Zeile in
+`lagerbewegungen`, der Bestand wird im selben Schritt nachgeführt.
+
+- **Ein Scan = ein Stück** (F15, 23.09.2026). Die Seite sammelt schnelle
+  Scans und bucht sie der Reihe nach; nach jedem Scan ist das Feld sofort
+  wieder frei.
+- **Gründe** (F14): `verkauf` wird als `typ = verkauf` gebucht, alle anderen
+  (`defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges: <Text>`) als
+  `ausbuchung`. So bleiben Verkäufe von Schwund trennbar.
+- **Zu wenig Bestand** (F9): warnen, trotzdem buchen. Ein Abgang ändert das
+  Eingangsdatum nie.
+- **Rückgängig**: Gegenbuchung `korrektur` mit `grund = 'storno:<id>'`,
+  höchstens einmal je Ausbuchung — nichts wird gelöscht.
+- Varianten **ohne EAN** (Regel 5) lassen sich nicht scannen; sie werden über
+  ihre Varianten-Id ausgebucht, heute über den vorübergehenden Knopf „−1" in
+  der Bestandsansicht (`grund = 'test'`).
+
+## Umlagern
+
+Ware von einem Lagerort an einen anderen (`app/services/umlagerung.py`,
+Seite `/umlagern`, Phase C, Teilaufgabe C4). Gebucht wird **beim Empfang von
+der empfangenden Filiale** (F5): eine Transaktion schreibt je Variante zwei
+Zeilen `typ = umlagerung` — Abgang an der Quelle, Zugang am Ziel.
+
+Welche Datumsregel gilt, entscheidet nur `lagerorte.verkauf`:
+
+| Von → nach | Eingangsdatum / Uhr am Ziel |
+|---|---|
+| extern → Filiale | wird gesetzt (auf Wunsch rückwirkend), Uhr startet (D13) |
+| Filiale → Filiale, Ziel kennt den Artikel | Ware behält ihr Datum (D17), Uhr des Ziels läuft weiter (F10) |
+| Filiale → Filiale, Ziel hatte den Artikel nie | Uhr startet ab Eintreffen (F11) |
+| beliebig → extern | kein Datum, keine Uhr (Regel 6) |
+
+Startet eine Umlagerung die Uhr, steht das Datum an ihrer Zielzeile in
+`lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` nimmt das
+spätere Datum aus Wareneingängen und diesen Umlagerungen. Zu wenig Bestand an
+der Quelle wird gemeldet, aber gebucht.
+
+## Korrigieren
+
+Bestand auf die gezählte Menge bringen (`app/services/korrektur.py`, Knopf
+„Zählen" je Zeile in `/bestand`, Phase C, Teilaufgabe C5). Eingegeben wird,
+was im Regal liegt; die Differenz rechnet der Server unter derselben Sperre
+wie jeder Zugang und bucht sie als `typ = korrektur`. Stimmt der Bestand
+schon, wird nichts gebucht. Gründe: Inventur/Zählung, Falsch gebucht, Ware
+gefunden, Sonstiges (mit Text). Das Eingangsdatum ändert sich nie.
+
+## Übersicht
+
+`app/services/uebersicht.py` liefert für `GET /api/dashboard` neben den
+Stammzahlen die Kennzahlen der **aktiven Filiale** (Stück im Bestand, heute
+verkauft/abgegangen), „Anstehend" (erwartete Lieferungen, negativer Bestand,
+Reduktionsalter je Stufe inkl. Vorschau 30 Tage, Artikel ohne Kategorie bzw.
+EAN) und „Aktuelles" (letzte Lagerbewegungen). Das Reduktionsalter wird in
+einer Abfrage für alle Artikel gerechnet — dieselbe Regel wie
+`reduktion.letzter_wareneingang()` (Wareneingang oder Umlagerung mit
+Eingangsdatum). Ohne aktive Filiale bleibt `filiale` leer.
+
+## Artikel löschen
+
+Nur für von Hand erfasste Artikel **ohne Beleg** und nur für Filialleiter
+und Zentrale (`app/services/artikel_loeschen.py`, Entscheid vom
+24.09.2026). Entfernt in einer Transaktion unter der Buchungssperre:
+Lagerbewegungen, Bestand, manuelle Wareneingangspositionen (und leer
+gewordene manuelle Wareneingänge), Preise, Notizen, Varianten und den
+Artikel; der Vorgang wird ins Server-Log geschrieben.
 
 ## Ware von Hand erfassen
 
@@ -276,8 +383,8 @@ ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
 einer, den die Kasse nicht annimmt.
 
 **Etikettengrösse:** einstellbar (`GROESSEN` in `app/services/etikett.py`),
-Voreinstellung 50 × 30 mm. Welche Rollen im Laden laufen, ist noch nicht
-bestätigt; sobald es feststeht, wird das die Voreinstellung. Die Modulbreite
+Voreinstellung 84 × 47 mm; rechts neben dem Lieferanten steht fett der Code der Lieferantengruppe (111/555/333/999/444, aus `lieferanten.typ` abgeleitet) — die Rollen im Sato CL4NX Plus (bestätigt am
+23.09.2026); 50 × 30 mm und die übrigen Grössen bleiben wählbar. Die Modulbreite
 des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
 masslos in die Breite gezogen wird.
 
@@ -337,7 +444,7 @@ Lieferanten gleich funktioniert. Die Adressen kommen als Werte herein
 | Postleitzahl | 3 | eindeutig je Ort, kurz, überlebt OCR am besten |
 | Ortsname | 2 | bestätigt die PLZ, steht auch ohne sie oft da |
 | Name des Lagerorts (z. B. „GEWA“, „VEBO“) | 2 | auf der CMP-Auftragsbestätigung steht als Ziel nur „GEWA“. Nur *unterscheidende* Wörter zählen: „Lager Dietikon“ liefert kein Kennwort, sonst schlüge jeder Beleg mit dem Wort „Lager“ an — dort trägt der Ortsname |
-| Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF3 |
+| Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF4 |
 
 Gesucht wird in zwei Durchgängen: zuerst im Umfeld eines Lieferadress-Ankers
 („Lieferadresse“, „Lieferanschrift“, „Lieferung an“, „Warenempfänger“,
@@ -357,9 +464,11 @@ Oberfläche nichts, bleibt es bei der aktiven Filiale — wie vorher.
 Buchbar sind **alle** Lagerorte, die eigene Filiale zuerst
 (`list_wareneingang_lagerorte`). Sonst liesse sich eine Lieferung an eine
 andere Filiale oder an einen externen Standort gar nicht erfassen, und D19 wäre genau für die
-Fälle wirkungslos, für die es gedacht ist. Filialwechsel und Leseansichten
-bleiben unverändert bei den zugewiesenen Filialen. Ein Beleg hat dabei genau
-einen Lagerort (D20); verteilt wird die Ware danach über eine Umlagerung.
+Fälle wirkungslos, für die es gedacht ist. Der Filialwechsel bleibt
+unverändert bei den zugewiesenen Filialen; lesen dürfen Mitarbeiter und
+Filialleiter alle Filialen (bestätigt am 22.09.2026, `docs/projekt-kontext.md`
+Abschnitt 10). Ein Beleg hat dabei genau einen Lagerort (D20); verteilt wird
+die Ware danach über eine Umlagerung.
 
 ## Doppelimporte erkennen
 
@@ -559,11 +668,20 @@ zwei Skripte werden aber seitenübergreifend eingebunden:
   `app.css` (folgt standardmässig der Systemeinstellung, manuell
   umschaltbar, per `localStorage` gemerkt) und liefert den Umschalt-Knopf
   als Factory-Funktion.
-- `session.js` baut daraus auf jeder Seite mit aktiver Anmeldung die
-  Kopfzeile (Name/Kassennummer, Rolle, Filial-Umschalter sofern mehr als
-  eine Filiale wählbar ist, „Abmelden", Einstellungen-Menü mit dem
-  Hell/Dunkel-Umschalter) und blendet für Mitarbeiter die Upload-Funktionen
-  aus.
+- `nav.js` baut die Hauptnavigation an **einer** Stelle (die Templates
+  enthalten nur ein leeres `<nav>`): Übersicht, Bestand, Gruppe „Ware"
+  (Erfassen, Lieferungen, Umlagern, Ausbuchen), Artikel, Gruppe „Belege"
+  (Alle Belege, Beleg hochladen). Die Gruppen klappen mit je einer kurzen
+  Erklärung pro Eintrag auf; die aktive Seite trägt `aria-current="page"`.
+  „Beleg hochladen" sehen nur Filialleiter und Zentrale (Regel 9). Unter
+  900 px Breite steckt alles hinter dem Knopf „Menü".
+- `session.js` baut die rechte Seite der Kopfzeile: die **Filial-Pille**
+  (aktive Filiale, bei mehreren wählbaren als Auswahl) und das
+  **Konto-Menü** hinter dem Initialen-Knopf (Name, Kassennummer, Rolle,
+  Sprache, Hell/Dunkel, auf der Artikelseite der Excel-Export, Abmelden).
+  Es meldet die Anmeldung als Ereignis `sportfabrik:me`, damit `nav.js`
+  nach Rolle filtern kann, und blendet für Mitarbeiter die Upload-Kachel
+  auf der Übersicht aus.
 
 Für ältere oder sehbeeinträchtigte Mitarbeitende bietet die Artikelsuche
 zusätzlich eine Spalten-Auswahl (einzelne Spalten ausblenden) und grössere
@@ -595,9 +713,12 @@ Dunkelmodus-Regeln. Wer eine Farbe ändern will, ändert sie an genau einer
 Stelle. `color-scheme` ist mitgesetzt, damit auch native Bedienelemente
 (Datumsfelder, Bildlaufleisten) zum Modus passen.
 
-Die Kopfzeile ist zweizeilig und bleibt beim Scrollen stehen (`sticky` mit
-`backdrop-filter`): Zeile 1 Marke + Navigation, Zeile 2 die von `session.js`
-erzeugte Sitzungsleiste. Ändert sich die Datei, muss der Cache-Parameter
+Die Kopfzeile ist seit dem 23.09.2026 **einzeilig** und bleibt beim Scrollen
+stehen (`sticky` mit `backdrop-filter`): links die Marke, daneben die
+Navigation aus `nav.js`, rechts Filial-Pille und Konto-Menü aus `session.js`.
+Aufklapp-Menüs werden über die Klasse `is-open` gesteuert, nicht über
+`hidden` — die globale Regel `[hidden] { display: none !important }` liesse
+sich sonst auf schmalen Bildschirmen nicht übersteuern. Ändert sich die Datei, muss der Cache-Parameter
 (`?v=…`) in den Templates mitgezogen werden — sonst sehen Filialrechner noch
 die alte Fassung.
 

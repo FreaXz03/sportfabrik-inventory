@@ -281,7 +281,9 @@ def test_nachlieferung_startet_die_uhr_neu(daten):
 def test_etikett_enthaelt_die_vier_pflichtangaben(daten):
     sessions, codes = daten
     with sessions() as session:
-        lieferant_id = session.scalar(select(Lieferant.id))
+        lieferant_id = session.scalar(
+            select(Lieferant.id).where(Lieferant.name == "INTERSPORT Schweiz AG")
+        )
     erfasse_wareneingang(
         [
             {
@@ -306,6 +308,7 @@ def test_etikett_enthaelt_die_vier_pflichtangaben(daten):
         )
     assert etikett.jahrgang == 2024                     # Jahrgang (D25)
     assert etikett.lieferant == "INTERSPORT Schweiz AG"  # Lieferant (D25)
+    assert etikett.lieferant_code == "111"  # Gruppen-Code (23.09.2026)
     assert etikett.uvp == Decimal("39.90")              # UVP (D25)
     assert etikett.reduktion == 50                      # Reduktionsstufe (D25)
     assert (etikett.marke, etikett.groesse, etikett.ean) == ("Nike", "M", "4006381333931")
@@ -373,9 +376,10 @@ def test_pdf_hat_etikettengroesse_und_inhalt():
     )
     assert pdf.startswith(b"%PDF")
     seite = pymupdf.open("pdf", pdf)[0]
-    # 50 × 30 mm in PDF-Punkten (1 mm = 72/25.4 pt).
-    assert round(seite.rect.width, 1) == 141.7
-    assert round(seite.rect.height, 1) == 85.0
+    # Voreinstellung 84 × 47 mm (Rollen im Laden, bestätigt 23.09.2026) in
+    # PDF-Punkten (1 mm = 72/25.4 pt).
+    assert round(seite.rect.width, 1) == 238.1
+    assert round(seite.rect.height, 1) == 133.2
     text = seite.get_text()
     for erwartet in ("Nike", "2024", "INTERSPORT Schweiz AG", "CHF 39.90", "-50%", "2000000000077"):
         assert erwartet in text

@@ -32,6 +32,10 @@ Graph war rund 7 MB gross und enthielt umgewandelte Dokumente (Commit
 /graphify .                       # falsch — liest Rechnungen mit
 ```
 
+Davon unberührt bleibt die Entwicklungsausnahme vom 22.09.2026: einen
+**einzelnen** Beleg darf Fabian zum Parserbau bewusst zeigen. Graphify dagegen
+liest ungefragt alles, was es findet — dafür bleibt `--code-only` Pflicht.
+
 ## Die zwei Umgebungen
 
 Die Werkzeuge sind nicht überall verfügbar:

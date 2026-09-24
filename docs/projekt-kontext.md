@@ -1,9 +1,13 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
-Stand: 2026-09-21 (Rev. 6 — zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon; Eingangsdatum startet erst in einer Filiale) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
-Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `529674e`; Phase-B-Abschluss auf Branch `claude/awesome-lamport-tivaj9`).
+Stand: 2026-09-24 (Rev. 6 vom 21.09.2026: zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon, Eingangsdatum startet erst in einer Filiale; ergänzt um die bestätigten Antworten vom 22.–24.09.2026 in Abschnitt 10) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
+Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`: Phase B inkl. B8, übernommen mit PR #9, Merge-Commit `d1c6533`. Phase C und die Inbox-Anforderungen vom 23.09.2026 liegen auf `feature/warenwirtschaft-v2`, noch nicht in `main`).
 
 ---
+
+## Ergänzung vom 23.09.2026, abends
+
+Neue fachliche Anforderungen: [Inbox-Anforderungen vom 23.09.2026](anforderungen-inbox-2026-09-23.md). Dort stehen die aktuelle Lieferantengruppierung (111/555/333/999/444), Bedienungsanforderungen und der noch zu klärende Konflikt zwischen vollständiger Artikellöschung und dauerhafter Stammhaltung. Die neue Gruppierung präzisiert die ältere Warenquellen-Tabelle unten. Benutzerfreundlichkeit und gute Lesbarkeit für Mitarbeitende mit Brille oder wenig PC-Erfahrung sind zentrale Anforderungen. Keine dieser Ergänzungen ist durch diesen Doku-Abgleich als umgesetzt bestätigt.
 
 ## 1. Unternehmen & Geschäftsmodell
 
@@ -20,9 +24,9 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | Kürzel | Standort | Adresse | Telefon | E-Mail |
 |---|---|---|---|---|
 | **SF1** | Volketswil *(Hauptsitz, Server-Standort)* | Industriestrasse 21, 8604 Volketswil | 043 444 93 33 | volketswil@sportfabrik.ch |
-| **SF2** | Regensdorf | Althardstrasse 10, 8105 Regensdorf | 044 840 05 90 | regensdorf@sportfabrik.ch |
-| **SF3** | Hägendorf | Industriestrasse West 40/42, 4614 Hägendorf | 062 216 53 88 | haegendorf@sportfabrik.ch |
-| **SF4** | Conthey | Route Cantonale 7, 1964 Conthey | 027 322 75 83 | conthey@sportfabrik.ch |
+| **SF2** | Conthey | Route Cantonale 7, 1964 Conthey | 027 322 75 83 | conthey@sportfabrik.ch |
+| **SF3** | Regensdorf | Althardstrasse 10, 8105 Regensdorf | 044 840 05 90 | regensdorf@sportfabrik.ch |
+| **SF4** | Hägendorf | Industriestrasse West 40/42, 4614 Hägendorf | 062 216 53 88 | haegendorf@sportfabrik.ch |
 | **GEWA** | Externe Verarbeitung *(kein Verkauf)* | GEWA-John Leuenberger, Grubenstrasse 22, 3322 Urtenen-Schönbühl | – | – |
 | **VEBO** | Externe Verarbeitung *(kein Verkauf)* | *Adresse noch nachzutragen* | – | – |
 | **DIETIKON** | Externes Lager *(kein Verkauf)* | *Adresse noch nachzutragen*, Dietikon | – | – |
@@ -79,7 +83,7 @@ Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`, letzter Commit `
 | D6 | Dokumente | Es kommen Rechnungen, Lieferscheine **und Auftragsbestätigungen**; weitere Beispiele werden laufend nachgereicht. **Bestand wird erst gebucht, wenn die Ware eingetroffen ist** |
 | D7 | Einkaufspreis | **Optional** speichern, falls im Dokument vorhanden — keine Priorität |
 | D8 | Rechte | Mitarbeiter dürfen vorerst **alles ausser Dokumente hochladen/bearbeiten**. Feinere Rechte später |
-| D9 | **Belegdaten bleiben lokal** | Rechnungen, Lieferscheine und Auftragsbestätigungen werden **lokal auf dem eigenen Server** von eigenen Parsern gelesen — keine Weitergabe an Drittanbieter, keine KI-Extraktion. Ausserhalb der Belegverarbeitung ist KI erlaubt, auch extern (präzisiert 22.09.2026; vorher galt „keine KI, keine externen Dienste" für alles) |
+| D9 | **Belegdaten bleiben lokal** | Rechnungen, Lieferscheine und Auftragsbestätigungen werden **lokal auf dem eigenen Server** von eigenen Parsern gelesen — keine Weitergabe an Drittanbieter, keine KI-Extraktion. Ausserhalb der Belegverarbeitung ist KI erlaubt, auch extern (präzisiert 22.09.2026; vorher galt „keine KI, keine externen Dienste" für alles). Für den **Parserbau** darf Fabian einzelne Belege bewusst zeigen (22.09.2026); im fertigen System liest sie weiterhin nur der eigene Parser, später auch ohne Internet |
 | D10 | EAN | EAN muss **nachträglich erfassbar** sein. Wird nie eine nachgetragen, **generiert das System eine interne EAN** (inkl. Etikett) |
 | D11 | Externe Standorte | Zwei Verarbeitungsstellen (GEWA, VEBO) und ein externes Lager (Dietikon) → je ein eigener Lagerort ohne Verkauf, Ware wird von dort an Filialen umgelagert |
 | D12 | Chris Sports | „Preis“ auf deren Dokumenten = **UVP** (Rabatt 70 % → EK = 30 % des UVP) |
@@ -155,18 +159,20 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 
 ## 7. Abgleich Zielbild ↔ aktuelles Repo
 
-Momentaufnahme nach Abschluss von **Phase B** (22.09.2026). Massgeblich für
-den Stand der Umsetzung ist Abschnitt 11; diese Tabelle fasst ihn nur
-gegenüber dem Zielbild zusammen.
+Momentaufnahme vom 24.09.2026: **Phase B abgeschlossen**, **Phase C
+abgeschlossen** (C1–C5, 23.09.2026), dazu die Inbox-Anforderungen vom
+23.09.2026 (umgesetzt am 24.09.2026). Massgeblich für den Stand der
+Umsetzung ist Abschnitt 11; diese Tabelle fasst ihn nur gegenüber dem Zielbild
+zusammen.
 
 | Bereich | Heute im Repo | Lücke zum Ziel |
 |---|---|---|
 | Upload & Parsing | ✅ Intersport-PDF, OCR (Tesseract, lokal), Vorschau, Korrektur, Stapel, **Parser-Registry mit Lieferanten-/Dokumenttyp-Erkennung** (B1), **Lagerort aus der Lieferadresse** (B4), **erwartet→eingetroffen** (B5) | Bisher nur 1 Layout registriert (weitere in Phase E); keine Grössen-Matrix; OCR für farbige Tabellen-Scans zu schwach |
 | Manuelle Erfassung | ✅ Seite `/erfassen` mit Scanner, ohne Beleg (B6) — inkl. Kategorie (B8) und Etikettendruck (B7) | — |
-| Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
+| Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8), Lieferantengruppen mit Etikett-Code, von Hand erfasste Artikel löschbar (24.09.2026) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
 | Preise | ✅ UVP und EK je Wareneingangsposition (EK optional, Regel 10), Preisverlauf je Variante, Reduktionsstufe als Baustein (`app/services/reduktion.py`, genutzt auf dem Etikett) | Reduktions-Hinweise als eigene Ansicht und die zentrale Empfehlung fehlen → Phase D |
-| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung | Verkauf, Ausbuchen, Umlagerung und Korrekturen fehlen → Phase C. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
-| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Die **Ansichten** (Dashboard, Rechnungsliste, Artikeldetails) zeigen weiter alle Filialen — fachlich noch zu klären (siehe „Offene Punkte aus dem Review") |
+| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung; **Bestandsansicht** `/bestand` je Lagerort, alle Filialen lesbar (C2); **Ausbuchen per Scan** `/ausbuchen` (C3); **Umlagerung** `/umlagern` (C4); **Korrekturen** über „Zählen" in `/bestand` (C5) | Phase C fertig. Der migrierte Bestand bleibt kumulierter Wareneingang, bis er gezählt und korrigiert ist |
+| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Leserechte am 22.09.2026 geklärt (Abschnitt 10): Mitarbeiter und Filialleiter sehen Dokumente und Bestände **aller** Filialen. Alle Ansichten (Übersicht, Belege, Artikeldetails, Bestand, Ausbuchungen) tun das; der Filialwechsel bleibt bei den zugewiesenen Filialen (D26) |
 | Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
 | Deployment | Docker, 1 Laden-Server | Zentraler Server Volketswil, Zugriff aus 4 Filialen |
@@ -208,6 +214,7 @@ Kernprinzipien: **Bestand nie überschreiben, sondern als Bewegung buchen.** Fü
 - „Artikelnummer“ = Lieferanten-Artikelnummer (Modell), also über alle Farben/Grössen hinweg.
 - Berechnung **pro Filiale** (D5): Eine Lieferung nach SF2 setzt die Uhr in SF1 nicht zurück.
 - Ware ohne Eingangsdatum (z. B. noch bei GEWA/VEBO oder im Lager Dietikon) erzeugt **keine** Hinweise.
+- Eine **Umlagerung Filiale → Filiale** ist kein Wareneingang und startet die Uhr der Zielfiliale **nicht** neu (bestätigt 22.09.2026, siehe Abschnitt 10). Nur der Weg von einem externen Standort in eine Filiale setzt das Datum erstmals (D13).
 - Zentrale (Admin) sieht die Empfehlungen aller Filialen und kann eine **einheitliche Empfehlung** setzen; jede Filiale übernimmt oder weicht bewusst ab (Abweichungen sichtbar).
 - Hinweise als Liste „Zum Runterschreiben fällig“ + Zähler im Dashboard; Schwellen (18/36 Monate) konfigurierbar.
 
@@ -255,10 +262,10 @@ FastAPI, PostgreSQL, Alembic, Docker, Vanilla-JS-Frontend, zweistufiger Import m
 
 Alle Fragen aus Rev. 2 und Rev. 3 sind beantwortet (D1–D27). Noch offen:
 
-1. **Etikettengrösse** des Sato CL4NX Plus (welche Rollen sind im Einsatz — Breite × Höhe in mm). Bis das feststeht, ist die Grösse einstellbar; Voreinstellung 50 × 30 mm (Teilaufgabe B7).
+1. ~~**Etikettengrösse** des Sato CL4NX Plus~~ — beantwortet am 23.09.2026: **84 × 47 mm**, jetzt Voreinstellung (siehe unten). Offen ist nur noch die Gestaltung: Fabian kann eine Vorlage des heutigen Etiketts nachreichen.
 2. ~~**Barcode aufs Etikett?**~~ Vorläufig entschieden und so gebaut (B7): **ja** — ohne Strichcode bliebe genau der Artikel unscannbar, für den die interne EAN gedacht ist (D10). Falls das Etikett ihn doch nicht tragen soll, bitte melden.
 3. **Kasse:** Ergebnis der Abklärung mit Intersport (Zugriff/Schnittstelle).
-4. **Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären. Für die Kasse und einen späteren Onlineshop ist sie bestätigt (siehe unten).
+4. ~~**Manuelle Ausbuchung ausserhalb der Kasse:** Die Regel für negativen Bestand ist hierfür noch zu klären.~~ — beantwortet am 22.09.2026 (siehe unten): warnen, Buchung trotzdem zulassen, wie an der Kasse.
 
 ### Bestätigte Antworten vom 22.09.2026
 
@@ -267,16 +274,48 @@ Quelle: Fabians direkte Antworten, zusätzlich im Main-Vault unter „Sportfabri
 - **Leserechte:** Mitarbeiter und Filialleiter dürfen Dokumente und Bestände aller Filialen sehen. Schreibrechte bleiben unverändert.
 - **Negativer Bestand:** Im Kassensystem mit Warnung erlauben; in einem späteren Onlineshop blockieren. Keine allgemeine Freigabe für andere Ausbuchungsarten.
 - **Umlagerung:** Die empfangende Filiale bucht die Ware.
-- **Mehrlieferung:** Warnung anzeigen, Buchung weiterhin zulassen. Die Warnung ist noch umzusetzen.
+- **Mehrlieferung:** Warnung anzeigen, Buchung weiterhin zulassen. Umgesetzt als Phase C, Teilaufgabe C1.
 - **Standorte:** GEWA und VEBO verarbeiten/entpacken Ware; Dietikon ist ein reines externes Lager ohne Verarbeitung.
 - **Etikettenformat:** Fabian reicht die Informationen am 23.09.2026 nach.
 - **Kassenschnittstelle:** Noch keine Rückmeldung von Intersport; Fabian ergänzt Neuigkeiten, sobald vorhanden.
 
 Diese Antworten sind fachliche Entscheidungen, keine Bestätigung neu implementierter Funktionen.
 
+### Bestätigte Antworten vom 22.09.2026 (zweite Runde, für Phase C)
+
+- **Negativer Bestand beim Ausbuchen von Hand:** wie an der Kasse — das System **warnt**, bucht aber trotzdem. Der Bestand darf also ins Minus laufen; blockieren wird nur der spätere Onlineshop (F4). Hintergrund: der migrierte Bestand ist kumulierter Wareneingang ohne Verkäufe, Differenzen sind am Anfang der Normalfall.
+- **Umlagerung Filiale → Filiale und die Reduktionsuhr:** Eine Umlagerung ist in der Zielfiliale **kein** Wareneingang. Die Uhr läuft dort unverändert weiter, die zugeschickte Ware wird auf dem Stand der Zielfiliale mitreduziert (D17: durch Umbuchen wird nichts verjüngt). Unverändert bleibt D13: nur der Weg von einem externen Standort (GEWA/VEBO/Dietikon) in eine Filiale setzt das Eingangsdatum erstmals und startet die Uhr.
+- **Dazu noch offen:** Was gilt, wenn die Zielfiliale diese Lieferanten-Artikelnummer noch **nie** hatte? Dann gibt es dort kein Datum, an das sich die Uhr hängen könnte.
+
+- **Belege für den Parserbau zeigen:** erlaubt. Ziel bleibt ein Parser, der die Dateien später **ohne Internet** liest; die Belege werden nirgends veröffentlicht und im Betrieb nicht über KI ausgelesen. Das ist die Ausnahme für die Entwicklung und kein automatischer Weg — Graphify läuft weiterhin nur mit `--code-only`.
+- **Filialcodes korrigiert:** SF1 Volketswil, **SF2 Conthey**, **SF3 Regensdorf**, **SF4 Hägendorf**. Die bisherige Zuordnung in Doku, Seed-Daten und Tests war falsch (SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey).
+
+Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts (Phase C).
+
+### Bestätigte Antworten vom 23.09.2026 (dritte Runde)
+
+- **Gründe beim Ausbuchen (F14):** wie vorgeschlagen — Verkauf, Bruch/Defekt, Diebstahl/Schwund, Eigenbedarf, Retoure an den Lieferanten, Sonstiges mit freiem Text.
+- **Scan beim Ausbuchen (F15):** Ein Scan bucht **sofort ein Stück** aus. Mehrere Stück = mehrmals scannen; es gibt keine Mengenabfrage.
+- **Umlagerung in eine Filiale ohne bisherigen Wareneingang (F11):** Die Uhr startet dort **ab Eintreffen der Ware** — das Eingangsdatum ist dann der Tag, an dem die Zielfiliale den Empfang bucht.
+- **Etikettengrösse (F1):** 84 × 47 mm auf dem Sato CL4NX Plus (am Morgen zuerst 84 × 38 mm gemeldet, am selben Tag korrigiert). Eine Vorlage des heutigen Etiketts kann Fabian nachreichen.
+- **Kassenschnittstelle (F2):** weiterhin keine Rückmeldung von Intersport.
+- **FEDAS aus der Praxis lernen (F8):** ja. Es gibt keine FEDAS-Liste, und niemand weiss, ob die Sportfabrik eine hat. Kategorien, die von Hand gewählt werden, sollen deshalb als Vorschlag für die Zuordnungstabelle gesammelt werden — übernommen wird ein Code erst nach Prüfung, nicht automatisch.
+- **Korrekturen (C5), Eingabe:** gezählt wird die **Menge im Regal**; das System rechnet die Differenz zum Bestand selbst aus und bucht sie (eine Mini-Inventur je Zeile).
+- **Korrekturen, Gründe:** Inventur/Zählung, Falsch gebucht, Ware gefunden, Sonstiges mit freiem Text.
+- **Korrekturen, Rechte:** alle Rollen (Regel 9 — nur Dokumente sind Filialleitern vorbehalten).
+- **Begriff „Beleg" statt „Rechnung" in der Oberfläche:** hochgeladen werden nicht nur Rechnungen, sondern auch Lieferscheine und Auftragsbestätigungen. Oberbegriff überall „Beleg" (FR „justificatif", EN „document"); „Rechnung" bleibt nur, wo wirklich der Dokumenttyp gemeint ist.
+- **Etikettengrösse korrigiert:** 84 × 47 mm (nicht 84 × 38 mm).
+- **Kopfbereich:** aufräumen, hochwertiger und benutzerfreundlicher machen. Umgesetzt am 23.09.2026: eine Kopfzeile statt zwei, Navigation in Gruppen (Ware, Belege) mit Erklärung je Eintrag, Filial-Pille und Konto-Menü rechts, Menü-Knopf auf schmalen Bildschirmen.
+- **Vorübergehender Test-Knopf im Bestand:** je Bestandszeile ein Knopf, der **ein Stück** abbucht (2 Shirts → 1 Shirt). Der Artikel bleibt im Stamm, die Buchung ist eine normale Zeile in `lagerbewegungen` (Regel 2). Sichtbar für alle Rollen. Wird wieder entfernt, sobald das Ausbuchen im Laden erprobt ist.
+
+### Bestätigte Antworten vom 24.09.2026
+
+- **Artikel löschen:** gebraucht vor allem für falsch **von Hand erfasste** Artikel. Löschen dürfen nur Filialleiter und Zentrale, und nur Artikel **ohne Beleg**; dann verschwinden Artikel, Bestand und Buchungen ganz (bewusste Ausnahme von Regel 2 und 4, protokolliert). Artikel aus Belegen bleiben im Stamm. Umgesetzt, siehe Abschnitt 11.
+- Die übrigen Inbox-Anforderungen vom 23.09.2026 (Lieferantengruppen 111/555/333/999/444, Bedienung, Übersicht) stehen in [`anforderungen-inbox-2026-09-23.md`](anforderungen-inbox-2026-09-23.md).
+
 ### Weitere offene Produktfrage
 
-8. **FEDAS-Codes aus der Praxis lernen?** Wird für einen Artikel mit unbekanntem FEDAS-Code von Hand eine Kategorie gewählt (B8), kennt das System damit faktisch die Zuordnung dieses Codes. Soll daraus ein Vorschlag für `app/core/fedas.py` werden (z. B. eine Liste „diese Codes wurden von Hand so zugeordnet"), oder bleibt die Tabelle bewusst nur das, was aus echten Rechnungen bestätigt ist? Heute: bewusst nur Bestätigtes, jede Wahl von Hand gilt nur für ihren Artikel.
+8. ~~**FEDAS-Codes aus der Praxis lernen?**~~ — beantwortet am 23.09.2026: ja, als geprüfter Vorschlag (siehe oben). Umsetzung noch offen.
 
 ### Laufend
 - Weitere Beispieldokumente sammeln (insb. Lieferscheine, Nike/adidas/Puma, ECOM) → Parser-Liste in Abschnitt 6 ergänzen.
@@ -300,7 +339,9 @@ Diese Antworten sind fachliche Entscheidungen, keine Bestätigung neu implementi
 | B — Wareneingang v2, Teilaufgabe 6 (manuelle Erfassung mit Scanner) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 7 (interne EAN + Etikett) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | ✅ abgeschlossen, Branch `claude/awesome-lamport-tivaj9` |
-| C–G | offen |
+| C — Lagerbestand | ✅ abgeschlossen: C1 (Warnung bei Mehrlieferung), C2 (Bestandsansicht), C3 (Ausbuchen per Scan), C4 (Umlagerung) und C5 (Korrekturen), Branch `feature/warenwirtschaft-v2` |
+| Inbox-Anforderungen vom 23.09.2026 | ✅ abgeschlossen am 24.09.2026 (Lieferantengruppen-Codes, Bestandsspalten, Ausbuchungsliste, Artikelsuche, Übersicht, Artikel löschen), Branch `feature/warenwirtschaft-v2`; offen: Parser für die Beispielbelege, ECOM-Erkennung, Tests aufräumen |
+| D–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
 **Phase B — Wareneingang v2, Aufteilung in Teilaufgaben** (aus Roadmap
@@ -323,6 +364,210 @@ gemäss Roadmap (Abschnitt 9): **C — Lagerbestand**. Innerhalb von Phase B
 bleibt ein Punkt laufend offen: die FEDAS-Codes, die noch nicht aus echten
 Rechnungen bestätigt sind (`app/core/fedas.py`) — bis dahin wird in diesen
 Fällen von Hand gewählt, was seit B8 möglich ist.
+
+**Phase C — Lagerbestand, Aufteilung in Teilaufgaben** (Roadmap Abschnitt 9;
+die fachlichen Antworten dazu stehen in Abschnitt 10, Reihenfolge nach
+Abhängigkeit und Risiko — eine Teilaufgabe = ein Commit):
+
+| # | Teilaufgabe | Status |
+|---|---|---|
+| C1 | **Warnung bei Mehrlieferung**: kommt mehr an als erwartet, warnt das System und bucht trotzdem (bestätigt 22.09.2026). Rest aus B5, klein und fachlich entschieden — deshalb zuerst | ✅ abgeschlossen |
+| C2 | **Bestandsansicht je Lagerort**: aktueller Bestand pro Variante × Lagerort, lesbar für **alle** Filialen (Leserechte 22.09.2026), mit eigener Sicht auf Ware an einem externen Standort (ohne Eingangsdatum). Bisher zeigt keine Seite den Bestand — ohne sie lässt sich alles Folgende nicht kontrollieren | ✅ abgeschlossen |
+| C3 | **Ausbuchen per Scan** (Z6): Verkauf oder Abgang von Hand ausbuchen, `lagerbewegungen.typ = verkauf`/`ausbuchung` mit Grund und Benutzer. Reicht der Bestand nicht, **warnt** das System und bucht trotzdem (22.09.2026). Ein Scan = ein Stück (F15), Gründe gemäss F14 (23.09.2026) | ✅ abgeschlossen |
+| C4 | **Umlagerung**: externer Standort → Filiale setzt das Eingangsdatum erstmals (D13), Filiale → Filiale behält es und startet die Uhr der Zielfiliale nicht neu (D17, 22.09.2026). Gebucht wird beim Empfang durch die **empfangende** Filiale (F5). Hatte die Zielfiliale die Artikelnummer noch nie, startet die Uhr ab Eintreffen (F11, 23.09.2026) | ✅ abgeschlossen |
+| C5 | **Korrekturen**: Differenz von Hand buchen (`typ = korrektur`) — nur mit Grund, damit das Journal nachvollziehbar bleibt (Regel 2). Braucht es besonders am Anfang, weil der migrierte Bestand kumulierter Wareneingang ohne Verkäufe ist. Eingegeben wird die gezählte Menge, Gründe und Rechte gemäss 23.09.2026 | ✅ abgeschlossen |
+
+Alle fünf buchen über dieselbe Stelle wie der Zugang (`buche_zugang()` bzw.
+sein Gegenstück) und dieselbe Datenbank-Sperre, damit die Wege nicht
+auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
+
+**Details zu Phase C, Teilaufgabe C1 — Warnung bei Mehrlieferung** (siehe
+`docs/architektur.md`, Abschnitt „Erwartet → eingetroffen"):
+- `bestaetige_ankunft()` bucht weiterhin die tatsächliche Menge und gibt neu
+  `mehrlieferungen` zurück: je betroffene Position die Positions-Id, die
+  erwartete und die eingetroffene Menge sowie die Differenz. Mengen als Text
+  wie überall (kein `float`).
+- Verglichen wird der **Gesamtstand** der Position (`menge_eingetroffen`) mit
+  der erwarteten Menge, nicht die einzelne Buchung — sonst bliebe die
+  Mehrlieferung unbemerkt, wenn sie erst mit einer Nachlieferung entsteht.
+- Die Seite `/wareneingaenge` hängt einen Warnsatz an die Erfolgsmeldung
+  („bei {anzahl} Position(en) ist mehr eingetroffen als erwartet"), neuer
+  Übersetzungs-Key in DE/FR/EN (Regel 7). Blockiert wird nichts.
+- Tests: drei neue Fälle in `tests/test_wareneingang_ankunft.py` (Mehrmenge
+  gebucht und gemeldet, genaue Lieferung meldet nichts, Mehrlieferung entsteht
+  erst durch die Nachlieferung). Gesamtsuite: 421 bestandene Tests
+  (vorher 418).
+
+**Details zu Phase C, Teilaufgabe C2 — Bestandsansicht** (siehe
+`docs/architektur.md`, Abschnitt „Bestand ansehen"):
+- Neu `app/services/bestand.py` (nur lesen, Regel 2), `app/routers/bestand.py`
+  (`/bestand`, `/api/bestand`), Seite `app/templates/bestand.html` mit
+  `app/static/js/bestand.js`, Navigationseintrag „Bestand" auf allen Seiten.
+  Bis jetzt zeigte **keine** Seite den Bestand — die Artikelliste weist sogar
+  ausdrücklich darauf hin, dass ihre Mengen gelieferte und nicht vorhandene
+  Ware sind.
+- Eine Zeile ist eine **Variante × Lagerort** mit Menge und ältestem
+  Eingangsdatum; dieselbe Abfrage liefert Anzahl und Gesamtmenge der ganzen
+  Auswahl. Mengen als Text, nie als `float`.
+- Vorausgewählt ist die aktive Filiale; wählbar sind **alle** Standorte
+  (Leserechte vom 22.09.2026), dazu „Alle Filialen und Standorte". Der
+  Filialwechsel in der Sitzungsleiste bleibt unverändert bei den zugewiesenen
+  Filialen — er entscheidet weiterhin, wohin gebucht wird.
+- Zeilen mit Menge 0 sind ausgeblendet (umschaltbar), ein **negativer**
+  Bestand wird immer gezeigt: er ist seit dem 22.09.2026 möglich und dann
+  gerade das, was jemand sehen muss.
+- Ware an einem Standort ohne Verkauf hat kein Eingangsdatum (Regel 6/D13);
+  die Seite schreibt dort den Grund hin statt eines leeren Strichs.
+- Suche über Marke, Bezeichnung, Lieferanten-Artikelnummer und EAN;
+  Nachladen über `offset`, Obergrenze 500 Zeilen je Abfrage (Ladennetz).
+- Tests: `tests/test_bestand.py` (16 Fälle: Filter je Lagerort, externer
+  Standort ohne Datum, ausverkaufte und negative Zeilen, Suche über vier
+  Felder, seitenweises Nachladen, API mit aktiver und fremder Filiale,
+  unbekannte Filiale, Rechte ohne Anmeldung). Gesamtsuite: 438 bestandene
+  Tests (vorher 421).
+- Im Browser gegen eine SQLite-Testdatenbank durchgespielt: Vorauswahl der
+  aktiven Filiale, Umschalten auf „Alle Filialen und Standorte", Suche,
+  negativer Bestand, GEWA-Zeile mit Hinweis statt Datum. Dabei aufgefallen und
+  behoben: die erste Abfrage schickte `alle=true`, weil die Auswahlliste vor
+  der ersten Antwort nur den Eintrag „alle" kennt — gezeigt wurde also alles,
+  obwohl die Sitzungsleiste SF1 anzeigte. Die Seite merkt sich die Wahl jetzt
+  selbst und überlässt die erste Abfrage dem Server. Gegen PostgreSQL steht
+  der Durchgang noch aus.
+
+**Details zu Phase C, Teilaufgabe C3 — Ausbuchen per Scan** (siehe
+`docs/architektur.md`, Abschnitt „Ausbuchen"):
+- Neu `app/services/ausbuchung.py`, `app/routers/ausbuchung.py`
+  (`/ausbuchen`, `/api/ausbuchen/stammdaten`, `/api/ausbuchen`,
+  `/api/ausbuchen/{id}/storno`), Seite `app/templates/ausbuchen.html` mit
+  `app/static/js/ausbuchen.js`, Navigationseintrag „Ausbuchen" auf allen
+  Seiten. Kein Schema-Eingriff: `lagerbewegungen` kannte `verkauf` und
+  `ausbuchung` schon.
+- **Ein Scan = ein Stück** (F15): der Scan bucht sofort, ohne Mengenabfrage.
+  Schnelle Scans werden im Browser gesammelt und der Reihe nach gebucht.
+- **Gründe** (F14): Verkauf wird als `typ = verkauf` gebucht, Bruch/Defekt,
+  Diebstahl/Schwund, Eigenbedarf, Retoure und Sonstiges als `ausbuchung`;
+  der Grund steht in `lagerbewegungen.grund`, bei Sonstiges mit dem freien
+  Text (`sonstiges: …`, Pflicht, höchstens 150 Zeichen).
+- **Zu wenig Bestand** (F9): gebucht wird trotzdem, die Antwort meldet
+  `bestand_reicht_nicht` und die Seite warnt. Fehlt die Bestandszeile ganz,
+  entsteht sie mit negativer Menge und ohne Eingangsdatum. Ein Abgang ändert
+  das Eingangsdatum nie.
+- **Rückgängig** statt Löschen (Regel 2): eine Gegenbuchung `typ = korrektur`
+  mit `grund = 'storno:<id>'`, je Ausbuchung höchstens einmal.
+- Gebucht wird unter derselben Sperre wie der Zugang; welcher Lagerort
+  gebucht werden darf, prüft der Server (`resolve_wareneingang_lagerort`,
+  vorgewählt die aktive Filiale). Ausbuchen dürfen alle Rollen (Regel 9).
+- **Vorübergehender Test-Knopf** (Wunsch vom 23.09.2026): in der
+  Bestandsansicht je Zeile „−1", bucht über denselben Weg ein Stück ab
+  (`grund = 'test'`, in der Ausbuchen-Seite nicht wählbar). Funktioniert auch
+  für Varianten ohne EAN. Sichtbar für alle Rollen; wird entfernt, sobald das
+  Ausbuchen im Laden erprobt ist.
+- Tests: `tests/test_ausbuchung.py` (24 Fälle: ein Stück je Scan, Gründe und
+  Typ, Pflichttext bei Sonstiges, unbekannte EAN/Grund buchen nichts,
+  Variante ohne EAN, negativer Bestand mit Warnung, Eingangsdatum bleibt,
+  Bestand = Summe der Bewegungen, Storno einmalig und nur für Abgänge, API
+  inklusive Rechte). Gesamtsuite: 463 bestandene Tests (vorher 438).
+- Im Browser gegen eine SQLite-Testdatenbank durchgespielt: Scan mit Enter,
+  Scan ins Minus mit Warnung, Rückgängig, „−1" in der Bestandsansicht bis ins
+  Minus. Gegen PostgreSQL steht der Durchgang noch aus.
+
+**Details zu Phase C, Teilaufgabe C4 — Umlagerung** (siehe
+`docs/architektur.md`, Abschnitt „Umlagern"):
+- Neu `app/services/umlagerung.py`, `app/routers/umlagerung.py`
+  (`/umlagern`, `/api/umlagerung/stammdaten`, `/api/umlagerung`), Seite
+  `app/templates/umlagern.html` mit `app/static/js/umlagern.js`,
+  Navigationseintrag „Umlagern". Migration `e1f2a3b4c5d6`:
+  `lagerbewegungen.eingangsdatum`.
+- **Die empfangende Filiale bucht beim Empfang** (F5): vorgewählt ist die
+  aktive Filiale als Ziel, die Quelle wird gewählt. Eine Buchung erledigt
+  Abgang und Zugang, ganz oder gar nicht; einen Zustand „unterwegs" gibt es
+  nicht.
+- Ware sammeln per Scan (jeder Scan +1) oder über die Suche im Bestand der
+  Quelle — so gehen auch Varianten ohne EAN (Regel 5). Menge je Zeile
+  änderbar.
+- **Datumsregeln**, alle nur über `lagerorte.verkauf` entschieden:
+  externer Standort → Filiale setzt das Eingangsdatum (auf Wunsch
+  rückwirkend) und startet die Uhr (D13) — auch in einer Filiale, die den
+  Artikel schon kannte, weil es eine Nachlieferung ist; Filiale → Filiale
+  behält das Datum der Ware (D17) und lässt die Uhr des Ziels unverändert
+  (F10), ausser das Ziel hatte den Artikel nie — dann startet sie ab
+  Eintreffen (F11, geprüft je Artikel, nicht je Variante); Ziel ohne Verkauf
+  bekommt kein Datum (Regel 6).
+- `reduktion.letzter_wareneingang()` zählt neu auch Umlagerungen mit
+  `eingangsdatum` — Etikett und später Phase D sehen die Uhr also richtig.
+- **Annahme:** reicht der Bestand an der Quelle nicht, wird gewarnt und
+  trotzdem gebucht (wie F9 beim Ausbuchen) — die Ware ist ja physisch
+  angekommen, und der migrierte Bestand ist ungenau. Bitte melden, falls das
+  anders sein soll.
+- Tests: `tests/test_umlagerung.py` (24 Fälle: alle Datumsregeln inkl.
+  rückwirkend und Zukunft, F11 je Artikel, Journalzeilen, Zusammenzählen,
+  Fehlbestand, ungültige Positionen buchen nichts, ganz oder gar nicht, API
+  inklusive Rechte). Gesamtsuite: 488 bestandene Tests (vorher 463).
+- Im Browser gegen eine SQLite-Testdatenbank durchgespielt: GEWA → SF1 per
+  Scan (2 Stück) und über die Bestandssuche (Variante ohne EAN), Bestand
+  danach an beiden Orten kontrolliert. Gegen PostgreSQL steht der Durchgang
+  noch aus; das SQL der Migration ist offline geprüft.
+
+**Details zu Phase C, Teilaufgabe C5 — Korrekturen** (siehe
+`docs/architektur.md`, Abschnitt „Korrigieren"):
+- Neu `app/services/korrektur.py`, `app/routers/korrektur.py`
+  (`/api/korrektur/gruende`, `/api/korrektur`). Keine eigene Seite: jede
+  Zeile der Bestandsansicht hat einen Knopf „Zählen", der darunter ein
+  kleines Formular öffnet. Kein Schema-Eingriff.
+- **Gezählte Menge statt Differenz** (23.09.2026): die Differenz wird erst
+  unter der Sperre gerechnet — wurde zwischen Zählen und Buchen verkauft,
+  zählt der Stand von jetzt. Stimmt der Bestand schon, entsteht keine Zeile.
+  Die gebuchte Zeile ist `typ = korrektur`, `menge` = Differenz.
+- **Gründe:** `inventur`, `falsch_gebucht`, `gefunden`, `sonstiges: …`
+  (Pflichttext). **Rechte:** alle Rollen (Regel 9).
+- Eine Korrektur ist kein Wareneingang: das Eingangsdatum bleibt, auch wenn
+  eine neue Bestandszeile entsteht.
+- Tests: `tests/test_korrektur.py` (19 Fälle: Differenz minus/plus, nichts
+  buchen bei gleichem Stand, 0 gezählt, aus negativem Bestand, neue
+  Bestandszeile ohne Datum, Datum bleibt, Pflichttext, ungültige Mengen,
+  unbekannter Grund/Variante, API inklusive Rechte). Gesamtsuite: 507
+  bestandene Tests (vorher 488).
+- Im Browser gegen eine SQLite-Testdatenbank durchgespielt (4 → 1 und
+  2 → 5, auch mit Enter im Mengenfeld).
+
+Damit ist **Phase C abgeschlossen**. Offen bleiben der Durchgang gegen
+PostgreSQL und das Entfernen des Test-Knopfs „−1", sobald das Ausbuchen im
+Laden erprobt ist.
+
+**Details zu den Inbox-Anforderungen vom 23.09.2026** (umgesetzt am
+24.09.2026; Anforderungen und Entscheid zur Löschung in
+`docs/anforderungen-inbox-2026-09-23.md`):
+- **Lieferantengruppen und Etikett-Codes:** Gruppe = `lieferanten.typ`
+  (neu `intern` für Nike, adidas, The North Face), Code daraus abgeleitet
+  (`app/core/lieferanten.py`: Intersport 111, ECOM 555, Händler 333,
+  Dritte-Händler 999, Intern 444) und fett aufs Etikett. Je Gruppe ein
+  Lieferant für die Erfassung von Hand. Migration `f2a3b4c5d6e7`.
+  **Offen:** ECOM-Retouren kommen im Intersport-Layout und werden noch als
+  Intersport (111) zugeordnet, bis der Parser die Referenz „ret.Ecom" erkennt.
+- **Bestand:** Farbe, Grösse und Hauptgruppe in eigenen Spalten; Zeilen mit
+  Menge 0 erscheinen nicht mehr (Schalter entfernt), der Artikel bleibt im Stamm.
+- **Ausbuchungen als Liste:** Seite „Ausbuchen" zeigt alle Verkäufe und
+  Abgänge aus dem Journal mit Zeit, Person und Grund, je Filiale filterbar
+  (`GET /api/ausbuchungen`).
+- **Artikelsuche:** „EAN scannen" (fokussiert, Scan + Enter sucht sofort) und
+  „Schnellsuche" vorne, übrige Filter unter „Weitere Filter", dort auch „Nur
+  von Hand erfasst".
+- **Übersicht:** Begrüssung, Schnellzugriffe, Kennzahlen der aktiven Filiale,
+  „Anstehend" (Lieferungen, negativer Bestand, Reduktionsalter −50/−70 % inkl.
+  nächste 30 Tage, Artikel ohne Kategorie/EAN), „Aktuelles"
+  (`app/services/uebersicht.py`, erweitertes `GET /api/dashboard`). Die
+  Reduktionszahlen sind ein **Hinweis** nach Alter; ob schon reduziert wurde,
+  weiss das System erst mit Phase D.
+- **Artikel löschen:** `DELETE /api/articles/{id}` und Knopf auf der
+  Artikelseite, nur Filialleiter/Zentrale, nur ohne Beleg
+  (`app/services/artikel_loeschen.py`).
+- Tests: `test_lieferantengruppen.py`, `test_uebersicht.py`,
+  `test_artikel_loeschen.py`, Ergänzungen in `test_bestand.py`,
+  `test_ausbuchung.py`, `test_ean_etikett.py`, `test_manuelle_erfassung.py`.
+  Gesamtsuite: 533 bestanden, 20 übersprungen (vorher 507). Im Browser gegen
+  eine SQLite-Testdatenbank angesehen: Übersicht, Bestand, Ausbuchen mit
+  Liste, Artikelsuche mit Scan. Der Lösch-Knopf selbst wurde nur über die
+  API-Tests geprüft (Filialleiter-Anmeldung braucht ein Passwort).
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
@@ -468,7 +713,7 @@ Lieferadresse"):
   geraten; dann bleibt es bei der aktiven Filiale.
 - D19 in der Oberfläche: die Vorschau zeigt „Wareneingang buchen auf" als
   Auswahl, vorbelegt mit dem Vorschlag, daneben die Begründung („Aus der
-  Lieferadresse erkannt: SF4 · Conthey") oder der Hinweis, dass nichts erkannt
+  Lieferadresse erkannt: SF2 · Conthey") oder der Hinweis, dass nichts erkannt
   wurde. `/import-invoice` nimmt den gewählten Lagerort entgegen und prüft ihn
   serverseitig; ohne Angabe bleibt alles wie bisher.
 - Buchbar sind **alle** Lagerorte (eigene Filiale zuerst). Sonst liesse sich
@@ -476,8 +721,9 @@ Lieferadresse"):
   D19 wäre für genau die Fälle wirkungslos, für die es gedacht ist. Wer hier
   hinkommt, darf ohnehin Dokumente hochladen (Regel 9); eine falsch gewählte
   Filiale ist über eine Umlagerung korrigierbar. **Von Fabian bestätigt**
-  (21.09.2026) und als D26 festgehalten. Filialwechsel und Leseansichten
-  bleiben unverändert bei den zugewiesenen Filialen.
+  (21.09.2026) und als D26 festgehalten. Der Filialwechsel bleibt unverändert
+  bei den zugewiesenen Filialen; lesen dürfen Mitarbeiter und Filialleiter
+  gemäss Bestätigung vom 22.09.2026 alle Filialen (Abschnitt 10).
 - Tests: `tests/test_lieferadresse.py` (24 Tests: jede Seed-Adresse,
   Lieferadresse schlägt Rechnungsadresse, Gleichstand ohne Vorschlag,
   Schreibweisen, „Lieferschein" ist kein Anker) und
@@ -485,7 +731,7 @@ Lieferadresse"):
   Anmeldung**, also inklusive Rechteweg). Gesamtsuite: 213 bestandene Tests
   (vorher 182).
 - Gegen echtes PostgreSQL 16 im Browser durchgespielt: Anmeldung, Upload einer
-  Rechnung mit Lieferadresse Conthey, Vorauswahl SF4 mit Begründung,
+  Rechnung mit Lieferadresse Conthey, Vorauswahl SF2 mit Begründung,
   vollständige Auswahlliste.
 
 **Details zu Phase B, Teilaufgabe B5 — erwartet → eingetroffen** (Regel 3, D6,
@@ -526,9 +772,10 @@ D21, D22; siehe `docs/architektur.md`, Abschnitt „Erwartet → eingetroffen"):
   INTERSPORT-Rechnungslayout kennt (weitere Layouts: Phase E). Der Weg
   funktioniert also erst mit den nächsten Parsern oder mit der manuellen
   Erfassung (B6) vollständig.
-- **Offen geblieben:** Kommt *mehr* an als bestellt, bucht das System es
+- ~~**Offen geblieben:** Kommt *mehr* an als bestellt, bucht das System es
   (Bestand = was physisch da ist). Am 22.09.2026 bestätigt: zusätzlich warnen,
-  Buchung weiterhin zulassen; die Warnung ist noch umzusetzen.
+  Buchung weiterhin zulassen; die Warnung ist noch umzusetzen.~~ — erledigt mit
+  Phase C, Teilaufgabe C1 (siehe unten).
 
 **Details zu Phase B, Teilaufgabe B6 — manuelle Erfassung mit Scanner**
 (D23, D27, Regel 3/5/6/9/10; siehe `docs/architektur.md`, Abschnitt „Ware von
@@ -623,7 +870,8 @@ Etikett"):
   „Etiketten drucken" für den ganzen Wareneingang, ein Etikett je Stück.
   Beides auch für **Mitarbeiter** (Regel 9). Übersetzungen DE/FR/EN.
 - **Annahmen, solange zwei Fragen offen sind:** Etikettengrösse einstellbar
-  (`GROESSEN`), Voreinstellung 50 × 30 mm; der Strichcode ist drauf (siehe
+  (`GROESSEN`), Voreinstellung damals 50 × 30 mm — seit 23.09.2026
+  84 × 47 mm, die bestätigte Rollengrösse; der Strichcode ist drauf (siehe
   Abschnitt 10, Frage 2). Beides ist an einer Stelle änderbar.
 - Kein Schema-Eingriff nötig: `varianten.ean`/`ean_intern` gab es schon, sie
   werden jetzt benutzt.
@@ -791,9 +1039,12 @@ und Wahl von Hand"):
 - ~~Regel 5 („EAN ist optional") gilt im Datenmodell und im Importer, **nicht** aber in
   Parser/Korrekturen~~ — erledigt mit Teilaufgabe B3 (siehe unten): eine Position ohne
   EAN läuft mit Hinweis durch, eine unleserliche EAN bleibt eine Warnung.
-- Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
+- ~~Filialbezug der Ansichten: Dashboard, Rechnungsliste und Artikeldetails zeigen jedem
   angemeldeten Konto die Dokumente **aller** Filialen. Ob Regel 9 („Admin/Zentrale
-  filialübergreifend") auch das Lesen einschränken soll, ist eine fachliche Frage an Fabian.
+  filialübergreifend") auch das Lesen einschränken soll, ist eine fachliche Frage an Fabian.~~
+  — geklärt am 22.09.2026 (Abschnitt 10, Leserechte): Mitarbeiter und Filialleiter dürfen
+  Dokumente und Bestände aller Filialen sehen, die Schreibrechte bleiben unverändert. Das
+  bisherige Verhalten der Ansichten ist damit bestätigt, am Code war nichts zu ändern.
 
 **Konzeptänderung Rev. 6** (21.09.2026): zwei externe Verarbeitungsstellen statt
 einer, plus ein externes Lager.
@@ -822,5 +1073,11 @@ einer, plus ein externes Lager.
 *Dieses Dokument wird bei jeder Entscheidung/Phase nachgeführt. Die Master-Kopie liegt im Claude-Projekt „Sportfabrik WarenWirtschaftsSystem“.*
 
 ## Lokaler Abgleich am 22.09.2026
+
+**Abendstand:** Filialcodes korrigiert (SF2 Conthey, SF3 Regensdorf, SF4
+Hägendorf, Migration `d0e1f2a3b4c5`), Belege dürfen für den Parserbau gezeigt
+werden, Phase C geplant und die Teilaufgaben C1 und C2 gebaut. Lokale Suite:
+438 bestanden, 20 übersprungen (SQLite). Gegen PostgreSQL ist davon noch
+nichts gelaufen. Alles auf dem Branch `feature/warenwirtschaft-v2`, gepusht.
 
 Cloud-main `d1c6533` übernommen. Lokale Suite mit `DATABASE_URL=sqlite:// .venv/bin/pytest -q`: 415 bestanden, 20 übersprungen. Kein neuer PostgreSQL- oder Produktivtest. Codegraph mit `--code-only` frisch aufgebaut und lokal als HTML und Obsidian-Vault exportiert; Graphdateien bleiben gitignored. Bestätigte Antworten aus dem Main-Vault in Abschnitt 10 übernommen.

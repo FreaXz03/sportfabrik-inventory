@@ -6,23 +6,21 @@
      <meta name="viewport" content="width=device-width,initial-scale=1">
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
-     <title data-i18n="preview.page_title">Rechnungsprüfung · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=premium-2">
+     <title data-i18n="preview.page_title">Belegprüfung · Sport-Fabrik</title>
+     <link rel="stylesheet" href="/static/css/app.css?v=header-10">
 </head>
 
 <body>
      <header><a class="brand" href="/" data-i18n-aria-label="dashboard.brand_aria" aria-label="Sport-Fabrik Inventory – Übersicht"><img
                     src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a>
-          <nav data-i18n-aria-label="nav.main_aria" aria-label="Hauptnavigation"><a href="/" data-i18n="nav.overview">Übersicht</a><a href="/articles" data-i18n="nav.articles">Artikel</a><a
-                    href="/invoices" data-i18n="nav.invoices">Rechnungen</a><a href="/wareneingaenge" data-i18n="nav.wareneingaenge">Lieferungen</a><a href="/erfassen" data-i18n="nav.erfassen">Erfassen</a><a href="/preview" data-i18n="nav.upload">Rechnung hochladen</a></nav>
+          <nav data-i18n-aria-label="nav.main_aria" aria-label="Hauptnavigation"></nav>
      </header>
      <main class="preview-page">
-          <h1 data-i18n="preview.heading">Rechnung prüfen</h1>
-          <p data-i18n="preview.intro_line1">INTERSPORT-Rechnung hochladen und die erkannten Artikel kontrollieren.</p>
-          <p data-i18n="preview.intro_line2">Erst nach deiner Bestätigung
-               werden Rechnung und Artikel in der Datenbank gespeichert.</p>
+          <h1 data-i18n="preview.heading">Beleg prüfen</h1>
+          <p data-i18n="preview.intro_line1">Beleg hochladen (Rechnung, Lieferschein oder Auftragsbestätigung) und die erkannten Artikel kontrollieren.</p>
+          <p data-i18n="preview.intro_line2">Erst nach deiner Bestätigung werden Beleg und Artikel in der Datenbank gespeichert.</p>
           <section class="panel">
-               <form id="upload"><label data-i18n="preview.upload_label">PDF-Rechnungen auswählen<input id="file" type="file" multiple
+               <form id="upload"><label data-i18n="preview.upload_label">PDF-Belege auswählen<input id="file" type="file" multiple
                               accept="application/pdf,.pdf" required></label><button id="submit" data-i18n="preview.upload_submit">Dateien
                          einlesen</button></form>
                <p class="muted" data-i18n="preview.upload_hint">Bis zu 20 PDFs / insgesamt 100 MB · pro Datei maximal 20 MB und 200 Seiten. Weitere
@@ -30,16 +28,15 @@
                <div id="status" role="status" aria-live="polite"></div>
           </section>
           <section id="batch" class="panel" hidden>
-               <h2 data-i18n="preview.batch_heading">Deine Rechnungsauswahl</h2>
+               <h2 data-i18n="preview.batch_heading">Deine Belegauswahl</h2>
                <p id="batchSummary" role="status" aria-live="polite"></p>
-               <p class="muted" data-i18n="preview.batch_hint">Rechnung auswählen, prüfen und einzeln importieren. Korrekturen bleiben beim Wechsel
-                    erhalten. Noch nicht importierte Vorschauen werden beim Schliessen verworfen.</p>
+               <p class="muted" data-i18n="preview.batch_hint">Beleg auswählen, prüfen und einzeln importieren. Korrekturen bleiben beim Wechsel erhalten. Noch nicht importierte Vorschauen werden beim Schliessen verworfen.</p>
                <div id="batchRows"></div>
           </section>
           <section id="result" class="panel" hidden>
                <div class="preview-heading">
                     <div>
-                         <p class="eyebrow" data-i18n="preview.result_eyebrow">Rechnungsvorschau</p>
+                         <p class="eyebrow" data-i18n="preview.result_eyebrow">Belegvorschau</p>
                          <h2 id="invoice"></h2>
                          <p id="filename"></p>
                          <p id="detected" class="muted"></p>
@@ -50,9 +47,7 @@
                                    id="lagerort"></select></label>
                     <p id="lagerortNote" class="muted"></p>
                </div>
-               <p id="ocrNotice" class="notice ocr" hidden data-i18n="preview.ocr_notice">Diese Rechnung wurde aus einem eingescannten Blatt per
-                    Texterkennung (OCR) gelesen. OCR ist nicht 100% zuverlässig - bitte alle Positionen besonders
-                    sorgfältig prüfen, bevor du importierst.</p>
+               <p id="ocrNotice" class="notice ocr" hidden data-i18n="preview.ocr_notice">Dieser Beleg wurde aus einem eingescannten Blatt per Texterkennung (OCR) gelesen. OCR ist nicht 100% zuverlässig - bitte alle Positionen besonders sorgfältig prüfen, bevor du importierst.</p>
                <p id="warnings" class="notice" hidden></p>
                <div class="preview-tools">
                     <div class="preview-tools-heading">
@@ -68,8 +63,7 @@
                     <div class="preview-editbar"><label class="edit-switch"><input type="checkbox" role="switch"
                                    id="editMode"><span class="edit-switch-track" aria-hidden="true"></span><span data-i18n="preview.edit_mode_label">Werte
                                    bearbeiten</span></label>
-                         <p id="editHelp" hidden data-i18n="preview.edit_help">Felder direkt in der Tabelle bearbeiten. Bestehende Artikelstammdaten
-                              bleiben erhalten; korrigierte Werte werden für diese Rechnungsposition gespeichert.</p>
+                         <p id="editHelp" hidden data-i18n="preview.edit_help">Felder direkt in der Tabelle bearbeiten. Bestehende Artikelstammdaten bleiben erhalten; korrigierte Werte werden für diese Belegposition gespeichert.</p>
                          <button type="button" id="validateEdits" class="secondary" hidden data-i18n="preview.validate_edits">Änderungen
                               prüfen</button><button type="button" id="resetEdits" class="secondary" hidden data-i18n="preview.reset_edits">Alle
                               Korrekturen zurücksetzen</button>
@@ -104,8 +98,7 @@
                     <div class="import-copy">
                          <h3 data-i18n="preview.finish_heading">Prüfung abschliessen</h3><label><input type="checkbox" id="confirm"> <span data-i18n="preview.confirm_label">Alle Positionen
                               geprüft – bereit zum Import.</span></label>
-                         <p class="muted" data-i18n="preview.import_all_hint">Es wird immer die vollständige Rechnung importiert, auch wenn ein Filter aktiv
-                              ist.</p>
+                         <p class="muted" data-i18n="preview.import_all_hint">Es wird immer der vollständige Beleg importiert, auch wenn ein Filter aktiv ist.</p>
                     </div>
                     <div class="import-actions"><button type="button" id="import" disabled data-i18n="preview.import_button">Import bestätigen</button>
                          <p id="importStatus" role="status" aria-live="polite"></p>
@@ -115,7 +108,8 @@
      </main>
      <script src="/static/js/preview.js?v=lagerort-1"></script>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/session.js?v=premium-1"></script>
+     <script src="/static/js/nav.js?v=2"></script>
+     <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>
 </body>
 

@@ -6,8 +6,8 @@ der EAN-Strichcode: ohne ihn bliebe genau der Artikel an der Kasse
 unscannbar, für den die interne EAN (D10) gedacht ist - die Nummer allein
 nützt an der Kasse nichts.
 
-Gedruckt wird auf dem Sato CL4NX Plus (D14). Weil die Etikettengrösse noch
-nicht bestätigt ist, ist sie **einstellbar** (`GROESSEN`); die PDF-Seite ist
+Gedruckt wird auf dem Sato CL4NX Plus (D14), Rollen 84 × 47 mm (bestätigt
+am 23.09.2026). Die Grösse bleibt **einstellbar** (`GROESSEN`); die PDF-Seite ist
 exakt so gross wie das Etikett, damit der Drucker 1:1 druckt und nichts
 skaliert werden muss.
 
@@ -25,6 +25,7 @@ import pymupdf
 from sqlalchemy import select
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
+from ..core.lieferanten import etikett_code
 from ..core.models import Artikel, Lieferant, Preis, Variante
 from .barcode import (
     RUHEZONE_LINKS,
@@ -35,16 +36,17 @@ from .barcode import (
 )
 from .reduktion import letzter_wareneingang, stufe
 
-# Breite × Höhe in Millimetern. Voreinstellung 50 × 30 mm - die im Outlet
-# übliche Grösse für Preisetiketten; sobald die Rollen im Laden bestätigt
-# sind, kommt die richtige Grösse hierher (und wird zur Voreinstellung).
+# Breite × Höhe in Millimetern. Voreinstellung 84 × 47 mm - die Rollen im
+# Sato CL4NX Plus der Sportfabrik (bestätigt am 23.09.2026). Die übrigen
+# Grössen bleiben wählbar, falls einmal andere Rollen eingelegt sind.
 GROESSEN = {
+    "84x47": (84, 47),
     "50x30": (50, 30),
     "57x32": (57, 32),
     "70x40": (70, 40),
     "100x50": (100, 50),
 }
-STANDARD_GROESSE = "50x30"
+STANDARD_GROESSE = "84x47"
 
 MM = 72 / 25.4  # Millimeter → PDF-Punkte
 
@@ -75,6 +77,8 @@ class Etikett:
     farbe: str | None = None
     groesse: str | None = None
     lieferant: str | None = None
+    # Code der Lieferantengruppe (111/555/333/999/444, 23.09.2026).
+    lieferant_code: str | None = None
     uvp: Decimal | None = None
     jahrgang: int | None = None
     reduktion: int = 0
@@ -136,6 +140,7 @@ def sammle_etikett(
         farbe=variante.farbe,
         groesse=variante.groesse,
         lieferant=lieferant.name if lieferant else None,
+        lieferant_code=etikett_code(lieferant.typ) if lieferant else None,
         uvp=preis.uvp if preis else None,
         jahrgang=eingang.year if eingang else None,
         reduktion=stufe(eingang, heute) if reduktion is None else reduktion,
@@ -239,7 +244,13 @@ def _zeichne_etikett(page, etikett: Etikett, breite: float, hoehe: float) -> Non
     _zeile(page, links, 16 * skala, etikett.bezeichnung, NORMAL, 7 * skala, platz=platz)
     variante = " / ".join(t for t in (etikett.farbe, etikett.groesse) if t)
     _zeile(page, links, 23 * skala, variante, NORMAL, 6.5 * skala, (0.35, 0.35, 0.35), platz)
-    _zeile(page, links, 29.5 * skala, etikett.lieferant, NORMAL, 6 * skala, (0.35, 0.35, 0.35), platz)
+    # Rechts neben dem Lieferanten der Gruppen-Code - fett, damit er im
+    # Laden auf einen Blick lesbar ist (Anforderungen vom 23.09.2026).
+    code_platz = 0
+    if etikett.lieferant_code:
+        _rechtsbuendig(page, rechts, 29.5 * skala, etikett.lieferant_code, FETT, 8 * skala)
+        code_platz = pymupdf.get_text_length(etikett.lieferant_code, fontname=FETT, fontsize=8 * skala) + 3 * skala
+    _zeile(page, links, 29.5 * skala, etikett.lieferant, NORMAL, 6 * skala, (0.35, 0.35, 0.35), platz - code_platz)
 
     # Preis und Reduktionsstufe.
     if etikett.uvp is not None:

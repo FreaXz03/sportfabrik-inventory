@@ -32,7 +32,7 @@ nach dem Login auf eine fremde Seite weiterleitet (offener Redirect).
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/` | Übersichtsseite (Dashboard) |
-| GET | `/api/dashboard` | Kennzahlen (Anzahl Artikel/Rechnungen/Positionen, gelieferte Gesamtmenge) + die letzten 5 importierten Rechnungen |
+| GET | `/api/dashboard` | Kennzahlen (Anzahl Varianten/Belege/Positionen, gelieferte Gesamtmenge) + die letzten 5 importierten Belege; dazu `lagerort` und `filiale` (Stück, heute verkauft/abgegangen, negativer Bestand, erwartete Lieferungen, `reduktionen` je Stufe mit `faellig`/`bald`) der aktiven Filiale, `aktuelles` (letzte Lagerbewegungen) und `stamm` (`ohne_kategorie`, `ohne_ean`) |
 
 ## Artikel
 
@@ -148,12 +148,60 @@ Upload/Validierungs-/Import-Ablauf wie ein Einzel-Upload.
 |---|---|---|
 | GET | `/wareneingaenge` | Seite „Erwartete Lieferungen" (jede Anmeldung) |
 | GET | `/api/wareneingaenge` | Offene (erwartete) Lieferungen der aktiven Filiale samt Positionen; ohne aktive Filiale (Admin) alle |
-| POST | `/api/wareneingaenge/{id}/ankunft` | Ankunft bestätigen: `{"mengen": {"<positions-id>": "<menge>"}, "eingangsdatum": "YYYY-MM-DD"}`. Bucht den Zugang, setzt das Eingangsdatum (rückwirkend möglich) und schliesst die Lieferung, sobald keine Position mehr offen ist |
+| POST | `/api/wareneingaenge/{id}/ankunft` | Ankunft bestätigen: `{"mengen": {"<positions-id>": "<menge>"}, "eingangsdatum": "YYYY-MM-DD"}`. Bucht den Zugang, setzt das Eingangsdatum (rückwirkend möglich) und schliesst die Lieferung, sobald keine Position mehr offen ist. Antwort enthält `mehrlieferungen`: je Position, bei der mehr eingetroffen ist als erwartet, die Positions-Id sowie erwartete, eingetroffene und überzählige Menge — gebucht wird trotzdem |
 
 Auch **Mitarbeiter** dürfen bestätigen (D21) — das ist Lagerarbeit, kein
 Dokumentrecht. Unplausible Mengen, fremde Positionen oder eine bereits
 vollständig eingetroffene Lieferung ergeben HTTP 409, ein ungültiges Datum
 HTTP 422; gebucht wird in beiden Fällen nichts.
+
+## Bestand
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/bestand` | Seite „Bestand" (jede Anmeldung) |
+| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+
+**Lesen darf jede Anmeldung alle Filialen** (bestätigt am 22.09.2026) — auch
+die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`
+ergibt HTTP 404. Mengen kommen als Text (`"5.00"`), nie als Zahl; ein
+negativer Bestand wird gezeigt, nicht versteckt.
+
+## Ausbuchen
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/ausbuchen` | Seite „Ausbuchen" (jede Anmeldung) |
+| GET | `/api/ausbuchen/stammdaten` | Buchbare Lagerorte (`lagerorte`, eigene zuerst), `lagerort_aktiv`, `gruende` (`verkauf`, `defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges`) |
+| POST | `/api/ausbuchen` | Ein Stück ausbuchen. JSON: `grund`, genau eines von `ean` oder `varianten_id`, `freitext` (Pflicht bei `sonstiges`), `lagerort_id` (ohne Angabe die aktive Filiale). Antwort: `bewegung_id`, `typ`, `grund`, Artikeldaten, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 bei unbekannter EAN/Variante oder unbekanntem Grund — dann ist nichts gebucht |
+| GET | `/api/ausbuchungen` | Verkäufe und Abgänge, neueste zuerst. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true`, `limit` (max. 200), `offset`. Je Zeile Zeitpunkt, Artikel, Lagerort, Grund, Person (`benutzer_name`), `storniert` |
+| POST | `/api/ausbuchen/{bewegung_id}/storno` | Ausbuchung per Gegenbuchung (`korrektur`, `storno:<id>`) aufheben; 409, wenn schon aufgehoben oder keine Ausbuchung |
+
+Der Grund `test` gehört zum vorübergehenden Knopf „−1" in der
+Bestandsansicht und steht nicht in `gruende`.
+
+## Artikel löschen
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| DELETE | `/api/articles/{id}` | Falsch erfassten Artikel (Varianten-Id) ganz entfernen — nur Filialleiter/Zentrale, nur ohne Beleg (sonst 409). Entfernt Artikel, Varianten, Preise, Notizen, manuelle Wareneingangspositionen, Bestand und Lagerbewegungen. `GET /api/articles/{id}/history` meldet dafür `product.manuell` |
+
+`GET /api/articles` kennt dazu den Filter `nur_manuell=true` (nur Artikel ohne Beleg).
+
+## Korrigieren
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/api/korrektur/gruende` | `gruende`: `inventur`, `falsch_gebucht`, `gefunden`, `sonstiges` |
+| POST | `/api/korrektur` | Gezählte Menge buchen. JSON: `varianten_id`, `lagerort_id` (ohne Angabe die aktive Filiale), `gezaehlt` (Text, ≥ 0), `grund`, `freitext` (Pflicht bei `sonstiges`). Antwort: `bestand_vorher`, `bestand_nachher`, `differenz`, `gebucht` (`false`, wenn der Bestand schon stimmte), `bewegung_id`. 409 bei ungültiger Menge, unbekanntem Grund oder unbekannter Variante |
+
+## Umlagern
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/umlagern` | Seite „Umlagern" (jede Anmeldung) |
+| GET | `/api/umlagerung/stammdaten` | `quellen` (alle Lagerorte), `ziele` (buchbare, eigene zuerst), `ziel_aktiv`, `heute`; je Lagerort `verkauf` |
+| POST | `/api/umlagerung` | Umlagerung beim Empfang buchen. JSON: `quelle_id`, `ziel_id` (ohne Angabe die aktive Filiale), `eingangsdatum` (optional, `YYYY-MM-DD`, nicht in der Zukunft; zählt nur, wo die Uhr startet), `positionen` (`varianten_id`, `menge` als Text; gleiche Varianten werden zusammengezählt). Antwort: `quelle`, `ziel`, `positionen` (je Variante Bestand vorher/nachher und `uhr_start`), `fehlbestand`, `stueck`. 409 bei gleichem Quell- und Ziel-Lagerort, ungültiger Menge oder unbekannter Variante — dann ist nichts gebucht |
 
 ## Ware von Hand erfassen (ohne Beleg)
 
@@ -201,7 +249,7 @@ Lagerort ohne Zugriff ergibt HTTP 403, ein ungültiges Datumsformat HTTP 422.
 |---|---|---|
 | POST | `/api/varianten/{id}/ean` | EAN setzen: `{"generieren": true}` erzeugt eine interne EAN-13 (GS1 20–29, D24), `{"ean": "4006381333931"}` trägt eine vorhandene nach (Format **und** Prüfziffer werden geprüft) |
 | GET | `/api/varianten/{id}/etikett` | Was auf dem Etikett stünde (Vorschau für die Oberfläche) samt Auswahllisten für Grösse und Reduktion |
-| GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (z. B. `50x30`), `reduktion` (0/30/50/70), `anzahl` (1–100) |
+| GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (Voreinstellung `84x47`, auch `50x30` u. a.), `reduktion` (0/30/50/70), `anzahl` (1–100) |
 | GET | `/api/wareneingaenge/{id}/etiketten.pdf` | Alle Etiketten eines Wareneingangs — `je_stueck=true` (Voreinstellung) druckt eines pro Stück, sonst eines je Position |
 
 Beide PDF-Antworten kommen als `application/pdf` mit `Content-Disposition:

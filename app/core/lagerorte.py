@@ -4,6 +4,11 @@ und das externe Lager in Dietikon. Adressen aus docs/projekt-kontext.md
 Abschnitt 1. Einzige Quelle für diese Daten - Migration und Tests nutzen sie,
 damit beide garantiert übereinstimmen.
 
+Die Zuordnung Code -> Filiale ist seit dem 22.09.2026 korrigiert: SF1
+Volketswil, SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf. Vorher stand hier
+SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey - bestehende Datenbanken zieht
+Migration d0e1f2a3b4c5 nach.
+
 `verkauf = False` ist das Unterscheidungsmerkmal, an dem die Eingangsdatum-Regel
 hängt (Regel 6): An keinem dieser drei Standorte startet die Reduktionsuhr - das
 passiert erst bei Ankunft in einer Filiale.
@@ -27,6 +32,16 @@ LAGERORTE_SEED = [
     },
     {
         "code": "SF2",
+        "name": "Conthey",
+        "strasse": "Route Cantonale 7",
+        "plz": "1964",
+        "ort": "Conthey",
+        "telefon": "027 322 75 83",
+        "email": "conthey@sportfabrik.ch",
+        "verkauf": True,
+    },
+    {
+        "code": "SF3",
         "name": "Regensdorf",
         "strasse": "Althardstrasse 10",
         "plz": "8105",
@@ -36,23 +51,13 @@ LAGERORTE_SEED = [
         "verkauf": True,
     },
     {
-        "code": "SF3",
+        "code": "SF4",
         "name": "Hägendorf",
         "strasse": "Industriestrasse West 40/42",
         "plz": "4614",
         "ort": "Hägendorf",
         "telefon": "062 216 53 88",
         "email": "haegendorf@sportfabrik.ch",
-        "verkauf": True,
-    },
-    {
-        "code": "SF4",
-        "name": "Conthey",
-        "strasse": "Route Cantonale 7",
-        "plz": "1964",
-        "ort": "Conthey",
-        "telefon": "027 322 75 83",
-        "email": "conthey@sportfabrik.ch",
         "verkauf": True,
     },
     {

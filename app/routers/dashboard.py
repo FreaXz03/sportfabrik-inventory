@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
-from .auth import get_language, require_login_api
+from .auth import get_active_lagerort, get_language, require_login_api
 from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import Dokument, Lieferant, Variante, WareneingangPosition
+from ..services import uebersicht
 from .history import invoice_data
 
 router = APIRouter()
@@ -13,9 +14,14 @@ router = APIRouter()
 @router.get("/api/dashboard")
 def dashboard(
     user=Depends(require_login_api),
+    lagerort=Depends(get_active_lagerort),
     session=Depends(get_session),
     language: str = Depends(get_language),
 ):
+    """Stammzahlen und zuletzt importierte Belege; dazu seit 23.09.2026
+    Kennzahlen und anstehende Vorgänge der aktiven Filiale (`filiale`, leer
+    ohne aktive Filiale), die letzten Buchungen (`aktuelles`) und Hinweise
+    zum Artikelstamm (`stamm`)."""
     try:
         counts = {
             key: session.scalar(select(func.count()).select_from(model))
@@ -40,6 +46,12 @@ def dashboard(
                 else "0"
             ),
             recent_invoices=[invoice_data(d, supplier) for d, supplier in rows],
+            lagerort=None
+            if lagerort is None
+            else {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
+            filiale=None if lagerort is None else uebersicht.filiale(session, lagerort.id),
+            aktuelles=uebersicht.aktuelles(session, None if lagerort is None else lagerort.id),
+            stamm=uebersicht.stamm(session),
         )
     except SQLAlchemyError as exc:
         raise HTTPException(

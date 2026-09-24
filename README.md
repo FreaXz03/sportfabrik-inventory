@@ -8,7 +8,7 @@ und Preisverlauf nachvollziehen, Freitext-Notizen hinterlegen und die
 Artikelliste als Excel-Datei exportieren.
 
 Läuft auf einem zentralen Server (Volketswil); die 4 Filialen (SF1 Volketswil,
-SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey) sowie die externen Standorte ohne
+SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf) sowie die externen Standorte ohne
 Verkauf — die Verarbeitungsstellen GEWA und VEBO und das Lager Dietikon —
 greifen im internen Netz über den Browser darauf zu. Anmeldung nach
 Kassensystem-Muster: Mitarbeiter mit blosser Kassennummer, Filialleiter und
@@ -33,6 +33,25 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Erwartete Lieferungen**: Auftragsbestätigungen und Bestellungen kündigen
   Ware nur an — Bestand entsteht erst, wenn jemand die Ankunft bestätigt.
   Kommt weniger an, bleibt die Restmenge sichtbar offen.
+- **Übersicht** als Startseite: grosse Schnellzugriffe für die häufigsten
+  Arbeiten, Kennzahlen der Filiale, was ansteht (Lieferungen, zu zählender
+  Bestand, Artikel im Reduktionsalter) und die letzten Buchungen.
+- **Bestand je Filiale** (Seite „Bestand"): aktueller Bestand pro Variante
+  und Lagerort mit Farbe, Grösse und Hauptgruppe, Suche, Filiale-Filter und
+  ältestem Eingangsdatum; Zeilen mit Menge 0 erscheinen nicht. Lesen
+  darf jede Anmeldung alle Filialen; Ware an einem externen Standort ist als
+  solche erkennbar, weil sie noch kein Eingangsdatum hat.
+- **Ausbuchen per Scan** (Seite „Ausbuchen"): jeder Scan bucht sofort ein
+  Stück aus — Verkauf, Bruch/Defekt, Diebstahl/Schwund, Eigenbedarf, Retoure
+  oder Sonstiges. Reicht der Bestand nicht, warnt die Seite und bucht
+  trotzdem; ein Fehlscan lässt sich per Gegenbuchung rückgängig machen.
+  Darunter die Liste aller Ausbuchungen mit Zeit, Person und Grund.
+- **Umlagern** (Seite „Umlagern"): die empfangende Filiale bucht Ware aus
+  einem anderen Lagerort in einem Schritt — per Scan oder aus dem Bestand der
+  Quelle. Ware aus GEWA, VEBO oder Dietikon bekommt dabei ihr Eingangsdatum;
+  zwischen Filialen behält sie ihr Datum.
+- **Bestand korrigieren** (Knopf „Zählen" in der Bestandsansicht): gezählte
+  Menge eingeben, das System bucht die Differenz mit Grund.
 - **Ware von Hand erfassen** (Seite „Erfassen"): scannen oder eintippen,
   ohne Beleg und ohne Parser — für Ware ohne Dokument und für Lieferanten,
   deren Layout noch nicht erkannt wird. Pflicht sind nur Marke, Bezeichnung,
@@ -44,14 +63,18 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Interne EAN auf Knopfdruck**: Artikel ohne Hersteller-Barcode bekommen
   eine hauseigene EAN-13 (GS1-Bereich 20–29, mit Prüfziffer) und werden damit
   an der Kasse scannbar.
-- **Preisetikett als PDF** in Etikettengrösse für den Etikettendrucker: mit
-  Jahrgang, Lieferant, UVP, Reduktionsstufe und EAN-Strichcode — einzeln oder
+- **Preisetikett als PDF** in Etikettengrösse (84 × 47 mm) für den
+  Etikettendrucker: mit Jahrgang, Lieferant samt Gruppen-Code
+  (111/555/333/999/444), UVP, Reduktionsstufe und EAN-Strichcode — einzeln oder
   für einen ganzen Wareneingang auf einmal.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
-- **Artikelsuche** über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung,
-  Farbe, Grösse, Kategorie und Lieferdatum-Bereich, mit sortierbaren Spalten,
+- **Artikelsuche**: vorne nur „EAN scannen" (sofort aktiv) und Schnellsuche,
+  weitere Filter (Marke, Lieferanten-Artikelnummer, Bezeichnung, Kategorie,
+  Lieferdatum, nur von Hand erfasst) eingeklappt; sortierbare Spalten,
   Spalten-Auswahl und Excel-Export.
+- **Falsch erfasste Artikel löschen**: Filialleiter und Zentrale können einen
+  von Hand erfassten Artikel ohne Beleg samt Bestand und Buchungen entfernen.
 - **Lieferhistorie und Preisverlauf** je Artikel (inkl. aller Farb-/
   Grössenvarianten), **Freitext-Notizen** mit Autor und Änderungsverlauf.
 - **Rechnungsliste** mit Detailansicht, unwiderruflichem Löschen (inkl.
@@ -90,7 +113,7 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **i18n**: eigener, schlanker Katalog (JSON-Dateien + `translate()`/`i18n.js`,
   siehe `docs/architektur.md` Abschnitt „Mehrsprachigkeit"), keine zusätzliche
   Abhängigkeit
-- **Tests**: pytest (416 bestanden, 19 übersprungen ohne optionale
+- **Tests**: pytest (533 bestanden, 20 übersprungen ohne optionale
   Zusatzvoraussetzungen wie Node.js oder eine echte Beispielrechnung — Stand
   dieser Dokumentation)
 - **Deployment**: Docker / docker compose (siehe
@@ -136,7 +159,7 @@ app/
     models.py          SQLAlchemy-Modelle des neuen Datenmodells (siehe docs/datenmodell.md)
     security.py
     lagerorte.py       Seed-Daten SF1-SF4 + GEWA/VEBO/DIETIKON (siehe app/services/lagerorte.py für Lesezugriffe)
-    lieferanten.py     Seed-Daten Lieferanten (aktuell nur INTERSPORT; parser_key = Modul in app/services/parsers/)
+    lieferanten.py     Seed-Daten Lieferanten (INTERSPORT + je Lieferantengruppe einer) und Etikett-Codes 111/555/333/999/444
     kategorien.py      Seed-Daten Kassenkategorien (Hauptgruppe x Sportbereich, 35 Kombinationen)
     fedas.py           FEDAS-Code -> Kassenkategorie-Vorschlag (Phase B, siehe docs/projekt-kontext.md)
                        -> von Hand gewaehlt wird in app/services/kategorien.py
@@ -152,6 +175,10 @@ app/
     erfassung.py       Ware von Hand erfassen (Scanner-Nachschlag über die EAN, Buchen ohne Beleg)
     etiketten.py       EAN nachtragen/erzeugen und Etiketten als PDF drucken
     kategorien.py      Kassenkategorie ansehen und von Hand waehlen (/api/kategorien)
+    bestand.py         Bestand je Filiale ansehen (/bestand, /api/bestand)
+    ausbuchung.py      Ausbuchen per Scan, ein Stueck je Scan, Rueckgaengig (/ausbuchen, /api/ausbuchen)
+    umlagerung.py      Ware beim Empfang umlagern (/umlagern, /api/umlagerung)
+    korrektur.py       Gezaehlte Menge buchen (/api/korrektur)
   services/          Fachlogik ohne HTTP-Bezug, wiederverwendbar
     importer.py        Transaktionaler Import/Löschung von Rechnungen (bucht Wareneingang + Bestand gegen die aktive Filiale)
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
@@ -172,10 +199,18 @@ app/
     etikett.py          Etikett als PDF in Etikettengroesse (PyMuPDF)
     reduktion.py        Lagerdauer und Reduktionsstufe nach Regel 6
     kategorien.py       Kassenkategorie: Auswahlliste, von Hand setzen, nie ueberschreiben (B8)
+    bestand.py          Bestand lesen: Menge je Variante x Lagerort, Filter und Kennzahlen (C2)
+    ausbuchung.py       Verkauf/Abgang buchen, per Gegenbuchung aufheben, Liste der Ausbuchungen (C3)
+    uebersicht.py       Kennzahlen, Anstehendes und Aktuelles für die Übersicht
+    artikel_loeschen.py Falsch erfassten Artikel ohne Beleg ganz entfernen
+    umlagerung.py       Umlagerung mit Datumsregeln D13/D17/F10/F11 (C4)
+    korrektur.py        Korrektur: Differenz zur gezaehlten Menge buchen (C5)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)
   static/
     css/, js/          Stylesheet und Frontend-Skripte (Theme, Session, i18n, Vorschau, Artikeldetails)
     js/i18n.js           Katalog laden, data-i18n anwenden, window.SportfabrikI18n.t()
+    js/nav.js            Hauptnavigation (gruppiert, aktive Seite, Menü auf schmalen Bildschirmen)
+    js/session.js        Kopfzeile rechts: Filiale und Konto-Menü
     i18n/{de,fr,en}.json Übersetzungs-Katalog (einzige Quelle, auch vom Backend gelesen)
     fonts/, img/        Selbst gehostete Schriftart, Logo
     BRAND-SOURCES.md    Herkunft von Logo/Schriftart, Markenfarben

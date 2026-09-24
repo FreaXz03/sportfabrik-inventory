@@ -124,6 +124,7 @@ erDiagram
         string typ
         numeric menge
         string grund
+        date eingangsdatum
         int wareneingang_position_id FK
         string benutzer_kassennummer
         string benutzer_name
@@ -157,7 +158,10 @@ erDiagram
 
 ### `lieferanten`
 Ein Datensatz je Lieferant. `typ` (`intersport`/`ecom`/`drittanbieter`/
-`extern`) und `parser_key` (verweist auf das passende Parser-Modul in
+`extern`/`intern`) ist zugleich die **Lieferantengruppe**, aus der der
+Etikett-Code folgt (Intersport 111, ECOM 555, Händler = `extern` 333,
+Dritte-Händler = `drittanbieter` 999, Intern = Nike/adidas/The North Face 444;
+seit 24.09.2026, Migration `f2a3b4c5d6e7`). `typ` und `parser_key` (verweist auf das passende Parser-Modul in
 `app/services/parsers/`, aktuell nur `intersport`) steuern die automatische
 Lieferanten-Erkennung beim Dokumenten-Upload: die Registry erkennt das Layout
 und der Import schlägt den Lieferanten über denselben `parser_key` nach
@@ -279,7 +283,19 @@ sind beide von Anfang an gleich.
 
 ### `lagerbewegungen`
 Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
-`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Jede importierte
+`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Geschrieben werden
+bisher `zugang`, seit C3 auch `verkauf` und `ausbuchung` (Menge −1 je Scan,
+Grund in `grund`, z. B. `defekt` oder `sonstiges: …`) sowie `korrektur` als
+Gegenbuchung beim Rückgängigmachen (`grund = 'storno:<id>'`), seit C4
+`umlagerung` (zwei Zeilen je Variante: `−menge` an der Quelle mit
+`grund = 'nach:<Ziel>'`, `+menge` am Ziel mit `grund = 'von:<Quelle>'`).
+Seit C5 auch allgemeine `korrektur`-Zeilen: gebucht wird die Differenz zur gezählten Menge, Grund `inventur`, `falsch_gebucht`, `gefunden` oder `sonstiges: …`.
+
+`eingangsdatum` ist nur an der Zielzeile einer Umlagerung gesetzt, die dort
+die Reduktionsuhr startet — externer Standort → Filiale (D13) oder eine
+Filiale, die den Artikel noch nie hatte (F11); sonst leer. Die Uhr
+(`reduktion.letzter_wareneingang()`) nimmt das spätere Datum aus
+Wareneingängen und solchen Umlagerungen. Jede importierte
 Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`; von Hand
 erfasste Ware ebenso, dort mit `grund = 'manuelle-erfassung'` (ein fester
 Schlüssel, kein UI-Text — übersetzt wird erst bei der Anzeige). Benutzer wird
@@ -291,7 +307,13 @@ Aktueller Bestand je Variante × Filiale (zusammengesetzter Primärschlüssel),
 aus `lagerbewegungen` abgeleitet und dort auch aktuell gehalten (nie direkt
 geschrieben ausser beim Nachführen der Summe). `aeltestes_eingangsdatum`
 dient später der Reduktionslogik (Phase D, 18/36 Monate ab letztem
-Wareneingang derselben Lieferanten-Artikelnummer in dieser Filiale).
+Wareneingang derselben Lieferanten-Artikelnummer in dieser Filiale). Gelesen
+wird der Bestand seit Phase C, Teilaufgabe C2 auf der Seite `/bestand`
+(`app/services/bestand.py`).
+
+Ein **negativer** Bestand ist möglich: beim Ausbuchen von Hand warnt das
+System, bucht aber trotzdem (seit C3) (bestätigt am 22.09.2026). Die Ansicht
+blendet ihn deshalb nie aus.
 
 **Bekannte Einschränkung nach der Migration:** Da das alte System nie
 Verkäufe/Ausbuchungen erfasst hat, entspricht der migrierte `bestand` der
@@ -305,7 +327,8 @@ ganze Modell (alle Farben/Grössen), nicht mehr nur für die beim Erstellen
 angezeigte Variante. Optimistisches Sperren über `version` unverändert.
 
 ### `lagerorte`
-Sieben Einträge: die vier Filialen SF1–SF4 (`verkauf = true`) und drei externe
+Sieben Einträge: die vier Filialen SF1 Volketswil, SF2 Conthey, SF3
+Regensdorf und SF4 Hägendorf (`verkauf = true`) und drei externe
 Standorte ohne Verkauf — die Verarbeitungsstellen `GEWA` und `VEBO` und das
 Lager `DIETIKON`. Verarbeitungsstelle und Lager unterscheidet das Schema
 bewusst **nicht**: Für jede Regel zählt allein `verkauf`. Seed-Daten in
@@ -354,6 +377,9 @@ oben):
 | `a7b8c9d0e1f2` | Manuelle Erfassung (Teilaufgabe B6): `wareneingaenge.dokument_id` und `artikel.lieferant_id` dürfen leer bleiben (Wareneingang ohne Beleg, D27; Artikel ohne Lieferant, D23) |
 | `b8c9d0e1f2a3` | Zwei weitere Lagerorte ohne Verkauf: `VEBO` (Verarbeitungsstelle wie GEWA) und `DIETIKON` (externes Lager); GEWA umbenannt in „GEWA (externe Verarbeitung)“. Idempotent; der Downgrade löscht einen der beiden nur, solange nichts daran hängt |
 | `c9d0e1f2a3b4` | `artikel.kategorie_manuell` (Teilaufgabe B8): merkt, ob die Kategorie von Hand gewählt wurde; Server-Default `false`, weil bestehende Artikel ihre Kategorie ausschliesslich über den FEDAS-Vorschlag bekommen haben |
+| `d0e1f2a3b4c5` | Filialcodes korrigiert (22.09.2026): SF2 ist Conthey, SF3 Regensdorf, SF4 Hägendorf. Getauscht wird nur der `code` der bestehenden Zeile — der Ort bleibt, wo er ist, und Buchungen hängen an `lagerorte.id`. Ringtausch über Zwischencodes, weil `code` eindeutig ist |
+| `e1f2a3b4c5d6` | `lagerbewegungen.eingangsdatum` (Teilaufgabe C4): Datum, ab dem eine Umlagerung die Reduktionsuhr der Zielfiliale startet. Bestehende Zeilen sind Zugänge, deren Datum am Wareneingang steht — dort bleibt die Spalte leer |
+| `f2a3b4c5d6e7` | Lieferantengruppen (Anforderung 23.09.2026, umgesetzt 24.09.2026): `lieferanten.typ` kennt neu `intern` (Direktbestellung bei Nike, adidas, The North Face); je Gruppe ein Lieferant für die Erfassung von Hand. Der Etikett-Code (111/555/333/999/444) wird aus `typ` abgeleitet (`app/core/lieferanten.py`), nicht gespeichert |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start
