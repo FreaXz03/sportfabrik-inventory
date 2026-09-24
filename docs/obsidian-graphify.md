@@ -1,136 +1,60 @@
-# Wissensgraph (Graphify) und Obsidian
+# Projektwissen: Graphify und Obsidian
 
-Graphify erzeugt aus dem Quellcode einen Wissensgraphen: eine Karte aller
-Module, Funktionen, Importe und ihrer Beziehungen. In Obsidian lässt sich
-dieselbe Struktur als verlinkte Notizen und als Graph-Ansicht durchklicken;
-Claude Code kann den Graphen abfragen, statt jedes Mal alle Python-Dateien zu
-lesen.
+## Regel ab 24.09.2026
 
-Das Parsen des **Codes** läuft deterministisch und vollständig lokal über
-tree-sitter (AST) — kein Sprachmodell, kein API-Key.
+**`--code-only` ist keine allgemeine Pflicht mehr.** Code und ausdrücklich ausgewählte Projektdokumentation dürfen in Graphify verarbeitet werden. Die Dokumentauswahl steht in `docs/wissensquellen.txt`; `.graphifyignore` begrenzt direkte Projektscans ebenfalls. Neue Dokumentquellen bewusst in beiden Listen aufnehmen.
 
-## Harte Regel: immer `--code-only`
+Keine automatische Verarbeitung von Lieferantenbelegen, Uploads, Zugangsdaten oder persönlichen Vault-Bereichen. Die bewusste Freigabe einzelner Belege zum Parserbau bleibt eine separate Ausnahme. Im fertigen Warenwirtschaftssystem werden Belege weiterhin ausschliesslich lokal durch eigene Parser verarbeitet.
 
-Das folgt direkt aus Regel 1 der `CLAUDE.md` („Belegdaten bleiben lokal") und
-ist der wichtigste Punkt auf dieser Seite. Dass KI ausserhalb der
-Belegverarbeitung erlaubt ist, ändert daran nichts: hier geht es um genau die
-Belege.
+GitHub-Veröffentlichung und Verarbeitung beim KI-Anbieter sind getrennte Vorgänge. Der Graph bleibt unter dem gitignorierten `graphify-out/`. Ein semantischer Lauf kann trotzdem Inhalte der ausgewählten Dokumente an den gewählten KI-Anbieter übertragen und Tokens verbrauchen. Kein pauschaler Scan des Vaults; keine automatische semantische Analyse nach jedem Commit.
 
-Nur für Quellcode ist Graphify vollständig lokal. PDFs, Bilder und
-Office-Dokumente schickt es zur semantischen Analyse an ein Sprachmodell. Auf
-dem Entwicklungsrechner liegen in `uploads/` und `Rechnungen/` echte
-Lieferantenrechnungen — beide Ordner sind gitignored, auf der Platte aber
-vorhanden und damit für einen Lauf ohne `--code-only` sichtbar. Dasselbe gilt
-für `docs/*.docx`.
+## Alltag: gezielt finden
 
-Ein Lauf ohne `--code-only` hat genau das schon einmal getan: der erzeugte
-Graph war rund 7 MB gross und enthielt umgewandelte Dokumente (Commit
-`46c85a4`). Deshalb:
-
-```
-/graphify . --code-only           # richtig
-/graphify .                       # falsch — liest Rechnungen mit
+```sh
+python3 scripts/projektwissen.py query "Umlagerung"
+python3 scripts/projektwissen.py query "reduktionen_manuell"
 ```
 
-Davon unberührt bleibt die Entwicklungsausnahme vom 22.09.2026: einen
-**einzelnen** Beleg darf Fabian zum Parserbau bewusst zeigen. Graphify dagegen
-liest ungefragt alles, was es findet — dafür bleibt `--code-only` Pflicht.
+Das Werkzeug erstellt lokal einen **strukturellen Dokumentabschnittsindex** aus Überschriften, kurzen Originalauszügen und expliziten Codepfaden. Es verbindet ihn für die Abfrage mit dem vorhandenen Graphify-Codegraphen und ruft Graphify mit begrenztem Ausgabebudget auf. Das ist keine semantische KI-Analyse der Dokumente und kein vollständiges Modell aller fachlichen Zusammenhänge. Nach einem Treffer immer den relevanten Originalabschnitt prüfen.
 
-## Die zwei Umgebungen
+Die ausgewählten Markdown-Dateien werden dafür lokal gelesen; ihr vollständiger Text wird nicht in den Modellkontext ausgegeben. Der zusammengeführte Graph liegt in `graphify-out/knowledge/graph.json`. Er wird bei jeder Abfrage neu erzeugt; der originale Codegraph bleibt unangetastet. Ist er nicht vorhanden, funktioniert der Dokumentindex allein mit einem Hinweis. Fehlende/veraltete Codebeziehungen mit gezielter Textsuche abfangen.
 
-Die Werkzeuge sind nicht überall verfügbar:
+Bekannte Datei direkt lesen. Für gezielte Codebeziehungen sind auch `graphify explain "<Funktion>"` und `graphify path "<A>" "<B>"` am ursprünglichen Codegraphen möglich. Niemals die komplette graph.json in den Chat laden.
 
-| | Entwicklungsrechner | Cloud-Session (claude.ai/code) |
-|---|---|---|
-| Obsidian + Vault | ja | nein |
-| Graphify-CLI, `/graphify` | ja | nein |
-| `graphify-out/` | ja | nein (ignoriert, siehe unten) |
+## Aktualisieren
 
-Der Graph wird also immer lokal gebaut und bleibt vorerst auch lokal.
+Der vorhandene Git-Hook aktualisiert weiterhin nur die Codestruktur, lokal und ohne Sprachmodell. Dies ist eine günstige Automatik, keine Einschränkung der erlaubten Dokumentanalyse. Bei Bedarf: `graphify update .` (Code-Aktualisierung der installierten Version); danach `python3 scripts/projektwissen.py index`.
 
-## Warum `graphify-out/` nicht im Repo liegt
+## Optionale semantische Dokumentanalyse
 
-`graphify-out/` ist in der `.gitignore` vollständig ausgenommen. Zwei Gründe:
+Wenn der Abschnittsindex für eine konkrete Frage nicht reicht:
 
-1. **Das Repo ist öffentlich.** Ein Graph, der ohne `--code-only` gebaut wurde,
-   enthält Inhalte aus Lieferantenrechnungen. Einmal gepusht, ist das über
-   Git-Historie, Forks und Caches nicht mehr zurückzuholen.
-2. **Grösse.** Der bisherige Lauf ergab rund 7 MB, die sich bei jedem Rebuild
-   vollständig ändern.
-
-Ein rein mit `--code-only` gebauter Graph wäre inhaltlich unbedenklich — er
-beschreibt nur Code, der ohnehin öffentlich im Repo steht. Trotzdem **bleibt
-der Graph bewusst lokal** (Entscheid Fabian, 22.09.2026): der Nutzen in
-Cloud-Sessions wiegt den Aufwand und das Restrisiko nicht auf, jedes Mal an
-`--code-only` denken zu müssen. Cloud-Sessions lesen den Code direkt.
-
-Es wird also nichts aus `graphify-out/` eingecheckt.
-
-## Einrichtung (lokaler Rechner)
-
-```bash
-pip install graphifyy && graphify install
-# bei "externally managed environment" (macOS) stattdessen:
-#   pipx install graphifyy && graphify install
+```sh
+python3 scripts/projektwissen.py prepare-docs
+# Nur die explizite Auswahl, nicht das Projekt oder den Vault scannen:
+graphify extract graphify-out/selected-docs/input --out graphify-out/selected-docs --no-gitignore --backend claude --max-concurrency 1 --token-budget 6000
 ```
 
-`graphify install` legt die Skill-Datei unter `~/.claude/skills/graphify/SKILL.md`
-ab, damit `/graphify` in Claude Code als Slash-Befehl erscheint. Prüfen:
+`prepare-docs` erstellt einen sauberen lokalen Eingabeordner aus der Freigabeliste, ohne Symlinks oder weitere Dateien. `--no-gitignore` ist hier nur nötig, weil dieser vorbereitete Ordner unter dem absichtlich gitignorierten Ausgabeordner liegt; nicht für beliebige Projektscans verwenden. Vor dem KI-Lauf nennt die Dateiliste den Umfang. Der explizite Anbieter verhindert eine unbeabsichtigte automatische Anbieterwahl; seine lokale Anmeldung/API-Konfiguration muss verfügbar sein. Nicht automatisch starten, nur wenn eine Aufgabe die zusätzliche semantische Analyse rechtfertigt.
 
-```bash
-graphify --version
-ls ~/.claude/skills/graphify/SKILL.md
+Das Ergebnis bleibt als separater Dokumentgraph in `graphify-out/selected-docs/graphify-out/graph.json` und kann mit `graphify query "<Frage>" --graph <Pfad> --budget 1200` abgefragt werden. Nach Dokumentänderungen vor Nutzung aktualisieren. Der günstige Standardindex wird dadurch nicht ersetzt und der Code-Hook überschreibt diesen Dokumentgraphen nicht.
+
+## Obsidian und Quellen
+
+- Main-Vault: eigene Ideen, Anforderungen und verständliche Übersicht.
+- `docs/start.md`: aktueller Einstieg und nächste Priorität.
+- Technische Dokumente im Projekt: jeweilige Hauptquelle; nur betroffene Abschnitte nachführen.
+- Historische Vault-Statuskopien: Archiv, nicht bei jeder Aufgabe mitlesen.
+- Generierter Sportfabrik-Graph: optionale visuelle Ansicht, keine zusätzliche Informationsquelle für Claude.
+
+Bei Bedarf nach `python3 scripts/projektwissen.py index` exportieren:
+
+```sh
+graphify export obsidian --graph graphify-out/knowledge/graph.json --dir graphify-out/Sportfabrik-Graph
 ```
 
-## Graph bauen und aktualisieren
+Keine handgeschriebenen Notizen im generierten Bereich pflegen. Ohne lokalen Graph (beispielsweise Cloud-Session) direkt mit `rg` und gezielten Dateiausschnitten arbeiten.
 
-Im Projektordner, in lokalem Claude Code:
+## Sitzungen
 
-```
-/graphify . --code-only --obsidian --obsidian-dir <pfad-zum-vault>/graphify/sportfabrik-inventory
-```
-
-Für spätere Läufe reicht `--update` — dann werden nur geänderte Dateien neu
-eingelesen:
-
-```
-/graphify . --code-only --update
-```
-
-Optional führt ein post-commit-Hook den Graphen automatisch nach:
-
-```bash
-graphify hook install
-```
-
-**Vorsicht:** vor dem Einrichten prüfen, ob der Hook ebenfalls mit
-`--code-only` läuft — sonst liest er bei jedem Commit stillschweigend die
-Rechnungen aus `uploads/` und `Rechnungen/` mit. Im Zweifel keinen Hook
-installieren und den Graphen von Hand nachführen.
-
-## Obsidian
-
-Den Vault-Ordner in Obsidian über *Open folder as vault* öffnen. Die Notizen
-sind über Wikilinks verbunden, `graph.canvas` legt die erkannten Gruppen als
-benanntes Canvas an.
-
-Empfohlene Ablage, damit Generiertes und Handgeschriebenes getrennt bleiben:
-
-```
-<vault>/
-  graphify/
-    sportfabrik-inventory/   <- von --obsidian-dir befuellt, generiert
-  sportfabrik-inventory/     <- eigene Notizen, handgeschrieben
-```
-
-Der generierte Teil wird bei jedem Lauf überschrieben — dort nichts von Hand
-hineinschreiben, was erhalten bleiben soll.
-
-## Grenzen
-
-- Der Graph ist eine Momentaufnahme des letzten lokalen Laufs. **Bei Widerspruch
-  gilt immer der Quellcode.**
-- Cloud-Sessions haben weder die CLI noch den Graphen und lesen den Code direkt.
-- Die Flags oben gelten für die Slash-Form (`/graphify` in Claude Code); die
-  Terminal-Variante heisst `graphify extract`. Graphify steht bei Version 0.9.x,
-  die Flags können sich ändern — im Zweifel `graphify --help`.
+Nach einer abgeschlossenen Aufgabe kurze Übergabe: Ergebnis, relevante Dateien, offene Punkte. Für eine unabhängige Aufgabe neue Sitzung; lange laufende Aufgaben bei Bedarf verdichten. Graphify ersetzt weder Kontextpflege noch das Prüfen des aktuellen Codes. Eine konkrete Tokenersparnis ist erst durch vergleichbare Sitzungen messbar.

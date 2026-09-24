@@ -1,5 +1,7 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
+Einstieg und aktuelle Quellen: [Kurzüberblick](start.md). Nur aufgabenrelevante Abschnitte lesen.
+
 ## Verbindliche Priorität – 24.09.2026
 
 Fabian hat entschieden: **Zuerst die neuen Wünsche aus der Inbox umsetzen, danach Phase D weiterführen.** Die bereits gebaute Runterschreiben-Seite bleibt bestehen; Phase D wird dadurch weder zurückgesetzt noch als abgeschlossen markiert.
@@ -298,7 +300,7 @@ Diese Antworten sind fachliche Entscheidungen, keine Bestätigung neu implementi
 - **Umlagerung Filiale → Filiale und die Reduktionsuhr:** Eine Umlagerung ist in der Zielfiliale **kein** Wareneingang. Die Uhr läuft dort unverändert weiter, die zugeschickte Ware wird auf dem Stand der Zielfiliale mitreduziert (D17: durch Umbuchen wird nichts verjüngt). Unverändert bleibt D13: nur der Weg von einem externen Standort (GEWA/VEBO/Dietikon) in eine Filiale setzt das Eingangsdatum erstmals und startet die Uhr.
 - **Dazu noch offen:** Was gilt, wenn die Zielfiliale diese Lieferanten-Artikelnummer noch **nie** hatte? Dann gibt es dort kein Datum, an das sich die Uhr hängen könnte.
 
-- **Belege für den Parserbau zeigen:** erlaubt. Ziel bleibt ein Parser, der die Dateien später **ohne Internet** liest; die Belege werden nirgends veröffentlicht und im Betrieb nicht über KI ausgelesen. Das ist die Ausnahme für die Entwicklung und kein automatischer Weg — Graphify läuft weiterhin nur mit `--code-only`.
+- **Belege für den Parserbau zeigen:** erlaubt. Ziel bleibt ein Parser, der die Dateien später **ohne Internet** liest; die Belege werden nirgends veröffentlicht und im Betrieb nicht über KI ausgelesen. Das ist die Ausnahme für die Entwicklung und kein automatischer Weg — Graphify darf seit der Präzisierung vom 24.09.2026 auch ausdrücklich ausgewählte Projektdokumentation analysieren; keine automatische Beleganalyse (siehe `docs/obsidian-graphify.md`).
 - **Filialcodes korrigiert:** SF1 Volketswil, **SF2 Conthey**, **SF3 Regensdorf**, **SF4 Hägendorf**. Die bisherige Zuordnung in Doku, Seed-Daten und Tests war falsch (SF2 Regensdorf, SF3 Hägendorf, SF4 Conthey).
 
 Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts (Phase C).

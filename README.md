@@ -1,5 +1,7 @@
 # Sport-Fabrik Inventory
 
+Projektarbeit: [Kurzer Einstieg und aktuelle Priorität](docs/start.md) · [Gezielte Wissenssuche](docs/obsidian-graphify.md).
+
 Internes Tool für die Sport-Fabrik: Lieferantenrechnungen (PDF) hochladen,
 Positionen automatisch auslesen, direkt in der Vorschau korrigieren und in
 eine PostgreSQL-Datenbank importieren. Danach lassen sich alle Artikel

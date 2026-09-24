@@ -84,7 +84,7 @@ Entwicklungswerkzeuge.
 Eine Einschränkung bleibt aber bestehen: `claude-mem` überträgt, was die Session
 anfasst. Wer in einer Session mit echten Belegen aus `uploads/` oder
 `Rechnungen/` arbeitet — etwa beim Bau eines neuen Parsers —, schickt deren
-Inhalte mit. Das ist derselbe Punkt wie bei Graphify ohne `--code-only`. Für
+Inhalte mit. Auch bei Graphify ist die Auswahl der tatsächlich verarbeiteten Inhalte entscheidend; `--code-only` ist optional, automatische Beleganalyse bleibt ausgeschlossen (siehe `docs/obsidian-graphify.md`). Für
 solche Sessions `claude-mem` deaktivieren (`/plugin`) oder die beiden Zeilen aus
 der Plugin-Liste streichen.
 
