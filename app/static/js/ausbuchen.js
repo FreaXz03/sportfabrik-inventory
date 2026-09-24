@@ -57,8 +57,10 @@
   }
 
   function zeitText(wert) {
+    // Datum im Format der gewählten Sprache (de-CH: 24.09.2026), nicht des Browsers.
+    const ort = { de: 'de-CH', fr: 'fr-CH', en: 'en-GB' }[window.SportfabrikI18n.lang] || 'de-CH';
     const datum = new Date(wert);
-    return datum.toLocaleDateString() + ' ' + datum.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return datum.toLocaleDateString(ort) + ' ' + datum.toLocaleTimeString(ort, { hour: '2-digit', minute: '2-digit' });
   }
 
   function zeichnen() {
