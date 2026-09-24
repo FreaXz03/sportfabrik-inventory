@@ -33,14 +33,19 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Erwartete Lieferungen**: Auftragsbestätigungen und Bestellungen kündigen
   Ware nur an — Bestand entsteht erst, wenn jemand die Ankunft bestätigt.
   Kommt weniger an, bleibt die Restmenge sichtbar offen.
+- **Übersicht** als Startseite: grosse Schnellzugriffe für die häufigsten
+  Arbeiten, Kennzahlen der Filiale, was ansteht (Lieferungen, zu zählender
+  Bestand, Artikel im Reduktionsalter) und die letzten Buchungen.
 - **Bestand je Filiale** (Seite „Bestand"): aktueller Bestand pro Variante
-  und Lagerort, mit Suche, Filiale-Filter und ältestem Eingangsdatum. Lesen
+  und Lagerort mit Farbe, Grösse und Hauptgruppe, Suche, Filiale-Filter und
+  ältestem Eingangsdatum; Zeilen mit Menge 0 erscheinen nicht. Lesen
   darf jede Anmeldung alle Filialen; Ware an einem externen Standort ist als
   solche erkennbar, weil sie noch kein Eingangsdatum hat.
 - **Ausbuchen per Scan** (Seite „Ausbuchen"): jeder Scan bucht sofort ein
   Stück aus — Verkauf, Bruch/Defekt, Diebstahl/Schwund, Eigenbedarf, Retoure
   oder Sonstiges. Reicht der Bestand nicht, warnt die Seite und bucht
   trotzdem; ein Fehlscan lässt sich per Gegenbuchung rückgängig machen.
+  Darunter die Liste aller Ausbuchungen mit Zeit, Person und Grund.
 - **Umlagern** (Seite „Umlagern"): die empfangende Filiale bucht Ware aus
   einem anderen Lagerort in einem Schritt — per Scan oder aus dem Bestand der
   Quelle. Ware aus GEWA, VEBO oder Dietikon bekommt dabei ihr Eingangsdatum;
@@ -58,14 +63,18 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Interne EAN auf Knopfdruck**: Artikel ohne Hersteller-Barcode bekommen
   eine hauseigene EAN-13 (GS1-Bereich 20–29, mit Prüfziffer) und werden damit
   an der Kasse scannbar.
-- **Preisetikett als PDF** in Etikettengrösse für den Etikettendrucker: mit
-  Jahrgang, Lieferant, UVP, Reduktionsstufe und EAN-Strichcode — einzeln oder
+- **Preisetikett als PDF** in Etikettengrösse (84 × 47 mm) für den
+  Etikettendrucker: mit Jahrgang, Lieferant samt Gruppen-Code
+  (111/555/333/999/444), UVP, Reduktionsstufe und EAN-Strichcode — einzeln oder
   für einen ganzen Wareneingang auf einmal.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
-- **Artikelsuche** über Marke, EAN, Lieferanten-Artikelnummer, Bezeichnung,
-  Farbe, Grösse, Kategorie und Lieferdatum-Bereich, mit sortierbaren Spalten,
+- **Artikelsuche**: vorne nur „EAN scannen" (sofort aktiv) und Schnellsuche,
+  weitere Filter (Marke, Lieferanten-Artikelnummer, Bezeichnung, Kategorie,
+  Lieferdatum, nur von Hand erfasst) eingeklappt; sortierbare Spalten,
   Spalten-Auswahl und Excel-Export.
+- **Falsch erfasste Artikel löschen**: Filialleiter und Zentrale können einen
+  von Hand erfassten Artikel ohne Beleg samt Bestand und Buchungen entfernen.
 - **Lieferhistorie und Preisverlauf** je Artikel (inkl. aller Farb-/
   Grössenvarianten), **Freitext-Notizen** mit Autor und Änderungsverlauf.
 - **Rechnungsliste** mit Detailansicht, unwiderruflichem Löschen (inkl.
@@ -150,7 +159,7 @@ app/
     models.py          SQLAlchemy-Modelle des neuen Datenmodells (siehe docs/datenmodell.md)
     security.py
     lagerorte.py       Seed-Daten SF1-SF4 + GEWA/VEBO/DIETIKON (siehe app/services/lagerorte.py für Lesezugriffe)
-    lieferanten.py     Seed-Daten Lieferanten (aktuell nur INTERSPORT; parser_key = Modul in app/services/parsers/)
+    lieferanten.py     Seed-Daten Lieferanten (INTERSPORT + je Lieferantengruppe einer) und Etikett-Codes 111/555/333/999/444
     kategorien.py      Seed-Daten Kassenkategorien (Hauptgruppe x Sportbereich, 35 Kombinationen)
     fedas.py           FEDAS-Code -> Kassenkategorie-Vorschlag (Phase B, siehe docs/projekt-kontext.md)
                        -> von Hand gewaehlt wird in app/services/kategorien.py
@@ -191,7 +200,9 @@ app/
     reduktion.py        Lagerdauer und Reduktionsstufe nach Regel 6
     kategorien.py       Kassenkategorie: Auswahlliste, von Hand setzen, nie ueberschreiben (B8)
     bestand.py          Bestand lesen: Menge je Variante x Lagerort, Filter und Kennzahlen (C2)
-    ausbuchung.py       Verkauf/Abgang buchen und per Gegenbuchung aufheben (C3)
+    ausbuchung.py       Verkauf/Abgang buchen, per Gegenbuchung aufheben, Liste der Ausbuchungen (C3)
+    uebersicht.py       Kennzahlen, Anstehendes und Aktuelles für die Übersicht
+    artikel_loeschen.py Falsch erfassten Artikel ohne Beleg ganz entfernen
     umlagerung.py       Umlagerung mit Datumsregeln D13/D17/F10/F11 (C4)
     korrektur.py        Korrektur: Differenz zur gezaehlten Menge buchen (C5)
   templates/         HTML-Seiten (von den Routern per FileResponse ausgeliefert)

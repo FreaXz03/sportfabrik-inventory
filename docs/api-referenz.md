@@ -32,7 +32,7 @@ nach dem Login auf eine fremde Seite weiterleitet (offener Redirect).
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/` | Übersichtsseite (Dashboard) |
-| GET | `/api/dashboard` | Kennzahlen (Anzahl Artikel/Rechnungen/Positionen, gelieferte Gesamtmenge) + die letzten 5 importierten Rechnungen |
+| GET | `/api/dashboard` | Kennzahlen (Anzahl Varianten/Belege/Positionen, gelieferte Gesamtmenge) + die letzten 5 importierten Belege; dazu `lagerort` und `filiale` (Stück, heute verkauft/abgegangen, negativer Bestand, erwartete Lieferungen, `reduktionen` je Stufe mit `faellig`/`bald`) der aktiven Filiale, `aktuelles` (letzte Lagerbewegungen) und `stamm` (`ohne_kategorie`, `ohne_ean`) |
 
 ## Artikel
 
@@ -160,7 +160,7 @@ HTTP 422; gebucht wird in beiden Fällen nichts.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/bestand` | Seite „Bestand" (jede Anmeldung) |
-| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus), `limit` (max. 500) und `offset`. Antwort: `zeilen`, `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
 
 **Lesen darf jede Anmeldung alle Filialen** (bestätigt am 22.09.2026) — auch
 die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`

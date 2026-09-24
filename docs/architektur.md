@@ -211,8 +211,10 @@ Drei Dinge sind bewusst so gebaut:
   aktive Filiale, wählbar sind alle Standorte — der Filialwechsel in der
   Sitzungsleiste bleibt davon unberührt, er entscheidet weiter darüber, wohin
   gebucht wird.
-- **Zeilen mit Menge 0** sind ausgeblendet (`nur_vorhanden`), aber nicht
-  gelöscht: ausverkaufte Ware bleibt im Stamm. Ein **negativer** Bestand wird
+- **Zeilen mit Menge 0** erscheinen nicht (seit 24.09.2026 ohne Schalter;
+  die API kennt `nur_vorhanden` weiterhin), aber nichts wird gelöscht:
+  ausverkaufte Ware bleibt im Stamm. Farbe, Grösse und Hauptgruppe stehen in
+  eigenen Spalten. Ein **negativer** Bestand wird
   dagegen immer gezeigt — er ist möglich (bestätigt 22.09.2026) und genau dann
   interessant.
 - **Ware an einem Standort ohne Verkauf** (GEWA, VEBO, Dietikon) hat kein
@@ -274,6 +276,26 @@ was im Regal liegt; die Differenz rechnet der Server unter derselben Sperre
 wie jeder Zugang und bucht sie als `typ = korrektur`. Stimmt der Bestand
 schon, wird nichts gebucht. Gründe: Inventur/Zählung, Falsch gebucht, Ware
 gefunden, Sonstiges (mit Text). Das Eingangsdatum ändert sich nie.
+
+## Übersicht
+
+`app/services/uebersicht.py` liefert für `GET /api/dashboard` neben den
+Stammzahlen die Kennzahlen der **aktiven Filiale** (Stück im Bestand, heute
+verkauft/abgegangen), „Anstehend" (erwartete Lieferungen, negativer Bestand,
+Reduktionsalter je Stufe inkl. Vorschau 30 Tage, Artikel ohne Kategorie bzw.
+EAN) und „Aktuelles" (letzte Lagerbewegungen). Das Reduktionsalter wird in
+einer Abfrage für alle Artikel gerechnet — dieselbe Regel wie
+`reduktion.letzter_wareneingang()` (Wareneingang oder Umlagerung mit
+Eingangsdatum). Ohne aktive Filiale bleibt `filiale` leer.
+
+## Artikel löschen
+
+Nur für von Hand erfasste Artikel **ohne Beleg** und nur für Filialleiter
+und Zentrale (`app/services/artikel_loeschen.py`, Entscheid vom
+24.09.2026). Entfernt in einer Transaktion unter der Buchungssperre:
+Lagerbewegungen, Bestand, manuelle Wareneingangspositionen (und leer
+gewordene manuelle Wareneingänge), Preise, Notizen, Varianten und den
+Artikel; der Vorgang wird ins Server-Log geschrieben.
 
 ## Ware von Hand erfassen
 
@@ -361,7 +383,7 @@ ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
 einer, den die Kasse nicht annimmt.
 
 **Etikettengrösse:** einstellbar (`GROESSEN` in `app/services/etikett.py`),
-Voreinstellung 84 × 47 mm — die Rollen im Sato CL4NX Plus (bestätigt am
+Voreinstellung 84 × 47 mm; rechts neben dem Lieferanten steht fett der Code der Lieferantengruppe (111/555/333/999/444, aus `lieferanten.typ` abgeleitet) — die Rollen im Sato CL4NX Plus (bestätigt am
 23.09.2026); 50 × 30 mm und die übrigen Grössen bleiben wählbar. Die Modulbreite
 des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
 masslos in die Breite gezogen wird.

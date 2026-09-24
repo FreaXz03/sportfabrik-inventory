@@ -1,7 +1,7 @@
 # Sportfabrik Warenwirtschaft — Projektkontext, Vision & Zielbild
 
-Stand: 2026-09-22 (Rev. 6 vom 21.09.2026: zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon, Eingangsdatum startet erst in einer Filiale; ergänzt um die bestätigten Antworten vom 22.09.2026 in Abschnitt 10) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
-Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`; Phase B inkl. B8 ist vollständig in `main`, übernommen mit PR #9, Merge-Commit `d1c6533`).
+Stand: 2026-09-24 (Rev. 6 vom 21.09.2026: zwei externe Verarbeitungsstellen GEWA und VEBO plus externes Lager Dietikon, Eingangsdatum startet erst in einer Filiale; ergänzt um die bestätigten Antworten vom 22.–24.09.2026 in Abschnitt 10) · **Massgebliche Zielbeschreibung** des Projekts. Technischer Ist-Zustand des Codes: `README.md` und `docs/architektur.md`, `docs/datenmodell.md`.
+Repo: github.com/FreaXz03/sportfabrik-inventory (Branch `main`: Phase B inkl. B8, übernommen mit PR #9, Merge-Commit `d1c6533`. Phase C und die Inbox-Anforderungen vom 23.09.2026 liegen auf `feature/warenwirtschaft-v2`, noch nicht in `main`).
 
 ---
 
@@ -159,8 +159,9 @@ Zweistufiger Import mit Vorschau & Korrektur, Stapel-Import, OCR für Papier-Sca
 
 ## 7. Abgleich Zielbild ↔ aktuelles Repo
 
-Momentaufnahme vom 23.09.2026: **Phase B abgeschlossen**, **Phase C
-abgeschlossen** (C1–C5, 23.09.2026). Massgeblich für den Stand der
+Momentaufnahme vom 24.09.2026: **Phase B abgeschlossen**, **Phase C
+abgeschlossen** (C1–C5, 23.09.2026), dazu die Inbox-Anforderungen vom
+23.09.2026 (umgesetzt am 24.09.2026). Massgeblich für den Stand der
 Umsetzung ist Abschnitt 11; diese Tabelle fasst ihn nur gegenüber dem Zielbild
 zusammen.
 
@@ -168,10 +169,10 @@ zusammen.
 |---|---|---|
 | Upload & Parsing | ✅ Intersport-PDF, OCR (Tesseract, lokal), Vorschau, Korrektur, Stapel, **Parser-Registry mit Lieferanten-/Dokumenttyp-Erkennung** (B1), **Lagerort aus der Lieferadresse** (B4), **erwartet→eingetroffen** (B5) | Bisher nur 1 Layout registriert (weitere in Phase E); keine Grössen-Matrix; OCR für farbige Tabellen-Scans zu schwach |
 | Manuelle Erfassung | ✅ Seite `/erfassen` mit Scanner, ohne Beleg (B6) — inkl. Kategorie (B8) und Etikettendruck (B7) | — |
-| Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
+| Artikelstamm | ✅ `artikel` ↔ `varianten` als echte Beziehung, EAN optional (B3), interne EAN auf Knopfdruck (B7), Kassenkategorien mit FEDAS-Vorschlag und Wahl von Hand (B8), Lieferantengruppen mit Etikett-Code, von Hand erfasste Artikel löschbar (24.09.2026) | FEDAS-Tabelle erst teilweise bestätigt (6 von 11 Sportbereichen offen) — bis dahin wird von Hand gewählt |
 | Preise | ✅ UVP und EK je Wareneingangsposition (EK optional, Regel 10), Preisverlauf je Variante, Reduktionsstufe als Baustein (`app/services/reduktion.py`, genutzt auf dem Etikett) | Reduktions-Hinweise als eigene Ansicht und die zentrale Empfehlung fehlen → Phase D |
-| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung; **Bestandsansicht** `/bestand` je Lagerort, alle Filialen lesbar (C2); **Ausbuchen per Scan** `/ausbuchen` (C3); **Umlagerung** `/umlagern` (C4); **Korrekturen** über „Zählen" in `/bestand` (C5) | Phase C fertig. Der migrierte Bestand bleibt kumulierter Wareneingang, bis er gezählt und korrigiert ist. Der migrierte Bestand ist kumulierter Wareneingang, kein physischer Bestand |
-| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Leserechte am 22.09.2026 geklärt (Abschnitt 10): Mitarbeiter und Filialleiter sehen Dokumente und Bestände **aller** Filialen. Die bestehenden Ansichten (Dashboard, Rechnungsliste, Artikeldetails) tun das bereits, die künftige Bestandsansicht (Phase C) muss es ebenfalls; der Filialwechsel bleibt bei den zugewiesenen Filialen (D26) |
+| Lagerbestand | ✅ `lagerbewegungen` (append-only) + `bestand` je Lagerort; Zugang aus Import, bestätigter Ankunft und Erfassung; **Bestandsansicht** `/bestand` je Lagerort, alle Filialen lesbar (C2); **Ausbuchen per Scan** `/ausbuchen` (C3); **Umlagerung** `/umlagern` (C4); **Korrekturen** über „Zählen" in `/bestand` (C5) | Phase C fertig. Der migrierte Bestand bleibt kumulierter Wareneingang, bis er gezählt und korrigiert ist |
+| Filialen | ✅ `lagerorte` (SF1–SF4 + GEWA, VEBO, Dietikon) + `benutzer_lagerorte` (m:n), Filialwechsel in der Oberfläche; Wareneingänge, Bestand und Reduktionsrechnung sind filialbezogen | Leserechte am 22.09.2026 geklärt (Abschnitt 10): Mitarbeiter und Filialleiter sehen Dokumente und Bestände **aller** Filialen. Alle Ansichten (Übersicht, Belege, Artikeldetails, Bestand, Ausbuchungen) tun das; der Filialwechsel bleibt bei den zugewiesenen Filialen (D26) |
 | Sprache | ✅ i18n DE/FR/EN (Katalog + Sprachwahl pro Benutzer, inkl. Backend-Fehlermeldungen) | — |
 | Rollen | Mitarbeiter / Filialleiter (`chef`) / Admin-Zentrale (`admin`) | Rollen inkl. Admin und Rechte gemäss Regel 9 umgesetzt (Phase A, Punkt 1) |
 | Deployment | Docker, 1 Laden-Server | Zentraler Server Volketswil, Zugriff aus 4 Filialen |
@@ -307,6 +308,11 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 - **Kopfbereich:** aufräumen, hochwertiger und benutzerfreundlicher machen. Umgesetzt am 23.09.2026: eine Kopfzeile statt zwei, Navigation in Gruppen (Ware, Belege) mit Erklärung je Eintrag, Filial-Pille und Konto-Menü rechts, Menü-Knopf auf schmalen Bildschirmen.
 - **Vorübergehender Test-Knopf im Bestand:** je Bestandszeile ein Knopf, der **ein Stück** abbucht (2 Shirts → 1 Shirt). Der Artikel bleibt im Stamm, die Buchung ist eine normale Zeile in `lagerbewegungen` (Regel 2). Sichtbar für alle Rollen. Wird wieder entfernt, sobald das Ausbuchen im Laden erprobt ist.
 
+### Bestätigte Antworten vom 24.09.2026
+
+- **Artikel löschen:** gebraucht vor allem für falsch **von Hand erfasste** Artikel. Löschen dürfen nur Filialleiter und Zentrale, und nur Artikel **ohne Beleg**; dann verschwinden Artikel, Bestand und Buchungen ganz (bewusste Ausnahme von Regel 2 und 4, protokolliert). Artikel aus Belegen bleiben im Stamm. Umgesetzt, siehe Abschnitt 11.
+- Die übrigen Inbox-Anforderungen vom 23.09.2026 (Lieferantengruppen 111/555/333/999/444, Bedienung, Übersicht) stehen in [`anforderungen-inbox-2026-09-23.md`](anforderungen-inbox-2026-09-23.md).
+
 ### Weitere offene Produktfrage
 
 8. ~~**FEDAS-Codes aus der Praxis lernen?**~~ — beantwortet am 23.09.2026: ja, als geprüfter Vorschlag (siehe oben). Umsetzung noch offen.
@@ -333,7 +339,8 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 | B — Wareneingang v2, Teilaufgabe 6 (manuelle Erfassung mit Scanner) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 7 (interne EAN + Etikett) | ✅ abgeschlossen, Branch `claude/next-step-l8tzqq` |
 | B — Wareneingang v2, Teilaufgabe 8 (Kategorie von Hand wählen) | ✅ abgeschlossen, Branch `claude/awesome-lamport-tivaj9` |
-| C — Lagerbestand | teilweise: C1 (Warnung bei Mehrlieferung), C2 (Bestandsansicht), C3 (Ausbuchen per Scan), C4 (Umlagerung) und C5 (Korrekturen) abgeschlossen, Branch `feature/warenwirtschaft-v2` |
+| C — Lagerbestand | ✅ abgeschlossen: C1 (Warnung bei Mehrlieferung), C2 (Bestandsansicht), C3 (Ausbuchen per Scan), C4 (Umlagerung) und C5 (Korrekturen), Branch `feature/warenwirtschaft-v2` |
+| Inbox-Anforderungen vom 23.09.2026 | ✅ abgeschlossen am 24.09.2026 (Lieferantengruppen-Codes, Bestandsspalten, Ausbuchungsliste, Artikelsuche, Übersicht, Artikel löschen), Branch `feature/warenwirtschaft-v2`; offen: Parser für die Beispielbelege, ECOM-Erkennung, Tests aufräumen |
 | D–G | offen |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
@@ -526,6 +533,41 @@ auseinanderlaufen — so wie Import, Ankunft und Erfassung in Phase B.
 Damit ist **Phase C abgeschlossen**. Offen bleiben der Durchgang gegen
 PostgreSQL und das Entfernen des Test-Knopfs „−1", sobald das Ausbuchen im
 Laden erprobt ist.
+
+**Details zu den Inbox-Anforderungen vom 23.09.2026** (umgesetzt am
+24.09.2026; Anforderungen und Entscheid zur Löschung in
+`docs/anforderungen-inbox-2026-09-23.md`):
+- **Lieferantengruppen und Etikett-Codes:** Gruppe = `lieferanten.typ`
+  (neu `intern` für Nike, adidas, The North Face), Code daraus abgeleitet
+  (`app/core/lieferanten.py`: Intersport 111, ECOM 555, Händler 333,
+  Dritte-Händler 999, Intern 444) und fett aufs Etikett. Je Gruppe ein
+  Lieferant für die Erfassung von Hand. Migration `f2a3b4c5d6e7`.
+  **Offen:** ECOM-Retouren kommen im Intersport-Layout und werden noch als
+  Intersport (111) zugeordnet, bis der Parser die Referenz „ret.Ecom" erkennt.
+- **Bestand:** Farbe, Grösse und Hauptgruppe in eigenen Spalten; Zeilen mit
+  Menge 0 erscheinen nicht mehr (Schalter entfernt), der Artikel bleibt im Stamm.
+- **Ausbuchungen als Liste:** Seite „Ausbuchen" zeigt alle Verkäufe und
+  Abgänge aus dem Journal mit Zeit, Person und Grund, je Filiale filterbar
+  (`GET /api/ausbuchungen`).
+- **Artikelsuche:** „EAN scannen" (fokussiert, Scan + Enter sucht sofort) und
+  „Schnellsuche" vorne, übrige Filter unter „Weitere Filter", dort auch „Nur
+  von Hand erfasst".
+- **Übersicht:** Begrüssung, Schnellzugriffe, Kennzahlen der aktiven Filiale,
+  „Anstehend" (Lieferungen, negativer Bestand, Reduktionsalter −50/−70 % inkl.
+  nächste 30 Tage, Artikel ohne Kategorie/EAN), „Aktuelles"
+  (`app/services/uebersicht.py`, erweitertes `GET /api/dashboard`). Die
+  Reduktionszahlen sind ein **Hinweis** nach Alter; ob schon reduziert wurde,
+  weiss das System erst mit Phase D.
+- **Artikel löschen:** `DELETE /api/articles/{id}` und Knopf auf der
+  Artikelseite, nur Filialleiter/Zentrale, nur ohne Beleg
+  (`app/services/artikel_loeschen.py`).
+- Tests: `test_lieferantengruppen.py`, `test_uebersicht.py`,
+  `test_artikel_loeschen.py`, Ergänzungen in `test_bestand.py`,
+  `test_ausbuchung.py`, `test_ean_etikett.py`, `test_manuelle_erfassung.py`.
+  Gesamtsuite: 533 bestanden, 20 übersprungen (vorher 507). Im Browser gegen
+  eine SQLite-Testdatenbank angesehen: Übersicht, Bestand, Ausbuchen mit
+  Liste, Artikelsuche mit Scan. Der Lösch-Knopf selbst wurde nur über die
+  API-Tests geprüft (Filialleiter-Anmeldung braucht ein Passwort).
 
 **Details zu Phase A, Punkt 1** (siehe `docs/datenmodell.md` für die Tabellen im Detail):
 - Neue Tabellen `lagerorte` (Seed-Daten) und `benutzer_lagerorte` (m:n, mit `ist_primaer`) via Alembic-Migration `a1b2c3d4e5f6`; bestehende Benutzer auf SF1 zugeordnet. Migration `b8c9d0e1f2a3` ergänzt VEBO und das Lager Dietikon (Rev. 6), womit es sieben Lagerorte gibt: SF1–SF4 mit Verkauf, GEWA/VEBO/DIETIKON ohne.
