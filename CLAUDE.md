@@ -27,7 +27,7 @@ Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbas
 
 ## Ergänzende Produktanforderungen vom 23.09.2026
 
-Benutzerfreundlichkeit und gute Lesbarkeit sind besonders wichtig: mehrere Mitarbeitende nutzen eine Brille und/oder haben wenig PC-Erfahrung. Oberflächen übersichtlich halten, Suche vereinfachen und Scanner-Abläufe unterstützen. Die neuen Anforderungen und Lieferantencodes stehen in `docs/anforderungen-inbox-2026-09-23.md`. Der Wunsch nach vollständiger Artikellöschung ist dort dokumentiert; die Behandlung bestehender Belege und Lagerbewegungen muss vor Umsetzung geklärt werden.
+Benutzerfreundlichkeit und gute Lesbarkeit sind besonders wichtig: mehrere Mitarbeitende nutzen eine Brille und/oder haben wenig PC-Erfahrung. Oberflächen übersichtlich halten, Suche vereinfachen und Scanner-Abläufe unterstützen. Die neuen Anforderungen und Lieferantencodes stehen in `docs/anforderungen-inbox-2026-09-23.md`. Die Artikellöschung ist am 24.09.2026 geklärt und umgesetzt (nur von Hand erfasste Artikel ohne Beleg, nur Filialleiter/Zentrale — siehe Regel 4).
 
 ## Technik & Konventionen
 
