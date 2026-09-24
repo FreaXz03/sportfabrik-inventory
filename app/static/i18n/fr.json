@@ -661,5 +661,8 @@
   "nav.info.invoices": "Justificatifs importés et leurs positions",
   "nav.info.upload": "Lire une facture, un bulletin de livraison ou une confirmation de commande",
   "session.account_aria": "Compte et réglages",
+  "bestand.table_hauptgruppe": "Groupe principal",
+  "bestand.table_color": "Couleur",
+  "bestand.table_size": "Taille",
   "_end": ""
 }

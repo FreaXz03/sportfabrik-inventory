@@ -661,5 +661,8 @@
   "nav.info.invoices": "Imported documents and their lines",
   "nav.info.upload": "Read an invoice, delivery note or order confirmation",
   "session.account_aria": "Account and settings",
+  "bestand.table_hauptgruppe": "Main group",
+  "bestand.table_color": "Colour",
+  "bestand.table_size": "Size",
   "_end": ""
 }

@@ -15,7 +15,7 @@ from decimal import Decimal
 
 from sqlalchemy import func, or_, select
 
-from ..core.models import Artikel, Bestand, Lagerort, Variante
+from ..core.models import Artikel, Bestand, Kategorie, Lagerort, Variante
 
 # Obergrenze je Abfrage, damit eine Seite im Ladennetz nicht am Datenvolumen
 # erstickt. Der Rest kommt über `offset` nach.
@@ -35,6 +35,8 @@ def _mit_filtern(abfrage, lagerort_id, suche, nur_vorhanden):
         .join(Variante, Variante.id == Bestand.varianten_id)
         .join(Artikel, Artikel.id == Variante.artikel_id)
         .join(Lagerort, Lagerort.id == Bestand.lagerort_id)
+        # Kategorie ist optional (FEDAS unbekannt, noch nicht von Hand gewählt).
+        .outerjoin(Kategorie, Kategorie.id == Artikel.kategorie_id)
     )
     if lagerort_id is not None:
         abfrage = abfrage.where(Bestand.lagerort_id == lagerort_id)
@@ -83,7 +85,7 @@ def liste_bestand(
 
     zeilen = session.execute(
         _mit_filtern(
-            select(Bestand, Variante, Artikel, Lagerort),
+            select(Bestand, Variante, Artikel, Lagerort, Kategorie),
             lagerort_id,
             suche,
             nur_vorhanden,
@@ -104,6 +106,9 @@ def liste_bestand(
                 "groesse": variante.groesse,
                 "ean": variante.ean,
                 "ean_intern": bool(variante.ean_intern),
+                # Hauptgruppe der Kassenkategorie (Textil, Hartware, Schuhe,
+                # Velo, Food) - gewünscht am 23.09.2026.
+                "hauptgruppe": kategorie.hauptgruppe if kategorie else None,
                 "lagerort": {
                     "id": lagerort.id,
                     "code": lagerort.code,
@@ -117,7 +122,7 @@ def liste_bestand(
                 if bestand.aeltestes_eingangsdatum
                 else None,
             }
-            for bestand, variante, artikel, lagerort in zeilen
+            for bestand, variante, artikel, lagerort, kategorie in zeilen
         ],
         "total": gesamt,
         "summe": _zahl(summe),

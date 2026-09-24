@@ -46,10 +46,13 @@
     return node('td', t(key), 'muted');
   }
 
+  // Die Hauptgruppe bleibt, wie sie in der Kasse heisst (Regel 8) - nicht übersetzt.
   function bestandsZeile(zeile) {
     const tr = document.createElement('tr');
     tr.append(artikelZelle(zeile));
-    tr.append(node('td', [zeile.farbe, zeile.groesse].filter(Boolean).join(' / ') || '—'));
+    tr.append(node('td', zeile.hauptgruppe || '—', zeile.hauptgruppe ? '' : 'muted'));
+    tr.append(node('td', zeile.farbe || '—'));
+    tr.append(node('td', zeile.groesse || '—'));
     tr.append(node('td', zeile.lagerort.code + ' · ' + zeile.lagerort.name));
     const mengenZelle = node('td', menge(zeile.menge));
     tr.append(mengenZelle);
@@ -57,6 +60,15 @@
     tr.append(abbuchenZelle(zeile, tr, mengenZelle));
     if (Number(zeile.menge) < 0) tr.className = 'warning';
     return tr;
+  }
+
+  // Menge 0 gehört nicht in die Bestandsansicht (23.09.2026) - der Artikel
+  // bleibt im Stamm. Die Zeile verschwindet, sobald sie auf 0 gebucht ist.
+  function ausblendenWennLeer(zeile, tr) {
+    if (Number(zeile.menge) !== 0) return;
+    const editor = tr.nextElementSibling;
+    if (editor && editor.classList.contains('korrektur')) editor.remove();
+    tr.remove();
   }
 
   // Vorübergehender Test-Knopf (23.09.2026): bucht ein Stück als normale
@@ -87,6 +99,7 @@
         zeile.menge = ergebnis.bestand_nachher;
         mengenZelle.textContent = menge(zeile.menge);
         tr.className = Number(zeile.menge) < 0 ? 'warning' : '';
+        ausblendenWennLeer(zeile, tr);
         const name = [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—';
         $('status').textContent = t(
           ergebnis.bestand_reicht_nicht ? 'bestand.minus_one_negative' : 'bestand.minus_one_done',
@@ -135,7 +148,7 @@
     }
     const editor = node('tr', null, 'korrektur');
     const zelle = node('td');
-    zelle.colSpan = 6;
+    zelle.colSpan = 9;
     const form = node('form', null, 'filters');
     form.noValidate = true;
 
@@ -201,6 +214,7 @@
         zeile.menge = ergebnis.bestand_nachher;
         mengenZelle.textContent = menge(zeile.menge);
         tr.className = Number(zeile.menge) < 0 ? 'warning' : '';
+        ausblendenWennLeer(zeile, tr);
         const name = [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—';
         const differenz = Number(ergebnis.differenz);
         $('status').textContent = ergebnis.gebucht
@@ -226,7 +240,7 @@
 
   function tabelle(zeilen) {
     const kopf = document.createElement('tr');
-    for (const key of ['table_article', 'table_variant', 'table_lagerort', 'table_quantity', 'table_arrival_date', 'table_actions']) {
+    for (const key of ['table_article', 'table_hauptgruppe', 'table_color', 'table_size', 'table_lagerort', 'table_quantity', 'table_arrival_date', 'table_actions']) {
       kopf.append(node('th', t('bestand.' + key)));
     }
     const thead = document.createElement('thead');
@@ -262,7 +276,6 @@
     else if (wahl) parameter.set('lagerort_id', wahl);
     const suche = $('suche').value.trim();
     if (suche) parameter.set('q', suche);
-    parameter.set('nur_vorhanden', $('nurVorhanden').checked ? 'true' : 'false');
     parameter.set('offset', String(neuerOffset));
     return '/api/bestand?' + parameter.toString();
   }
@@ -307,7 +320,6 @@
     wahl = $('lagerort').value;
     neuLaden();
   });
-  $('nurVorhanden').addEventListener('change', neuLaden);
   $('suche').addEventListener('input', function () {
     // Tippen soll nicht bei jedem Zeichen eine Abfrage auslösen.
     clearTimeout(suchTimer);

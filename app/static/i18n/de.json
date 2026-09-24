@@ -661,5 +661,8 @@
   "nav.info.invoices": "Importierte Belege und ihre Positionen",
   "nav.info.upload": "Rechnung, Lieferschein oder Auftragsbestätigung einlesen",
   "session.account_aria": "Konto und Einstellungen",
+  "bestand.table_hauptgruppe": "Hauptgruppe",
+  "bestand.table_color": "Farbe",
+  "bestand.table_size": "Grösse",
   "_end": ""
 }

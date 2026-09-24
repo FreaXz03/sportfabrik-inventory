@@ -243,3 +243,24 @@ def test_seite_verlangt_eine_anmeldung(client):
     antwort = test_client.get("/bestand", follow_redirects=False)
     assert antwort.status_code in (302, 303, 307)
     assert "/login" in antwort.headers["location"]
+
+
+def test_zeile_nennt_die_hauptgruppe(daten):
+    """Gewünscht am 23.09.2026: Hauptgruppe in der Bestandsansicht; ohne
+    Kategorie bleibt sie leer."""
+    from app.core.kategorien import seed_kategorien
+    from app.core.models import Kategorie
+
+    sessions, codes = daten
+    with sessions.begin() as session:
+        seed_kategorien(session)
+        session.flush()
+        schuhe = session.scalar(
+            select(Kategorie.id).where(Kategorie.hauptgruppe == "Schuhe").limit(1)
+        )
+        polo = session.scalar(select(Artikel).where(Artikel.marke == "Nike"))
+        polo.kategorie_id = schuhe
+    with sessions() as session:
+        zeilen = liste_bestand(session)["zeilen"]
+    nach_marke = {zeile["marke"]: zeile["hauptgruppe"] for zeile in zeilen}
+    assert nach_marke == {"Nike": "Schuhe", "CMP": None}
