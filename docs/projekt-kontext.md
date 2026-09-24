@@ -1164,3 +1164,16 @@ Im lokalen Code umgesetzt: serverseitige Prüfung und passende Navigation, Schne
 ## Neue Anforderungen: Artikeldetails und Auswertungen – 24.09.2026
 
 [Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md) beschreibt die neue Gestaltung der Artikeldetails, manuelle Reduktion, zusammengefasste Aktivitäten, Statistik nur für Leitung/Zentrale, Kontoverwaltung durch Zentrale und weitere Bedienungsverbesserungen. Alle 17 Punkte sind in die Aufgabenplanung aufgenommen, Umsetzung offen. Die drei Rückfragen sind beantwortet: geschätzte Einnahmen zum damaligen reduzierten Verkaufspreis; manuelle Reduktion durch alle Mitarbeitenden je Filiale auf 30/50/70 %; Schnellzugriffe pro Benutzer. Bestehende Rechte für Ausbuchungen und Artikellöschung bleiben gültig.
+
+### Umsetzungsstand Artikeldetails und Auswertungen – 24.09.2026, abends
+
+Gebaut und im Browser gegen eine Testdatenbank geprüft (nicht im Laden, kein PostgreSQL-Durchgang), Suite 126 bestanden / 12 übersprungen:
+
+- **Punkte 1–6 Artikeldetails:** UVP-Verlauf zuoberst und kompakt, Preisliste ausklappbar (zu); Kassenkategorie über „Editieren“, EAN & Etikett über eigenen Knopf (beide zu); Notizen aus der Oberfläche entfernt (Daten und API bleiben); unten der aktuelle Bestand aller Grössen und Farben in allen Lagerorten (`/api/bestand?artikel_von=`); „Artikel löschen“ mit rotem Hinweis ganz unten.
+- **Punkt 10:** Artikelname im Bestand führt zu den Artikeldetails.
+- **Punkt 15:** Artikelsuche wie Bestand – Kategorie zuerst, Marke + Bezeichnung und Lief.-Nr. + EAN je in einer Spalte.
+- **Punkt 17:** Erfassen bietet nur noch die fünf Lieferantengruppen an.
+
+Entschieden (Punkt 13): Wird ein Konto gelöscht, bleiben alle Buchungen in der Datenbank; der Name bleibt stehen, nur die Verknüpfung zum Konto entfällt.
+
+Offen: Punkte 7, 11, 12, 16 (manuelle Reduktion, Auswahl per Bestandsliste), 8 (Aktuelles), 14 (Schnellzugriffe), 9 (Statistik), 13 (Kontoverwaltung).

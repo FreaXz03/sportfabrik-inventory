@@ -160,7 +160,7 @@ HTTP 422; gebucht wird in beiden Fällen nichts.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/bestand` | Seite „Bestand" (jede Anmeldung) |
-| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `nur_negativ=true` (nur negativer Bestand), `reduktion` (50/70) mit `reduktion_status` (`faellig`/`bald`, braucht eine Filiale; dieselbe Auswahl, die die Übersicht unter „Anstehend“ zählt), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `nur_negativ=true` (nur negativer Bestand), `reduktion` (50/70) mit `reduktion_status` (`faellig`/`bald`, braucht eine Filiale; dieselbe Auswahl, die die Übersicht unter „Anstehend“ zählt), `artikel_von` (Varianten-Id; zeigt alle Grössen und Farben desselben Artikels, für die Artikeldetails, 404 bei unbekannter Id), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
 
 **Lesen darf jede Anmeldung alle Filialen** (bestätigt am 22.09.2026) — auch
 die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`
@@ -208,7 +208,7 @@ Bestandsansicht und steht nicht in `gruende`.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/erfassen` | Seite „Ware erfassen" (jede Anmeldung) |
-| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), bekannte Lieferanten, Kassenkategorien (Regel 8), heutiges Datum vom Server |
+| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), Lieferanten nur als fünf Gruppen (`id`, `gruppe`, `code` 111/333/444/555/999; 24.09.2026), Kassenkategorien (Regel 8), heutiges Datum vom Server |
 | GET | `/api/erfassen/variante?ean=<ean>` | Nachschlag für den Scanner: `{"gefunden": true, "variante": {…}}` mit Marke, Bezeichnung, Farbe, Grösse, Einheit, letztem UVP/EK und der bestehenden Kategorie als Vorschlag; unbekannte EAN ergibt `{"gefunden": false, "variante": null}` |
 | POST | `/api/erfassen` | Alle Positionen als **einen** Wareneingang ohne Beleg buchen (D27) |
 
