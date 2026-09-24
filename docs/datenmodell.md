@@ -167,7 +167,7 @@ Lieferanten-Erkennung beim Dokumenten-Upload: die Registry erkennt das Layout
 und der Import schlägt den Lieferanten über denselben `parser_key` nach
 (Phase B, Teilaufgabe B1 — siehe `docs/architektur.md`, „PDF-Parsing"). Ein
 Lieferant ohne passendes Parser-Modul (bzw. umgekehrt) lässt den Import
-scheitern, darum prüft `tests/test_parser_registry.py` beide Seiten
+scheitern, darum prüft `tests/test_parser.py` beide Seiten
 gegeneinander. Seed-Daten in `app/core/lieferanten.py`.
 
 ### `kategorien`

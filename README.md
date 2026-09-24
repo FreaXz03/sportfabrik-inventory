@@ -287,14 +287,22 @@ fastapi dev app/main.py
 
 ```powershell
 pip install pytest
-pytest
+DATABASE_URL=sqlite:// pytest -q
 ```
 
-Einige Tests werden automatisch übersprungen, wenn eine optionale
-Voraussetzung fehlt: eine echte INTERSPORT-Beispielrechnung
+Die Tests sind nach Hauptabläufen gebaut (Entscheid 24.09.2026): wenige
+grosse Ablauf-Tests über die echte App mit Anmeldung
+(`tests/test_ablauf_*.py`: Beleg, Erfassen, Lager, Artikel, Anmeldung),
+dazu kleine Tabellen-Tests für harte Regeln (`tests/test_regeln.py`), die
+Parser (`tests/test_parser.py`) und den Betrieb (`tests/test_betrieb.py`:
+Migrationen, Skripte, kein Internet im Frontend). Gemeinsame Test-Welt mit
+Stammdaten und Konten je Rolle: `tests/conftest.py`; selbst gebaute Belege:
+`tests/testbelege.py`. Für neue Funktionen gilt: **Test zuerst**.
+
+Echte Belege liegen nie im Repo. Einige Tests werden deshalb übersprungen,
+wenn eine optionale Voraussetzung fehlt: die INTERSPORT-Originalrechnung
 (Umgebungsvariable `INTERSPORT_TEST_PDF` auf den Pfad setzen), ein lokal
-installiertes Tesseract, oder Node.js (für ein paar Frontend-Logik-Tests,
-die reines JavaScript ausserhalb des Browsers prüfen).
+installiertes Tesseract, oder Node.js (Frontend-Skripte und Login-Weiterleitung).
 
 ## Backups
 

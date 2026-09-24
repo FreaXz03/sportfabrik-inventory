@@ -626,7 +626,7 @@ schickte einen Scan damit zweimal durch die Texterkennung.
 Ein neues Layout (Roadmap Phase E) braucht damit genau zwei Schritte: Modul
 mit der Schnittstelle anlegen und in `PARSERS` eintragen. Der passende
 Lieferant muss denselben `parser_key` in den Seed-Daten haben
-(`app/core/lieferanten.py`) — `tests/test_parser_registry.py` prüft das.
+(`app/core/lieferanten.py`) — `tests/test_parser.py` prüft das.
 
 ## OCR-Fallback für gescannte Papierrechnungen
 
