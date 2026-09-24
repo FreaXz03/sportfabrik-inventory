@@ -326,6 +326,13 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 
 8. ~~**FEDAS-Codes aus der Praxis lernen?**~~ — beantwortet am 23.09.2026: ja, als geprüfter Vorschlag (siehe oben). Umsetzung noch offen.
 
+### Phase D — offene Fragen (24.09.2026)
+
+- **D-F1 Runterschreiben „erledigt“:** Soll die Filiale bestätigen, dass sie einen Artikel runtergeschrieben hat (dann verschwindet er aus der Liste, bis die nächste Stufe fällig ist)? Oder reicht die Liste ohne Bestätigung?
+- **D-F2 Nachlieferung nach dem Runterschreiben:** Ein Modell steht schon auf −50 %, dann kommt Nachschub. Laut D5 startet die Uhr neu. Gilt dann für das ganze Modell wieder −30 % (alte Stücke neu etikettieren), oder bleiben die alten Stücke auf −50 % und nur die neuen bekommen −30 %?
+- **D-F3 Zentrale Empfehlung:** Wie soll das konkret laufen? Vorschlag: Die Zentrale sieht alle Filialen und setzt je Artikel eine Stufe („−50 % ab 1.10.“); jede Filiale sieht die Empfehlung auf ihrer Liste und bestätigt „übernommen“ oder „nicht übernommen“ mit kurzem Grund; die Zentrale sieht Abweichungen.
+- **D-F4 Schwellen 18/36 Monate einstellbar:** Wer darf sie ändern (nur Zentrale?), und gelten sie für alle Filialen gleich?
+
 ### Sicherheit (Prüfung vom 24.09.2026)
 
 Keine kritischen oder hohen Befunde; vier mittlere und fünf niedrige Punkte sind offen, Einzelheiten und Status in [`sicherheit.md`](sicherheit.md) (S1–S9). **S2 entschieden (24.09.2026):** nach 5 falschen Passwörtern 20 Minuten Sperre — umgesetzt. Nicht entschieden: Mindestlänge der Filialleiter-Passwörter (10 statt 6).
@@ -355,7 +362,8 @@ Keine kritischen oder hohen Befunde; vier mittlere und fünf niedrige Punkte sin
 | C — Lagerbestand | ✅ abgeschlossen: C1 (Warnung bei Mehrlieferung), C2 (Bestandsansicht), C3 (Ausbuchen per Scan), C4 (Umlagerung) und C5 (Korrekturen), Branch `feature/warenwirtschaft-v2` |
 | Inbox-Anforderungen vom 23.09.2026 | ✅ abgeschlossen am 24.09.2026 (Lieferantengruppen-Codes, Bestandsspalten, Ausbuchungsliste, Artikelsuche, Übersicht, Artikel löschen), Branch `feature/warenwirtschaft-v2`; offen: Parser für die Beispielbelege, ECOM-Erkennung, Tests aufräumen |
 | Arbeiten vom 24.09.2026 | ✅ Tests aufgeräumt (wenige Ablauf-Tests), Etikett 47 × 83 mm für vorgedruckte Rollen, FEDAS vollständig zugeordnet, ECOM-Erkennung (555) und EK-Speicherung, Parser Alpina/Chris Sports/CMP (Phase E teilweise), Papierrechnung INTERSPORT per OCR — siehe unten |
-| D–G | offen (E teilweise: Alpina, Chris Sports, CMP fertig; gescannte Lieferscheine offen) |
+| D — Preise & Reduktion | 🔶 Teil 1 umgesetzt (24.09.2026): Seite „Runterschreiben“ je Filiale mit fälligen/bald fälligen Artikeln und Etikettendruck je Artikel. Offen: „erledigt“ festhalten, zentrale Empfehlung, einstellbare Schwellen — Fragen an Fabian in Abschnitt 10 |
+| E–G | offen (E teilweise: Alpina, Chris Sports, CMP fertig; gescannte Lieferscheine offen) |
 | Oberfläche: durchgängiges Gestaltungssystem (alle Seiten) | ✅ abgeschlossen, Branch `feature/warenwirtschaft-v2` |
 
 **Phase B — Wareneingang v2, Aufteilung in Teilaufgaben** (aus Roadmap

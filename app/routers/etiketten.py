@@ -20,7 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from ..core.database import get_session
 from ..core.i18n import translate
-from ..core.models import Variante, Wareneingang, WareneingangPosition
+from ..core.models import Bestand, Variante, Wareneingang, WareneingangPosition
 from ..services.barcode import druckbare_nummer
 from ..services.ean import EanError, EanNichtGefunden, setze_ean
 from ..services.etikett import (
@@ -230,3 +230,51 @@ def api_etiketten_wareneingang(
     except EtikettError as exc:
         raise HTTPException(409, str(exc)) from exc
     return _pdf(inhalt, f"etiketten-wareneingang-{wareneingang_id}.pdf")
+
+
+@router.get("/api/artikel/{artikel_id}/etiketten.pdf")
+def api_etiketten_artikel(
+    artikel_id: int,
+    reduktion: int | None = Query(default=None),
+    lagerort_id: int | None = Query(default=None),
+    groesse: str | None = Query(default=None),
+    user=Depends(require_login_api),
+    aktiver_lagerort=Depends(get_active_lagerort),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Runterschreiben (Phase D): je Stück im Bestand der Filiale ein Etikett,
+    für alle Farben und Grössen des Artikels. `reduktion` bestimmt die Rolle."""
+    lagerort_id = lagerort_id if lagerort_id is not None else getattr(aktiver_lagerort, "id", None)
+    stufe = _reduktion(reduktion, language)
+    groesse = _groesse(groesse, language)
+    varianten = session.execute(
+        select(Variante.id, Bestand.menge)
+        .join(Bestand, Bestand.varianten_id == Variante.id)
+        .where(
+            Variante.artikel_id == artikel_id,
+            Bestand.lagerort_id == lagerort_id,
+            Bestand.menge > 0,
+        )
+        .order_by(Variante.id)
+    ).all()
+    if not varianten:
+        raise HTTPException(404, translate("errors.etikett.no_positions", language))
+    hinweis = translate("etikett.no_ean", language)
+    try:
+        etiketten = [
+            sammle_etikett(
+                session,
+                varianten_id,
+                lagerort_id=lagerort_id,
+                reduktion=stufe,
+                anzahl=max(1, int(Decimal(menge))),
+                hinweis_ohne_ean=hinweis,
+                language=language,
+            )
+            for varianten_id, menge in varianten
+        ]
+        inhalt = etiketten_pdf(etiketten, groesse, language)
+    except EtikettError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return _pdf(inhalt, f"etiketten-artikel-{artikel_id}.pdf")

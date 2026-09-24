@@ -110,6 +110,56 @@ def reduktions_varianten(session, lagerort_id: int, heute: date | None = None) -
     return ergebnis
 
 
+def reduktions_liste(session, lagerort_id: int, heute: date | None = None) -> list[dict]:
+    """Seite „Runterschreiben" (Phase D): dieselbe Auswahl wie
+    `reduktions_varianten`, aber je Artikel (Modell) zusammengefasst - die
+    Reduktionsuhr läuft je Lieferanten-Artikelnummer (Regel 6), und ein
+    Runterschreiben betrifft alle Farben und Grössen des Modells.
+
+    Reihenfolge: zuerst fällig (−70 %, dann −50 %), danach bald."""
+    heute = heute or date.today()
+    auswahl = reduktions_varianten(session, lagerort_id, heute)
+    eingaenge = _letzte_eingaenge(lagerort_id)
+    ergebnis = []
+    for stand in ("faellig", "bald"):
+        for stufe in ("70", "50"):
+            ids = auswahl[stufe][stand]
+            if not ids:
+                continue
+            zeilen = session.execute(
+                select(
+                    Artikel.id,
+                    Artikel.marke,
+                    Artikel.bezeichnung,
+                    Artikel.lieferanten_artikelnr,
+                    eingaenge.c.datum,
+                    func.count(Variante.id),
+                    func.sum(Bestand.menge),
+                )
+                .join(Variante, Variante.artikel_id == Artikel.id)
+                .join(Bestand, Bestand.varianten_id == Variante.id)
+                .join(eingaenge, eingaenge.c.artikel_id == Artikel.id)
+                .where(Bestand.lagerort_id == lagerort_id, Variante.id.in_(ids))
+                .group_by(Artikel.id, Artikel.marke, Artikel.bezeichnung, Artikel.lieferanten_artikelnr, eingaenge.c.datum)
+                .order_by(Artikel.marke, Artikel.bezeichnung, Artikel.id)
+            ).all()
+            for artikel_id, marke, bezeichnung, nummer, datum, varianten, stueck in zeilen:
+                ergebnis.append(
+                    {
+                        "artikel_id": artikel_id,
+                        "marke": marke,
+                        "bezeichnung": bezeichnung,
+                        "lieferanten_artikelnr": nummer,
+                        "eingang": datum.isoformat() if datum else None,
+                        "stufe": int(stufe),
+                        "stand": stand,
+                        "varianten": int(varianten),
+                        "stueck": _zahl(stueck),
+                    }
+                )
+    return ergebnis
+
+
 def _reduktionen(session, lagerort_id: int, heute: date) -> dict:
     """Anzahl Varianten je Stufe - siehe `reduktions_varianten`."""
     return {

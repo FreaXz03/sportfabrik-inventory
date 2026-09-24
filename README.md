@@ -63,6 +63,9 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Interne EAN auf Knopfdruck**: Artikel ohne Hersteller-Barcode bekommen
   eine hauseigene EAN-13 (GS1-Bereich 20–29, mit Prüfziffer) und werden damit
   an der Kasse scannbar.
+- **Runterschreiben** (Phase D, Teil 1): Seite mit den Artikeln einer Filiale,
+  die −50 % oder −70 % erreicht haben oder in 30 Tagen erreichen, je mit
+  Knopf „Etiketten drucken“ (ein Etikett pro Stück, mit Rollen-Hinweis).
 - **Preisetikett als PDF** für die vorgedruckten Rollen (47 × 83 mm, Hochformat;
   Logo, Prozent-Punkt und Berge sind vorgedruckt): gedruckt werden UVP
   (durchgestrichen), Gruppen-Code des Lieferanten (111/555/333/999/444),

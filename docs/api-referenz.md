@@ -251,6 +251,8 @@ Lagerort ohne Zugriff ergibt HTTP 403, ein ungültiges Datumsformat HTTP 422.
 | GET | `/api/varianten/{id}/etikett` | Was auf dem Etikett stünde (Vorschau für die Oberfläche) samt Auswahllisten für Grösse und Reduktion; `rolle` sagt, welche vorgedruckte Rolle einzulegen ist (`{"prozent": 50, "farbe": "rot"}`), Parameter `reduktion` wie beim PDF |
 | GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (nur `47x83`, die vorgedruckte Rolle), `reduktion` (0/30/50/70, bestimmt die Rolle), `anzahl` (1–100), `muster=true` zeichnet den Vordruck zur Vorschau mit |
 | GET | `/api/wareneingaenge/{id}/etiketten.pdf` | Alle Etiketten eines Wareneingangs — `je_stueck=true` (Voreinstellung) druckt eines pro Stück, sonst eines je Position |
+| GET | `/api/artikel/{artikel_id}/etiketten.pdf` | Runterschreiben (Phase D): ein Etikett je Stück im Bestand der Filiale, für alle Farben und Grössen des Artikels. Parameter `reduktion` (bestimmt die Rolle), `lagerort_id` (ohne Angabe die aktive Filiale). 404 ohne Bestand |
+| GET | `/api/reduktionen` | Runterschreiben (Phase D): Artikel einer Filiale (`lagerort_id`, sonst die aktive), die −70 %/−50 % erreicht haben (`stand: faellig`) oder in 30 Tagen erreichen (`bald`), je mit `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; dazu die wählbaren Filialen |
 
 Beide PDF-Antworten kommen als `application/pdf` mit `Content-Disposition:
 inline`, eine Seite je Etikett; die Seitengrösse ist die Etikettengrösse,
