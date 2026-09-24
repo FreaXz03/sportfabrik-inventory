@@ -39,6 +39,7 @@ Quellen im lokalen Obsidian-Vault Main: `01 Projekte/Sportfabrik Inventory/Sport
 - **Lieferantengruppen und Codes** (24.09.2026): Gruppe = `lieferanten.typ`, Code daraus abgeleitet (`app/core/lieferanten.py`), fett rechts neben dem Lieferanten auf dem Etikett und in der Lieferantenauswahl der Erfassung. Je Gruppe ein Lieferant für Ware von Hand. **Einschränkung:** ECOM-Retouren kommen im Intersport-Layout und werden vom Parser noch dem Lieferanten INTERSPORT zugeordnet (Code 111), bis der Parser sie erkennt (Referenz „ret.Ecom").
 - **Bestandsansicht** (24.09.2026): Farbe und Grösse in eigenen Spalten, dazu die Hauptgruppe (unübersetzt wie in der Kasse). Zeilen mit Menge 0 erscheinen nicht mehr, der Schalter dafür ist weg; bucht man eine Zeile auf 0, verschwindet sie sofort. Der Artikel bleibt im Stamm, ein negativer Bestand bleibt sichtbar.
 - **Liste der Ausbuchungen** (24.09.2026): auf der Seite „Ausbuchen" alle Verkäufe und Abgänge aus dem Journal, neueste zuerst, mit Zeit, Artikel, Filiale, Grund und Person; filterbar nach Filiale, mit „Rückgängig". API `GET /api/ausbuchungen`.
+- **Artikelsuche** (24.09.2026): oben nur zwei grosse Felder — „EAN scannen" (beim Öffnen aktiv, Scan + Enter sucht sofort und markiert das Feld für den nächsten Scan) und „Schnellsuche"; Marke, Lieferanten-Artikelnummer, Bezeichnung, Kategorie und Lieferdatum stehen unter „Weitere Filter".
 
 ## Entscheid vom 24.09.2026 zur Artikellöschung
 

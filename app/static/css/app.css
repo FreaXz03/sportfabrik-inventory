@@ -778,6 +778,39 @@ label > textarea { margin-top: 7px; }
 
 .filters > button { flex: none; }
 
+/* Artikelsuche (23.09.2026): zuerst scannen, dann frei suchen - gross und
+   gut lesbar; alle übrigen Filter hinter „Weitere Filter". */
+.search-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 14px 16px;
+  align-items: end;
+}
+
+.search-field > span {
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.search-field > input {
+  padding: 13px 16px;
+  font-size: 17px;
+}
+
+.search-main .filter-actions { display: flex; gap: 8px; }
+
+.search-main .filter-actions button { padding: 13px 20px; font-size: 15px; }
+
+.more-filters { margin-top: 14px; }
+
+.more-filters > summary { font-size: 14px; }
+
+.more-filters > .filters { margin-top: 12px; }
+
+@media (max-width: 760px) {
+  .search-main { grid-template-columns: 1fr; }
+}
+
 .filters .check {
   display: flex;
   align-items: center;

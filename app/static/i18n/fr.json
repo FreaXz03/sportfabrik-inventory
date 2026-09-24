@@ -665,5 +665,7 @@
   "bestand.table_color": "Couleur",
   "bestand.table_size": "Taille",
   "ausbuchen.table_person": "Personne",
+  "articles.filter.ean_scan": "Scanner l'EAN",
+  "articles.filter.more": "Plus de filtres",
   "_end": ""
 }
