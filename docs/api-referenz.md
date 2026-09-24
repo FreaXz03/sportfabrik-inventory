@@ -174,6 +174,7 @@ negativer Bestand wird gezeigt, nicht versteckt.
 | GET | `/ausbuchen` | Seite „Ausbuchen" (jede Anmeldung) |
 | GET | `/api/ausbuchen/stammdaten` | Buchbare Lagerorte (`lagerorte`, eigene zuerst), `lagerort_aktiv`, `gruende` (`verkauf`, `defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges`) |
 | POST | `/api/ausbuchen` | Ein Stück ausbuchen. JSON: `grund`, genau eines von `ean` oder `varianten_id`, `freitext` (Pflicht bei `sonstiges`), `lagerort_id` (ohne Angabe die aktive Filiale). Antwort: `bewegung_id`, `typ`, `grund`, Artikeldaten, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 bei unbekannter EAN/Variante oder unbekanntem Grund — dann ist nichts gebucht |
+| GET | `/api/ausbuchungen` | Verkäufe und Abgänge, neueste zuerst. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true`, `limit` (max. 200), `offset`. Je Zeile Zeitpunkt, Artikel, Lagerort, Grund, Person (`benutzer_name`), `storniert` |
 | POST | `/api/ausbuchen/{bewegung_id}/storno` | Ausbuchung per Gegenbuchung (`korrektur`, `storno:<id>`) aufheben; 409, wenn schon aufgehoben oder keine Ausbuchung |
 
 Der Grund `test` gehört zum vorübergehenden Knopf „−1" in der

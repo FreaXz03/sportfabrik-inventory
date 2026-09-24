@@ -27,7 +27,7 @@ wiederfinden.
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Artikel, Bestand, Lagerbewegung, Lagerort, Variante
@@ -246,3 +246,61 @@ def storniere(
         ergebnis = _antwort(session, gegen, variante, vorher, nachher)
         ergebnis["storniert"] = bewegung.id
         return ergebnis
+
+
+MAX_LISTE = 200
+
+
+def liste_ausbuchungen(
+    session, lagerort_id: int | None = None, limit: int = 100, offset: int = 0
+) -> dict:
+    """Verkäufe und Abgänge, neueste zuerst - mit Zeitpunkt, Person und Grund
+    (gewünscht am 23.09.2026). `lagerort_id = None` heisst alle Lagerorte.
+    `storniert` sagt, ob die Buchung schon rückgängig gemacht wurde."""
+    limit = max(1, min(int(limit), MAX_LISTE))
+    offset = max(0, int(offset))
+    filter_ = [Lagerbewegung.typ.in_(("verkauf", "ausbuchung"))]
+    if lagerort_id is not None:
+        filter_.append(Lagerbewegung.lagerort_id == lagerort_id)
+    gesamt = session.scalar(select(func.count()).select_from(Lagerbewegung).where(*filter_))
+    zeilen = session.execute(
+        select(Lagerbewegung, Variante, Artikel, Lagerort)
+        .join(Variante, Variante.id == Lagerbewegung.varianten_id)
+        .join(Artikel, Artikel.id == Variante.artikel_id)
+        .join(Lagerort, Lagerort.id == Lagerbewegung.lagerort_id)
+        .where(*filter_)
+        .order_by(Lagerbewegung.zeitpunkt.desc(), Lagerbewegung.id.desc())
+        .limit(limit)
+        .offset(offset)
+    ).all()
+    storno_gruende = [f"{STORNO_PREFIX}{bewegung.id}" for bewegung, *_ in zeilen]
+    storniert = set(
+        session.scalars(
+            select(Lagerbewegung.grund).where(Lagerbewegung.grund.in_(storno_gruende))
+        ).all()
+    ) if storno_gruende else set()
+    return {
+        "zeilen": [
+            {
+                "bewegung_id": bewegung.id,
+                "zeitpunkt": bewegung.zeitpunkt.isoformat(),
+                "typ": bewegung.typ,
+                "grund": bewegung.grund,
+                "menge": zahl(-Decimal(bewegung.menge)),
+                "benutzer_name": bewegung.benutzer_name,
+                "benutzer_kassennummer": bewegung.benutzer_kassennummer,
+                "varianten_id": variante.id,
+                "marke": artikel.marke,
+                "bezeichnung": artikel.bezeichnung,
+                "farbe": variante.farbe,
+                "groesse": variante.groesse,
+                "ean": variante.ean,
+                "lagerort": {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
+                "storniert": f"{STORNO_PREFIX}{bewegung.id}" in storniert,
+            }
+            for bewegung, variante, artikel, lagerort in zeilen
+        ],
+        "total": int(gesamt or 0),
+        "hat_mehr": offset + len(zeilen) < (gesamt or 0),
+        "offset": offset,
+    }

@@ -580,7 +580,7 @@
   "ausbuchen.booking": "Enregistrement …",
   "ausbuchen.booked": "{artikel} : 1 pièce sortie. Stock {lagerort} : {menge}",
   "ausbuchen.booked_negative": "{artikel} : sortie enregistrée – attention, le stock était insuffisant. Stock {lagerort} : {menge}",
-  "ausbuchen.list_heading": "Sorties de cette session",
+  "ausbuchen.list_heading": "Sorties de stock",
   "ausbuchen.list_empty": "Rien n'a encore été sorti.",
   "ausbuchen.table_time": "Heure",
   "ausbuchen.table_article": "Article",
@@ -664,5 +664,6 @@
   "bestand.table_hauptgruppe": "Groupe principal",
   "bestand.table_color": "Couleur",
   "bestand.table_size": "Taille",
+  "ausbuchen.table_person": "Personne",
   "_end": ""
 }

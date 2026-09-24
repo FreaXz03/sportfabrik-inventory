@@ -43,7 +43,12 @@
           </section>
 
           <section class="panel">
-               <h2 data-i18n="ausbuchen.list_heading">In dieser Sitzung ausgebucht</h2>
+               <h2 data-i18n="ausbuchen.list_heading">Ausbuchungen</h2>
+               <div class="filters">
+                    <label><span data-i18n="bestand.filter_lagerort">Filiale</span><select id="listeLagerort">
+                              <option value="alle" data-i18n="bestand.filter_all">Alle Filialen und Standorte</option>
+                         </select></label>
+               </div>
                <p id="leer" class="muted" data-i18n="ausbuchen.list_empty">Noch nichts ausgebucht.</p>
                <div class="tablewrap" id="liste" hidden>
                     <table>
@@ -51,19 +56,21 @@
                               <tr>
                                    <th data-i18n="ausbuchen.table_time">Zeit</th>
                                    <th data-i18n="ausbuchen.table_article">Artikel</th>
+                                   <th data-i18n="erfassen.table_variant">Farbe / Grösse</th>
                                    <th data-i18n="ausbuchen.table_lagerort">Filiale</th>
                                    <th data-i18n="ausbuchen.reason_label">Grund</th>
-                                   <th data-i18n="ausbuchen.table_stock_after">Bestand danach</th>
+                                   <th data-i18n="ausbuchen.table_person">Person</th>
                                    <th data-i18n="ausbuchen.table_actions">Aktion</th>
                               </tr>
                          </thead>
                          <tbody id="rows"></tbody>
                     </table>
                </div>
+               <button id="mehr" class="secondary" hidden data-i18n="bestand.more">Weitere Zeilen laden</button>
           </section>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/ausbuchen.js?v=2"></script>
+     <script src="/static/js/ausbuchen.js?v=3"></script>
      <script src="/static/js/nav.js?v=2"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>

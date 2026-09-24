@@ -336,3 +336,55 @@ def test_api_verlangt_eine_anmeldung(client):
         "/api/ausbuchen", json={"ean": EAN, "grund": "verkauf"}
     ).status_code == 401
     assert test_client.get("/ausbuchen", follow_redirects=False).status_code in (302, 303, 307)
+
+
+# --- Liste der Ausbuchungen (23.09.2026) ----------------------------------
+
+
+def test_liste_zeigt_zeit_person_grund_und_storno(daten):
+    from app.services.ausbuchung import liste_ausbuchungen
+
+    sessions, codes, ids = daten
+    erste = ausbuchen(
+        sessions, lagerort_id=codes["SF1"], grund="verkauf", ean=EAN, benutzer=BENUTZER
+    )
+    ausbuchen(
+        sessions,
+        lagerort_id=codes["SF1"],
+        grund="sonstiges",
+        freitext="Muster",
+        varianten_id=ids["blau"],
+        benutzer=BENUTZER,
+    )
+    storniere(sessions, erste["bewegung_id"])
+    with sessions() as session:
+        liste = liste_ausbuchungen(session, codes["SF1"])
+    assert liste["total"] == 2  # die Gegenbuchung ist keine Ausbuchung
+    neueste, aeltere = liste["zeilen"]
+    assert neueste["grund"] == "sonstiges: Muster"
+    assert neueste["benutzer_name"] == "Anna"
+    assert neueste["menge"] == "1.00"
+    assert neueste["storniert"] is False
+    assert aeltere["bewegung_id"] == erste["bewegung_id"]
+    assert aeltere["storniert"] is True
+
+
+def test_liste_je_filiale(daten):
+    from app.services.ausbuchung import liste_ausbuchungen
+
+    sessions, codes, _ = daten
+    ausbuchen(sessions, lagerort_id=codes["SF1"], grund="verkauf", ean=EAN)
+    ausbuchen(sessions, lagerort_id=codes["SF3"], grund="verkauf", ean=EAN)
+    with sessions() as session:
+        assert liste_ausbuchungen(session, codes["SF3"])["total"] == 1
+        assert liste_ausbuchungen(session, None)["total"] == 2
+
+
+def test_api_liste_standard_aktive_filiale(client):
+    test_client, _, codes, _ = client
+    test_client.post("/api/ausbuchen", json={"ean": EAN, "grund": "verkauf"})
+    body = test_client.get("/api/ausbuchungen").json()
+    assert body["gewaehlt"] == codes["SF1"]
+    assert body["total"] == 1
+    assert test_client.get("/api/ausbuchungen?alle=true").json()["gewaehlt"] is None
+    assert test_client.get("/api/ausbuchungen?lagerort_id=9999").status_code == 404

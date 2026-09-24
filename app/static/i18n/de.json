@@ -580,7 +580,7 @@
   "ausbuchen.booking": "Wird gebucht …",
   "ausbuchen.booked": "{artikel}: 1 Stück ausgebucht. Bestand {lagerort}: {menge}",
   "ausbuchen.booked_negative": "{artikel}: ausgebucht – Achtung, der Bestand reichte nicht. Bestand {lagerort}: {menge}",
-  "ausbuchen.list_heading": "In dieser Sitzung ausgebucht",
+  "ausbuchen.list_heading": "Ausbuchungen",
   "ausbuchen.list_empty": "Noch nichts ausgebucht.",
   "ausbuchen.table_time": "Zeit",
   "ausbuchen.table_article": "Artikel",
@@ -664,5 +664,6 @@
   "bestand.table_hauptgruppe": "Hauptgruppe",
   "bestand.table_color": "Farbe",
   "bestand.table_size": "Grösse",
+  "ausbuchen.table_person": "Person",
   "_end": ""
 }

@@ -3,9 +3,11 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const t = (...a) => window.SportfabrikI18n.t(...a);
-  // Was in dieser Sitzung gebucht wurde, neuestes zuerst - bleibt nur im
-  // Browser, das Journal selbst steht in `lagerbewegungen`.
-  const buchungen = [];
+  // Liste der Ausbuchungen aus dem Journal (`lagerbewegungen`), neueste
+  // zuerst - mit Zeit, Person und Grund (23.09.2026).
+  let buchungen = [];
+  let listenOffset = 0;
+  let listenWahl = null;
   // Der Scanner tippt schneller, als der Server antwortet: Scans werden
   // gesammelt und der Reihe nach gebucht, damit keiner verloren geht.
   const warteschlange = [];
@@ -54,18 +56,23 @@
     return ergebnis;
   }
 
+  function zeitText(wert) {
+    const datum = new Date(wert);
+    return datum.toLocaleDateString() + ' ' + datum.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
   function zeichnen() {
     $('leer').hidden = buchungen.length > 0;
     $('liste').hidden = buchungen.length === 0;
     $('rows').replaceChildren();
     for (const buchung of buchungen) {
       const tr = document.createElement('tr');
-      if (Number(buchung.bestand_nachher) < 0) tr.className = 'warning';
-      tr.append(node('td', new Date(buchung.zeitpunkt).toLocaleTimeString()));
-      tr.append(node('td', artikelName(buchung)));
+      tr.append(node('td', zeitText(buchung.zeitpunkt)));
+      tr.append(node('td', [buchung.marke, buchung.bezeichnung].filter(Boolean).join(' ') || '—'));
+      tr.append(node('td', [buchung.farbe, buchung.groesse].filter(Boolean).join(' / ') || '—'));
       tr.append(node('td', buchung.lagerort.code));
       tr.append(node('td', grundText(buchung.grund)));
-      tr.append(node('td', menge(buchung.bestand_nachher)));
+      tr.append(node('td', buchung.benutzer_name || buchung.benutzer_kassennummer || '—'));
       const aktion = node('td');
       if (buchung.storniert) {
         aktion.append(node('span', t('ausbuchen.undone'), 'muted'));
@@ -77,6 +84,28 @@
       }
       tr.append(aktion);
       $('rows').append(tr);
+    }
+  }
+
+  async function listeLaden(anhaengen) {
+    const parameter = new URLSearchParams();
+    if (listenWahl === 'alle') parameter.set('alle', 'true');
+    else if (listenWahl) parameter.set('lagerort_id', listenWahl);
+    parameter.set('offset', String(anhaengen ? listenOffset : 0));
+    try {
+      const antwort = await fetch('/api/ausbuchungen?' + parameter.toString());
+      const daten = await antwort.json().catch(() => ({}));
+      if (!antwort.ok) throw new Error(typeof daten.detail === 'string' ? daten.detail : t('common.errors.request_failed'));
+      buchungen = anhaengen ? buchungen.concat(daten.zeilen) : daten.zeilen;
+      listenOffset = daten.offset + daten.zeilen.length;
+      if (listenWahl === null) {
+        listenWahl = daten.gewaehlt === null ? 'alle' : String(daten.gewaehlt);
+        $('listeLagerort').value = listenWahl;
+      }
+      $('mehr').hidden = !daten.hat_mehr;
+      zeichnen();
+    } catch (fehler) {
+      $('status').textContent = fehlertext(fehler);
     }
   }
 
@@ -100,8 +129,7 @@
         $('scanStatus').className = '';
         try {
           const ergebnis = await post('/api/ausbuchen', auftrag);
-          buchungen.unshift(ergebnis);
-          zeichnen();
+          listeLaden(false);
           // Reichte der Bestand nicht, ist trotzdem gebucht (F9) - gesagt
           // wird es aber, sonst merkt es niemand.
           meldung(ergebnis, ergebnis.bestand_reicht_nicht ? 'ausbuchen.booked_negative' : 'ausbuchen.booked');
@@ -119,8 +147,7 @@
     knopf.disabled = true;
     try {
       const ergebnis = await post('/api/ausbuchen/' + buchung.bewegung_id + '/storno');
-      buchung.storniert = true;
-      zeichnen();
+      listeLaden(false);
       meldung(ergebnis, 'ausbuchen.undo_done');
     } catch (fehler) {
       knopf.disabled = false;
@@ -156,6 +183,12 @@
         auswahl.add(new Option(lagerort.code + ' · ' + lagerort.name, lagerort.id));
       }
       if (daten.lagerort_aktiv) auswahl.value = String(daten.lagerort_aktiv);
+      const filter = $('listeLagerort');
+      while (filter.options.length > 1) filter.remove(1);
+      for (const lagerort of daten.lagerorte || []) {
+        filter.add(new Option(lagerort.code + ' · ' + lagerort.name, lagerort.id));
+      }
+      if (listenWahl) filter.value = listenWahl;
       gruende = daten.gruende || [];
       gruendeFuellen(gruende);
       geladen = true;
@@ -197,9 +230,15 @@
   });
   $('grund').addEventListener('change', freitextUmschalten);
   $('retry').addEventListener('click', stammdatenLaden);
+  $('listeLagerort').addEventListener('change', () => {
+    listenWahl = $('listeLagerort').value;
+    listeLaden(false);
+  });
+  $('mehr').addEventListener('click', () => listeLaden(true));
 
-  window.SportfabrikI18n.ready.then(() => {
-    stammdatenLaden();
+  window.SportfabrikI18n.ready.then(async () => {
+    await stammdatenLaden();
+    listeLaden(false);
     document.addEventListener('sportfabrik:i18n-ready', () => {
       gruendeFuellen(gruende);
       zeichnen();

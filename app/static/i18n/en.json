@@ -580,7 +580,7 @@
   "ausbuchen.booking": "Booking …",
   "ausbuchen.booked": "{artikel}: 1 piece booked out. Stock {lagerort}: {menge}",
   "ausbuchen.booked_negative": "{artikel}: booked out – note: stock was not sufficient. Stock {lagerort}: {menge}",
-  "ausbuchen.list_heading": "Booked out in this session",
+  "ausbuchen.list_heading": "Bookings out",
   "ausbuchen.list_empty": "Nothing booked out yet.",
   "ausbuchen.table_time": "Time",
   "ausbuchen.table_article": "Item",
@@ -664,5 +664,6 @@
   "bestand.table_hauptgruppe": "Main group",
   "bestand.table_color": "Colour",
   "bestand.table_size": "Size",
+  "ausbuchen.table_person": "Person",
   "_end": ""
 }
