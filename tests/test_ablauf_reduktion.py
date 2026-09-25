@@ -128,3 +128,47 @@ def test_manuelle_reduktion_je_filiale(welt):
     assert client.delete(f"{url}?varianten_id={cap}&lagerort_id={codes['SF1']}").json()["wirksam"] == 0
     assert client.put(url, json={"varianten_id": polo, "lagerort_id": codes["SF1"], "prozent": 30}).json()["wirksam"] == 30
     assert client.get("/api/reduktionen").json()["manuell"][0]["lieferanten_artikelnr"] == "A1"
+
+
+def test_runterschreiben_bestaetigen(welt):
+    """D-F1 (25.09.2026): eine Filiale bestätigt ein fälliges Modell als
+    heruntergeschrieben - es verschwindet aus der fälligen Liste, bis die
+    nächste Stufe fällig wird. „Bald" bleibt unberührt (nichts zu bestätigen)."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    welt.anmelden(CHEF)
+    # A1: 40 Monate her -> 70% fällig. C3: in 10 Tagen 18 Monate -> 50% "bald".
+    for nummer, eingang, zeilen in [
+        ("9000000061", _monate_zurueck(heute, 40), [_zeile("1", "A1", "4006632041234", "Poloshirt", "5")]),
+        ("9000000062", _monate_zurueck(heute + timedelta(days=10), 18), [_zeile("2", "C3", "4006381333931", "Hoodie", "1")]),
+    ]:
+        pdf = rechnung_pdf(header_lines=kopf(nummer=nummer, datum=eingang.strftime("%d.%m.%Y")), rows=zeilen)
+        assert importieren(client, pdf, lagerort_id=str(codes["SF1"])).status_code == 200
+
+    welt.anmelden(ANNA)
+    with welt.sessions() as session:
+        polo_id = session.scalar(select(Artikel.id).where(Artikel.lieferanten_artikelnr == "A1"))
+        hoodie_id = session.scalar(select(Artikel.id).where(Artikel.lieferanten_artikelnr == "C3"))
+
+    url = "/api/reduktionen/bestaetigen"
+    # Falsche Stufe: nichts wird gebucht.
+    assert client.post(url, json={"artikel_id": polo_id, "lagerort_id": codes["SF1"], "stufe": 50}).status_code == 200
+    liste = client.get("/api/reduktionen").json()["artikel"]
+    # Falsche Stufe bestätigt (50 statt tatsächlich fälliger 70) - Poloshirt bleibt in der Liste.
+    assert [(a["lieferanten_artikelnr"], a["stand"]) for a in liste] == [("A1", "faellig"), ("C3", "bald")]
+
+    # Richtige Stufe (70) bestätigt: Poloshirt verschwindet, Hoodie ("bald") bleibt unberührt.
+    bestaetigt = client.post(url, json={"artikel_id": polo_id, "lagerort_id": codes["SF1"], "stufe": 70})
+    assert bestaetigt.status_code == 200, bestaetigt.text
+    liste = client.get("/api/reduktionen").json()["artikel"]
+    assert [(a["lieferanten_artikelnr"], a["stand"]) for a in liste] == [("C3", "bald")]
+
+    # Andere Filiale unberührt (Bestätigung gilt nur dort, wo bestätigt wurde).
+    assert client.get(f"/api/reduktionen?lagerort_id={codes['SF2']}").json()["artikel"] == []
+
+    # Mitarbeiter dürfen nur in ihrer Filiale bestätigen (Regel 9, gleiche Grenze wie manuelle Reduktion).
+    verboten = client.post(url, json={"artikel_id": hoodie_id, "lagerort_id": codes["SF2"], "stufe": 50})
+    assert verboten.status_code == 403
+
+    assert client.post(url, json={"artikel_id": 999999, "lagerort_id": codes["SF1"], "stufe": 70}).status_code == 404
+    assert client.post(url, json={"artikel_id": polo_id, "lagerort_id": codes["SF1"], "stufe": 40}).status_code == 422

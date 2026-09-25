@@ -23,6 +23,7 @@ from ..core.models import (
     WareneingangPosition,
 )
 from .reduktion import STUFEN
+from .reduktion_bestaetigung import bestaetigte_stufen
 
 VORSCHAU_TAGE = 30
 AKTUELLES_ANZAHL = 8
@@ -146,7 +147,14 @@ def reduktions_liste(session, lagerort_id: int, heute: date | None = None) -> li
                 .group_by(Artikel.id, Artikel.marke, Artikel.bezeichnung, Artikel.lieferanten_artikelnr, eingaenge.c.datum)
                 .order_by(Artikel.marke, Artikel.bezeichnung, Artikel.id)
             ).all()
+            bestaetigt = (
+                bestaetigte_stufen(session, lagerort_id, (a for a, *_ in zeilen))
+                if stand == "faellig"
+                else {}
+            )
             for artikel_id, marke, bezeichnung, nummer, datum, varianten, stueck in zeilen:
+                if stand == "faellig" and bestaetigt.get(artikel_id) == int(stufe):
+                    continue
                 ergebnis.append(
                     {
                         "artikel_id": artikel_id,

@@ -274,7 +274,27 @@
     schnellzugriffeZeichnen();
     anstehend();
     aktuelles();
+    hinweise();
     belege();
+  }
+
+  // D-F2 (25.09.2026): Nachlieferungs-Hinweis - ein Modell mit bereits
+  // reduziertem Altbestand hat Nachschub bekommen (Regel 6 startet die Uhr
+  // fürs ganze Modell neu, keine Chargentrennung im Bestand).
+  function hinweise() {
+    const liste = $('hinweise');
+    liste.replaceChildren();
+    for (const h of daten.hinweise || []) {
+      const li = node('li', null, 'news');
+      const zeit = new Date(h.erstellt_am);
+      li.append(node('time', zeit.toLocaleDateString(sprache(), { day: '2-digit', month: '2-digit' }) + ' ' +
+        zeit.toLocaleTimeString(sprache(), { hour: '2-digit', minute: '2-digit' }), 'news-time'));
+      const artikel = [h.marke, h.bezeichnung].filter(Boolean).join(' ');
+      const text = node('span', t('dashboard.hinweise.nachlieferung', { artikel: artikel, prozent: h.alte_stufe }), 'news-text');
+      li.append(text);
+      liste.append(li);
+    }
+    $('hinweisePanel').hidden = liste.children.length === 0;
   }
 
   async function laden() {

@@ -36,6 +36,27 @@
       window.open('/api/artikel/' + artikel.artikel_id + '/etiketten.pdf?' + parameter.toString(), '_blank', 'noopener');
     });
     aktion.append(knopf);
+    if (artikel.stand === 'faellig') {
+      const bestaetigenKnopf = node('button', t('reduktion.confirm'), 'secondary');
+      bestaetigenKnopf.type = 'button';
+      bestaetigenKnopf.addEventListener('click', async () => {
+        bestaetigenKnopf.disabled = true;
+        try {
+          const antwort = await fetch('/api/reduktionen/bestaetigen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ artikel_id: artikel.artikel_id, lagerort_id: daten.lagerort.id, stufe: artikel.stufe }),
+          });
+          if (!antwort.ok) throw new Error(t('reduktion.confirm_error'));
+          $('status').textContent = t('reduktion.confirmed', { artikel: [artikel.marke, artikel.bezeichnung].filter(Boolean).join(' ') });
+          await laden();
+        } catch (fehler) {
+          bestaetigenKnopf.disabled = false;
+          $('status').textContent = fehler.message;
+        }
+      });
+      aktion.append(bestaetigenKnopf);
+    }
     tr.append(aktion);
     return tr;
   }
@@ -60,6 +81,57 @@
     huelle.append(tabelle);
     section.append(huelle);
     return section;
+  }
+
+  // D-F3 (25.09.2026): offene Empfehlungen der Zentrale, mit Übernehmen/Ablehnen.
+  function empfehlungZeile(e) {
+    const tr = document.createElement('tr');
+    const name = node('td');
+    name.append(node('strong', [e.marke, e.bezeichnung].filter(Boolean).join(' ') || '—'));
+    tr.append(name, node('td', '−' + e.prozent + ' %'), node('td', datum(e.ab_datum)));
+    const aktion = node('td');
+    const uebernehmen = node('button', t('empfehlung.accept'));
+    uebernehmen.type = 'button';
+    const ablehnen = node('button', t('empfehlung.reject'), 'secondary');
+    ablehnen.type = 'button';
+    async function antworten(status, grund) {
+      uebernehmen.disabled = true;
+      ablehnen.disabled = true;
+      try {
+        const antwort = await fetch('/api/empfehlungen/' + e.id + '/antwort', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, grund }),
+        });
+        if (!antwort.ok) {
+          const daten = await antwort.json().catch(() => ({}));
+          throw new Error(typeof daten.detail === 'string' ? daten.detail : t('empfehlung.error'));
+        }
+        await laden();
+      } catch (fehler) {
+        uebernehmen.disabled = false;
+        ablehnen.disabled = false;
+        $('status').textContent = fehler.message;
+      }
+    }
+    uebernehmen.addEventListener('click', () => antworten('uebernommen'));
+    ablehnen.addEventListener('click', () => {
+      const grund = window.prompt(t('empfehlung.reject_prompt'));
+      if (grund === null) return;
+      antworten('abgelehnt', grund);
+    });
+    aktion.append(uebernehmen, ablehnen);
+    tr.append(aktion);
+    return tr;
+  }
+
+  function empfehlungZeichnen() {
+    const liste = (daten.empfehlungen || []);
+    $('empfehlungPanel').hidden = liste.length === 0;
+    if (!liste.length) return;
+    $('empfehlungListe').replaceChildren(
+      tabelle(['bestand.table_article', 'empfehlung.table_prozent', 'empfehlung.table_ab', 'empfehlung.table_actions'], liste.map(empfehlungZeile))
+    );
   }
 
   function zeichnen() {
@@ -94,6 +166,7 @@
       filialenFuellen();
       zeichnen();
       manuellZeichnen();
+      empfehlungZeichnen();
     } catch (fehler) {
       $('gruppen').replaceChildren();
       $('status').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
@@ -186,6 +259,6 @@
   $('retry').addEventListener('click', laden);
   window.SportfabrikI18n.ready.then(() => {
     laden();
-    document.addEventListener('sportfabrik:i18n-ready', () => { if (daten) { zeichnen(); manuellZeichnen(); } });
+    document.addEventListener('sportfabrik:i18n-ready', () => { if (daten) { zeichnen(); manuellZeichnen(); empfehlungZeichnen(); } });
   });
 })();
