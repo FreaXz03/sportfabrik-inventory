@@ -5,6 +5,7 @@ from .auth import get_active_lagerort, get_language, require_login_api
 from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import Dokument, Lieferant, Variante, WareneingangPosition
+from ..services import hinweise as hinweise_service
 from ..services import uebersicht
 from .history import invoice_data
 
@@ -52,6 +53,7 @@ def dashboard(
             filiale=None if lagerort is None else uebersicht.filiale(session, lagerort.id),
             aktuelles=uebersicht.aktuelles(session, None if lagerort is None else lagerort.id),
             stamm=uebersicht.stamm(session),
+            hinweise=hinweise_service.liste(session, lagerort.id) if lagerort else [],
         )
     except SQLAlchemyError as exc:
         raise HTTPException(

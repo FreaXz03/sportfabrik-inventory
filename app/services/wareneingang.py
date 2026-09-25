@@ -38,6 +38,7 @@ from ..core.models import (
     Wareneingang,
     WareneingangPosition,
 )
+from .hinweise import erstelle_hinweise, pruefe_und_merke
 
 # Dieselbe Sperre wie der Import: Zugänge und Bestand dürfen sich zwischen
 # mehreren Arbeitsplätzen nicht überholen (siehe app/services/importer.py).
@@ -254,6 +255,7 @@ def bestaetige_ankunft(
         )
 
         mehrlieferungen = []
+        nachlieferungs_cache = {}
         for position_id, menge in gebucht.items():
             position = positionen[position_id]
             position.menge_eingetroffen = (position.menge_eingetroffen or 0) + menge
@@ -270,6 +272,10 @@ def bestaetige_ankunft(
                         "menge_zuviel": _zahl(position.menge_eingetroffen - erwartet),
                     }
                 )
+            variante = session.get(Variante, position.varianten_id)
+            # D-F2: vor der Buchung merken, ob das Modell hier schon einmal
+            # reduziert war (Nachlieferung, keine Chargentrennung im Bestand).
+            pruefe_und_merke(session, variante.artikel_id, wareneingang.lagerort_id, nachlieferungs_cache)
             buche_zugang(
                 session,
                 lagerort_id=wareneingang.lagerort_id,
@@ -283,7 +289,6 @@ def bestaetige_ankunft(
             # first_seen/last_seen zählen nur angekommene Ware - eine blosse
             # Ankündigung ist keine Lieferung (siehe app/services/importer.py).
             if dokumentdatum:
-                variante = session.get(Variante, position.varianten_id)
                 variante.first_seen = (
                     min(variante.first_seen, dokumentdatum)
                     if variante.first_seen
@@ -295,6 +300,7 @@ def bestaetige_ankunft(
                     else dokumentdatum
                 )
 
+        erstelle_hinweise(session, wareneingang.lagerort_id, nachlieferungs_cache)
         if datum and wareneingang.eingangsdatum is None:
             wareneingang.eingangsdatum = datum
         offen = [

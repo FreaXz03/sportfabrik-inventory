@@ -277,6 +277,12 @@ Nur Filialleiter/Zentrale. `GET /statistiken` (Seite), `GET /api/statistik?zeitr
 
 Nur Zentrale (`admin`). `GET /konten` (Seite), `GET /api/konten` (Liste), `POST /api/konten` (`kassennummer`, `name`, `role`, optional `password`, `lagerort_ids`), `DELETE /api/konten/{id}`. Löschen entfernt das Konto und seine Filialzuordnungen; bisherige Buchungen bleiben unverändert (sie speichern Name/Kassennummer als Momentaufnahme). Die Zentrale kann sich nicht selbst löschen (`409`).
 
+## Phase D — offene Fragen (25.09.2026)
+
+- **D-F1 Bestätigen:** `POST /api/reduktionen/bestaetigen` (`artikel_id`, `lagerort_id`, `stufe`) - gleiche Rechte wie manuelle Reduktion. Das Modell verschwindet aus der fälligen Liste (`GET /api/reduktionen`), bis die nächste Stufe fällig wird.
+- **D-F2 Hinweise:** `GET /api/dashboard` liefert zusätzlich `hinweise` (Nachlieferung auf bereits reduzierten Bestand, nur mit aktiver Filiale). Keine eigenen Endpunkte zum Anlegen - entsteht automatisch beim Buchen einer Lieferung (Import oder Ankunftsbestätigung).
+- **D-F3 Empfehlung der Zentrale:** `GET/POST /api/empfehlungen` (nur Zentrale; Liste bzw. Setzen mit `artikel_id`, `lagerort_id`, `prozent`, `ab_datum`) und `POST /api/empfehlungen/{id}/antwort` (`status`: `uebernommen`/`abgelehnt`, bei Ablehnung `grund` nötig; gleiche Rechte wie manuelle Reduktion). `GET /api/reduktionen` liefert zusätzlich `empfehlungen` (offene, für die aktive Filiale).
+
 ## Sonstiges
 
 | Methode | Pfad | Zweck |

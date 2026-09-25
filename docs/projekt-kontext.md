@@ -339,12 +339,14 @@ Auch diese Antworten sind fachliche Entscheidungen; gebaut ist davon noch nichts
 
 8. ~~**FEDAS-Codes aus der Praxis lernen?**~~ — beantwortet am 23.09.2026: ja, als geprüfter Vorschlag (siehe oben). Umsetzung noch offen.
 
-### Phase D — offene Fragen (24.09.2026)
+### Phase D — offene Fragen (24.09.2026), beantwortet und umgesetzt am 25.09.2026
 
-- **D-F1 Runterschreiben „erledigt“:** Soll die Filiale bestätigen, dass sie einen Artikel runtergeschrieben hat (dann verschwindet er aus der Liste, bis die nächste Stufe fällig ist)? Oder reicht die Liste ohne Bestätigung?
-- **D-F2 Nachlieferung nach dem Runterschreiben:** Ein Modell steht schon auf −50 %, dann kommt Nachschub. Laut D5 startet die Uhr neu. Gilt dann für das ganze Modell wieder −30 % (alte Stücke neu etikettieren), oder bleiben die alten Stücke auf −50 % und nur die neuen bekommen −30 %?
-- **D-F3 Zentrale Empfehlung:** Wie soll das konkret laufen? Vorschlag: Die Zentrale sieht alle Filialen und setzt je Artikel eine Stufe („−50 % ab 1.10.“); jede Filiale sieht die Empfehlung auf ihrer Liste und bestätigt „übernommen“ oder „nicht übernommen“ mit kurzem Grund; die Zentrale sieht Abweichungen.
-- **D-F4 Schwellen 18/36 Monate einstellbar:** Wer darf sie ändern (nur Zentrale?), und gelten sie für alle Filialen gleich?
+- **D-F1 Runterschreiben „erledigt“ — entschieden: eine Liste, die man bestätigen muss.** Neue Tabelle `reduktionen_bestaetigt` (Migration `e2f3a4b5c6d7`): die Filiale bestätigt ein fälliges Modell (`POST /api/reduktionen/bestaetigen`, Rechte wie manuelle Reduktion), es verschwindet aus der fälligen Liste, bis die nächste Stufe fällig wird (weicht die neu berechnete Stufe von der bestätigten ab, taucht es wieder auf). „Bald“ bleibt unberührt. `app/services/reduktion_bestaetigung.py`, Knopf „Erledigt“ auf `/runterschreiben`.
+- **D-F2 Nachlieferung — entschieden: nur die neuen Stücke starten neu, dazu eine Mitteilung.** Der Bestand trennt keine Chargen (nur ein `aeltestes_eingangsdatum` je Variante × Filiale), eine echte Trennung wäre eine grosse Datenmodelländerung. Umsetzung deshalb bewusst leichtgewichtig: die automatische Stufe springt weiter wie bisher auf 0 % (Regel 6 unverändert), aber beim Buchen einer Lieferung auf ein Modell, das vorher schon reduziert war, entsteht ein **Hinweis** (neue Tabelle `hinweise`, `app/services/hinweise.py`, eingehängt in `importer.py` und `wareneingang.py`/Ankunftsbestätigung) - sichtbar auf der Übersicht („Hinweise“-Panel). Die Filiale markiert den Altbestand bei Bedarf von Hand über die bestehende manuelle Reduktion wieder auf seine bisherige Stufe.
+- **D-F3 Zentrale-Empfehlung — entschieden: wie vorgeschlagen.** Neue Tabelle `reduktion_empfehlung_zentrale`: die Zentrale setzt je Modell und Filiale eine Stufe ab einem Datum (`/empfehlungen`, nur Zentrale). Die Filiale sieht offene Empfehlungen auf `/runterschreiben` und übernimmt (setzt dieselbe Stufe von Hand) oder lehnt mit Grund ab (`POST /api/empfehlungen/{id}/antwort`, gleiche Filial-Grenze wie manuelle Reduktion). Die Zentrale sieht alle Antworten - Abweichungen zwischen Filialen werden sichtbar. `app/services/reduktion_empfehlung.py`.
+- **D-F4 Schwellen 18/36 Monate — entschieden: fix, für alle Filialen gleich, keine Einstellmöglichkeit nötig.** Bleiben wie bisher im Code hinterlegt (`app/services/reduktion.py`, `STUFEN`); kein Aufwand nötig.
+
+Test-first: `tests/test_ablauf_reduktion.py` (Bestätigen), `tests/test_ablauf_hinweise.py`, `tests/test_ablauf_empfehlung.py`. Im Browser geprüft (separat aufgesetzte SQLite-Instanz): Erledigt-Knopf, Hinweis-Panel, Empfehlung setzen/übernehmen/ablehnen, keine Konsolenfehler - kein PostgreSQL-Durchgang, kein Ladeneinsatz. Suite: 142 bestanden / 12 übersprungen.
 
 ### Sicherheit (Prüfung vom 24.09.2026)
 

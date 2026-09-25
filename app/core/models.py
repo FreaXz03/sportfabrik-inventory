@@ -446,3 +446,81 @@ class ReduktionManuell(Base):
     gesetzt_am: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class ReduktionBestaetigt(Base):
+    """Bestätigung „erledigt" auf der Runterschreiben-Liste (D-F1,
+    25.09.2026): eine Filiale bestätigt, ein fälliges Modell heruntergeschrieben
+    zu haben - es verschwindet dann aus der fälligen Liste, bis die nächste
+    Stufe fällig wird (`stufe` hier weicht dann von der neu berechneten
+    Stufe ab und die Zeile zählt nicht mehr). Bezieht sich auf die
+    automatische Stufe nach Regel 6, nicht auf `reduktionen_manuell`."""
+
+    __tablename__ = "reduktionen_bestaetigt"
+    __table_args__ = (
+        UniqueConstraint("artikel_id", "lagerort_id", name="uq_reduktion_bestaetigt_artikel_lagerort"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    artikel_id: Mapped[int] = mapped_column(ForeignKey("artikel.id", ondelete="CASCADE"), index=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    stufe: Mapped[int] = mapped_column(Integer)
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    bestaetigt_am: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class Hinweis(Base):
+    """Kurzer Hinweis an eine Filiale (D-F2, 25.09.2026): aktuell nur beim
+    Nachlieferungs-Fall - ein Modell mit bereits reduziertem Altbestand
+    bekommt Nachschub. Regel 6 lässt die Uhr für das ganze Modell neu
+    starten (keine Chargentrennung im Bestand); der Hinweis macht das
+    sichtbar, damit die Filiale den Altbestand bei Bedarf von Hand wieder auf
+    seine bisherige Stufe setzt (`reduktionen_manuell`)."""
+
+    __tablename__ = "hinweise"
+    __table_args__ = (
+        CheckConstraint("typ IN ('nachlieferung_reduziert')", name="ck_hinweise_typ"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    artikel_id: Mapped[int] = mapped_column(ForeignKey("artikel.id", ondelete="CASCADE"), index=True)
+    typ: Mapped[str] = mapped_column(String(30))
+    alte_stufe: Mapped[int] = mapped_column(Integer)
+    erstellt_am: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class ReduktionEmpfehlungZentrale(Base):
+    """Empfehlung der Zentrale für eine Reduktionsstufe ab einem Datum
+    (D-F3, 25.09.2026): die Zentrale setzt sie je Modell für eine Filiale,
+    die Filiale übernimmt oder lehnt mit Grund ab. Getrennt von
+    `reduktionen_manuell` (das ist die tatsächlich wirksame Wahl vor Ort) -
+    „übernehmen" setzt dort dieselbe Stufe."""
+
+    __tablename__ = "reduktion_empfehlung_zentrale"
+    __table_args__ = (
+        CheckConstraint("prozent IN (30, 50, 70)", name="ck_empfehlung_zentrale_prozent"),
+        CheckConstraint(
+            "status IN ('offen', 'uebernommen', 'abgelehnt')", name="ck_empfehlung_zentrale_status"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    artikel_id: Mapped[int] = mapped_column(ForeignKey("artikel.id", ondelete="CASCADE"), index=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    prozent: Mapped[int] = mapped_column(Integer)
+    ab_datum: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="offen", server_default=text("'offen'"))
+    ablehnungsgrund: Mapped[str | None] = mapped_column(String(200))
+    gesetzt_von_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    gesetzt_von_name: Mapped[str | None] = mapped_column(String(100))
+    gesetzt_am: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    beantwortet_von_name: Mapped[str | None] = mapped_column(String(100))
+    beantwortet_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
