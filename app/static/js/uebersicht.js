@@ -7,6 +7,23 @@
   let daten = null;
   let name = null;
 
+  // Punkt 14 (Entscheid 24.09.2026): Katalog der wählbaren Funktionen - Ziel,
+  // Beschriftung und Erklärung je Funktion. Muss zum Server-Katalog passen
+  // (app/core/schnellzugriffe.py); der Server prüft die Auswahl ohnehin.
+  const SCHNELLZUGRIFF_KATALOG = {
+    bestand: { href: '/bestand', label: 'nav.bestand', info: 'nav.info.bestand' },
+    erfassen: { href: '/erfassen', label: 'nav.erfassen', info: 'nav.info.erfassen' },
+    wareneingaenge: { href: '/wareneingaenge', label: 'nav.wareneingaenge', info: 'nav.info.wareneingaenge' },
+    umlagern: { href: '/umlagern', label: 'nav.umlagern', info: 'nav.info.umlagern' },
+    ausbuchen: { href: '/ausbuchen', label: 'nav.ausbuchen', info: 'nav.info.ausbuchen' },
+    runterschreiben: { href: '/runterschreiben', label: 'nav.runterschreiben', info: 'nav.info.runterschreiben' },
+    articles: { href: '/articles', label: 'nav.articles', info: 'nav.info.articles' },
+    invoices: { href: '/invoices', label: 'nav.invoices', info: 'nav.info.invoices' },
+    upload: { href: '/preview', label: 'nav.upload', info: 'nav.info.upload' },
+  };
+  let schnellzugriffAuswahl = [];
+  let schnellzugriffAktuell = [];
+
   function node(tag, text, cls) {
     const el = document.createElement(tag);
     if (text !== undefined && text !== null) el.textContent = text;
@@ -105,6 +122,122 @@
     $('nichtsNeues').hidden = liste.children.length > 0;
   }
 
+  // Rendert die gewählten Schnellzugriffe als Knöpfe (Punkt 14). Gleiche Höhe
+  // aller Knöpfe kommt automatisch von .quick-actions (grid-auto-rows: 1fr).
+  function schnellzugriffeZeichnen(liste) {
+    if (liste) schnellzugriffAktuell = liste;
+    const nav = $('schnellzugriffe');
+    nav.replaceChildren();
+    for (const schluessel of schnellzugriffAktuell) {
+      const eintrag = SCHNELLZUGRIFF_KATALOG[schluessel];
+      if (!eintrag) continue;
+      const a = node('a', null, 'quick-action');
+      a.href = eintrag.href;
+      a.append(node('strong', t(eintrag.label)), node('span', t(eintrag.info)));
+      nav.append(a);
+    }
+  }
+
+  // --- Schnellzugriffe bearbeiten (Punkt 14): Auswahl per Klick, Reihenfolge
+  // per Ziehen (Maus) oder Pfeil-Knöpfen (Tastatur/Touch). Gespeichert wird
+  // erst auf Knopfdruck; der Server prüft Anzahl, Duplikate und Rolle.
+  let ziehIndex = null;
+
+  function editorZeile(schluessel, index, anzahl) {
+    const eintrag = SCHNELLZUGRIFF_KATALOG[schluessel];
+    const li = node('li', null, 'shortcut-pick');
+    li.draggable = true;
+    li.dataset.schluessel = schluessel;
+    const griff = node('span', '⠿', 'shortcut-pick-handle');
+    griff.setAttribute('aria-hidden', 'true');
+    const label = node('span', eintrag ? t(eintrag.label) : schluessel, 'shortcut-pick-label');
+    const reihenfolge = node('span', null, 'shortcut-pick-order');
+    const hoch = node('button', '▲');
+    hoch.type = 'button';
+    hoch.disabled = index === 0;
+    hoch.setAttribute('aria-label', t('dashboard.shortcuts_move_up_aria', { name: label.textContent }));
+    hoch.addEventListener('click', () => { schnellzugriffAuswahl.splice(index - 1, 0, schnellzugriffAuswahl.splice(index, 1)[0]); editorZeichnen(); });
+    const runter = node('button', '▼');
+    runter.type = 'button';
+    runter.disabled = index === anzahl - 1;
+    runter.setAttribute('aria-label', t('dashboard.shortcuts_move_down_aria', { name: label.textContent }));
+    runter.addEventListener('click', () => { schnellzugriffAuswahl.splice(index + 1, 0, schnellzugriffAuswahl.splice(index, 1)[0]); editorZeichnen(); });
+    reihenfolge.append(hoch, runter);
+    const entfernen = node('button', '✕', 'secondary');
+    entfernen.type = 'button';
+    entfernen.setAttribute('aria-label', t('dashboard.shortcuts_remove_aria', { name: label.textContent }));
+    entfernen.addEventListener('click', () => { schnellzugriffAuswahl.splice(index, 1); editorZeichnen(); });
+    li.append(griff, label, reihenfolge, entfernen);
+    li.addEventListener('dragstart', () => { ziehIndex = index; li.classList.add('is-dragging'); });
+    li.addEventListener('dragend', () => { li.classList.remove('is-dragging'); ziehIndex = null; });
+    li.addEventListener('dragover', (ereignis) => ereignis.preventDefault());
+    li.addEventListener('drop', (ereignis) => {
+      ereignis.preventDefault();
+      if (ziehIndex === null || ziehIndex === index) return;
+      schnellzugriffAuswahl.splice(index, 0, schnellzugriffAuswahl.splice(ziehIndex, 1)[0]);
+      editorZeichnen();
+    });
+    return li;
+  }
+
+  function editorZeichnen() {
+    const auswahlListe = $('schnellzugriffeAuswahl');
+    auswahlListe.replaceChildren();
+    schnellzugriffAuswahl.forEach((schluessel, index) => auswahlListe.append(editorZeile(schluessel, index, schnellzugriffAuswahl.length)));
+
+    const verfuegbarBox = $('schnellzugriffeVerfuegbar');
+    verfuegbarBox.replaceChildren();
+    const rest = (daten && daten.schnellzugriffeVerfuegbar || []).filter((k) => !schnellzugriffAuswahl.includes(k));
+    for (const schluessel of rest) {
+      const eintrag = SCHNELLZUGRIFF_KATALOG[schluessel];
+      const knopf = node('button', t('dashboard.shortcuts_add') + ' ' + (eintrag ? t(eintrag.label) : schluessel), 'secondary');
+      knopf.type = 'button';
+      knopf.setAttribute('aria-label', t('dashboard.shortcuts_add_aria', { name: eintrag ? t(eintrag.label) : schluessel }));
+      knopf.disabled = schnellzugriffAuswahl.length >= 5;
+      knopf.addEventListener('click', () => { schnellzugriffAuswahl.push(schluessel); editorZeichnen(); });
+      verfuegbarBox.append(knopf);
+    }
+    $('schnellzugriffeFehler').hidden = true;
+  }
+
+  async function editorOeffnen() {
+    $('schnellzugriffeFehler').hidden = true;
+    try {
+      const antwort = await fetch('/api/schnellzugriffe');
+      const ergebnis = await antwort.json();
+      if (!antwort.ok) throw new Error(t('dashboard.shortcuts_save_error'));
+      schnellzugriffAuswahl = ergebnis.schnellzugriffe.slice();
+      if (!daten) daten = {};
+      daten.schnellzugriffeVerfuegbar = ergebnis.verfuegbar;
+      editorZeichnen();
+      $('schnellzugriffeEditor').hidden = false;
+    } catch (fehler) {
+      $('schnellzugriffeFehler').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+      $('schnellzugriffeFehler').hidden = false;
+    }
+  }
+
+  async function editorSpeichern() {
+    const knopf = $('schnellzugriffeSpeichern');
+    knopf.disabled = true;
+    try {
+      const antwort = await fetch('/api/schnellzugriffe', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schnellzugriffe: schnellzugriffAuswahl }),
+      });
+      const ergebnis = await antwort.json().catch(() => ({}));
+      if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('dashboard.shortcuts_save_error'));
+      schnellzugriffeZeichnen(ergebnis.schnellzugriffe);
+      $('schnellzugriffeEditor').hidden = true;
+    } catch (fehler) {
+      $('schnellzugriffeFehler').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+      $('schnellzugriffeFehler').hidden = false;
+    } finally {
+      knopf.disabled = false;
+    }
+  }
+
   function belege() {
     const fragment = document.createDocumentFragment();
     for (const i of daten.recent_invoices) {
@@ -138,6 +271,7 @@
     }
     $('products').textContent = zahl(daten.products);
     $('invoices').textContent = zahl(daten.invoices);
+    schnellzugriffeZeichnen();
     anstehend();
     aktuelles();
     belege();
@@ -163,8 +297,12 @@
     const me = ereignis.detail || {};
     name = (me.name || '').trim().split(/\s+/)[0] || null;
     if (daten) begruessen();
+    schnellzugriffeZeichnen(me.schnellzugriffe);
   });
   $('retry').addEventListener('click', laden);
+  $('schnellzugriffeBearbeiten').addEventListener('click', editorOeffnen);
+  $('schnellzugriffeAbbrechen').addEventListener('click', () => { $('schnellzugriffeEditor').hidden = true; });
+  $('schnellzugriffeSpeichern').addEventListener('click', editorSpeichern);
   window.SportfabrikI18n.ready.then(() => {
     laden();
     document.addEventListener('sportfabrik:i18n-ready', zeichnen);
