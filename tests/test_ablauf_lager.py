@@ -15,6 +15,7 @@ from testbelege import POSITIONEN, importieren, kopf, rechnung_pdf
 
 from app.core.models import Bestand, Lagerbewegung, Variante
 from app.services.reduktion import letzter_wareneingang
+from app.services.uebersicht import aktuelles
 
 POLO_M = "4006632041234"
 
@@ -233,3 +234,42 @@ def test_anstehend_fuehrt_zur_gefilterten_liste(welt):
     zeilen = client.get("/api/bestand?reduktion=50&reduktion_status=faellig").json()["zeilen"]
     assert [z["bezeichnung"] for z in zeilen] == ["Laufschuh"]
     assert client.get("/api/bestand?reduktion=40&reduktion_status=faellig").status_code == 422
+
+
+def test_aktuelles_fasst_lieferungen_und_umlagerungen_zusammen(welt):
+    """Anforderung 8 (24.09.2026): Aktuelles zeigt eine Lieferung als ganze
+    Lieferung und eine Umlagerung als einen Eintrag, dazu Abgänge mit anderem
+    Grund als Verkauf - keine einzelnen Verkäufe, Zugänge oder Korrekturen."""
+    client, codes = welt.client, welt.codes
+    sf1, sf2 = codes["SF1"], codes["SF2"]
+    welt.anmelden(CHEF)
+    assert importieren(client, rechnung_pdf(), lagerort_id=str(sf1)).status_code == 200
+    polo_m = client.get(f"/api/erfassen/variante?ean={POLO_M}").json()["variante"]["varianten_id"]
+    polo_l = client.get("/api/erfassen/variante?ean=4006632041241").json()["variante"]["varianten_id"]
+    assert client.post(
+        "/api/umlagerung",
+        json={"quelle_id": sf1, "ziel_id": sf2, "positionen": [
+            {"varianten_id": polo_m, "menge": "1"}, {"varianten_id": polo_l, "menge": "2"}]},
+    ).status_code == 200
+    assert client.post("/api/ausbuchen", json={"ean": POLO_M, "grund": "verkauf"}).status_code == 200
+    assert client.post("/api/ausbuchen", json={"ean": POLO_M, "grund": "defekt"}).status_code == 200
+    assert client.post(
+        "/api/korrektur", json={"varianten_id": polo_l, "lagerort_id": sf1, "gezaehlt": "0", "grund": "inventur"}
+    ).status_code == 200
+
+    eintraege = client.get("/api/dashboard").json()["aktuelles"]
+    assert [e["art"] for e in eintraege] == ["abgang", "umlagerung", "lieferung"]
+    abgang, umlagerung, lieferung = eintraege
+    assert abgang["grund"] == "defekt" and abgang["menge"] == "-1.00" and abgang["bezeichnung"] == "Poloshirt"
+    assert (umlagerung["von"], umlagerung["nach"]) == ("SF1", "SF2")
+    assert umlagerung["positionen"] == 2 and umlagerung["stueck"] == "3.00"
+    assert lieferung["positionen"] == 3 and lieferung["stueck"] == "10.00"
+    assert lieferung["dokumentnummer"] == "9001759392" and lieferung["lagerort"] == "SF1"
+
+    # Die Zielfiliale sieht dieselbe Umlagerung als eigenen Eintrag, ohne
+    # Filiale erscheint sie einmal (nicht je Seite).
+    with welt.sessions() as session:
+        in_sf2 = aktuelles(session, sf2)
+        ueberall = aktuelles(session, None)
+    assert [(e["art"], e["von"], e["nach"], e["stueck"]) for e in in_sf2] == [("umlagerung", "SF1", "SF2", "3.00")]
+    assert [e["art"] for e in ueberall] == ["abgang", "umlagerung", "lieferung"]

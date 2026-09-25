@@ -79,13 +79,26 @@
       const zeit = new Date(e.zeitpunkt);
       li.append(node('time', zeit.toLocaleDateString(sprache(), { day: '2-digit', month: '2-digit' }) + ' ' +
         zeit.toLocaleTimeString(sprache(), { hour: '2-digit', minute: '2-digit' }), 'news-time'));
-      const menge = Number(e.menge);
-      const artikel = [e.marke, e.bezeichnung].filter(Boolean).join(' ');
-      const variante = [e.farbe, e.groesse].filter(Boolean).join(' / ');
       const text = node('span', null, 'news-text');
-      text.append(node('strong', t('dashboard.movement.' + e.typ)), ' ' + artikel + (variante ? ' (' + variante + ')' : ''));
+      let menge;
+      if (e.art === 'abgang') {
+        const artikel = [e.marke, e.bezeichnung].filter(Boolean).join(' ');
+        const variante = [e.farbe, e.groesse].filter(Boolean).join(' / ');
+        const grund = e.grund ? t('ausbuchen.reason.' + e.grund) : '';
+        text.append(node('strong', t('dashboard.news.abgang')), ' ' + artikel + (variante ? ' (' + variante + ')' : '') + (grund ? ' – ' + grund : ''));
+        menge = node('span', zahl(e.menge), 'news-qty is-out');
+      } else if (e.art === 'umlagerung') {
+        text.append(node('strong', t('dashboard.news.umlagerung')), ' ' + t('dashboard.news.von_nach', { von: e.von, nach: e.nach }) +
+          ' · ' + t('dashboard.news.artikel', { anzahl: e.positionen }));
+        menge = node('span', zahl(e.stueck) + ' ' + t('dashboard.news.stueck'), 'news-qty');
+      } else {
+        const beleg = [e.lieferant, e.dokumentnummer].filter(Boolean).join(' ');
+        text.append(node('strong', t('dashboard.news.lieferung')), ' ' + (beleg || t('dashboard.news.von_hand')) +
+          ' → ' + e.lagerort + ' · ' + t('dashboard.news.artikel', { anzahl: e.positionen }));
+        menge = node('span', '+' + zahl(e.stueck) + ' ' + t('dashboard.news.stueck'), 'news-qty');
+      }
       li.append(text);
-      li.append(node('span', (menge > 0 ? '+' : '') + zahl(menge), menge < 0 ? 'news-qty is-out' : 'news-qty'));
+      li.append(menge);
       li.append(node('span', e.person || '—', 'news-person muted'));
       liste.append(li);
     }
