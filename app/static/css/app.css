@@ -983,6 +983,12 @@ input[type=checkbox]:focus-visible,
   box-shadow: var(--shadow-sm);
 }
 
+.stat-big {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  margin: 4px 0;
+}
+
 /* Startbereich der Uebersicht */
 .hero {
   position: relative;
