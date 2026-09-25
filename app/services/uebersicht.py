@@ -16,6 +16,7 @@ from ..core.models import (
     Bestand,
     Dokument,
     Lagerbewegung,
+    Lagerort,
     Lieferant,
     Variante,
     Wareneingang,
@@ -25,6 +26,8 @@ from .reduktion import STUFEN
 
 VORSCHAU_TAGE = 30
 AKTUELLES_ANZAHL = 8
+# So viele Bewegungen werden höchstens gelesen, um daraus die Einträge zu bilden.
+AKTUELLES_ZEILEN = 2000
 
 
 def _zahl(wert) -> str:
@@ -223,31 +226,75 @@ def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
 
 
 def aktuelles(session, lagerort_id: int | None, anzahl: int = AKTUELLES_ANZAHL) -> list[dict]:
-    """Die letzten Bewegungen (Zugang, Verkauf, Abgang, Korrektur,
-    Umlagerung) - in der Filiale oder, ohne Filiale, überall."""
+    """Das Wichtigste der letzten Zeit, zusammengefasst (Anforderung 8 vom
+    24.09.2026): eine Lieferung als ganze Lieferung (`lieferung`), eine
+    Umlagerung als ein Eintrag (`umlagerung`) und Abgänge mit anderem Grund
+    als Verkauf einzeln (`abgang`). Verkäufe, Korrekturen und Zugänge ohne
+    Wareneingang erscheinen nicht. In der Filiale oder, ohne Filiale,
+    überall - eine Umlagerung dann nur einmal (über ihre Quellseite)."""
     abfrage = (
-        select(Lagerbewegung, Variante, Artikel)
+        select(Lagerbewegung, Variante, Artikel, Lagerort.code, WareneingangPosition.wareneingang_id,
+               Dokument.dokumentnummer, Lieferant.name)
         .join(Variante, Variante.id == Lagerbewegung.varianten_id)
         .join(Artikel, Artikel.id == Variante.artikel_id)
+        .join(Lagerort, Lagerort.id == Lagerbewegung.lagerort_id)
+        .outerjoin(WareneingangPosition, WareneingangPosition.id == Lagerbewegung.wareneingang_position_id)
+        .outerjoin(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+        .outerjoin(Dokument, Dokument.id == Wareneingang.dokument_id)
+        .outerjoin(Lieferant, Lieferant.id == Dokument.lieferant_id)
+        .where(
+            (Lagerbewegung.typ == "ausbuchung")
+            | (Lagerbewegung.typ == "umlagerung")
+            | ((Lagerbewegung.typ == "zugang") & Lagerbewegung.wareneingang_position_id.is_not(None))
+        )
         .order_by(Lagerbewegung.zeitpunkt.desc(), Lagerbewegung.id.desc())
-        .limit(anzahl)
+        .limit(AKTUELLES_ZEILEN)
     )
-    if lagerort_id is not None:
+    if lagerort_id is None:
+        abfrage = abfrage.where(~((Lagerbewegung.typ == "umlagerung") & (Lagerbewegung.menge > 0)))
+    else:
         abfrage = abfrage.where(Lagerbewegung.lagerort_id == lagerort_id)
-    return [
-        {
-            "zeitpunkt": bewegung.zeitpunkt.isoformat(),
-            "typ": bewegung.typ,
-            "grund": bewegung.grund,
-            "menge": _zahl(bewegung.menge),
-            "person": bewegung.benutzer_name or bewegung.benutzer_kassennummer,
-            "marke": artikel.marke,
-            "bezeichnung": artikel.bezeichnung,
-            "farbe": variante.farbe,
-            "groesse": variante.groesse,
-        }
-        for bewegung, variante, artikel in session.execute(abfrage).all()
-    ]
+
+    eintraege: dict[tuple, dict] = {}
+    for bewegung, variante, artikel, code, wareneingang_id, nummer, lieferant in session.execute(abfrage).all():
+        person = bewegung.benutzer_name or bewegung.benutzer_kassennummer
+        basis = {"zeitpunkt": bewegung.zeitpunkt.isoformat(), "person": person}
+        if bewegung.typ == "ausbuchung":
+            schluessel = ("abgang", bewegung.id)
+            eintraege[schluessel] = basis | {
+                "art": "abgang",
+                "lagerort": code,
+                "grund": bewegung.grund,
+                "menge": _zahl(bewegung.menge),
+                "marke": artikel.marke,
+                "bezeichnung": artikel.bezeichnung,
+                "farbe": variante.farbe,
+                "groesse": variante.groesse,
+            }
+            continue
+        if bewegung.typ == "umlagerung":
+            gegenseite = (bewegung.grund or "").split(":", 1)[-1]
+            von, nach = (code, gegenseite) if bewegung.menge < 0 else (gegenseite, code)
+            schluessel = ("umlagerung", bewegung.zeitpunkt, von, nach)
+            neu = basis | {"art": "umlagerung", "von": von, "nach": nach}
+        else:
+            schluessel = ("lieferung", wareneingang_id, bewegung.zeitpunkt.date())
+            neu = basis | {"art": "lieferung", "lagerort": code, "dokumentnummer": nummer, "lieferant": lieferant}
+        eintrag = eintraege.get(schluessel)
+        if eintrag is None:
+            if len(eintraege) >= anzahl:
+                continue
+            eintrag = eintraege[schluessel] = neu | {"_stueck": Decimal(0), "_varianten": set()}
+        eintrag["_stueck"] += abs(bewegung.menge)
+        eintrag["_varianten"].add(variante.id)
+
+    ergebnis = []
+    for eintrag in list(eintraege.values())[:anzahl]:
+        if "_stueck" in eintrag:
+            eintrag["stueck"] = _zahl(eintrag.pop("_stueck"))
+            eintrag["positionen"] = len(eintrag.pop("_varianten"))
+        ergebnis.append(eintrag)
+    return ergebnis
 
 
 def stamm(session) -> dict:

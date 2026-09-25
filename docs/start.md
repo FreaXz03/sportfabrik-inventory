@@ -6,7 +6,7 @@ Stand: 24.09.2026, nach dem dokumentierten Abendstand. Diese Übersicht ist Orie
 
 Warenwirtschaft für vier Sportfabrik-Filialen; GEWA, VEBO und Dietikon sind externe Lagerorte ohne Verkauf. Belege werden im Betrieb lokal geparst. Artikelstamm gemeinsam, Bestand und Buchungsrechte filialbezogen. Später Kassenanbindung und Onlineshop.
 
-Phasen A–C sind laut Projektdokumentation abgeschlossen. Phase D ist teilweise umgesetzt (Runterschreiben und manuelle Reduktionen), nicht abgeschlossen. Aktuell hat der Katalog **Artikeldetails und Auswertungen** Vorrang. Dessen Abendstand nennt als offen: **8 Aktuelles, 14 Schnellzugriffe, 9 Statistik, 13 Kontoverwaltung**. Vor Umsetzung den aktuellen Code und das Ende von Abschnitt 11 im Projektkontext abgleichen. Handynutzung folgt am Projektende.
+Phasen A–C sind laut Projektdokumentation abgeschlossen. Phase D ist teilweise umgesetzt (Runterschreiben und manuelle Reduktionen), nicht abgeschlossen. Aktuell hat der Katalog **Artikeldetails und Auswertungen** Vorrang. Dessen Abendstand nennt als offen: **14 Schnellzugriffe, 9 Statistik, 13 Kontoverwaltung** (8 Aktuelles am 25.09.2026 auf `feature/aktuelles` umgesetzt). Vor Umsetzung den aktuellen Code und das Ende von Abschnitt 11 im Projektkontext abgleichen. Handynutzung folgt am Projektende.
 
 Arbeitsbranch: `feature/warenwirtschaft-v2`; tatsächlichen Branch und offene Änderungen prüfen. Dokumentierte lokale Tests sind keine Aussage über PostgreSQL oder den laufenden Ladenserver.
 

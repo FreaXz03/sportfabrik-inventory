@@ -16,6 +16,7 @@ from sqlalchemy import select
 from ..core.database import get_session
 from ..core.i18n import LANGUAGES, normalize_language, translate
 from ..core.models import Lagerort, User
+from ..core.schnellzugriffe import validieren, verfuegbar_fuer, wirksame_auswahl
 from ..core.security import verify_password
 from ..services import anmeldung
 from ..services.lagerorte import (
@@ -248,6 +249,7 @@ def me(
         "lagerort": _lagerort_data(active),
         "lagerorte": [_lagerort_data(lo) for lo in list_user_lagerorte(session, user)],
         "kann_alle_filialen_waehlen": user.role == "admin",
+        "schnellzugriffe": wirksame_auswahl(user.schnellzugriffe, user.role),
     }
 
 
@@ -292,3 +294,32 @@ def set_language(
     user.language = body.language
     session.commit()
     return {"language": user.language}
+
+
+@router.get("/api/schnellzugriffe")
+def get_schnellzugriffe(
+    user: User = Depends(require_login_api),
+):
+    return {
+        "schnellzugriffe": wirksame_auswahl(user.schnellzugriffe, user.role),
+        "verfuegbar": verfuegbar_fuer(user.role),
+    }
+
+
+class SchnellzugriffeBody(BaseModel):
+    schnellzugriffe: list[str]
+
+
+@router.put("/api/schnellzugriffe")
+def set_schnellzugriffe(
+    body: SchnellzugriffeBody,
+    user: User = Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    fehler = validieren(body.schnellzugriffe, user.role)
+    if fehler:
+        raise HTTPException(422, translate(fehler, language))
+    user.schnellzugriffe = list(body.schnellzugriffe)
+    session.commit()
+    return {"schnellzugriffe": wirksame_auswahl(user.schnellzugriffe, user.role)}

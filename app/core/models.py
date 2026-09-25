@@ -69,6 +69,11 @@ class User(Base):
     fehlversuche: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     gesperrt_bis: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Punkt 14 (Entscheid 24.09.2026): gewählte Schnellzugriffe und ihre
+    # Reihenfolge, je Benutzer. None = noch keine eigene Auswahl getroffen,
+    # siehe app/core/schnellzugriffe.py.
+    schnellzugriffe: Mapped[list[str] | None] = mapped_column(JSON)
+
 
 class Lagerort(Base):
     """Filiale (SF1-SF4, Verkauf) oder externer Standort ohne Verkauf: die
