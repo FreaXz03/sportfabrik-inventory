@@ -32,7 +32,7 @@ nach dem Login auf eine fremde Seite weiterleitet (offener Redirect).
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/` | Übersichtsseite (Dashboard) |
-| GET | `/api/dashboard` | Kennzahlen (Anzahl Varianten/Belege/Positionen, gelieferte Gesamtmenge) + die letzten 5 importierten Belege; dazu `lagerort` und `filiale` (Stück, heute verkauft/abgegangen, negativer Bestand, erwartete Lieferungen, `reduktionen` je Stufe mit `faellig`/`bald`) der aktiven Filiale, `aktuelles` (letzte Lagerbewegungen) und `stamm` (`ohne_kategorie`, `ohne_ean`) |
+| GET | `/api/dashboard` | Kennzahlen (Anzahl Varianten/Belege/Positionen, gelieferte Gesamtmenge) + die letzten 5 importierten Belege; dazu `lagerort` und `filiale` (Stück, heute verkauft/abgegangen, negativer Bestand, erwartete Lieferungen, `reduktionen` je Stufe mit `faellig`/`bald`) der aktiven Filiale, `aktuelles` (bis 8 zusammengefasste Einträge: `art` = `lieferung` je Wareneingang und Tag, `umlagerung` je Vorgang mit `von`/`nach`, `abgang` je Ausbuchung ohne Verkauf; Lieferung/Umlagerung mit `positionen` und `stueck`) und `stamm` (`ohne_kategorie`, `ohne_ean`) |
 
 ## Artikel
 
