@@ -21,6 +21,8 @@
       ]
     },
     { href: '/articles', key: 'nav.articles' },
+    { href: '/statistiken', key: 'nav.statistiken', nur: ['chef', 'admin'] },
+    { href: '/konten', key: 'nav.konten', nur: ['admin'] },
     {
       gruppe: 'nav.group_belege', eintraege: [
         { href: '/invoices', key: 'nav.invoices', info: 'nav.info.invoices' },
