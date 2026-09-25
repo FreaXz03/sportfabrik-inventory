@@ -1,8 +1,7 @@
 """Ware von Hand ausbuchen - Verkauf oder Abgang per Scan (Phase C,
 Teilaufgabe C3).
 
-Rechte (Regel 9): Ausbuchen ist Lagerarbeit, kein Dokumenten-Upload - das
-dürfen auch Mitarbeiter. Vorgewählt ist die aktive Filiale; welcher Lagerort
+Rechte (24.09.2026): Ausbuchen und Stornieren dürfen nur Filialleiter/Zentrale. Vorgewählt ist die aktive Filiale; welcher Lagerort
 gebucht werden darf, wird wie bei der Erfassung serverseitig geprüft
 (`resolve_wareneingang_lagerort`). Denselben Weg nimmt der vorübergehende
 Knopf „1 Stück abbuchen" in der Bestandsansicht (23.09.2026).
@@ -31,7 +30,8 @@ from .auth import (
     get_active_lagerort,
     get_language,
     require_login_api,
-    require_login_page,
+    require_chef_page,
+    require_chef_api,
     resolve_wareneingang_lagerort,
 )
 
@@ -39,7 +39,7 @@ router = APIRouter()
 
 
 @router.get("/ausbuchen", include_in_schema=False)
-def ausbuchen_page(user=Depends(require_login_page)):
+def ausbuchen_page(user=Depends(require_chef_page)):
     return FileResponse(
         Path(__file__).resolve().parents[1] / "templates" / "ausbuchen.html"
     )
@@ -47,7 +47,7 @@ def ausbuchen_page(user=Depends(require_login_page)):
 
 @router.get("/api/ausbuchen/stammdaten")
 def api_stammdaten(
-    user=Depends(require_login_api),
+    user=Depends(require_chef_api),
     lagerort=Depends(get_active_lagerort),
     session=Depends(get_session),
 ):
@@ -102,7 +102,7 @@ class AusbuchenBody(BaseModel):
 async def api_ausbuchen(
     request: Request,
     body: AusbuchenBody,
-    user=Depends(require_login_api),
+    user=Depends(require_chef_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
 ):
@@ -137,7 +137,7 @@ async def api_ausbuchen(
 @router.post("/api/ausbuchen/{bewegung_id}/storno")
 async def api_storno(
     bewegung_id: int,
-    user=Depends(require_login_api),
+    user=Depends(require_chef_api),
     language: str = Depends(get_language),
 ):
     """Einen Fehlscan per Gegenbuchung aufheben (Regel 2: nichts löschen)."""

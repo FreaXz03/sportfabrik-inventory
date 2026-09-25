@@ -1,7 +1,7 @@
-"""Seed-Daten für Lieferanten. Aktuell nur INTERSPORT Schweiz AG (der einzige
-Lieferant mit funktionierendem Parser, siehe app/services/parsers/) - ECOM
-läuft über dasselbe Layout (siehe projekt-kontext.md Abschnitt 6, Punkt 7),
-braucht daher (noch) keinen eigenen Lieferanten-Eintrag. Weitere Lieferanten
+"""Seed-Daten für Lieferanten. ECOM-Retouren laufen über das INTERSPORT-Layout
+(projekt-kontext.md Abschnitt 6, Punkt 7); der Parser erkennt sie an der
+Referenz „ret.Ecom" und der Import bucht sie auf den Lieferanten der Gruppe
+ECOM (`lieferant_typ` im Parser-Ergebnis). Weitere Lieferanten
 (Alpina, Chris Sports, CMP, externe Händler, jeweils eigenes Parser-Modul)
 folgen in Phase E. `parser_key` muss zum KEY des Parser-Moduls passen, sonst
 findet der Import den Lieferanten nicht (siehe app/services/importer.py).
@@ -10,8 +10,6 @@ Einzige Quelle für diese Daten - Migration und Tests nutzen sie.
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from .models import Lieferant
 
 LIEFERANTEN_SEED = [
     {
@@ -27,6 +25,12 @@ LIEFERANTEN_SEED = [
     {"name": "Nike", "typ": "intern", "parser_key": None},
     {"name": "adidas", "typ": "intern", "parser_key": None},
     {"name": "The North Face", "typ": "intern", "parser_key": None},
+    # Lieferanten mit eigenem Parser (Phase E, Migration a8b9c0d1e2f3). Alle
+    # drei sind Direktbestellungen bei der Marke bzw. beim Verteiler: Code 999
+    # (Fabian, 24.09.2026).
+    {"name": "ALPINA SPORTS Schweiz AG", "typ": "drittanbieter", "parser_key": "alpina"},
+    {"name": "CHRIS sports AG", "typ": "drittanbieter", "parser_key": "chrissports"},
+    {"name": "CMP (F.lli Campagnolo S.p.A.)", "typ": "drittanbieter", "parser_key": "cmp"},
 ]
 
 # Lieferantengruppe (= `lieferanten.typ`) → Code auf dem Etikett
@@ -49,6 +53,10 @@ def etikett_code(typ: str | None) -> str | None:
 
 def seed_lieferanten(session: Session) -> None:
     """Legt fehlende Lieferanten aus LIEFERANTEN_SEED an. Idempotent."""
+    # Erst hier importiert: die Parser lesen LIEFERANTEN_SEED und sollen ohne
+    # Datenbank-Konfiguration auskommen.
+    from .models import Lieferant
+
     existing_names = set(session.scalars(select(Lieferant.name)).all())
     for data in LIEFERANTEN_SEED:
         if data["name"] not in existing_names:

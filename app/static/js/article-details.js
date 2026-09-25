@@ -6,8 +6,15 @@
   const t = (...a) => window.SportfabrikI18n.t(...a);
   const node = (tag,text) => {const e=document.createElement(tag);e.textContent=text??'—';return e;};
   const date = value => value ? value.slice(0,10).split('-').reverse().join('.') : t('article_details.no_date');
-  let prices=[],noteGeneration=0;
+  let prices=[],stock=null;
   $('articleExtras').hidden=false;
+  // Artikeldetails aufgeräumt (24.09.2026): Kategorie und EAN/Etikett erst auf
+  // Knopfdruck, unten der Bestand statt der Belegpositionen.
+  $('articleActions').hidden=false;
+  $('listPanel').hidden=true;
+  for(const [button,panel] of [['editKategorie','kategoriePanel'],['toggleEan','eanPanel']]){
+    $(button).addEventListener('click',()=>{const open=$(panel).hidden;$(panel).hidden=!open;$(button).setAttribute('aria-expanded',String(open));if(open)$(panel).scrollIntoView({behavior:'smooth',block:'start'});});
+  }
   async function api(path,options){const r=await fetch(base+path,options);if(r.status===204)return null;let data;try{data=await r.json();}catch{throw new Error(t('common.errors.invalid_response'));}if(!r.ok)throw new Error(typeof data.detail==='string'?data.detail:(r.status===422?t('article_details.errors.note_length'):t('common.errors.request_failed')));return data;}
   function svgNode(tag,attributes,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attributes))e.setAttribute(k,v);if(text!==undefined)e.textContent=text;return e;}
   function drawPrices(){
@@ -22,33 +29,42 @@
     if(rows.length>points.length)$('priceStatus').textContent+=' '+t('article_details.price_status.undated_suffix');
     const xmin=Math.min(...points.map(p=>p.x)),xmax=Math.max(...points.map(p=>p.x));const low=Math.min(...points.map(p=>p.y)),high=Math.max(...points.map(p=>p.y));const pad=Math.max((high-low)*.15,1);const step=Math.max(5,Math.ceil((high-low+2*pad)/30)*5);const ymin=Math.floor((low>=0?Math.max(0,low-pad):low-pad)/step)*step,ymax=Math.ceil((high+pad)/step)*step;
     const x=v=>xmin===xmax?450:115+(v-xmin)/(xmax-xmin)*710;const y=v=>215-(v-ymin)/(ymax-ymin)*170;
-    const svg=svgNode('svg',{viewBox:'0 0 900 270',role:'img','aria-label':t('article_details.chart_aria_label')});
+    const svg=svgNode('svg',{viewBox:'0 0 900 270',class:'price-chart',role:'img','aria-label':t('article_details.chart_aria_label')});
     for(let val=ymin;val<=ymax;val+=step){svg.append(svgNode('line',{x1:115,x2:825,y1:y(val),y2:y(val),stroke:'var(--border)'}),svgNode('text',{x:105,y:y(val)+4,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},val.toFixed(2)+' CHF'));}
     svg.append(svgNode('polyline',{points:points.map(p=>`${x(p.x)},${y(p.y)}`).join(' '),fill:'none',stroke:'var(--accent)','stroke-width':2}));
     for(const p of points){const c=svgNode('circle',{cx:x(p.x),cy:y(p.y),r:5,fill:'var(--accent)',tabindex:0});c.append(svgNode('title',{},t('article_details.chart_point_title',{date:date(p.date),uvp:p.uvp,invoice:p.invoice_number})));svg.append(c);}
     svg.append(svgNode('text',{x:115,y:245,fill:'var(--text-muted)','font-size':12},date(points[0].date)),svgNode('text',{x:825,y:245,'text-anchor':'end',fill:'var(--text-muted)','font-size':12},date(points[points.length-1].date)));
     $('priceChart').append(svg);
   }
-  async function loadPrices(){$('reloadPrices').disabled=true;$('priceStatus').textContent=t('article_details.loading_prices');try{prices=(await api('/prices')).items;const options=[...new Set(prices.map(p=>JSON.stringify(p.unit)))];$('priceUnit').replaceChildren();for(const value of options)$('priceUnit').add(new Option(JSON.parse(value)||t('article_details.unit_unknown'),value));drawPrices();}catch(e){$('priceStatus').textContent=e.message;}finally{$('reloadPrices').disabled=false;}}
-  function editor(note,card){const form=document.createElement('form');form.className='note-editor';const label=node('label',t('article_details.note_edit_label')),area=document.createElement('textarea');area.value=note.body;area.maxLength=2000;area.required=true;area.rows=2;area.setAttribute('aria-label',t('article_details.note_edit_label'));const save=node('button',t('article_details.save_change')),cancel=node('button',t('common.cancel')),message=node('p','');cancel.type='button';cancel.className='secondary';cancel.addEventListener('click',()=>renderNote(note,card));form.append(label,area,save,cancel,message);form.addEventListener('submit',async e=>{e.preventDefault();save.disabled=true;cancel.disabled=true;try{const updated=await api('/notes/'+note.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:area.value,version:note.version})});renderNote(updated,card);}catch(error){message.textContent=error.message;}finally{save.disabled=false;cancel.disabled=false;}});card.replaceChildren(form);area.focus();}
-  function renderNote(note,card){card.replaceChildren();card.className='article-note';const text=node('p',note.body);text.className='note-text';card.append(text);if(note.can_edit){const edit=node('button',t('common.edit'));edit.type='button';edit.className='secondary';edit.addEventListener('click',()=>editor(note,card));const remove=node('button',t('common.delete'));remove.type='button';remove.className='secondary';remove.addEventListener('click',async()=>{if(!confirm(t('article_details.confirm_delete_note',{body:note.body})))return;remove.disabled=true;edit.disabled=true;try{await api('/notes/'+note.id+'?version='+note.version,{method:'DELETE'});await loadNotes();}catch(error){$('noteStatus').textContent=error.message;remove.disabled=false;edit.disabled=false;}});card.append(edit,remove);}}
-  async function loadNotes(){
-    const generation=++noteGeneration;
-    $('reloadNotes').disabled=true;
-    try{
-      let page=1, data, notes=[];
-      do{
-        data=await api('/notes?page='+page++);
-        if(generation!==noteGeneration)return;
-        notes.push(...data.items);
-      }while(data.items.length && notes.length<data.total);
-      $('noteList').replaceChildren();
-      for(const note of notes){const card=document.createElement('article');renderNote(note,card);$('noteList').append(card);}
-      $('noteStatus').textContent=notes.length?'':t('article_details.notes_empty');
-    }catch(e){if(generation===noteGeneration)$('noteStatus').textContent=e.message;}
-    finally{if(generation===noteGeneration)$('reloadNotes').disabled=false;}
+  async function loadPrices(){$('priceStatus').textContent=t('article_details.loading_prices');try{prices=(await api('/prices')).items;const options=[...new Set(prices.map(p=>JSON.stringify(p.unit)))];$('priceUnit').replaceChildren();for(const value of options)$('priceUnit').add(new Option(JSON.parse(value)||t('article_details.unit_unknown'),value));drawPrices();}catch(e){$('priceStatus').textContent=e.message;}}
+
+  function drawStock(){
+    if(!stock)return;
+    const table=document.createElement('table');const hr=document.createElement('tr');
+    for(const key of ['bestand.table_lagerort','bestand.table_color','bestand.table_size','fields.ean','bestand.table_quantity','bestand.table_arrival_date','reduktion_wahl.heading'])hr.append(node('th',t(key)));
+    const head=document.createElement('thead');head.append(hr);table.append(head);const body=document.createElement('tbody');
+    for(const z of stock.zeilen){const tr=document.createElement('tr');const arrival=z.aeltestes_eingangsdatum?date(z.aeltestes_eingangsdatum):t(z.lagerort.verkauf?'bestand.no_arrival_date':'bestand.external_no_date');
+      tr.append(node('td',z.lagerort.code+' · '+z.lagerort.name),node('td',z.farbe),node('td',z.groesse),node('td',z.ean),node('td',new Intl.NumberFormat('de-CH').format(Number(z.menge))),node('td',arrival),node('td',window.SportfabrikReduktion.text(z.reduktion)));body.append(tr);}
+    table.append(body);$('stockTable').replaceChildren(table);$('stockTable').hidden=!stock.zeilen.length;
+    $('stockStatus').textContent=stock.zeilen.length?t('bestand.count_line',{anzahl:stock.total,summe:new Intl.NumberFormat('de-CH').format(Number(stock.summe))}):t('article_details.stock_empty');
   }
-  $('noteForm').addEventListener('submit',async event=>{event.preventDefault();$('saveNote').disabled=true;try{await api('/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:$('noteBody').value})});$('noteBody').value='';await loadNotes();}catch(e){$('noteStatus').textContent=e.message;}finally{$('saveNote').disabled=false;}});
-  $('reloadPrices').addEventListener('click',loadPrices);$('priceUnit').addEventListener('change',drawPrices);$('reloadNotes').addEventListener('click',loadNotes);loadPrices();loadNotes();
-  document.addEventListener('sportfabrik:i18n-ready',()=>{if(prices.length)drawPrices();loadNotes();});
+  async function loadStock(){$('stockStatus').textContent=t('bestand.loading');try{const r=await fetch('/api/bestand?alle=true&limit=500&artikel_von='+match[1]);const data=await r.json();if(!r.ok)throw new Error(typeof data.detail==='string'?data.detail:t('bestand.load_error'));stock=data;drawStock();}catch(e){$('stockStatus').textContent=e.message==='Failed to fetch'?t('common.connection_lost'):e.message;}}
+
+  let reduktion=null;
+  function drawReduktion(){
+    if(!reduktion)return;
+    const table=document.createElement('table');const hr=document.createElement('tr');
+    for(const key of ['bestand.table_lagerort','reduktion_wahl.col_recommendation','reduktion_wahl.col_effective','reduktion_wahl.col_choice'])hr.append(node('th',t(key)));
+    const head=document.createElement('thead');head.append(hr);table.append(head);const body=document.createElement('tbody');
+    for(const f of reduktion.filialen){const tr=document.createElement('tr');
+      tr.append(node('td',f.lagerort.code+' · '+f.lagerort.name),node('td',f.empfehlung?'−'+f.empfehlung+' %':t('reduktion_wahl.none')),node('td',window.SportfabrikReduktion.text(f)));
+      const td=document.createElement('td');
+      if(f.darf_aendern)td.append(window.SportfabrikReduktion.knoepfe(match[1],f.lagerort.id,f,neu=>{Object.assign(f,neu);$('reduktionStatus').textContent=t('reduktion_wahl.saved',{filiale:f.lagerort.code,stufe:window.SportfabrikReduktion.text(f)});drawReduktion();loadStock();},$('reduktionStatus')));
+      else td.append(node('span',t('reduktion_wahl.no_right'),'muted'));
+      tr.append(td);body.append(tr);}
+    table.append(body);$('reduktionTable').replaceChildren(table);
+  }
+  async function loadReduktion(){try{reduktion=await api('/reduktion');drawReduktion();}catch(e){$('reduktionStatus').textContent=e.message;}}
+  $('priceUnit').addEventListener('change',drawPrices);loadPrices();loadReduktion();loadStock();
+  document.addEventListener('sportfabrik:i18n-ready',()=>{if(prices.length)drawPrices();drawReduktion();drawStock();});
 })();

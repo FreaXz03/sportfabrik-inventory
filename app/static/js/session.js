@@ -144,6 +144,7 @@
   fetch('/api/me').then(function(r){return r.ok?r.json():null;}).then(function(me){
     if(!me) return;
     if(window.SportfabrikI18n&&me.language)window.SportfabrikI18n.syncFromAccount(me.language);
+    document.querySelectorAll('[data-chef-only]').forEach(function(el){el.hidden = !['chef', 'admin'].includes(me.role);});
     document.dispatchEvent(new CustomEvent('sportfabrik:me',{detail:me}));
     var header=document.querySelector('header');
     if(!header) return;

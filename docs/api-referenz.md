@@ -16,7 +16,7 @@ Kontosprache des Benutzers, sonst (z. B. `/login`) nach dem
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/login` | Login-Seite |
-| POST | `/login` | Kassennummer (+ Passwort bei Filialleitern/Admin) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-/Admin-Kassennummer ohne Passwort gesendet wurde |
+| POST | `/login` | Kassennummer (+ Passwort bei Filialleitern/Admin) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-/Admin-Kassennummer ohne Passwort gesendet wurde. Nach 5 falschen Passwörtern ist das Konto 20 Minuten gesperrt: Antwort **429** mit der restlichen Wartezeit, auch bei richtigem Passwort (Sicherheit S2) |
 | POST | `/logout` | Session beenden, Redirect zu `/login` |
 | GET | `/api/me` | Angemeldete Person: `{kassennummer, name, role, role_label, language, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `role_label` und Fehlermeldungen sind in `language` (`de`/`fr`/`en`) übersetzt. `lagerort` ist die aktive Filiale (`{id, code, name}` oder `null` = „alle Filialen", nur für Admin möglich), `lagerorte` die Filialen, zwischen denen gewechselt werden darf (Admin: alle) |
 | POST | `/api/active-lagerort` | Aktive Filiale für die Session wechseln. Body `{"lagerort_id": <id oder null>}`; `null` nur für Admin erlaubt (= „alle Filialen"), sonst muss die Filiale dem Benutzer zugewiesen sein (sonst 403) |
@@ -40,7 +40,7 @@ nach dem Login auf eine fremde Seite weiterleitet (offener Redirect).
 |---|---|---|
 | GET | `/articles` | Artikelsuche-Seite |
 | GET | `/api/brands` | Liste aller vorkommenden Marken |
-| GET | `/api/articles` | Artikelsuche; Filter: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `kategorie_id`/`kategorie_fehlt` (Kassenkategorie bzw. „noch keine"; `kategorie_fehlt=true` sticht `kategorie_id`), `last_delivery_from`/`last_delivery_to` (Datumsbereich auf die letzte Lieferung); Sortierung `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); Paginierung `page`/`page_size` (max. 100) |
+| GET | `/api/articles` | Artikelsuche; Filter: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `kategorie_id`/`kategorie_fehlt` (Kassenkategorie bzw. „noch keine"; `kategorie_fehlt=true` sticht `kategorie_id`), `last_delivery_from`/`last_delivery_to` (Datumsbereich auf die letzte Lieferung), `ohne_ean=true` (nur Varianten ohne EAN); Sortierung `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); Paginierung `page`/`page_size` (max. 100) |
 | GET | `/api/articles/export` | Dieselben Filter wie `/api/articles`, aber **ohne** Paginierung: liefert eine fertig formatierte Excel-Datei (`.xlsx`) mit allen Treffern zum Download |
 | GET | `/api/articles/{product_id}/history` | Vollständige Lieferhistorie eines Artikels **inkl. aller Farb-/Grössenvarianten mit gleicher Marke + Lieferanten-Artikelnummer**, neueste Rechnung zuerst; sortierbar (`sort_by`/`sort_dir`, siehe unten) |
 | GET | `/api/articles/{product_id}/prices` | Preisverlauf (UVP je Rechnung/Einheit) für die Artikelgruppe |
@@ -160,7 +160,7 @@ HTTP 422; gebucht wird in beiden Fällen nichts.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/bestand` | Seite „Bestand" (jede Anmeldung) |
-| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `nur_negativ=true` (nur negativer Bestand), `reduktion` (50/70) mit `reduktion_status` (`faellig`/`bald`, braucht eine Filiale; dieselbe Auswahl, die die Übersicht unter „Anstehend“ zählt), `artikel_von` (Varianten-Id; zeigt alle Grössen und Farben desselben Artikels, für die Artikeldetails, 404 bei unbekannter Id), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`, `artikel_id` und `reduktion` mit `empfehlung`/`manuell`/`wirksam`, bei externen Lagern `null`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
 
 **Lesen darf jede Anmeldung alle Filialen** (bestätigt am 22.09.2026) — auch
 die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`
@@ -171,7 +171,7 @@ negativer Bestand wird gezeigt, nicht versteckt.
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/ausbuchen` | Seite „Ausbuchen" (jede Anmeldung) |
+| GET | `/ausbuchen` | Seite „Ausbuchen" (Filialleiter/Zentrale) |
 | GET | `/api/ausbuchen/stammdaten` | Buchbare Lagerorte (`lagerorte`, eigene zuerst), `lagerort_aktiv`, `gruende` (`verkauf`, `defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges`) |
 | POST | `/api/ausbuchen` | Ein Stück ausbuchen. JSON: `grund`, genau eines von `ean` oder `varianten_id`, `freitext` (Pflicht bei `sonstiges`), `lagerort_id` (ohne Angabe die aktive Filiale). Antwort: `bewegung_id`, `typ`, `grund`, Artikeldaten, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 bei unbekannter EAN/Variante oder unbekanntem Grund — dann ist nichts gebucht |
 | GET | `/api/ausbuchungen` | Verkäufe und Abgänge, neueste zuerst. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true`, `limit` (max. 200), `offset`. Je Zeile Zeitpunkt, Artikel, Lagerort, Grund, Person (`benutzer_name`), `storniert` |
@@ -199,7 +199,7 @@ Bestandsansicht und steht nicht in `gruende`.
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/umlagern` | Seite „Umlagern" (jede Anmeldung) |
+| GET | `/umlagern` | Seite „Umlagern" (Filialleiter/Zentrale) |
 | GET | `/api/umlagerung/stammdaten` | `quellen` (alle Lagerorte), `ziele` (buchbare, eigene zuerst), `ziel_aktiv`, `heute`; je Lagerort `verkauf` |
 | POST | `/api/umlagerung` | Umlagerung beim Empfang buchen. JSON: `quelle_id`, `ziel_id` (ohne Angabe die aktive Filiale), `eingangsdatum` (optional, `YYYY-MM-DD`, nicht in der Zukunft; zählt nur, wo die Uhr startet), `positionen` (`varianten_id`, `menge` als Text; gleiche Varianten werden zusammengezählt). Antwort: `quelle`, `ziel`, `positionen` (je Variante Bestand vorher/nachher und `uhr_start`), `fehlbestand`, `stueck`. 409 bei gleichem Quell- und Ziel-Lagerort, ungültiger Menge oder unbekannter Variante — dann ist nichts gebucht |
 
@@ -208,7 +208,7 @@ Bestandsansicht und steht nicht in `gruende`.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | GET | `/erfassen` | Seite „Ware erfassen" (jede Anmeldung) |
-| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), bekannte Lieferanten, Kassenkategorien (Regel 8), heutiges Datum vom Server |
+| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), Lieferanten nur als fünf Gruppen (`id`, `gruppe`, `code` 111/333/444/555/999; 24.09.2026), Kassenkategorien (Regel 8), heutiges Datum vom Server |
 | GET | `/api/erfassen/variante?ean=<ean>` | Nachschlag für den Scanner: `{"gefunden": true, "variante": {…}}` mit Marke, Bezeichnung, Farbe, Grösse, Einheit, letztem UVP/EK und der bestehenden Kategorie als Vorschlag; unbekannte EAN ergibt `{"gefunden": false, "variante": null}` |
 | POST | `/api/erfassen` | Alle Positionen als **einen** Wareneingang ohne Beleg buchen (D27) |
 
@@ -248,9 +248,14 @@ Lagerort ohne Zugriff ergibt HTTP 403, ein ungültiges Datumsformat HTTP 422.
 | Methode | Pfad | Zweck |
 |---|---|---|
 | POST | `/api/varianten/{id}/ean` | EAN setzen: `{"generieren": true}` erzeugt eine interne EAN-13 (GS1 20–29, D24), `{"ean": "4006381333931"}` trägt eine vorhandene nach (Format **und** Prüfziffer werden geprüft) |
-| GET | `/api/varianten/{id}/etikett` | Was auf dem Etikett stünde (Vorschau für die Oberfläche) samt Auswahllisten für Grösse und Reduktion |
-| GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (Voreinstellung `84x47`, auch `50x30` u. a.), `reduktion` (0/30/50/70), `anzahl` (1–100) |
+| GET | `/api/varianten/{id}/etikett` | Was auf dem Etikett stünde (Vorschau für die Oberfläche) samt Auswahllisten für Grösse und Reduktion; `rolle` sagt, welche vorgedruckte Rolle einzulegen ist (`{"prozent": 50, "farbe": "rot"}`), Parameter `reduktion` wie beim PDF |
+| GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (nur `47x83`, die vorgedruckte Rolle), `reduktion` (0/30/50/70, bestimmt die Rolle), `anzahl` (1–100), `muster=true` zeichnet den Vordruck zur Vorschau mit |
 | GET | `/api/wareneingaenge/{id}/etiketten.pdf` | Alle Etiketten eines Wareneingangs — `je_stueck=true` (Voreinstellung) druckt eines pro Stück, sonst eines je Position |
+| GET | `/api/artikel/{artikel_id}/etiketten.pdf` | Runterschreiben (Phase D): ein Etikett je Stück im Bestand der Filiale, für alle Farben und Grössen des Artikels. Parameter `reduktion` (bestimmt die Rolle), `lagerort_id` (ohne Angabe die aktive Filiale). 404 ohne Bestand |
+| GET | `/api/reduktionen` | Runterschreiben (Phase D): Artikel einer Filiale (`lagerort_id`, sonst die aktive), die −70 %/−50 % erreicht haben (`stand: faellig`) oder in 30 Tagen erreichen (`bald`), je mit `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; dazu die wählbaren Filialen und `manuell` (von Hand gewählte Stufen der Filiale mit `prozent`, `gesetzt_von`, `gesetzt_am`) |
+| GET | `/api/articles/{varianten_id}/reduktion` | Je Filiale mit Verkauf: `empfehlung` (Regel 6), `manuell` (30/50/70 oder `null`), `wirksam`, `darf_aendern` (eigene Filiale wie bei Erfassung/Korrektur) |
+| PUT | `/api/reduktion/manuell` | Stufe von Hand setzen: `varianten_id`, `lagerort_id`, `prozent` (30/50/70, sonst 422). Alle Rollen, Mitarbeiter nur in zugewiesenen Filialen (403); externe Lager 409. Antwort: `empfehlung`, `manuell`, `wirksam` |
+| DELETE | `/api/reduktion/manuell?varianten_id=&lagerort_id=` | Zurück zur Empfehlung; gleiche Rechte |
 
 Beide PDF-Antworten kommen als `application/pdf` mit `Content-Disposition:
 inline`, eine Seite je Etikett; die Seitengrösse ist die Etikettengrösse,
@@ -281,3 +286,10 @@ Typische Statuscodes: `400` (z. B. Import ohne gewählte Filiale), `401`
 Duplikat oder Hash-Konflikt; oder Notiz wurde zwischenzeitlich geändert),
 `413` (Datei zu gross), `422` (PDF konnte nicht gelesen/geparst werden, oder
 ungültige Korrekturdaten), `503` (Datenbank nicht erreichbar).
+
+
+## Buchungsrechte ab 24.09.2026
+
+Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert.
+
+`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`, `POST /api/ausbuchen/{id}/storno` sowie `/umlagern` und alle `/api/umlagerung`-Endpunkte verlangen Filialleiter/Zentrale. Die Ausbuchungsliste (`GET /api/ausbuchungen`) bleibt für alle lesbar. `GET /api/erfassen/stammdaten` bietet Mitarbeitern nur zugewiesene Filialen an; Erfassung/Korrektur prüfen diese Grenze auch serverseitig. `GET /api/bestand` liefert zusätzlich `rechte.ausbuchen` und `rechte.korrektur_lagerorte`, anhand derer die Aktionen angezeigt werden.

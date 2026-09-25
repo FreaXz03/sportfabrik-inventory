@@ -28,7 +28,7 @@ def _zahl(wert) -> str:
     return f"{Decimal(wert or 0):.2f}"
 
 
-def _mit_filtern(abfrage, lagerort_id, suche, nur_vorhanden):
+def _mit_filtern(abfrage, lagerort_id, suche, nur_vorhanden, nur_negativ=False, varianten_ids=None):
     """Die gemeinsamen Joins und Filter für Liste, Anzahl und Summe."""
     abfrage = (
         abfrage.select_from(Bestand)
@@ -44,6 +44,10 @@ def _mit_filtern(abfrage, lagerort_id, suche, nur_vorhanden):
         # Nicht `> 0`: ein negativer Bestand ist möglich (bestätigt am
         # 22.09.2026) und muss gerade dann sichtbar sein.
         abfrage = abfrage.where(Bestand.menge != 0)
+    if nur_negativ:
+        abfrage = abfrage.where(Bestand.menge < 0)
+    if varianten_ids is not None:
+        abfrage = abfrage.where(Bestand.varianten_id.in_(varianten_ids))
     if suche:
         muster = f"%{suche.strip()}%"
         abfrage = abfrage.where(
@@ -64,6 +68,8 @@ def liste_bestand(
     nur_vorhanden: bool = True,
     limit: int = STANDARD_LIMIT,
     offset: int = 0,
+    nur_negativ: bool = False,
+    varianten_ids: list[int] | None = None,
 ) -> dict:
     """Bestandszeilen samt Anzahl und Gesamtmenge der ganzen Auswahl.
 
@@ -79,6 +85,8 @@ def liste_bestand(
             lagerort_id,
             suche,
             nur_vorhanden,
+            nur_negativ,
+            varianten_ids,
         )
     ).one()
     gesamt, summe = int(kennzahlen[0]), kennzahlen[1]
@@ -89,6 +97,8 @@ def liste_bestand(
             lagerort_id,
             suche,
             nur_vorhanden,
+            nur_negativ,
+            varianten_ids,
         )
         .order_by(Artikel.marke, Artikel.bezeichnung, Variante.id, Lagerort.id)
         .limit(limit)
@@ -99,6 +109,7 @@ def liste_bestand(
         "zeilen": [
             {
                 "varianten_id": variante.id,
+                "artikel_id": artikel.id,
                 "marke": artikel.marke,
                 "bezeichnung": artikel.bezeichnung,
                 "lieferanten_artikelnr": artikel.lieferanten_artikelnr,

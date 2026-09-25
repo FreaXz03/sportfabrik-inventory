@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Integer,
     ForeignKey,
     Numeric,
     String,
@@ -62,6 +63,11 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+    # Sicherheit S2 (Entscheid 24.09.2026): falsche Passwörter zählen, nach 5
+    # ist das Konto 20 Minuten gesperrt (app/services/anmeldung.py).
+    fehlversuche: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    gesperrt_bis: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Lagerort(Base):
@@ -409,3 +415,29 @@ class Bestand(Base):
     lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), primary_key=True)
     menge: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default=text("0"))
     aeltestes_eingangsdatum: Mapped[date | None] = mapped_column(Date)
+
+
+class ReduktionManuell(Base):
+    """Von Hand gewählte Reduktionsstufe je Modell × Filiale (24.09.2026).
+
+    Getrennt von der Empfehlung nach Regel 6, die weiterhin berechnet wird:
+    gilt eine Zeile, ist sie die wirksame Stufe (auch unter der Empfehlung).
+    Löschen heisst zurück zur Empfehlung. Wie das Modell selbst gilt sie für
+    alle Farben und Grössen. Benutzer als Momentaufnahme - bleibt lesbar,
+    auch wenn das Konto gelöscht wird (Entscheid 24.09.2026)."""
+
+    __tablename__ = "reduktionen_manuell"
+    __table_args__ = (
+        UniqueConstraint("artikel_id", "lagerort_id", name="uq_reduktionen_manuell_artikel_lagerort"),
+        CheckConstraint("prozent IN (30, 50, 70)", name="ck_reduktionen_manuell_prozent"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    artikel_id: Mapped[int] = mapped_column(ForeignKey("artikel.id", ondelete="CASCADE"), index=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    prozent: Mapped[int] = mapped_column(Integer)
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    gesetzt_am: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

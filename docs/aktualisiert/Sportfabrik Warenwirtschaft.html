@@ -1,0 +1,307 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Sportfabrik Warenwirtschaft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#f2f5f3;
+    --surface:#ffffff;
+    --surface-2:#e6ebe8;
+    --ink:#16201d;
+    --ink-2:#526059;
+    --ink-3:#7c8a84;
+    --line:#c6d0cb;
+    --line-strong:#8a9a93;
+    --accent:#1b5e57;
+    --accent-soft:#dbeae6;
+    --warm:#a8520f;
+    --warm-soft:#f3e4d6;
+    --radius:7px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#101614; --surface:#19211e; --surface-2:#212b27;
+      --ink:#e7ece9; --ink-2:#a1b0aa; --ink-3:#7e8c87;
+      --line:#35423d; --line-strong:#61736c;
+      --accent:#74c5b3; --accent-soft:#1d332e;
+      --warm:#e0915c; --warm-soft:#33251a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#101614; --surface:#19211e; --surface-2:#212b27;
+    --ink:#e7ece9; --ink-2:#a1b0aa; --ink-3:#7e8c87;
+    --line:#35423d; --line-strong:#61736c;
+    --accent:#74c5b3; --accent-soft:#1d332e;
+    --warm:#e0915c; --warm-soft:#33251a;
+  }
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+    font-size:15px; line-height:1.55; margin:0;
+  }
+  main{max-width:1000px;margin:0 auto;padding-inline:20px;padding-block:44px 72px;}
+
+  h1,h2{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;text-wrap:balance;margin:0;}
+  h1{font-size:clamp(30px,5.4vw,44px);font-weight:700;letter-spacing:-.022em;line-height:1.08;}
+  h2{font-size:20px;font-weight:600;letter-spacing:-.01em;}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--accent);margin:0 0 10px;
+  }
+  .head{border-bottom:1px solid var(--line);padding-bottom:26px;}
+  .lede{color:var(--ink-2);max-width:62ch;margin:14px 0 0;font-size:16px;}
+
+  /* ---- Faktenleiste ---- */
+  .facts{
+    list-style:none;margin:26px 0 0;padding:0;
+    display:flex;flex-wrap:wrap;gap:10px 0;
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
+    overflow:hidden;
+  }
+  .facts li{
+    flex:1 1 140px;padding:13px 16px;
+    border-left:1px solid var(--line);
+  }
+  .facts li:first-child{border-left:0;}
+  .facts b{
+    display:block;font-family:"Archivo",sans-serif;font-size:19px;font-weight:600;
+    letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  }
+  .facts span{display:block;color:var(--ink-2);font-size:12.5px;margin-top:1px;}
+
+  section{margin-top:46px;}
+  .sub{color:var(--ink-2);font-size:14px;margin:6px 0 0;max-width:66ch;}
+
+  /* ---- Legende ---- */
+  .legend{
+    list-style:none;display:flex;flex-wrap:wrap;gap:6px 22px;
+    margin:16px 0 0;padding:0;font-size:13px;color:var(--ink-2);
+  }
+  .legend li{display:flex;align-items:center;gap:9px;}
+
+  .dot{width:9px;height:9px;border-radius:50%;flex:none;box-sizing:border-box;}
+  .on{background:var(--accent);border:1px solid var(--accent);}
+  .off{background:transparent;border:1.5px solid var(--line-strong);}
+
+  /* ---- Fähigkeiten ---- */
+  .caps{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--radius);
+    margin-top:18px;overflow:hidden;
+  }
+  .cap{background:var(--surface);padding:18px 18px 20px;}
+  .cap h3{
+    font-family:"Archivo",sans-serif;font-size:15px;font-weight:600;
+    margin:0 0 12px;letter-spacing:-.005em;
+    display:flex;align-items:baseline;gap:9px;
+  }
+  .cap h3 em{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-style:normal;
+    font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-3);
+  }
+  .cap ul{list-style:none;margin:0;padding:0;display:grid;gap:8px;}
+  .cap li{
+    display:grid;grid-template-columns:9px 1fr;gap:11px;align-items:start;
+    font-size:13.5px;line-height:1.45;color:var(--ink-2);
+  }
+  .cap li .dot{margin-top:6px;}
+  .cap li.is-on{color:var(--ink);}
+
+  /* ---- Fahrplan ---- */
+  .road{
+    list-style:none;margin:18px 0 0;padding:0;
+    display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;
+  }
+  .road li{
+    flex:1 1 118px;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:11px 13px;position:relative;
+  }
+  .road li.done{background:var(--accent-soft);border-color:var(--accent);}
+  .road li.run{background:var(--warm-soft);border-color:var(--warm);}
+  .road em{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-style:normal;
+    font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--ink-3);
+  }
+  .road li.done em{color:var(--accent);}
+  .road li.run em{color:var(--warm);}
+  .road b{display:block;font-size:13.5px;font-weight:600;margin-top:3px;}
+  .road span{display:block;font-size:12px;color:var(--ink-2);margin-top:2px;}
+
+  /* ---- Abgrenzung ---- */
+  .notes{
+    list-style:none;margin:18px 0 0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:1px;background:var(--line);border:1px solid var(--line);
+    border-radius:var(--radius);overflow:hidden;
+  }
+  .notes li{background:var(--surface);padding:14px 16px;font-size:13.5px;color:var(--ink-2);}
+  .notes b{display:block;color:var(--ink);font-weight:600;font-size:14px;margin-bottom:3px;}
+
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-3);font-size:12.5px;}
+  code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.92em;}
+</style>
+
+<main>
+  <header class="head">
+    <p class="eyebrow">Kurzfassung zum Vorstellen</p>
+    <h1>Sportfabrik Warenwirtschaft</h1>
+    <p class="lede">Jede Ware wird beim Eingang einmal erfasst — per Upload des Belegs (Rechnung, Lieferschein, Auftragsbestätigung) oder von Hand mit dem Scanner. Danach weiss das System dauerhaft, welcher Artikel zu welchem Preis wann geliefert wurde und wie viel davon in welcher Filiale liegt. Selbst gebaut, läuft auf unserem eigenen Server, ohne Lizenzgebühren — Belege verlassen das Haus nie.</p>
+
+    <ul class="facts">
+      <li><b>4&nbsp;+&nbsp;3</b><span>Filialen und externe Standorte (GEWA, VEBO, Dietikon)</span></li>
+      <li><b>35</b><span>Kassenkategorien 1:1 wie an der Kasse</span></li>
+      <li><b>3</b><span>Sprachen: DE / FR / EN</span></li>
+      <li><b>~20</b><span>Arbeitsplätze in allen Filialen</span></li>
+      <li><b>3 von 7</b><span>Phasen fertig: Fundament, Wareneingang, Bestand</span></li>
+    </ul>
+  </header>
+
+  <section>
+    <h2>Was möglich ist</h2>
+    <ul class="legend">
+      <li><span class="dot on"></span>läuft bereits</li>
+      <li><span class="dot off"></span>geplant, Phase D–G</li>
+    </ul>
+
+    <div class="caps">
+
+      <article class="cap">
+        <h3>Ware erfassen <em>Eingang</em></h3>
+        <ul>
+          <li class="is-on"><span class="dot on"></span>Beleg als PDF hochladen, auch mehrere auf einmal</li>
+          <li class="is-on"><span class="dot on"></span>Positionen werden automatisch ausgelesen — Vorschau zum Prüfen und Korrigieren, erst dann wird gebucht</li>
+          <li class="is-on"><span class="dot on"></span>Eingescannte Belege über Texterkennung, unsichere Felder markiert</li>
+          <li class="is-on"><span class="dot on"></span>Auftragsbestätigung bucht noch keinen Bestand, sondern einen erwarteten Eingang — „Ware eingetroffen" bestätigen darf jeder, Restmengen bleiben offen</li>
+          <li class="is-on"><span class="dot on"></span>Lieferant, Belegart und Ziel-Lagerort werden aus dem Dokument erkannt und vorgeschlagen</li>
+          <li class="is-on"><span class="dot on"></span>Ware ohne Beleg von Hand per Scanner erfassen — Marke, Bezeichnung, Menge, UVP genügen</li>
+          <li class="is-on"><span class="dot on"></span>Warnung, wenn mehr eintrifft als erwartet</li>
+          <li><span class="dot off"></span>Parser für Alpina, Chris Sports und CMP vorhanden; weitere Händlerlayouts und ECOM-Erkennung bleiben separat zu prüfen</li>
+        </ul>
+      </article>
+
+      <article class="cap">
+        <h3>Artikel &amp; Preise <em>Nachschlagen</em></h3>
+        <ul>
+          <li class="is-on"><span class="dot on"></span>Artikel aus Belegen bleiben dauerhaft nachschlagbar — Ausnahme für manuelle Fehleinträge siehe unten</li>
+          <li class="is-on"><span class="dot on"></span>Einfache Suche: grosses Feld „EAN scannen" ist sofort aktiv, dazu eine Schnellsuche — weitere Filter eingeklappt</li>
+          <li class="is-on"><span class="dot on"></span>UVP-Verlauf je Artikel, Einkaufspreis wenn im Dokument vorhanden</li>
+          <li class="is-on"><span class="dot on"></span>Lieferhistorie über alle Farben und Grössen, Notizen am Artikel, Excel-Export</li>
+          <li class="is-on"><span class="dot on"></span>Kassenkategorie wird aus dem FEDAS-Code vorgeschlagen, sonst von Hand gewählt — Filter „Ohne Kategorie"</li>
+          <li class="is-on"><span class="dot on"></span>Lieferantengruppen mit Code 111 / 555 / 333 / 999 / 444</li>
+          <li class="is-on"><span class="dot on"></span>Falsch von Hand erfasste Artikel darf die Filialleitung ganz löschen — Artikel aus Belegen bleiben</li>
+          <li class="is-on"><span class="dot on"></span>FEDAS-Zuordnung ergänzt: 54 Erlebnisbereiche zugeordnet; Kids bleibt manuell</li>
+        </ul>
+      </article>
+
+      <article class="cap">
+        <h3>Lager &amp; Bestand <em>je Filiale</em></h3>
+        <ul>
+          <li class="is-on"><span class="dot on"></span>Bestand je Filiale und Variante — SF1–SF4 plus GEWA, VEBO, Dietikon; alle Filialen lesbar</li>
+          <li class="is-on"><span class="dot on"></span>Jede Änderung ist eine Bewegung, Bestand wird nie einfach überschrieben</li>
+          <li class="is-on"><span class="dot on"></span>Umlagerung: die empfangende Filiale bucht; extern → Filiale setzt das Eingangsdatum, Filiale → Filiale behält es</li>
+          <li class="is-on"><span class="dot on"></span>Verkauf und Abgang per Scan ausbuchen — ein Scan, ein Stück, mit Grund; Liste aller Ausbuchungen mit Zeit und Person</li>
+          <li class="is-on"><span class="dot on"></span>Korrektur: Menge im Regal zählen, das System bucht die Differenz</li>
+          <li><span class="dot off"></span>Inventur für ganze Filialen per Scanner</li>
+        </ul>
+      </article>
+
+      <article class="cap">
+        <h3>Runterschreiben <em>30 / 50 / 70&nbsp;%</em></h3>
+        <ul>
+          <li class="is-on"><span class="dot on"></span>‑30 % ab Eingang, ‑50 % nach 18 Monaten, ‑70 % nach 36 — Stufe wird bereits berechnet und steht fürs Etikett bereit</li>
+          <li class="is-on"><span class="dot on"></span>Gerechnet pro Filiale, ab dem letzten Wareneingang derselben Artikelnummer — eine Nachlieferung startet die Uhr neu</li>
+          <li class="is-on"><span class="dot on"></span>Übersicht zeigt unter „Anstehend", was ‑50 % / ‑70 % erreicht hat oder in 30 Tagen erreicht</li>
+          <li><span class="dot off"></span>Eigene Liste „zum Runterschreiben fällig", direkt zum Etikettendruck</li>
+          <li><span class="dot off"></span>Zentrale Empfehlung für alle Filialen; jede Filiale entscheidet selbst, Abweichungen bleiben sichtbar</li>
+          <li><span class="dot off"></span>Die Schwellen 18 und 36 Monate sind einstellbar</li>
+        </ul>
+      </article>
+
+      <article class="cap">
+        <h3>EAN &amp; Etiketten <em>Scanner</em></h3>
+        <ul>
+          <li class="is-on"><span class="dot on"></span>EAN kommt aus dem Dokument; Varianten ganz ohne EAN funktionieren</li>
+          <li class="is-on"><span class="dot on"></span>EAN jederzeit per Scan nachtragen</li>
+          <li class="is-on"><span class="dot on"></span>Fehlt sie: auf Knopfdruck eine eigene, interne EAN erzeugen</li>
+          <li class="is-on"><span class="dot on"></span>Etikett als PDF — UVP, Lieferanten-Code, Jahrgang und Strichcode; das System sagt, welche Rolle (30 / 50 / 70 %) einzulegen ist</li>
+          <li class="is-on"><span class="dot on"></span>Etikett 47 × 83 mm auf vorgedruckten Farbrollen — laut lokalem Projektkontext umgesetzt</li>
+          <li><span class="dot off"></span>Funk-Scanner an jedem PC, ohne Zusatzsoftware — Testgerät noch zu beschaffen</li>
+        </ul>
+      </article>
+
+      <article class="cap">
+        <h3>Bedienung <em>Alltag</em></h3>
+        <ul>
+          <li class="is-on"><span class="dot on"></span>Anmeldung wie an der Kasse: Kassennummer, Passwort für Leitung und Zentrale</li>
+          <li class="is-on"><span class="dot on"></span>Deutsch, Französisch, Englisch — Oberfläche und Fehlermeldungen</li>
+          <li class="is-on"><span class="dot on"></span>Aufgeräumte Kopfzeile mit Menü in Gruppen, Filialwechsel und Konto-Menü</li>
+          <li class="is-on"><span class="dot on"></span>Übersicht mit grossen Schnellzugriffen, Kennzahlen der Filiale, „Anstehend" und „Aktuelles"</li>
+          <li class="is-on"><span class="dot on"></span>Mitarbeiter dürfen alles ausser Belege hochladen — Filialleitung zusätzlich Belege</li>
+          <li class="is-on"><span class="dot on"></span>Gut lesbar auch mit Brille: Hell-/Dunkelmodus, grössere Schrift, wählbare Spalten</li>
+        </ul>
+      </article>
+
+      <article class="cap">
+        <h3>Betrieb <em>eigener Server</em></h3>
+        <ul>
+          <li class="is-on"><span class="dot on"></span>Läuft auf einem eigenen Server im Geschäft — Belege liest nur unser eigener Parser, keine Lizenzgebühren</li>
+          <li class="is-on"><span class="dot on"></span>Funktioniert im Ladennetz auch dann, wenn das Internet ausfällt</li>
+          <li class="is-on"><span class="dot on"></span>Automatische Backups; Ablauf-Tests prüfen bei jeder Änderung alle Hauptabläufe</li>
+          <li><span class="dot off"></span>Server Volketswil produktiv, gesicherte Verbindung (VPN) zu den Filialen</li>
+          <li><span class="dot off"></span>Zusätzliche Backups ausser Haus</li>
+        </ul>
+      </article>
+
+      <article class="cap">
+        <h3>Kasse <em>das Endziel</em></h3>
+        <ul>
+          <li><span class="dot off"></span>Scan an der Kasse liefert Kategorie, UVP und die aktuelle Reduktionsstufe</li>
+          <li><span class="dot off"></span>Der Verkauf bucht den Bestand automatisch aus</li>
+          <li><span class="dot off"></span>Kein manuelles Eintippen von Kategorie, Preis und Prozent mehr</li>
+          <li><span class="dot off"></span>Hängt an der Abklärung mit Intersport — Zugriff und Schnittstelle sind offen</li>
+        </ul>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Fahrplan</h2>
+    <p class="sub">Die Reihenfolge ist nicht beliebig: ohne Fundament kein Wareneingang, ohne Wareneingang kein Bestand, ohne Bestand keine Reduktion.</p>
+    <ol class="road">
+      <li class="done"><em>A · fertig</em><b>Fundament</b><span>Filialen, Rollen, Sprachen, Datenmodell</span></li>
+      <li class="done"><em>B · fertig</em><b>Wareneingang</b><span>Belegarten, Erkennung, Scanner, EAN</span></li>
+      <li class="done"><em>C · fertig</em><b>Bestand</b><span>Umlagerung, Ausbuchen, Korrekturen</span></li>
+      <li class="run"><em>D · als Nächstes</em><b>Reduktion</b><span>Preisverlauf, 18-/36-Monats-Hinweise</span></li>
+      <li><em>E</em><b>Lieferanten</b><span>weitere Layouts und Scans</span></li>
+      <li><em>F</em><b>Betrieb</b><span>Server, VPN, Backups, Umzug</span></li>
+      <li><em>G</em><b>Kasse</b><span>Anbindung Intersport</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Worauf wir bewusst verzichten</h2>
+    <ul class="notes">
+      <li><b>Keine KI für Belege</b>Jeder Beleg wird von unserem eigenen Parser auf dem eigenen Server gelesen. Keine Rechnung, kein Lieferschein verlässt das Haus. Ein unbekanntes Layout wird gemeldet, nicht geraten.</li>
+      <li><b>Keine Standard-Software</b>Sie würde unsere Kassenkategorien, die 30/50/70-Logik und die externen Standorte GEWA, VEBO und Dietikon nie genau abbilden — und kostet laufend.</li>
+      <li><b>Kein Bestand auf Verdacht</b>Gebucht wird erst, wenn die Ware wirklich eingetroffen ist. Eine Auftragsbestätigung ist nur eine Ankündigung.</li>
+    </ul>
+  </section>
+
+  <section id="inbox-2026-09-24"><h2>Neue Anforderungen · 24.09.2026</h2><p class="sub">Bedienungswünsche umgesetzt am 24.09.2026 (im Browser gegen eine Testdatenbank geprüft).</p><ul><li>Ein Klick auf einen Eintrag unter „Anstehend“ öffnet die gefilterte Liste mit genau den gezählten Einträgen (ohne EAN, ohne Kategorie, negativer Bestand, Reduktion fällig oder bald). Die Liste sagt gross „Gefiltert: …“ und hat einen Knopf „Alle zeigen“. Gezählt wird jetzt je Variante, wie die Listen zeigen.</li><li>Auf der Bestandsseite ist die Schnellsuche beim Öffnen sofort aktiv.</li><li>Auf der Artikelseite liegt „Spalten anzeigen“ unter „Weitere Filter“.</li><li>Die gezeigte Filiale steht gross im Titel der Bestandsseite; der kleine Filialwechsler bleibt.</li><li>Die Schnellzugriffsknöpfe auf der Übersicht sind gleich gross, auch beim Umbrechen.</li></ul><h3>Handynutzung · offene Idee</h3><p>Mobile App? Reicht das lokale WLAN oder braucht es ein VPN? EAN mit der Handykamera scannen? Diese Fragen werden noch geplant; keine Umsetzung beschlossen.</p><h3>Dokumentierter Entwicklungsstand</h3><p>Etikett 47 mm breit × 83 mm hoch für vorgedruckte Rollen: 30 % gelb, 50 % rot, 70 % grün. FEDAS-Zuordnung ergänzt; Kids wird von Hand gewählt. Parser für Alpina, Chris Sports und CMP sind laut lokalem Projektkontext vorhanden. Produktive Freigabe und offene Layouts separat prüfen.</p><p>Diese Übersicht und das Warenfluss-Dokument werden bei Änderungen an Kontext, Fortschritt oder Entscheidungen gemeinsam aktualisiert.</p></section>
+
+  <section id="sicherheit-2026-09-24"><h2>Sicherheitsprüfung · 24.09.2026</h2><p class="sub">Ist-Stand geprüft: keine kritischen oder hohen Befunde. Offene Massnahmen vor dem Einsatz im Laden; die Login-Sperre ist umgesetzt. Details: docs/sicherheit.md im Projekt.</p><ul><li><b>S1 · mittel:</b> Anmeldung läuft noch über HTTP, Sitzungen gelten 5 Jahre – HTTPS im Laden-Netz, Sitzungen bei Passwortwechsel ungültig machen.</li><li><b>S2 · umgesetzt:</b> Nach 5 falschen Passwörtern ist ein Konto 20 Minuten gesperrt (Entscheid und Umsetzung 24.09.2026). Offen bleibt: Server nur im Laden-Netz erreichbar machen.</li><li><b>S3 · mittel:</b> Pillow 12.2.0 mit bekannten Lücken – Update auf 12.3.0.</li><li><b>S4 · mittel:</b> Backups auf dem externen Datenträger unverschlüsselt – vor dem Kopieren verschlüsseln.</li><li><b>S5–S9 · niedrig:</b> API-Doku und /db-test im Betrieb abschalten bzw. minimal halten, Sicherheits-Header, Hash-Pins für Pakete, Google Fonts aus diesen Übersichtsseiten entfernen.</li></ul><p>Gut: keine Geheimnisse im Code oder Verlauf, alle Datenzugriffe mit Anmeldung, sichere Passwort-Speicherung, keine Einschleusung, Frontend ohne Internet, Docker ohne root.</p></section>
+
+  <section id="phase-d-2026-09-24"><h2>Phase D · Preise &amp; Reduktion</h2><p class="sub">Teil 1 umgesetzt am 24.09.2026; weitere Teile warten auf Antworten.</p><ul><li><b>Umgesetzt:</b> Seite „Runterschreiben“ je Filiale – Artikel, die −70 % oder −50 % erreicht haben oder in den nächsten 30 Tagen erreichen, mit Rollen-Hinweis und Knopf „Etiketten drucken“ (ein Etikett pro Stück im Bestand).</li><li><b>Offen – Frage:</b> Soll die Filiale „runtergeschrieben“ bestätigen, damit der Artikel aus der Liste verschwindet?</li><li><b>Offen – Frage:</b> Nachlieferung nach dem Runterschreiben: ganzes Modell wieder −30 % oder nur die neuen Stücke?</li><li><b>Offen – Frage:</b> Zentrale Empfehlung: Zentrale setzt je Artikel eine Stufe, Filialen übernehmen oder weichen mit Grund ab?</li><li><b>Offen – Frage:</b> Wer darf die Schwellen 18/36 Monate ändern, und gelten sie für alle Filialen?</li></ul></section>
+  <footer>Sportfabrik Warenwirtschaft · Inhalte gemäss <code>docs/projekt-kontext.md</code> (Rev. 6) · Stand 24.09.2026 · Inbox-Abgleich nachmittags</footer>
+</main>
+
+</body></html>

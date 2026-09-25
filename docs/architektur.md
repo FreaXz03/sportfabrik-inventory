@@ -382,9 +382,14 @@ eine EAN-14 (Umkarton) ist ITF-14 und wird deshalb nur als Zahl gedruckt,
 ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
 einer, den die Kasse nicht annimmt.
 
-**Etikettengrösse:** einstellbar (`GROESSEN` in `app/services/etikett.py`),
-Voreinstellung 84 × 47 mm; rechts neben dem Lieferanten steht fett der Code der Lieferantengruppe (111/555/333/999/444, aus `lieferanten.typ` abgeleitet) — die Rollen im Sato CL4NX Plus (bestätigt am
-23.09.2026); 50 × 30 mm und die übrigen Grössen bleiben wählbar. Die Modulbreite
+**Etikett (neu am 24.09.2026):** vorgedruckte Rollen im Sato CL4NX Plus,
+47 × 83 mm hoch, mit Logo, Prozent-Punkt und Bergen — je Reduktion eine Rolle
+(30 % gelb, 50 % rot, 70 % grün, `ROLLEN`). Gedruckt werden nur UVP
+(durchgestrichen), links der Code der Lieferantengruppe (111/555/333/999/444,
+aus `lieferanten.typ`), rechts der Jahrgang zweistellig und unter den Bergen
+der Strichcode. Alle Positionen stehen in `LAYOUT` (Millimeter), weil die
+Rolle gerade neu gestaltet wird; `muster=True` zeichnet den Vordruck zur
+Vorschau mit. Die Modulbreite
 des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
 masslos in die Breite gezogen wird.
 
@@ -402,15 +407,16 @@ Reihenfolge ist wichtig.
 
 **Vorschlag aus dem FEDAS-Code.** INTERSPORT-Rechnungen führen je Position
 einen 6-stelligen FEDAS-Code mit; `app/core/fedas.py` übersetzt die erste
-Ziffer in die Hauptgruppe und die Ziffern 2–3 in den Sportbereich. Der
-Importer setzt die Kategorie damit automatisch, sobald der Code bekannt ist.
-In der Tabelle stehen nur die aus echten Rechnungen **bestätigten** Codes -
-geraten wird nichts.
+Ziffer in die Hauptgruppe und die Ziffern 2–3 (Erlebnisbereich) in den
+Sportbereich; ganze Fahrräder (Warengruppen 16001–16008) werden Velo,
+Sportnahrung (10020) Food. Die Zuordnung aller 54 Erlebnisbereiche aus der
+FEDAS-Liste hat Fabian am 24.09.2026 bestätigt; die Liste selbst liegt nicht
+im Repo. Kids lässt sich aus FEDAS nicht ableiten.
 
 **Wahl von Hand** (`app/services/kategorien.py`) für alles andere, und das ist
 der Normalfall: die meisten Lieferanten liefern keinen FEDAS-Code, von Hand
-erfasste Ware hat gar keinen Beleg (D27), und ein Teil der Codes ist noch
-nicht zugeordnet. Gewählt wird auf der Artikelseite oder gleich beim Erfassen;
+erfasste Ware hat gar keinen Beleg (D27), und Kids ist aus FEDAS nicht
+ableitbar. Gewählt wird auf der Artikelseite oder gleich beim Erfassen;
 gefunden werden die offenen Artikel über den Filter „Ohne Kategorie" in der
 Artikelsuche.
 
@@ -419,8 +425,7 @@ Import füllt nur eine leere Kategorie („einmal pro Artikel, danach gemerkt"),
 eine Wahl von Hand darf umgekehrt einen falschen Vorschlag korrigieren und
 bleibt danach stehen - auch wenn später eine Rechnung mit bekanntem Code
 kommt. `artikel.kategorie_manuell` hält fest, woher der Wert stammt, und die
-Oberfläche sagt es dazu: solange die FEDAS-Tabelle unvollständig ist, ist der
-Unterschied zwischen „vorgeschlagen" und „von jemandem bestätigt" eine
+Oberfläche sagt es dazu: der zwischen „vorgeschlagen" und „von jemandem bestätigt" eine
 Information wert. Wird die Kategorie geleert, ist der Artikel wieder offen und
 ein späterer Beleg darf erneut vorschlagen.
 
@@ -576,6 +581,21 @@ entscheidet, wer zuständig ist:
 | `<lieferant>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
 | `__init__.py` | `PARSERS`-Liste, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
 
+**Registrierte Layouts (24.09.2026):**
+
+| Modul | Lieferant | Belege | Besonderheiten |
+|---|---|---|---|
+| `intersport.py` | INTERSPORT Schweiz AG | Rechnung | FEDAS-Code; Referenz „ret.Ecom" → Lieferant ECOM (Code 555); Spalte „Preis" = EK |
+| `alpina.py` | ALPINA SPORTS Schweiz AG | Auftragsbestätigung | keine EAN; Artikel = Modell (erste 5 Zeichen der Produktnummer), Farbe und Grösse aus der Beschreibung; Menge × Einzelpreis = Positionswert geprüft |
+| `chrissports.py` | CHRIS sports AG | Auftragsbestätigung | „Preis" = UVP (D12), EK = Betrag/Menge; Marke ohne Sparte („Giro"); „Total Menge" geprüft |
+| `cmp.py` | CMP (F.lli Campagnolo S.p.A.) | Auftragsbestätigung | Grössenraster, Werte über den rechten Rand der Grösse zugeordnet; stornierte Blöcke übersprungen; jede Blocksumme geprüft |
+
+Die neueren Module lassen ihre Positionen einheitlich von
+`base.pruefe_position()` prüfen (Pflichtfelder, EAN, Zahlen) und bauen das
+Ergebnis mit `base.ergebnis()`. Tests: `tests/test_parser.py` mit den
+Beispielbelegen aus `BELEGE_DIR` (nur lokal, nie im Repo). Bewusst **kein**
+Parser: die Bollé-Rechnung (FaGu) nennt nur den Einkaufspreis, keinen UVP.
+
 **Erkennung** (`detect()`): Jedes Modul bewertet das Dokument mit einer
 Punktzahl oder lehnt es ab (`None`); die höchste Punktzahl gewinnt. Bei
 Gleichstand bricht die Erkennung mit einer klaren Meldung ab, statt einen
@@ -626,7 +646,7 @@ schickte einen Scan damit zweimal durch die Texterkennung.
 Ein neues Layout (Roadmap Phase E) braucht damit genau zwei Schritte: Modul
 mit der Schnittstelle anlegen und in `PARSERS` eintragen. Der passende
 Lieferant muss denselben `parser_key` in den Seed-Daten haben
-(`app/core/lieferanten.py`) — `tests/test_parser_registry.py` prüft das.
+(`app/core/lieferanten.py`) — `tests/test_parser.py` prüft das.
 
 ## OCR-Fallback für gescannte Papierrechnungen
 
@@ -790,3 +810,10 @@ deutsch, unabhängig von der UI-Sprache), Pydantic-Feldvalidierungsfehler
 wird vom Frontend ohnehin nie direkt anzeigt, sondern durch eine generische
 übersetzte Meldung ersetzt —, sowie die Spaltenüberschriften im
 Excel-Export (`article_export.py`, eigenes Dokumentformat, noch offen).
+
+
+## Buchungsrechte ab 24.09.2026
+
+Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert.
+
+`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`, `POST /api/ausbuchen/{id}/storno` sowie `/umlagern` und alle `/api/umlagerung`-Endpunkte verlangen Filialleiter/Zentrale. Die Ausbuchungsliste (`GET /api/ausbuchungen`) bleibt für alle lesbar. `GET /api/erfassen/stammdaten` bietet Mitarbeitern nur zugewiesene Filialen an; Erfassung/Korrektur prüfen diese Grenze auch serverseitig. `GET /api/bestand` liefert zusätzlich `rechte.ausbuchen` und `rechte.korrektur_lagerorte`, anhand derer die Aktionen angezeigt werden.

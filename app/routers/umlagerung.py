@@ -1,7 +1,6 @@
 """Ware zwischen Lagerorten umlagern (Phase C, Teilaufgabe C4).
 
-Rechte (Regel 9, F5): Umlagern ist Lagerarbeit - das dürfen auch
-Mitarbeiter. Gebucht wird beim Empfang von der empfangenden Filiale:
+Rechte (24.09.2026): Umlagern dürfen nur Filialleiter/Zentrale. Gebucht wird beim Empfang von der empfangenden Filiale:
 vorgewählt ist deshalb die aktive Filiale als **Ziel**; ob auf das gewählte
 Ziel gebucht werden darf, prüft der Server (`resolve_wareneingang_lagerort`).
 Quelle kann jeder Lagerort sein - die Ware kommt ja von dort.
@@ -23,8 +22,8 @@ from ..services.umlagerung import UmlagerungRejected, umlagern
 from .auth import (
     get_active_lagerort,
     get_language,
-    require_login_api,
-    require_login_page,
+    require_chef_api,
+    require_chef_page,
     resolve_wareneingang_lagerort,
 )
 
@@ -32,7 +31,7 @@ router = APIRouter()
 
 
 @router.get("/umlagern", include_in_schema=False)
-def umlagern_page(user=Depends(require_login_page)):
+def umlagern_page(user=Depends(require_chef_page)):
     return FileResponse(
         Path(__file__).resolve().parents[1] / "templates" / "umlagern.html"
     )
@@ -50,7 +49,7 @@ def _lagerort(eintrag) -> dict:
 
 @router.get("/api/umlagerung/stammdaten")
 def api_stammdaten(
-    user=Depends(require_login_api),
+    user=Depends(require_chef_api),
     lagerort=Depends(get_active_lagerort),
     session=Depends(get_session),
 ):
@@ -87,7 +86,7 @@ class UmlagerungBody(BaseModel):
 async def api_umlagern(
     request: Request,
     body: UmlagerungBody,
-    user=Depends(require_login_api),
+    user=Depends(require_chef_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
 ):

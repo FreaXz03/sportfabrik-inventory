@@ -1,5 +1,7 @@
 # Sport-Fabrik Inventory
 
+Projektarbeit: [Kurzer Einstieg und aktuelle Priorität](docs/start.md) · [Gezielte Wissenssuche](docs/obsidian-graphify.md).
+
 Internes Tool für die Sport-Fabrik: Lieferantenrechnungen (PDF) hochladen,
 Positionen automatisch auslesen, direkt in der Vorschau korrigieren und in
 eine PostgreSQL-Datenbank importieren. Danach lassen sich alle Artikel
@@ -12,9 +14,7 @@ SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf) sowie die externen Standorte ohne
 Verkauf — die Verarbeitungsstellen GEWA und VEBO und das Lager Dietikon —
 greifen im internen Netz über den Browser darauf zu. Anmeldung nach
 Kassensystem-Muster: Mitarbeiter mit blosser Kassennummer, Filialleiter und
-Admin/Zentrale zusätzlich mit Passwort. Mitarbeiter dürfen alles ausser
-Dokumente hochladen/bearbeiten/löschen; das bleibt Filialleitern und der
-Zentrale vorbehalten. Admin/Zentrale-Konten sind filialübergreifend, alle
+Admin/Zentrale zusätzlich mit Passwort. Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert. Dokumente hochladen/bearbeiten/löschen bleibt Filialleitern und Zentrale vorbehalten. Admin/Zentrale-Konten sind filialübergreifend, alle
 anderen Benutzer sind einer oder mehreren Filialen zugeordnet und können in
 der Oberfläche zwischen ihren Filialen wechseln.
 
@@ -63,10 +63,15 @@ der Oberfläche zwischen ihren Filialen wechseln.
 - **Interne EAN auf Knopfdruck**: Artikel ohne Hersteller-Barcode bekommen
   eine hauseigene EAN-13 (GS1-Bereich 20–29, mit Prüfziffer) und werden damit
   an der Kasse scannbar.
-- **Preisetikett als PDF** in Etikettengrösse (84 × 47 mm) für den
-  Etikettendrucker: mit Jahrgang, Lieferant samt Gruppen-Code
-  (111/555/333/999/444), UVP, Reduktionsstufe und EAN-Strichcode — einzeln oder
-  für einen ganzen Wareneingang auf einmal.
+- **Runterschreiben** (Phase D, Teil 1): Seite mit den Artikeln einer Filiale,
+  die −50 % oder −70 % erreicht haben oder in 30 Tagen erreichen, je mit
+  Knopf „Etiketten drucken“ (ein Etikett pro Stück, mit Rollen-Hinweis).
+- **Preisetikett als PDF** für die vorgedruckten Rollen (47 × 83 mm, Hochformat;
+  Logo, Prozent-Punkt und Berge sind vorgedruckt): gedruckt werden UVP
+  (durchgestrichen), Gruppen-Code des Lieferanten (111/555/333/999/444),
+  Jahrgang und EAN-Strichcode — einzeln oder für einen ganzen Wareneingang.
+  Die Oberfläche sagt, welche Rolle einzulegen ist (30 % gelb, 50 % rot,
+  70 % grün); „Muster ansehen" zeigt das Etikett mit angedeutetem Vordruck.
 - **OCR-Fallback** für die seltenen Fälle, in denen eine Rechnung nur als
   eingescanntes Papier statt als digitales PDF vorliegt.
 - **Artikelsuche**: vorne nur „EAN scannen" (sofort aktiv) und Schnellsuche,
@@ -91,10 +96,10 @@ der Oberfläche zwischen ihren Filialen wechseln.
   `docs/datenmodell.md`) — Wareneingänge werden nie direkt überschrieben.
 - **FEDAS-Kategorievorschlag**: erkennt der Lieferant eine passende
   FEDAS-Warengruppe, wird die Kassenkategorie beim Import automatisch
-  vorgeschlagen (aktuell mit einer Teilmenge bestätigter Codes, siehe
-  `app/core/fedas.py`).
-- **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder noch nicht
-  zugeordnet ist — auf der Artikelseite oder gleich beim Erfassen. Die
+  vorgeschlagen (alle 54 FEDAS-Erlebnisbereiche den 11 Sportbereichen der
+  Kasse zugeordnet, dazu Velo und Food; siehe `app/core/fedas.py`).
+- **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder nichts
+  hergibt (z. B. Kids) — auf der Artikelseite oder gleich beim Erfassen. Die
   Oberfläche sagt dazu, ob die Kategorie vorgeschlagen oder von Hand gewählt
   wurde; eine Wahl von Hand überschreibt kein späterer Import. Der Filter
   „Ohne Kategorie" in der Artikelsuche zeigt, wo noch etwas fehlt.
@@ -135,6 +140,8 @@ Dieses README ist der Schnelleinstieg. Ausführlichere Dokumentation liegt in
 - [`docs/SERVER-SETUP.md`](docs/SERVER-SETUP.md) — Docker-Build,
   Server-Einrichtung, Datenumzug, Betrieb
 - [`docs/BACKUPS.md`](docs/BACKUPS.md) — automatisierte, geprüfte Backups
+- [`docs/sicherheit.md`](docs/sicherheit.md) — Sicherheitsprüfung vom
+  24.09.2026 mit offenen Massnahmen (HTTPS, Login-Begrenzung, Backups …)
 - [`docs/obsidian-graphify.md`](docs/obsidian-graphify.md) — Wissensgraph
   des Codes mit Graphify erzeugen und in Obsidian öffnen; warum
   `graphify-out/` nicht ins Repo gehört
@@ -184,7 +191,10 @@ app/
     parsers/           Ein Modul je Lieferanten-Layout + Registry (siehe docs/architektur.md)
       __init__.py        Registry: Layout/Lieferant erkennen (parse_document, UnknownLayoutError)
       base.py            Gemeinsame Bausteine: PDF einmal einlesen (inkl. OCR), Zeilen/Zahlen
-      intersport.py      INTERSPORT-Rechnungen (auch ECOM) in Positionen umwandeln (inkl. FEDAS-Code)
+      intersport.py      INTERSPORT-Rechnungen (auch ECOM-Retouren, Code 555) inkl. FEDAS-Code und EK
+      alpina.py          ALPINA-Auftragsbestätigungen (Artikel = Modell, Farbe/Grösse als Variante)
+      chrissports.py     CHRIS-sports-Auftragsbestätigungen (Preis = UVP, D12; EK = Betrag/Menge)
+      cmp.py             CMP-Auftragsbestätigungen (Grössenraster, Blocksummen gegengerechnet)
     ocr.py              OCR-Fallback (Tesseract) für gescannte Seiten ohne Textebene
     corrections.py      Manuelle Korrekturen in der Vorschau validieren
     article_groups.py  Farb-/Grössenvarianten desselben Artikels über die echte artikel_id-Beziehung gruppieren
@@ -287,14 +297,22 @@ fastapi dev app/main.py
 
 ```powershell
 pip install pytest
-pytest
+DATABASE_URL=sqlite:// pytest -q
 ```
 
-Einige Tests werden automatisch übersprungen, wenn eine optionale
-Voraussetzung fehlt: eine echte INTERSPORT-Beispielrechnung
+Die Tests sind nach Hauptabläufen gebaut (Entscheid 24.09.2026): wenige
+grosse Ablauf-Tests über die echte App mit Anmeldung
+(`tests/test_ablauf_*.py`: Beleg, Erfassen, Lager, Artikel, Anmeldung),
+dazu kleine Tabellen-Tests für harte Regeln (`tests/test_regeln.py`), die
+Parser (`tests/test_parser.py`) und den Betrieb (`tests/test_betrieb.py`:
+Migrationen, Skripte, kein Internet im Frontend). Gemeinsame Test-Welt mit
+Stammdaten und Konten je Rolle: `tests/conftest.py`; selbst gebaute Belege:
+`tests/testbelege.py`. Für neue Funktionen gilt: **Test zuerst**.
+
+Echte Belege liegen nie im Repo. Einige Tests werden deshalb übersprungen,
+wenn eine optionale Voraussetzung fehlt: die INTERSPORT-Originalrechnung
 (Umgebungsvariable `INTERSPORT_TEST_PDF` auf den Pfad setzen), ein lokal
-installiertes Tesseract, oder Node.js (für ein paar Frontend-Logik-Tests,
-die reines JavaScript ausserhalb des Browsers prüfen).
+installiertes Tesseract, oder Node.js (Frontend-Skripte und Login-Weiterleitung).
 
 ## Backups
 

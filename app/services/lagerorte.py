@@ -49,23 +49,14 @@ def get_primary_lagerort(session: Session, user: User) -> Lagerort | None:
 
 
 def list_wareneingang_lagerorte(session: Session, user: User) -> list[Lagerort]:
-    """Lagerorte, auf die ein Wareneingang gebucht werden darf: **alle** -
-    eigene Filialen zuerst.
-
-    Begründung (D19/D20): das Ziel bestimmt der Beleg über seine Lieferadresse,
-    nicht die gerade aktive Filiale. Eine Lieferung an eine andere Filiale oder
-    an einen externen Standort (GEWA, VEBO, Dietikon - ohne eigenes Personal,
-    D11) liesse sich sonst gar nicht
-    erfassen - genau der Fall „Rechnung an Volketswil, Lieferadresse Conthey"
-    aus projekt-kontext.md Abschnitt 6. Wer hier überhaupt hinkommt, darf
-    Dokumente hochladen (Filialleiter oder Admin, Regel 9); eine falsch
-    gewählte Filiale ist über eine Umlagerung korrigierbar und im Dokument
-    nachvollziehbar.
-
-    Nur fürs Buchen eines Wareneingangs - der Filialwechsel in der Oberfläche
-    und alle Leseansichten bleiben bei `list_user_lagerorte()`.
+    """Buchbare Lagerorte: Mitarbeiter nur zugewiesene Filialen,
+    Filialleiter/Zentrale alle Standorte (Entscheid 24.09.2026).
+    Gilt für manuelle Erfassung und Bestandskorrektur; Dokumentimporte
+    bleiben Filialleiter/Zentrale vorbehalten.
     """
     eigene = list_user_lagerorte(session, user)
+    if user.role == "mitarbeiter":
+        return eigene
     eigene_ids = {lagerort.id for lagerort in eigene}
     return eigene + [
         lagerort

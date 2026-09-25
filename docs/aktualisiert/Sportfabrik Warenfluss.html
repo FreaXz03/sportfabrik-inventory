@@ -1,0 +1,422 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Sportfabrik Warenfluss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#f2f5f3;
+    --surface:#ffffff;
+    --surface-2:#e6ebe8;
+    --ink:#16201d;
+    --ink-2:#526059;
+    --ink-3:#7c8a84;
+    --line:#c6d0cb;
+    --line-strong:#8a9a93;
+    --accent:#1b5e57;
+    --accent-soft:#dbeae6;
+    --warm:#a8520f;
+    --warm-soft:#f3e4d6;
+    --radius:7px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#101614;
+      --surface:#19211e;
+      --surface-2:#212b27;
+      --ink:#e7ece9;
+      --ink-2:#a1b0aa;
+      --ink-3:#7e8c87;
+      --line:#35423d;
+      --line-strong:#61736c;
+      --accent:#74c5b3;
+      --accent-soft:#1d332e;
+      --warm:#e0915c;
+      --warm-soft:#33251a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#101614;
+    --surface:#19211e;
+    --surface-2:#212b27;
+    --ink:#e7ece9;
+    --ink-2:#a1b0aa;
+    --ink-3:#7e8c87;
+    --line:#35423d;
+    --line-strong:#61736c;
+    --accent:#74c5b3;
+    --accent-soft:#1d332e;
+    --warm:#e0915c;
+    --warm-soft:#33251a;
+  }
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+    font-size:15px;
+    line-height:1.55;
+    margin:0;
+  }
+  main{
+    max-width:1000px;
+    margin:0 auto;
+    padding-inline:20px;
+    padding-block:44px 72px;
+  }
+
+  h1,h2{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;text-wrap:balance;margin:0;}
+  h1{font-size:clamp(30px,5.4vw,44px);font-weight:700;letter-spacing:-.022em;line-height:1.08;}
+  h2{font-size:20px;font-weight:600;letter-spacing:-.01em;}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--accent);margin:0 0 10px;
+  }
+  .head{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:38px;}
+  .lede{color:var(--ink-2);max-width:60ch;margin:12px 0 0;font-size:16px;}
+
+  section{margin-top:44px;}
+  section > h2 + p.sub{color:var(--ink-2);font-size:14px;margin:6px 0 0;max-width:64ch;}
+
+  figure{margin:20px 0 0;}
+  .scroll{
+    overflow-x:auto;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 16px;
+  }
+  .scroll svg{display:block;height:auto;max-width:100%;}
+  #flow{min-width:760px;}
+  #clock{min-width:620px;}
+  figcaption{color:var(--ink-2);font-size:13.5px;margin-top:12px;max-width:68ch;}
+
+  /* ---- diagram type ---- */
+  .dia text{font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;}
+  .dia .t{font-size:12px;font-weight:600;fill:var(--ink);}
+  .dia .s{font-size:10.5px;fill:var(--ink-2);}
+  .dia .el{font-size:10.5px;font-weight:500;fill:var(--ink-3);}
+  .dia .b{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1.1;}
+  .dia .done{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.3;}
+  .dia .src{fill:none;stroke:var(--line-strong);stroke-width:1.1;stroke-dasharray:4 3;}
+  .dia .edge{stroke:var(--line-strong);stroke-width:1.3;fill:none;}
+  .dia .dash{stroke-dasharray:5 4;}
+  .dia marker path{fill:var(--line-strong);}
+  .dia .bar-a{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1;}
+  .dia .bar-b{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1;}
+  .dia .axis{stroke:var(--ink-2);stroke-width:1.3;fill:none;}
+  .dia .dot{fill:var(--accent);}
+
+  /* ---- legend ---- */
+  .legend{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;margin:14px 0 0;padding:0;font-size:13px;color:var(--ink-2);}
+  .legend li{display:flex;align-items:center;gap:8px;}
+  .swatch{width:26px;height:14px;border-radius:3px;flex:none;}
+  .sw-done{background:var(--accent-soft);border:1.3px solid var(--accent);}
+  .sw-plan{background:var(--surface-2);border:1.1px solid var(--line-strong);}
+
+  /* ---- phases ---- */
+  .phases{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .phases li{background:var(--surface);display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:baseline;padding:14px 16px;}
+  .ph{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:18px;font-weight:500;color:var(--accent);}
+  .phases b{font-weight:600;display:block;font-size:14.5px;}
+  .phases span.d{display:block;color:var(--ink-2);font-size:13.5px;margin-top:2px;}
+  .chip{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:3px 8px;border-radius:99px;white-space:nowrap;align-self:center;
+  }
+  .c-done{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent);}
+  .c-run{background:var(--warm-soft);color:var(--warm);border:1px solid var(--warm);}
+  .c-open{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line-strong);}
+
+  /* ---- rules ---- */
+  .rules{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .rules li{background:var(--surface);padding:14px 16px;font-size:13.5px;color:var(--ink-2);}
+  .rules b{display:block;color:var(--ink);font-weight:600;font-size:14px;margin-bottom:3px;}
+
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-3);font-size:12.5px;}
+
+  @media (max-width:520px){
+    .phases li{grid-template-columns:32px 1fr;}
+    .phases .chip{grid-column:2;justify-self:start;margin-top:6px;}
+  }
+</style>
+
+<main>
+  <header class="head">
+    <p class="eyebrow">Warenwirtschaft · Zielbild</p>
+    <h1>Warenfluss Sportfabrik</h1>
+    <p class="lede">Was das System am Ende können soll — von der Lieferung bis zum Runterschreiben, über SF1–SF4 und die externen Standorte GEWA, VEBO und Dietikon. Belege liest nur unser eigener Parser auf dem Server in Volketswil — ohne KI und ohne Cloud.</p>
+  </header>
+
+  <section>
+    <h2>Der Weg einer Lieferung</h2>
+    <p class="sub">Jede Ware kommt über denselben Trichter ins System: erfassen, prüfen, buchen — Bestand entsteht erst, wenn die Ware wirklich da ist.</p>
+
+    <figure>
+      <div class="scroll">
+        <svg id="flow" class="dia" viewBox="0 0 820 1046" role="img" aria-label="Ablauf von der Lieferung bis zur Auswertung: Warenquellen führen über Upload oder manuelle Erfassung zur Vorschau, dann zu Auftragsbestätigung oder Wareneingang, von dort in Artikelstamm und Lagerort (externer Standort oder Filiale), über Lagerbewegungen zum Bestand je Filiale und schliesslich zu Runterschreib-Hinweisen, Artikelsuche und Auswertungen.">
+          <defs>
+            <marker id="ar1" viewBox="0 0 9 7" refX="8.4" refY="3.5" markerWidth="7" markerHeight="6" orient="auto">
+              <path d="M0,0 L9,3.5 L0,7 Z"/>
+            </marker>
+          </defs>
+
+          <!-- Row A: Warenquellen -->
+          <rect class="src" x="40" y="24" width="176" height="44" rx="6"/>
+          <text class="t" x="128" y="44" text-anchor="middle">Intersport</text>
+          <text class="s" x="128" y="59" text-anchor="middle">Rechnung (PDF)</text>
+
+          <rect class="src" x="228" y="24" width="176" height="44" rx="6"/>
+          <text class="t" x="316" y="44" text-anchor="middle">ECOM-Retouren</text>
+          <text class="s" x="316" y="59" text-anchor="middle">gleiches Layout</text>
+
+          <rect class="src" x="416" y="24" width="176" height="44" rx="6"/>
+          <text class="t" x="504" y="44" text-anchor="middle">Marken &amp; Händler</text>
+          <text class="s" x="504" y="59" text-anchor="middle">AB · teils Scan</text>
+
+          <rect class="src" x="604" y="24" width="176" height="44" rx="6"/>
+          <text class="t" x="692" y="44" text-anchor="middle">Externe Händler</text>
+          <text class="s" x="692" y="59" text-anchor="middle">oft ohne EAN</text>
+
+          <path class="edge" d="M128,68 L128,88"/>
+          <path class="edge" d="M316,68 L316,88"/>
+          <path class="edge" d="M504,68 L504,88"/>
+          <path class="edge" d="M692,68 L692,88"/>
+          <path class="edge" d="M128,88 L692,88"/>
+          <path class="edge" d="M220,88 L220,118" marker-end="url(#ar1)"/>
+          <path class="edge" d="M600,88 L600,118" marker-end="url(#ar1)"/>
+
+          <!-- Row B: Erfassung -->
+          <rect class="b done" x="40" y="118" width="360" height="68" rx="6"/>
+          <text class="t" x="220" y="140" text-anchor="middle">Upload: Rechnung · Lieferschein · AB</text>
+          <text class="s" x="220" y="159" text-anchor="middle">Lieferant, Belegart und Lagerort werden erkannt</text>
+          <text class="s" x="220" y="175" text-anchor="middle">Text-PDF-Parser oder OCR — lokal, ohne KI</text>
+
+          <rect class="b done" x="420" y="118" width="360" height="68" rx="6"/>
+          <text class="t" x="600" y="140" text-anchor="middle">Manuell erfassen</text>
+          <text class="s" x="600" y="159" text-anchor="middle">ohne Beleg, per Scanner</text>
+          <text class="s" x="600" y="175" text-anchor="middle">Marke · Bezeichnung · Menge · UVP genügen</text>
+
+          <!-- Row C: Vorschau -->
+          <path class="edge" d="M220,186 L220,216" marker-end="url(#ar1)"/>
+          <rect class="b done" x="40" y="216" width="360" height="48" rx="6"/>
+          <text class="t" x="220" y="238" text-anchor="middle">Vorschau prüfen &amp; korrigieren</text>
+          <text class="s" x="220" y="256" text-anchor="middle">unsichere Felder markiert · bestätigen</text>
+
+          <path class="edge" d="M220,264 L220,282"/>
+          <path class="edge" d="M190,282 L560,282"/>
+          <path class="edge" d="M190,282 L190,300" marker-end="url(#ar1)"/>
+          <path class="edge" d="M560,282 L560,300" marker-end="url(#ar1)"/>
+          <path class="edge" d="M740,186 L740,300" marker-end="url(#ar1)"/>
+
+          <!-- Row D: Dokumenttyp -->
+          <rect class="b done" x="40" y="300" width="300" height="62" rx="6"/>
+          <text class="t" x="190" y="322" text-anchor="middle">Auftragsbestätigung</text>
+          <text class="s" x="190" y="340" text-anchor="middle">erwarteter Wareneingang</text>
+          <text class="s" x="190" y="356" text-anchor="middle">kein Bestand · Restmenge bleibt offen</text>
+
+          <rect class="b done" x="460" y="300" width="320" height="62" rx="6"/>
+          <text class="t" x="620" y="322" text-anchor="middle">Wareneingang</text>
+          <text class="s" x="620" y="340" text-anchor="middle">Rechnung · Lieferschein · manuell</text>
+          <text class="s" x="620" y="356" text-anchor="middle">Ware ist eingetroffen</text>
+
+          <path class="edge" d="M340,331 L460,331" marker-end="url(#ar1)"/>
+          <text class="el" x="400" y="323" text-anchor="middle">Ware trifft ein</text>
+
+          <path class="edge" d="M620,362 L620,380"/>
+          <path class="edge" d="M200,380 L695,380"/>
+          <path class="edge" d="M200,380 L200,396" marker-end="url(#ar1)"/>
+          <path class="edge" d="M485,380 L485,396" marker-end="url(#ar1)"/>
+          <path class="edge" d="M695,380 L695,396" marker-end="url(#ar1)"/>
+
+          <!-- Row E: Artikelstamm + Lagerort -->
+          <rect class="b done" x="40" y="396" width="320" height="120" rx="6"/>
+          <text class="t" x="58" y="418">Artikelstamm — bleibt für immer</text>
+          <text class="s" x="58" y="442">· filialübergreifend, auch ausverkauft</text>
+          <text class="s" x="58" y="462">· Kategorie: FEDAS-Vorschlag oder von Hand</text>
+          <text class="s" x="58" y="482">· EAN nachtragen oder intern erzeugen</text>
+          <text class="s" x="58" y="502">· Etikett · Lieferanten-Code · UVP-Verlauf</text>
+
+          <rect class="b done" x="400" y="396" width="170" height="82" rx="6"/>
+          <text class="t" x="485" y="416" text-anchor="middle">Externe Standorte</text>
+          <text class="s" x="485" y="435" text-anchor="middle">GEWA · VEBO · Dietikon</text>
+          <text class="s" x="485" y="451" text-anchor="middle">kein Verkauf</text>
+          <text class="s" x="485" y="467" text-anchor="middle">kein Eingangsdatum</text>
+
+          <rect class="b done" x="610" y="396" width="170" height="82" rx="6"/>
+          <text class="t" x="695" y="416" text-anchor="middle">Filiale SF1–SF4</text>
+          <text class="s" x="695" y="435" text-anchor="middle">Eingangsdatum gesetzt</text>
+          <text class="s" x="695" y="451" text-anchor="middle">Umlagerung SF→SF:</text>
+          <text class="s" x="695" y="467" text-anchor="middle">Datum bleibt</text>
+
+          <path class="edge" d="M485,478 L485,506" marker-end="url(#ar1)"/>
+          <rect class="b done" x="470" y="506" width="230" height="66" rx="6"/>
+          <text class="t" x="585" y="528" text-anchor="middle">Umlagerung extern → Filiale</text>
+          <text class="s" x="585" y="546" text-anchor="middle">Filiale bucht den Empfang</text>
+          <text class="s" x="585" y="563" text-anchor="middle">→ Eingangsdatum wird gesetzt</text>
+          <path class="edge" d="M665,506 L665,492 L700,492 L700,478" marker-end="url(#ar1)"/>
+
+          <path class="edge" d="M420,478 L420,592"/>
+          <path class="edge" d="M765,478 L765,592"/>
+          <path class="edge" d="M128,592 L765,592"/>
+          <path class="edge" d="M128,592 L128,624" marker-end="url(#ar1)"/>
+          <text class="el" x="250" y="584" text-anchor="middle">Zugang je Lagerort</text>
+
+          <!-- Row F: Bewegungsarten -->
+          <rect class="b done" x="40" y="624" width="176" height="52" rx="6"/>
+          <text class="t" x="128" y="646" text-anchor="middle">Zugang</text>
+          <text class="s" x="128" y="664" text-anchor="middle">Wareneingang gebucht</text>
+
+          <rect class="b done" x="228" y="624" width="176" height="52" rx="6"/>
+          <text class="t" x="316" y="646" text-anchor="middle">Verkauf · Ausbuchen</text>
+          <text class="s" x="316" y="664" text-anchor="middle">1 Scan = 1 Stück, mit Grund</text>
+
+          <rect class="b" x="416" y="624" width="176" height="52" rx="6"/>
+          <text class="t" x="504" y="646" text-anchor="middle">Kasse</text>
+          <text class="s" x="504" y="664" text-anchor="middle">bucht automatisch aus</text>
+
+          <rect class="b done" x="604" y="624" width="176" height="52" rx="6"/>
+          <text class="t" x="692" y="646" text-anchor="middle">Korrektur · Zählen</text>
+          <text class="s" x="692" y="664" text-anchor="middle">Differenz wird gebucht</text>
+
+          <path class="edge" d="M128,676 L128,700"/>
+          <path class="edge" d="M316,676 L316,700"/>
+          <path class="edge" d="M504,676 L504,700"/>
+          <path class="edge" d="M692,676 L692,700"/>
+          <path class="edge" d="M128,700 L692,700"/>
+          <path class="edge" d="M410,700 L410,730" marker-end="url(#ar1)"/>
+
+          <!-- Row G: Lagerbewegungen -->
+          <rect class="b done" x="140" y="730" width="540" height="60" rx="6"/>
+          <text class="t" x="410" y="754" text-anchor="middle">Lagerbewegungen — jede Änderung eine neue Zeile</text>
+          <text class="s" x="410" y="774" text-anchor="middle">Zugang · Verkauf · Ausbuchung · Korrektur · Umlagerung</text>
+
+          <path class="edge" d="M410,790 L410,830" marker-end="url(#ar1)"/>
+
+          <!-- Row H: Bestand -->
+          <rect class="b done" x="290" y="830" width="240" height="56" rx="6"/>
+          <text class="t" x="410" y="854" text-anchor="middle">Bestand je Filiale</text>
+          <text class="s" x="410" y="873" text-anchor="middle">Variante × Lagerort</text>
+
+          <path class="edge dash" d="M80,516 L80,858 L290,858" marker-end="url(#ar1)"/>
+          <text class="el" x="185" y="848" text-anchor="middle">Artikeldaten &amp; UVP</text>
+
+          <path class="edge" d="M410,886 L410,906"/>
+          <path class="edge" d="M156,906 L664,906"/>
+          <path class="edge" d="M156,906 L156,930" marker-end="url(#ar1)"/>
+          <path class="edge" d="M410,906 L410,930" marker-end="url(#ar1)"/>
+          <path class="edge" d="M664,906 L664,930" marker-end="url(#ar1)"/>
+
+          <!-- Row I: Nutzung -->
+          <rect class="b" x="40" y="930" width="232" height="92" rx="6"/>
+          <text class="t" x="156" y="954" text-anchor="middle">Runterschreiben</text>
+          <text class="s" x="156" y="974" text-anchor="middle">‑30 % ab Eingangsdatum</text>
+          <text class="s" x="156" y="990" text-anchor="middle">18 Mt. → ‑50 %, 36 Mt. → ‑70 %</text>
+          <text class="s" x="156" y="1006" text-anchor="middle">pro Filiale · zentrale Empfehlung</text>
+
+          <rect class="b done" x="294" y="930" width="232" height="92" rx="6"/>
+          <text class="t" x="410" y="954" text-anchor="middle">Artikel &amp; Preise</text>
+          <text class="s" x="410" y="974" text-anchor="middle">Suche: EAN scannen, Schnellsuche</text>
+          <text class="s" x="410" y="990" text-anchor="middle">UVP-Verlauf · Notizen</text>
+          <text class="s" x="410" y="1006" text-anchor="middle">Excel-Export</text>
+
+          <rect class="b" x="548" y="930" width="232" height="92" rx="6"/>
+          <text class="t" x="664" y="954" text-anchor="middle">Auswertungen</text>
+          <text class="s" x="664" y="974" text-anchor="middle">Lagerwert · Lagerdauer</text>
+          <text class="s" x="664" y="990" text-anchor="middle">Abverkauf je Marke,</text>
+          <text class="s" x="664" y="1006" text-anchor="middle">Kategorie &amp; Filiale</text>
+        </svg>
+      </div>
+      <figcaption>Die zwei Stellen, an denen es leicht schiefgeht: eine <b>Auftragsbestätigung</b> erzeugt nur einen erwarteten Wareneingang und noch keinen Bestand, und Ware an einem <b>externen Standort</b> (GEWA, VEBO, Dietikon) bekommt erst bei Ankunft in der Filiale ihr Eingangsdatum. Bestand wird nie überschrieben — er ergibt sich immer aus den Lagerbewegungen.</figcaption>
+    </figure>
+
+    <ul class="legend">
+      <li><span class="swatch sw-done"></span>läuft bereits (Phase A–C)</li>
+      <li><span class="swatch sw-plan"></span>geplant (Phase D–G)</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Die Reduktionsuhr</h2>
+    <p class="sub">Läuft pro Filiale und pro Lieferanten-Artikelnummer — über alle Farben und Grössen hinweg.</p>
+
+    <figure>
+      <div class="scroll">
+        <svg id="clock" class="dia" viewBox="0 40 760 156" role="img" aria-label="Zeitstrahl der Reduktion: ab Wareneingang in der Filiale gilt minus 30 Prozent, nach 18 Monaten erscheint der Hinweis auf minus 50 Prozent, nach 36 Monaten auf minus 70 Prozent. Eine Nachlieferung derselben Artikelnummer in dieselbe Filiale startet die Uhr für beide Stufen neu.">
+          <defs>
+            <marker id="ar2" viewBox="0 0 9 7" refX="8.4" refY="3.5" markerWidth="7" markerHeight="6" orient="auto">
+              <path d="M0,0 L9,3.5 L0,7 Z"/>
+            </marker>
+          </defs>
+
+          <text class="t" x="226" y="58">Nachlieferung</text>
+          <text class="s" x="226" y="74">gleiche Art.-Nr., gleiche Filiale</text>
+          <text class="s" x="226" y="90">→ Uhr startet neu (beide Stufen)</text>
+
+          <path class="edge dash" d="M210,136 L210,68"/>
+          <path class="edge dash" d="M210,68 C178,48 118,54 94,92" marker-end="url(#ar2)"/>
+
+          <rect class="bar-a" x="90" y="100" width="250" height="22" rx="4"/>
+          <text class="s" x="215" y="115" text-anchor="middle">‑30 % (Standard)</text>
+          <rect class="bar-b" x="340" y="100" width="250" height="22" rx="4"/>
+          <text class="s" x="465" y="115" text-anchor="middle">‑50 % empfohlen</text>
+          <rect class="bar-b" x="590" y="100" width="120" height="22" rx="4"/>
+          <text class="s" x="650" y="115" text-anchor="middle">‑70 % empfohlen</text>
+
+          <path class="axis" d="M80,140 L715,140" marker-end="url(#ar2)"/>
+          <path class="axis" d="M90,133 L90,147"/>
+          <path class="axis" d="M340,133 L340,147"/>
+          <path class="axis" d="M590,133 L590,147"/>
+          <circle class="dot" cx="210" cy="140" r="3.5"/>
+
+          <text class="t" x="90" y="164" text-anchor="middle">Wareneingang</text>
+          <text class="s" x="90" y="180" text-anchor="middle">in der Filiale</text>
+          <text class="t" x="340" y="164" text-anchor="middle">18 Monate</text>
+          <text class="s" x="340" y="180" text-anchor="middle">Hinweis ‑50 %</text>
+          <text class="t" x="590" y="164" text-anchor="middle">36 Monate</text>
+          <text class="s" x="590" y="180" text-anchor="middle">Hinweis ‑70 %</text>
+        </svg>
+      </div>
+      <figcaption>Ware ohne Eingangsdatum — also alles, was noch bei GEWA, VEBO oder in Dietikon liegt — erzeugt gar keine Hinweise. Eine Lieferung nach SF2 setzt die Uhr in SF1 nicht zurück, und eine Umlagerung von Filiale zu Filiale verjüngt die Ware nicht. Hatte die Zielfiliale die Artikelnummer noch nie, startet die Uhr dort ab Eintreffen. Jede Filiale entscheidet selbst; die Zentrale sieht alle Empfehlungen und kann eine einheitliche setzen, Abweichungen bleiben sichtbar.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Phasen A–G</h2>
+    <p class="sub">So ist der Weg dorthin aufgeteilt. Reihenfolge ist bewusst: ohne Fundament kein Wareneingang, ohne Wareneingang kein Bestand, ohne Bestand keine Reduktion.</p>
+    <ol class="phases">
+      <li><span class="ph">A</span><span><b>Fundament</b><span class="d">Filialen SF1–SF4 + GEWA, VEBO, Dietikon, Rollen, Filialwechsel, DE/FR/EN, neues Datenmodell, Migration der Altdaten</span></span><span class="chip c-done">fertig</span></li>
+      <li><span class="ph">B</span><span><b>Wareneingang v2</b><span class="d">Dokumenttypen, Lieferanten-Erkennung, erwartet → eingetroffen, Lagerort aus Lieferadresse, manuelle Erfassung mit Scanner, EAN nachtragen/erzeugen + Etikett, FEDAS-Kategorievorschlag und Kategorie von Hand</span></span><span class="chip c-done">fertig</span></li>
+      <li><span class="ph">C</span><span><b>Lagerbestand</b><span class="d">Warnung bei Mehrlieferung, Bestand je Lagerort, Umlagerung (extern → Filiale und Filiale → Filiale), Ausbuchen per Scan, Korrekturen durch Zählen</span></span><span class="chip c-done">fertig</span></li>
+      <li><span class="ph">D</span><span><b>Preise &amp; Reduktion</b><span class="d">UVP- und EK-Verlauf, Reduktionsstufen, 18-/36-Monats-Hinweise je Filiale, zentrale Empfehlung — Stufenberechnung steht schon</span></span><span class="chip c-run">als Nächstes</span></li>
+      <li><span class="ph">E</span><span><b>Weitere Lieferanten</b><span class="d">Alpina, Chris Sports und CMP vorhanden; weitere Händlerlayouts und ECOM-Erkennung separat prüfen — laufende Erweiterung</span></span><span class="chip c-open">offen</span></li>
+      <li><span class="ph">F</span><span><b>Betrieb</b><span class="d">Server in Volketswil, VPN zu den Filialen, externe Backups, Datenumzug — danach alle 4 Filialen produktiv</span></span><span class="chip c-open">offen</span></li>
+      <li><span class="ph">G</span><span><b>Kasse</b><span class="d">Anbindung der Intersport-Kasse: Scan liefert Kategorie, UVP und Reduktion, Verkauf bucht automatisch aus — hängt an der Abklärung mit Intersport</span></span><span class="chip c-open">offen</span></li>
+    </ol>
+    <p class="sub" style="margin-top:14px">Etikett 47 × 83 mm für vorgedruckte Farbrollen laut lokalem Projektkontext umgesetzt. Danach im Backlog: Preisschilddruck mit reduziertem Preis, Inventur per Scanner, Auswertungen zu Lagerwert und Abverkauf, feinere Benutzerrechte.</p>
+  </section>
+
+  <section>
+    <h2>Gilt überall</h2>
+    <ul class="rules">
+      <li><b>Belege bleiben lokal</b>Belege liest nur unser eigener Parser, keine KI, keine Cloud. Keine externen CDNs — läuft im Ladennetz auch ohne Internet.</li>
+      <li><b>Bestand nie überschreiben</b>Jede Änderung ist eine Zeile in den Lagerbewegungen, der Bestand wird daraus abgeleitet.</li>
+      <li><b>EAN ist optional</b>Varianten ohne EAN funktionieren; Schlüssel ist Lieferant + Artikelnr. + Farbe + Grösse.</li>
+      <li><b>Artikelstamm gemeinsam</b>Ein Artikelstamm für alle Filialen — nur Bestand, Wareneingänge und Reduktionen sind filialbezogen.</li>
+      <li><b>Kategorien wie in der Kasse</b>Hauptgruppe × Sportbereich, 35 Kombinationen; Velo und Food ohne Sportbereich.</li>
+      <li><b>Rechte</b>Mitarbeiter alles ausser Belege — auch Ware eingetroffen, Ausbuchen, Umlagern, Zählen. Filialleiter zusätzlich Belege, Admin filialübergreifend. Alle sehen alle Filialen.</li>
+    </ul>
+  </section>
+
+  <section id="inbox-2026-09-24"><h2>Neue Anforderungen · 24.09.2026</h2><p class="sub">Bedienungswünsche umgesetzt am 24.09.2026 (im Browser gegen eine Testdatenbank geprüft).</p><ul><li>Ein Klick auf einen Eintrag unter „Anstehend“ öffnet die gefilterte Liste mit genau den gezählten Einträgen (ohne EAN, ohne Kategorie, negativer Bestand, Reduktion fällig oder bald). Die Liste sagt gross „Gefiltert: …“ und hat einen Knopf „Alle zeigen“. Gezählt wird jetzt je Variante, wie die Listen zeigen.</li><li>Auf der Bestandsseite ist die Schnellsuche beim Öffnen sofort aktiv.</li><li>Auf der Artikelseite liegt „Spalten anzeigen“ unter „Weitere Filter“.</li><li>Die gezeigte Filiale steht gross im Titel der Bestandsseite; der kleine Filialwechsler bleibt.</li><li>Die Schnellzugriffsknöpfe auf der Übersicht sind gleich gross, auch beim Umbrechen.</li></ul><h3>Handynutzung · offene Idee</h3><p>Mobile App? Reicht das lokale WLAN oder braucht es ein VPN? EAN mit der Handykamera scannen? Diese Fragen werden noch geplant; keine Umsetzung beschlossen.</p><h3>Dokumentierter Entwicklungsstand</h3><p>Etikett 47 mm breit × 83 mm hoch für vorgedruckte Rollen: 30 % gelb, 50 % rot, 70 % grün. FEDAS-Zuordnung ergänzt; Kids wird von Hand gewählt. Parser für Alpina, Chris Sports und CMP sind laut lokalem Projektkontext vorhanden. Produktive Freigabe und offene Layouts separat prüfen.</p><p>Diese Übersicht und das Warenfluss-Dokument werden bei Änderungen an Kontext, Fortschritt oder Entscheidungen gemeinsam aktualisiert.</p></section>
+
+  <section id="sicherheit-2026-09-24"><h2>Sicherheitsprüfung · 24.09.2026</h2><p class="sub">Ist-Stand geprüft: keine kritischen oder hohen Befunde. Offene Massnahmen vor dem Einsatz im Laden; die Login-Sperre ist umgesetzt. Details: docs/sicherheit.md im Projekt.</p><ul><li><b>S1 · mittel:</b> Anmeldung läuft noch über HTTP, Sitzungen gelten 5 Jahre – HTTPS im Laden-Netz, Sitzungen bei Passwortwechsel ungültig machen.</li><li><b>S2 · umgesetzt:</b> Nach 5 falschen Passwörtern ist ein Konto 20 Minuten gesperrt (Entscheid und Umsetzung 24.09.2026). Offen bleibt: Server nur im Laden-Netz erreichbar machen.</li><li><b>S3 · mittel:</b> Pillow 12.2.0 mit bekannten Lücken – Update auf 12.3.0.</li><li><b>S4 · mittel:</b> Backups auf dem externen Datenträger unverschlüsselt – vor dem Kopieren verschlüsseln.</li><li><b>S5–S9 · niedrig:</b> API-Doku und /db-test im Betrieb abschalten bzw. minimal halten, Sicherheits-Header, Hash-Pins für Pakete, Google Fonts aus diesen Übersichtsseiten entfernen.</li></ul><p>Gut: keine Geheimnisse im Code oder Verlauf, alle Datenzugriffe mit Anmeldung, sichere Passwort-Speicherung, keine Einschleusung, Frontend ohne Internet, Docker ohne root.</p></section>
+
+  <section id="phase-d-2026-09-24"><h2>Phase D · Preise &amp; Reduktion</h2><p class="sub">Teil 1 umgesetzt am 24.09.2026; weitere Teile warten auf Antworten.</p><ul><li><b>Umgesetzt:</b> Seite „Runterschreiben“ je Filiale – Artikel, die −70 % oder −50 % erreicht haben oder in den nächsten 30 Tagen erreichen, mit Rollen-Hinweis und Knopf „Etiketten drucken“ (ein Etikett pro Stück im Bestand).</li><li><b>Offen – Frage:</b> Soll die Filiale „runtergeschrieben“ bestätigen, damit der Artikel aus der Liste verschwindet?</li><li><b>Offen – Frage:</b> Nachlieferung nach dem Runterschreiben: ganzes Modell wieder −30 % oder nur die neuen Stücke?</li><li><b>Offen – Frage:</b> Zentrale Empfehlung: Zentrale setzt je Artikel eine Stufe, Filialen übernehmen oder weichen mit Grund ab?</li><li><b>Offen – Frage:</b> Wer darf die Schwellen 18/36 Monate ändern, und gelten sie für alle Filialen?</li></ul></section>
+  <footer>Sportfabrik Warenwirtschaft · Zielbild gemäss <code>docs/projekt-kontext.md</code> (Rev. 6) · Stand 24.09.2026 · Inbox-Abgleich nachmittags</footer>
+</main>
+
+</body></html>

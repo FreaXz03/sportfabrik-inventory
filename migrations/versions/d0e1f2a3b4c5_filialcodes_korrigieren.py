@@ -40,7 +40,7 @@ lagerorte = sa.table(
 def _codes_setzen(conn, zuordnung):
     """Setzt je Ort den Code, in zwei Durchgaengen. `conn` statt op.get_bind(),
     damit der Ringtausch auch im Test gegen eine echte Tabelle mit ihrer
-    Eindeutigkeit laufen kann (tests/test_lagerorte.py)."""
+    Eindeutigkeit laufen kann (tests/test_betrieb.py)."""
     for ort, code in zuordnung.items():
         conn.execute(
             lagerorte.update().where(lagerorte.c.ort == ort).values(code='TMP' + code)

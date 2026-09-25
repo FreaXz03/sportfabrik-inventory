@@ -20,6 +20,7 @@ from sqlalchemy import delete, exists, func, select
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import (
+    ReduktionManuell,
     ArticleNote,
     Artikel,
     Bestand,
@@ -113,6 +114,7 @@ def loesche_artikel(
                 session.execute(delete(Wareneingang).where(Wareneingang.id == wareneingang_id))
         session.execute(delete(Preis).where(Preis.varianten_id.in_(varianten_ids)))
         session.execute(delete(ArticleNote).where(ArticleNote.artikel_id == artikel.id))
+        session.execute(delete(ReduktionManuell).where(ReduktionManuell.artikel_id == artikel.id))
         session.execute(delete(Variante).where(Variante.id.in_(varianten_ids)))
         session.execute(delete(Artikel).where(Artikel.id == artikel.id))
 

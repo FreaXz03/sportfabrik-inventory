@@ -4,6 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const t = (...a) => window.SportfabrikI18n.t(...a);
   let offset = 0;
+  let rechte = { ausbuchen: false, korrektur_lagerorte: [] };
   let lagerorteGesetzt = false;
   let suchTimer = null;
   // Welche Filiale gezeigt wird: null heisst „noch nichts gewählt" - dann
@@ -11,6 +12,14 @@
   // `<select>` taugt dafür nicht: sie steht am Anfang auf „alle", weil die
   // Filialen erst mit der ersten Antwort ankommen.
   let wahl = null;
+  // Filter aus der Adresse - Links unter „Anstehend" in der Übersicht
+  // (24.09.2026): negativer Bestand oder eine fällige/baldige Reduktion.
+  const adresse = new URLSearchParams(location.search);
+  let vorgabe = null;
+  if (adresse.get('nur_negativ') === 'true') vorgabe = { nur_negativ: 'true' };
+  else if (adresse.get('reduktion')) {
+    vorgabe = { reduktion: adresse.get('reduktion'), reduktion_status: adresse.get('reduktion_status') === 'bald' ? 'bald' : 'faellig' };
+  }
 
   function node(tag, text, cls) {
     const el = document.createElement(tag);
@@ -31,7 +40,12 @@
 
   function artikelZelle(zeile) {
     const zelle = node('td');
-    zelle.append(node('strong', [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—'));
+    // Name führt zu den Artikeldetails (24.09.2026).
+    const link = node('a', [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—');
+    link.href = '/articles/' + zeile.varianten_id + '/history';
+    const name = document.createElement('strong');
+    name.append(link);
+    zelle.append(name);
     const nummern = [zeile.lieferanten_artikelnr, zeile.ean].filter(Boolean).join(' · ');
     if (nummern) zelle.append(document.createElement('br'), node('span', nummern, 'muted'));
     return zelle;
@@ -57,6 +71,8 @@
     const mengenZelle = node('td', menge(zeile.menge));
     tr.append(mengenZelle);
     tr.append(datumsZelle(zeile));
+    // Wirksame Reduktion (24.09.2026): von Hand gewählt oder Empfehlung.
+    tr.append(node('td', window.SportfabrikReduktion.text(zeile.reduktion), zeile.reduktion && zeile.reduktion.wirksam ? 'reduktion-stufe' : 'muted'));
     tr.append(abbuchenZelle(zeile, tr, mengenZelle));
     if (Number(zeile.menge) < 0) tr.className = 'warning';
     return tr;
@@ -112,7 +128,8 @@
         knopf.disabled = false;
       }
     });
-    zelle.append(knopf);
+    if (rechte.ausbuchen) zelle.append(knopf);
+    if (!rechte.korrektur_lagerorte.includes(zeile.lagerort.id)) return zelle;
     const zaehlen = node('button', t('bestand.count'), 'secondary');
     zaehlen.type = 'button';
     zaehlen.addEventListener('click', () => zaehlenOeffnen(zeile, tr, mengenZelle));
@@ -240,7 +257,7 @@
 
   function tabelle(zeilen) {
     const kopf = document.createElement('tr');
-    for (const key of ['table_article', 'table_hauptgruppe', 'table_color', 'table_size', 'table_lagerort', 'table_quantity', 'table_arrival_date', 'table_actions']) {
+    for (const key of ['table_article', 'table_hauptgruppe', 'table_color', 'table_size', 'table_lagerort', 'table_quantity', 'table_arrival_date', 'table_reduction', 'table_actions']) {
       kopf.append(node('th', t('bestand.' + key)));
     }
     const thead = document.createElement('thead');
@@ -270,8 +287,31 @@
     lagerorteGesetzt = true;
   }
 
+  function vorgabeZeigen() {
+    $('vorgabe').hidden = !vorgabe;
+    if (!vorgabe) return;
+    const key = vorgabe.nur_negativ
+      ? 'bestand.filter_active.negative'
+      : 'bestand.filter_active.' + (vorgabe.reduktion_status === 'bald' ? 'reduction_soon' : 'reduction_due');
+    $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(key, { stufe: vorgabe.reduktion });
+  }
+
+  function vorgabeWeg() {
+    vorgabe = null;
+    vorgabeZeigen();
+    history.replaceState(null, '', location.pathname);
+  }
+
+  // Welche Filiale gezeigt wird, steht gross im Titel (Inbox 24.09.2026) -
+  // die kleine Auswahl darunter bleibt zum Wechseln.
+  function titelZeigen() {
+    const auswahl = $('lagerort');
+    const option = auswahl.options[auswahl.selectedIndex];
+    $('titelFiliale').textContent = lagerorteGesetzt && option ? '· ' + option.textContent : '';
+  }
+
   function anfrage(neuerOffset) {
-    const parameter = new URLSearchParams();
+    const parameter = new URLSearchParams(vorgabe || {});
     if (wahl === 'alle') parameter.set('alle', 'true');
     else if (wahl) parameter.set('lagerort_id', wahl);
     const suche = $('suche').value.trim();
@@ -289,7 +329,9 @@
       if (!antwort.ok) {
         throw new Error(typeof daten.detail === 'string' ? daten.detail : t('bestand.load_error'));
       }
+      rechte = daten.rechte || { ausbuchen: false, korrektur_lagerorte: [] };
       lagerorteFuellen(daten.lagerorte || [], daten.gewaehlt);
+      titelZeigen();
       if (anhaengen && $('zeilen')) {
         for (const zeile of daten.zeilen) $('zeilen').append(bestandsZeile(zeile));
       } else {
@@ -318,6 +360,8 @@
 
   $('lagerort').addEventListener('change', function () {
     wahl = $('lagerort').value;
+    // Die Reduktion gilt je Filiale - bei einem Wechsel wieder alles zeigen.
+    if (vorgabe && vorgabe.reduktion) vorgabeWeg();
     neuLaden();
   });
   $('suche').addEventListener('input', function () {
@@ -326,6 +370,12 @@
     suchTimer = setTimeout(neuLaden, 300);
   });
   $('retry').addEventListener('click', neuLaden);
+  $('vorgabeWeg').addEventListener('click', function () {
+    vorgabeWeg();
+    neuLaden();
+  });
+  // Inbox 24.09.2026: gleich lostippen können - Suchfeld beim Öffnen aktiv.
+  $('suche').focus();
   $('mehr').addEventListener('click', function () { laden(true); });
 
   // Erst laden, wenn der Übersetzungs-Katalog da ist (sonst stünden die
@@ -333,7 +383,11 @@
   // `ready` löst nach dem ersten i18n-ready aus, deshalb wird der Listener
   // erst danach angemeldet - sonst würde die Liste doppelt geladen.
   window.SportfabrikI18n.ready.then(() => {
+    vorgabeZeigen();
     neuLaden();
-    document.addEventListener('sportfabrik:i18n-ready', neuLaden);
+    document.addEventListener('sportfabrik:i18n-ready', function () {
+      vorgabeZeigen();
+      neuLaden();
+    });
   });
 })();

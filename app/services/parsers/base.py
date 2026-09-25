@@ -151,3 +151,121 @@ def read_document(pdf_data: bytes, language: str = DEFAULT_LANGUAGE) -> Document
             for index, page in enumerate(document)
         ]
     return Document(pages=pages)
+
+
+# --- Gemeinsamer Abschluss für die Layouts ab Phase E ----------------------
+#
+# Das INTERSPORT-Modul prüft seine Positionen selbst (älter, eigene Sonder-
+# fälle). Die übrigen Layouts liefern Rohwerte und lassen sie hier einheitlich
+# prüfen, damit jede Position dieselben Regeln durchläuft.
+
+PFLICHTFELDER = ("brand", "supplier_article_no", "description", "quantity", "unit", "uvp")
+TYP_WORTE = {
+    "Auftragsbestätigung": "auftragsbestaetigung",
+    "Lieferschein": "lieferschein",
+    "Rechnung": "rechnung",
+}
+DATUM = re.compile(r"\b(\d{2})[./](\d{2})[./](\d{4}|\d{2})\b")
+
+
+def datum(text: str):
+    """Erstes Datum im Text (TT.MM.JJJJ, TT/MM/JJJJ oder TT.MM.JJ) oder None."""
+    from datetime import date
+
+    treffer = DATUM.search(text or "")
+    if not treffer:
+        return None
+    tag, monat, jahr = treffer.groups()
+    jahr = int(jahr) + (2000 if len(jahr) == 2 else 0)
+    try:
+        return date(jahr, int(monat), int(tag))
+    except ValueError:
+        return None
+
+
+def pruefe_position(item: dict, language: str = DEFAULT_LANGUAGE) -> dict:
+    """Pflichtfelder, EAN (Regel 5: fehlend = Hinweis, unleserlich = Warnung)
+    und Zahlen einer Position prüfen. EK ist nie Pflicht (Regel 10)."""
+    item.setdefault("warnings", [])
+    item.setdefault("hints", [])
+    item.setdefault("ean", "")
+    for key in PFLICHTFELDER:
+        if not item.get(key):
+            item["warnings"].append(
+                translate(
+                    "errors.parser.required_field_missing",
+                    language,
+                    field=translate(f"fields.{key}", language),
+                )
+            )
+    if not item["ean"]:
+        item["hints"].append(translate("hints.parser.ean_missing", language))
+    elif not re.fullmatch(r"\d{8}|\d{12,14}", item["ean"]):
+        item["warnings"].append(translate("errors.parser.ean_unexpected_format", language))
+    for key in ("quantity", "uvp", "ek"):
+        wert = item.get(key)
+        if not wert:
+            item[key] = None
+            continue
+        try:
+            item[key] = decimal_value(wert)
+        except ValueError:
+            item[key] = None
+            if key != "ek":
+                item["warnings"].append(
+                    translate(
+                        "errors.parser.invalid_value",
+                        language,
+                        field=translate(f"fields.{key}", language),
+                        value=wert,
+                    )
+                )
+    return item
+
+
+def ergebnis(
+    document: Document,
+    items: list,
+    warnings: list,
+    document_type: str | None,
+    nummer: str | None,
+    language: str = DEFAULT_LANGUAGE,
+) -> dict:
+    """Vorschau-Ergebnis im selben Format wie das INTERSPORT-Modul."""
+    if not items:
+        raise DocumentParseError(translate("errors.parser.no_positions_detected", language))
+    for index, item in enumerate(items, start=1):
+        item["row_number"] = index
+        item.setdefault("ocr_used", document.ocr_used)
+    zaehler = {}
+    for item in items:
+        zaehler[item.get("page", 1)] = zaehler.get(item.get("page", 1), 0) + 1
+    eans = {}
+    for item in items:
+        if item["ean"]:
+            eans[item["ean"]] = eans.get(item["ean"], 0) + 1
+    return dict(
+        document_type=document_type,
+        invoice_number=nummer,
+        pages=document.page_count,
+        item_count=len(items),
+        page_item_counts=[zaehler.get(seite.number, 0) for seite in document.pages],
+        items=items,
+        duplicate_eans={ean: anzahl for ean, anzahl in eans.items() if anzahl > 1},
+        warnings=warnings,
+        rows_with_warnings=sum(bool(i["warnings"]) for i in items),
+        rows_with_hints=sum(bool(i["hints"]) for i in items),
+        preview_only=True,
+        ocr_used=document.ocr_used,
+        ocr_pages=document.ocr_pages,
+        lieferant_typ=None,
+    )
+
+
+def gleiche_summe(soll, positionen, language: str = DEFAULT_LANGUAGE) -> list:
+    """Warnung, wenn die Stücksumme der Positionen nicht der Summe entspricht,
+    die der Beleg selbst ausweist (sonst ist eine Zeile verloren gegangen)."""
+    ist = sum((Decimal(p["quantity"]) for p in positionen if p.get("quantity")), Decimal(0))
+    if soll is None or Decimal(soll) == ist:
+        return []
+    return [translate("errors.parser.total_mismatch", language, summe=ist.normalize(), beleg=soll)]

@@ -40,6 +40,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
+from ..core.lieferanten import etikett_code
 from ..core.models import (
     Artikel,
     Kategorie,
@@ -277,7 +278,7 @@ def variante_per_ean(session, ean: str | None, language: str = DEFAULT_LANGUAGE)
         "einheit": einheit,
         "uvp": str(preis.uvp) if preis and preis.uvp is not None else None,
         "ek": str(preis.ek) if preis and preis.ek is not None else None,
-        "lieferant": None if lieferant is None else {"id": lieferant.id, "name": lieferant.name},
+        "lieferant": None if lieferant is None else {"id": lieferant.id, "name": lieferant.name, "code": etikett_code(lieferant.typ)},
         # Nur zur Anzeige: eine bestehende Kategorie wird beim Erfassen nie
         # überschrieben (Teilaufgabe B8).
         "kategorie": kategorie_daten(kategorie),

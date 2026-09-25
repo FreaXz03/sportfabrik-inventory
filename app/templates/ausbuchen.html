@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="ausbuchen.page_title">Ausbuchen · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=header-10">
+     <link rel="stylesheet" href="/static/css/app.css?v=bedienung-13">
 </head>
 
 <body>
@@ -36,10 +36,18 @@
                                         data-i18n-placeholder="erfassen.scan_placeholder" placeholder="Barcode scannen …"></label>
                          <button id="buchen" type="submit" data-i18n="ausbuchen.book">1 Stück ausbuchen</button>
                     </div>
-                    <p class="muted" data-i18n="ausbuchen.scan_hint">Artikel ohne EAN lassen sich in der Bestandsansicht
-                         abbuchen.</p>
                     <p id="scanStatus" role="status" aria-live="polite"></p>
                </form>
+          </section>
+
+          <section class="panel">
+               <h2 data-i18n="ausbuchen.pick_heading">Aus dem Bestand wählen</h2>
+               <p class="muted" data-i18n="ausbuchen.pick_hint">Für Artikel ohne EAN oder ohne Scanner: Artikel suchen oder den ganzen Bestand durchsehen, dann „1 Stück ausbuchen“. Es gilt der Grund von oben.</p>
+               <form id="pickForm" class="filters"><label><span data-i18n="ausbuchen.pick_label">Suche</span><input id="pickFeld"
+                              autocomplete="off" data-i18n-placeholder="ausbuchen.pick_placeholder" placeholder="Marke, Bezeichnung, Artikelnummer …"></label><button
+                         data-i18n="ausbuchen.pick_show">Bestand zeigen</button></form>
+               <p id="pickStatus" role="status" aria-live="polite"></p>
+               <div id="pickListe" class="tablewrap"></div>
           </section>
 
           <section class="panel">
@@ -70,8 +78,8 @@
           </section>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/ausbuchen.js?v=4"></script>
-     <script src="/static/js/nav.js?v=2"></script>
+     <script src="/static/js/ausbuchen.js?v=pick-1"></script>
+     <script src="/static/js/nav.js?v=3"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=i18n-1"></script>
 </body>

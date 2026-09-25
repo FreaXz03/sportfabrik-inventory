@@ -55,17 +55,19 @@
     const f = daten.filiale;
     if (f) {
       if (f.erwartet_total) liste.append(punkt(f.erwartet_total, t('dashboard.todo_expected'), '/wareneingaenge', false));
-      if (f.negativ) liste.append(punkt(f.negativ, t('dashboard.todo_negative'), '/bestand', true));
+      // Jeder Punkt führt zur Liste mit genau den gezählten Einträgen (24.09.2026).
+      if (f.negativ) liste.append(punkt(f.negativ, t('dashboard.todo_negative'), '/bestand?nur_negativ=true', true));
       const r = f.reduktionen || {};
       for (const stufe of ['70', '50']) {
         const eintrag = r[stufe] || {};
-        if (eintrag.faellig) liste.append(punkt(eintrag.faellig, t('dashboard.todo_reduction_due', { stufe: stufe }), '/bestand', true));
-        if (eintrag.bald) liste.append(punkt(eintrag.bald, t('dashboard.todo_reduction_soon', { stufe: stufe }), '/bestand', false));
+        const ziel = '/bestand?reduktion=' + stufe + '&reduktion_status=';
+        if (eintrag.faellig) liste.append(punkt(eintrag.faellig, t('dashboard.todo_reduction_due', { stufe: stufe }), ziel + 'faellig', true));
+        if (eintrag.bald) liste.append(punkt(eintrag.bald, t('dashboard.todo_reduction_soon', { stufe: stufe }), ziel + 'bald', false));
       }
     }
     const s = daten.stamm || {};
-    if (s.ohne_kategorie) liste.append(punkt(s.ohne_kategorie, t('dashboard.todo_no_category'), '/articles', false));
-    if (s.ohne_ean) liste.append(punkt(s.ohne_ean, t('dashboard.todo_no_ean'), '/articles', false));
+    if (s.ohne_kategorie) liste.append(punkt(s.ohne_kategorie, t('dashboard.todo_no_category'), '/articles?kategorie_fehlt=true', false));
+    if (s.ohne_ean) liste.append(punkt(s.ohne_ean, t('dashboard.todo_no_ean'), '/articles?ohne_ean=true', false));
     $('nichtsAnstehend').hidden = liste.children.length > 0;
   }
 

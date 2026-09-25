@@ -1,6 +1,6 @@
 """Bestand korrigieren (Phase C, Teilaufgabe C5).
 
-Rechte (Regel 9, bestätigt 23.09.2026): alle Rollen. Gebucht wird aus der
+Rechte (24.09.2026): alle Rollen; Mitarbeiter nur in zugewiesenen Filialen. Gebucht wird aus der
 Bestandsansicht heraus, also auf den Lagerort der Zeile; ob darauf gebucht
 werden darf, prüft der Server (`resolve_wareneingang_lagerort`).
 """

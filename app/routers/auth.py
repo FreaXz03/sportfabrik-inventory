@@ -17,6 +17,7 @@ from ..core.database import get_session
 from ..core.i18n import LANGUAGES, normalize_language, translate
 from ..core.models import Lagerort, User
 from ..core.security import verify_password
+from ..services import anmeldung
 from ..services.lagerorte import (
     get_primary_lagerort,
     list_user_lagerorte,
@@ -199,8 +200,20 @@ def login(
     if user.role in ("chef", "admin"):
         if not password:
             return {"requires_password": True}
+        # Sicherheit S2: gesperrt heisst gesperrt - das Passwort wird dann gar
+        # nicht erst geprüft (spart auch die teure PBKDF2-Rechnung).
+        minuten = anmeldung.gesperrt_minuten(user)
+        if minuten is not None:
+            raise HTTPException(429, translate("errors.auth.locked", language, minuten=minuten))
         if not verify_password(password, user.password_hash):
+            anmeldung.fehlversuch(user)
+            session.commit()
+            minuten = anmeldung.gesperrt_minuten(user)
+            if minuten is not None:
+                raise HTTPException(429, translate("errors.auth.locked", language, minuten=minuten))
             raise HTTPException(401, translate("errors.auth.wrong_password", language))
+        anmeldung.erfolg(user)
+        session.commit()
     request.session.clear()
     request.session["user_id"] = user.id
     return {"name": user.name, "role": user.role}

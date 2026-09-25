@@ -2,11 +2,12 @@
 Teilaufgabe B6).
 
 Rechte (Regel 9/D21): Erfassen ist Lagerarbeit, kein Dokumenten-Upload - das
-dürfen auch Mitarbeiter. Der Ziel-Lagerort wird wie beim Import serverseitig
+dürfen auch Mitarbeiter, aber nur für ihre zugewiesenen Filialen. Der Ziel-Lagerort wird wie beim Import serverseitig
 geprüft (`resolve_wareneingang_lagerort`, D26): vorgewählt ist die aktive
-Filiale, gebucht werden darf auf jeden Lagerort - eine Direktlieferung kann
-auch für eine andere Filiale oder einen externen Standort (GEWA, VEBO,
-Dietikon - ohne eigenes Personal, D11) eintreffen.
+Filiale. Filialleiter und Zentrale dürfen auf jeden Lagerort buchen - eine
+Direktlieferung kann auch für eine andere Filiale oder einen externen Standort
+(GEWA, VEBO, Dietikon - ohne eigenes Personal, D11) eintreffen; Mitarbeiter
+seit 24.09.2026 nur auf ihre zugewiesenen Filialen.
 """
 
 from datetime import date
@@ -58,7 +59,14 @@ def api_stammdaten(
     heutige Datum vom Server - die Kasse im Laden muss dafür keine richtige
     Uhr haben."""
     lagerorte = list_wareneingang_lagerorte(session, user)
-    lieferanten = session.scalars(select(Lieferant).order_by(Lieferant.name)).all()
+    # Auswahl nur nach Lieferantengruppe (24.09.2026): je Gruppe ein Eintrag,
+    # keine einzelnen Marken. Gebucht wird auf den ältesten Lieferanten der
+    # Gruppe - für das Etikett zählt ohnehin nur der Code der Gruppe.
+    gruppen = {}
+    for eintrag in session.scalars(select(Lieferant).order_by(Lieferant.id)):
+        if etikett_code(eintrag.typ):
+            gruppen.setdefault(eintrag.typ, eintrag)
+    lieferanten = sorted(gruppen.values(), key=lambda eintrag: etikett_code(eintrag.typ))
     return {
         "lagerorte": [
             {
@@ -72,7 +80,7 @@ def api_stammdaten(
         ],
         "lagerort_aktiv": None if lagerort is None else lagerort.id,
         "lieferanten": [
-            {"id": eintrag.id, "name": eintrag.name, "code": etikett_code(eintrag.typ)}
+            {"id": eintrag.id, "gruppe": eintrag.typ, "code": etikett_code(eintrag.typ)}
             for eintrag in lieferanten
         ],
         # Kassenkategorien in der Reihenfolge der Kasse (Regel 8).

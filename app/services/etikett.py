@@ -1,20 +1,28 @@
-"""Preis-/Reduktionsetikett als PDF (Phase B, Teilaufgabe B7).
+"""Preis-/Reduktionsetikett als PDF (Phase B, Teilaufgabe B7; neu gestaltet
+am 24.09.2026).
 
-D25: Auf dem Etikett stehen **Jahrgang** (wann die Ware eingetroffen ist),
-**Lieferant**, **UVP** und die **Reduktionsstufe** (30/50/70 %). Dazu kommt
-der EAN-Strichcode: ohne ihn bliebe genau der Artikel an der Kasse
-unscannbar, für den die interne EAN (D10) gedacht ist - die Nummer allein
-nützt an der Kasse nichts.
+Die Sportfabrik druckt auf **vorgedruckte Rollen** im Sato CL4NX Plus (D14):
+47 mm breit, 83 mm hoch (Hochformat). Logo, Prozent-Punkt und Berge sind
+schon auf der Rolle - je Reduktionsstufe eine eigene Rolle: 30 % gelber,
+50 % roter, 70 % grüner Punkt. Gedruckt werden deshalb nur:
 
-Gedruckt wird auf dem Sato CL4NX Plus (D14), Rollen 84 × 47 mm (bestätigt
-am 23.09.2026). Die Grösse bleibt **einstellbar** (`GROESSEN`); die PDF-Seite ist
-exakt so gross wie das Etikett, damit der Drucker 1:1 druckt und nichts
-skaliert werden muss.
+- der **UVP**, gross und durchgestrichen,
+- links der **Code der Lieferantengruppe** (111/555/333/999/444),
+- rechts der **Jahrgang** zweistellig (Jahr des Wareneingangs, D25),
+- unter den Bergen der **EAN-Strichcode** mit Klarschrift - ohne ihn bliebe
+  genau der Artikel an der Kasse unscannbar, für den die interne EAN (D10)
+  gedacht ist.
 
-Gezeichnet wird mit PyMuPDF, das ohnehin für das Lesen der Rechnungen im
-Einsatz ist - keine zusätzliche Abhängigkeit, keine externen Dienste
-(Regel 1). Schriften sind die im PDF eingebauten (Helvetica), also auch
-ohne Internet und ohne Schriftinstallation auf dem Drucker verfügbar.
+Die Reduktion druckt das System nicht, sie sagt nur, **welche Rolle**
+einzulegen ist (`rolle`). Das Etikett wird gerade neu gestaltet (alles etwas
+nach oben, Strichcode unter den Bergen); die Positionen stehen darum an einer
+Stelle (`LAYOUT`) und lassen sich an die neue Rolle anpassen. Mit
+`muster=True` zeichnet das PDF den Vordruck angedeutet mit - als Vorschau,
+nicht zum Drucken.
+
+Die PDF-Seite ist exakt so gross wie das Etikett, damit der Drucker 1:1
+druckt. Gezeichnet wird mit PyMuPDF und den eingebauten PDF-Schriften
+(Helvetica) - keine zusätzliche Abhängigkeit, kein Internet (Regel 1).
 """
 
 from dataclasses import dataclass
@@ -26,7 +34,7 @@ from sqlalchemy import select
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.lieferanten import etikett_code
-from ..core.models import Artikel, Lieferant, Preis, Variante
+from ..core.models import Artikel, Lieferant, Preis, ReduktionManuell, Variante
 from .barcode import (
     RUHEZONE_LINKS,
     RUHEZONE_RECHTS,
@@ -36,17 +44,31 @@ from .barcode import (
 )
 from .reduktion import letzter_wareneingang, stufe
 
-# Breite × Höhe in Millimetern. Voreinstellung 84 × 47 mm - die Rollen im
-# Sato CL4NX Plus der Sportfabrik (bestätigt am 23.09.2026). Die übrigen
-# Grössen bleiben wählbar, falls einmal andere Rollen eingelegt sind.
-GROESSEN = {
-    "84x47": (84, 47),
-    "50x30": (50, 30),
-    "57x32": (57, 32),
-    "70x40": (70, 40),
-    "100x50": (100, 50),
+# Breite × Höhe in Millimetern: die vorgedruckte Rolle der Sportfabrik
+# (Präzisierung vom 24.09.2026, ersetzt 84 × 47 mm).
+GROESSEN = {"47x83": (47, 83)}
+STANDARD_GROESSE = "47x83"
+
+# Welche Rolle zu welcher Reduktion gehört (Farbe des vorgedruckten Punkts).
+# Neue Ware ohne fällige Stufe kommt auf die 30er-Rolle (D5: Eingang -30 %).
+ROLLEN = {30: "gelb", 50: "rot", 70: "gruen"}
+
+# Positionen in Millimetern ab der linken oberen Ecke - hier anpassen, wenn
+# die neu gestaltete Rolle andere Masse hat. y ist jeweils die Grundlinie.
+LAYOUT = {
+    "rand": 2.5,
+    "logo_y": 6.0,  # Vordruck
+    "preis_y": 18.0,
+    "preis_hoehe": 10.0,  # Schriftgrösse des UVP in mm (höchstens)
+    "punkt_mitte_y": 33.0,  # Vordruck
+    "punkt_radius": 12.5,  # Vordruck
+    "code_y": 51.0,  # Lieferantencode links, Jahrgang rechts
+    "code_hoehe": 3.6,
+    "berge_oben": 53.0,  # Vordruck
+    "berge_unten": 64.0,  # Vordruck
+    "barcode_oben": 66.0,
+    "barcode_unten": 81.0,
 }
-STANDARD_GROESSE = "84x47"
 
 MM = 72 / 25.4  # Millimeter → PDF-Punkte
 
@@ -56,7 +78,23 @@ MAX_ETIKETTEN = 500
 # erlaubte Maximum. Wir bleiben mit 0,5 mm knapp darunter.
 MAX_MODUL = 0.5 * 72 / 25.4
 
+# Farben des Vordrucks, nur für das Muster.
+_VORDRUCK = {
+    "grund": (0.78, 0.78, 0.78),
+    "logo": (0.87, 0.23, 0.13),
+    "berge": (0.12, 0.1, 0.1),
+    "gelb": (0.98, 0.9, 0.25),
+    "rot": (0.9, 0.2, 0.15),
+    "gruen": (0.35, 0.7, 0.3),
+}
+
 NORMAL, FETT = "helv", "hebo"
+
+
+def rolle(reduktion: int | None) -> dict:
+    """Welche vorgedruckte Rolle für diese Reduktion einzulegen ist."""
+    prozent = reduktion if reduktion in ROLLEN else 30
+    return {"prozent": prozent, "farbe": ROLLEN[prozent]}
 
 
 class EtikettError(ValueError):
@@ -134,6 +172,15 @@ def sammle_etikett(
         if lagerort_id is not None
         else None
     )
+    if reduktion is None and lagerort_id is not None:
+        # Von Hand gewählte Stufe dieser Filiale geht der Empfehlung vor
+        # (24.09.2026).
+        reduktion = session.scalar(
+            select(ReduktionManuell.prozent).where(
+                ReduktionManuell.artikel_id == artikel.id,
+                ReduktionManuell.lagerort_id == lagerort_id,
+            )
+        )
     return Etikett(
         marke=artikel.marke,
         bezeichnung=artikel.bezeichnung,
@@ -189,88 +236,100 @@ def _rechtsbuendig(page, rechts, y, text, schrift=FETT, groesse=7.0, farbe=(0, 0
     )
 
 
-def _zeichne_barcode(page, etikett, links, rechts, oben, hoehe, skala) -> None:
+def _zeichne_barcode(page, etikett, links, rechts, oben, unten) -> None:
     """Strichcode samt Klarschrift. Lässt sich die Nummer nicht als EAN
     drucken (z. B. EAN-14 vom Umkarton), stehen nur die Ziffern da."""
+    schrift = 2.6 * MM
     nummer = druckbare_nummer(etikett.ean)
     if nummer is None:
         # Kein Strichcode möglich: wenigstens die Nummer und der Grund, damit
         # im Laden auffällt, dass hier eine interne EAN fehlt (D10/D24).
-        y = oben + hoehe / 2
+        y = (oben + unten) / 2
         if etikett.ean:
-            _zeile(page, links, y, etikett.ean, NORMAL, 6 * skala, platz=rechts - links)
-            y += 7 * skala
-        _zeile(page, links, y, etikett.hinweis, NORMAL, 6 * skala, (0.35, 0.35, 0.35), rechts - links)
+            _zeile(page, links, y, etikett.ean, NORMAL, schrift, platz=rechts - links)
+            y += schrift * 1.3
+        _zeile(page, links, y, etikett.hinweis, NORMAL, schrift, platz=rechts - links)
         return
     muster = strichmuster(etikett.ean)
     module = RUHEZONE_LINKS + len(muster) + RUHEZONE_RECHTS
-    # So breit wie möglich, aber ein Modul nie breiter als MAX_MODUL: sonst
-    # wäre der Strichcode auf einem grossen Etikett masslos in die Breite
-    # gezogen (GS1 erlaubt bis 200 % der Normgrösse von 0,33 mm).
+    # So breit wie möglich, aber ein Modul nie breiter als MAX_MODUL (GS1
+    # erlaubt bis 200 % der Normgrösse von 0,33 mm).
     modulbreite = min((rechts - links) / module, MAX_MODUL)
-    # Ruhezone links, Rest mittig - der Strichcode beginnt eingerückt.
     x = links + (rechts - links - module * modulbreite) / 2 + RUHEZONE_LINKS * modulbreite
-    strichhoehe = hoehe - 7 * skala
+    strichunten = unten - schrift * 1.2
     for zeichen in muster:
         if zeichen == "1":
             page.draw_rect(
-                pymupdf.Rect(x, oben, x + modulbreite, oben + strichhoehe),
-                color=None,
-                fill=(0, 0, 0),
+                pymupdf.Rect(x, oben, x + modulbreite, strichunten), color=None, fill=(0, 0, 0)
             )
         x += modulbreite
-    mitte = (links + rechts) / 2
     beschriftung = nummer + (" *" if etikett.ean_intern else "")
-    breite = pymupdf.get_text_length(beschriftung, fontname=NORMAL, fontsize=5.5 * skala)
-    page.insert_text(
-        (mitte - breite / 2, oben + hoehe - 1 * skala),
-        beschriftung,
-        fontname=NORMAL,
-        fontsize=5.5 * skala,
-    )
+    breite = pymupdf.get_text_length(beschriftung, fontname=NORMAL, fontsize=schrift)
+    page.insert_text(((links + rechts - breite) / 2, unten), beschriftung, fontname=NORMAL, fontsize=schrift)
 
 
-def _zeichne_etikett(page, etikett: Etikett, breite: float, hoehe: float) -> None:
-    skala = hoehe / (30 * MM)  # 50 × 30 mm ist die Bezugsgrösse
-    rand = 2 * MM
-    links, rechts = rand, breite - rand
-    platz = rechts - links
+def _zeichne_vordruck(page, breite: float, hoehe: float, reduktion: int) -> None:
+    """Nur für das Muster: Rolle mit Logo, Punkt und Bergen andeuten."""
+    mm = lambda wert: wert * MM  # noqa: E731
+    page.draw_rect(pymupdf.Rect(0, 0, breite, hoehe), color=None, fill=_VORDRUCK["grund"])
+    _zeile(page, mm(LAYOUT["rand"]), mm(LAYOUT["logo_y"]), "SPORT-FABRIK", FETT, mm(4.6), _VORDRUCK["logo"])
+    mitte = pymupdf.Point(breite / 2, mm(LAYOUT["punkt_mitte_y"]))
+    stufe_der_rolle = rolle(reduktion)
+    page.draw_circle(mitte, mm(LAYOUT["punkt_radius"]), color=None, fill=_VORDRUCK[stufe_der_rolle["farbe"]])
+    text = f"-{stufe_der_rolle['prozent']}%"
+    groesse = mm(6.5)
+    textbreite = pymupdf.get_text_length(text, fontname=NORMAL, fontsize=groesse)
+    page.insert_text((mitte.x - textbreite / 2, mitte.y + groesse * 0.36), text, fontname=NORMAL, fontsize=groesse)
+    oben, unten = mm(LAYOUT["berge_oben"]), mm(LAYOUT["berge_unten"])
+    gipfel = [(0, 0.55), (0.12, 0.35), (0.22, 0.05), (0.33, 0.4), (0.45, 0.2), (0.55, 0.45),
+              (0.68, 0.0), (0.8, 0.3), (0.9, 0.2), (1.0, 0.5)]
+    punkte = [pymupdf.Point(0, unten)] + [
+        pymupdf.Point(x * breite, oben + y * (unten - oben)) for x, y in gipfel
+    ] + [pymupdf.Point(breite, unten)]
+    page.draw_polyline(punkte, color=None, fill=_VORDRUCK["berge"], closePath=True)
 
-    # Kopf: Marke und Jahrgang (D25) - das Wichtigste auf einen Blick.
-    _zeile(page, links, 8 * skala, etikett.marke, FETT, 8.5 * skala, platz=platz * 0.72)
-    if etikett.jahrgang:
-        _rechtsbuendig(page, rechts, 8 * skala, str(etikett.jahrgang), FETT, 8.5 * skala)
 
-    _zeile(page, links, 16 * skala, etikett.bezeichnung, NORMAL, 7 * skala, platz=platz)
-    variante = " / ".join(t for t in (etikett.farbe, etikett.groesse) if t)
-    _zeile(page, links, 23 * skala, variante, NORMAL, 6.5 * skala, (0.35, 0.35, 0.35), platz)
-    # Rechts neben dem Lieferanten der Gruppen-Code - fett, damit er im
-    # Laden auf einen Blick lesbar ist (Anforderungen vom 23.09.2026).
-    code_platz = 0
-    if etikett.lieferant_code:
-        _rechtsbuendig(page, rechts, 29.5 * skala, etikett.lieferant_code, FETT, 8 * skala)
-        code_platz = pymupdf.get_text_length(etikett.lieferant_code, fontname=FETT, fontsize=8 * skala) + 3 * skala
-    _zeile(page, links, 29.5 * skala, etikett.lieferant, NORMAL, 6 * skala, (0.35, 0.35, 0.35), platz - code_platz)
+def _zeichne_etikett(page, etikett: Etikett, breite: float, hoehe: float, muster: bool = False) -> None:
+    mm = lambda wert: wert * MM  # noqa: E731
+    if muster:
+        _zeichne_vordruck(page, breite, hoehe, etikett.reduktion)
+    links, rechts = mm(LAYOUT["rand"]), breite - mm(LAYOUT["rand"])
 
-    # Preis und Reduktionsstufe.
+    # UVP gross und durchgestrichen - so kleiner, dass er in die Breite passt.
     if etikett.uvp is not None:
-        preis = f"CHF {Decimal(etikett.uvp).quantize(Decimal('0.01'))}"
-        _zeile(page, links, 41.5 * skala, preis, FETT, 13 * skala)
-    if etikett.reduktion:
-        _rechtsbuendig(page, rechts, 41.5 * skala, f"-{etikett.reduktion}%", FETT, 13 * skala)
+        preis = str(Decimal(etikett.uvp).quantize(Decimal("0.01")))
+        groesse = mm(LAYOUT["preis_hoehe"])
+        groesse = min(groesse, groesse * (rechts - links) / pymupdf.get_text_length(preis, fontname=FETT, fontsize=groesse))
+        y = mm(LAYOUT["preis_y"])
+        page.insert_text((links, y), preis, fontname=FETT, fontsize=groesse)
+        ende = links + pymupdf.get_text_length(preis, fontname=FETT, fontsize=groesse)
+        # Leicht steigend, wie der Strich von Hand auf den heutigen Etiketten.
+        page.draw_line(
+            pymupdf.Point(links - mm(0.5), y - groesse * 0.12),
+            pymupdf.Point(ende + mm(0.5), y - groesse * 0.62),
+            color=(0, 0, 0),
+            width=mm(0.45),
+        )
 
-    # Der Rest gehört dem Strichcode: je höher die Striche, desto leichter
-    # findet ihn der Scanner.
-    oben = 45.5 * skala
-    _zeichne_barcode(page, etikett, links, rechts, oben, hoehe - oben - rand / 2, skala)
+    # Lieferantencode links, Jahrgang zweistellig rechts (Muster vom 24.09.2026).
+    y = mm(LAYOUT["code_y"])
+    _zeile(page, links, y, etikett.lieferant_code, NORMAL, mm(LAYOUT["code_hoehe"]))
+    if etikett.jahrgang:
+        _rechtsbuendig(page, rechts, y, f"{etikett.jahrgang % 100:02d}", NORMAL, mm(LAYOUT["code_hoehe"]))
+
+    _zeichne_barcode(page, etikett, links, rechts, mm(LAYOUT["barcode_oben"]), mm(LAYOUT["barcode_unten"]))
 
 
 def etiketten_pdf(
-    etiketten, groesse: str = STANDARD_GROESSE, language: str = DEFAULT_LANGUAGE
+    etiketten,
+    groesse: str = STANDARD_GROESSE,
+    language: str = DEFAULT_LANGUAGE,
+    muster: bool = False,
 ) -> bytes:
     """Ein PDF mit einer Seite je Etikett, Seitengrösse = Etikettengrösse.
 
     `anzahl` je Etikett wiederholt die Seite (ein Etikett je Stück Ware).
+    `muster` zeichnet den Vordruck der Rolle angedeutet mit (Vorschau).
     """
     if groesse not in GROESSEN:
         raise EtikettError(translate("errors.etikett.unknown_size", language))
@@ -288,5 +347,5 @@ def etiketten_pdf(
                 raise EtikettError(
                     translate("errors.etikett.too_many", language, limit=MAX_ETIKETTEN)
                 )
-            _zeichne_etikett(dokument.new_page(width=breite, height=hoehe), etikett, breite, hoehe)
+            _zeichne_etikett(dokument.new_page(width=breite, height=hoehe), etikett, breite, hoehe, muster)
     return dokument.tobytes()
