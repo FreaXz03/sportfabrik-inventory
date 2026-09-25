@@ -269,6 +269,14 @@ unbekannte Variante ergibt HTTP 404, eine unbekannte Grösse oder
 Reduktionsstufe HTTP 422. Auch **Mitarbeiter** dürfen beides (Regel 9) — es
 entsteht kein Dokument.
 
+## Statistik (25.09.2026)
+
+Nur Filialleiter/Zentrale. `GET /statistiken` (Seite), `GET /api/statistik?zeitraum=tag|woche|monat|jahr|gesamt&lagerort_id=` (optional; ohne Filiale alle). Antwort: `zeitraum` (Anfang/Ende), `kategorien` (verkaufte Stück je Kassenkategorie), `einnahmen_geschaetzt` + `einnahmen_ist_schaetzung: true`, `bestellempfehlung` (Top-10 meistverkaufte Artikel mit aktuellem Bestand), `lagerorte` (Filialauswahl). Die Einnahmenschätzung nutzt den UVP und die automatisch fällige Reduktion zum jeweiligen Verkaufszeitpunkt (`app/services/statistik.py`); eine von Hand gewählte Reduktion hat keine Historie und fliesst nicht ein.
+
+## Kontoverwaltung (25.09.2026)
+
+Nur Zentrale (`admin`). `GET /konten` (Seite), `GET /api/konten` (Liste), `POST /api/konten` (`kassennummer`, `name`, `role`, optional `password`, `lagerort_ids`), `DELETE /api/konten/{id}`. Löschen entfernt das Konto und seine Filialzuordnungen; bisherige Buchungen bleiben unverändert (sie speichern Name/Kassennummer als Momentaufnahme). Die Zentrale kann sich nicht selbst löschen (`409`).
+
 ## Sonstiges
 
 | Methode | Pfad | Zweck |

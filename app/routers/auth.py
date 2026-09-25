@@ -110,6 +110,20 @@ def require_chef_api(
     return user
 
 
+def require_admin_page(user: User = Depends(require_login_page)) -> User:
+    if user.role != "admin":
+        raise HTTPException(303, headers={"Location": "/"})
+    return user
+
+
+def require_admin_api(
+    user: User = Depends(require_login_api), language: str = Depends(get_language)
+) -> User:
+    if user.role != "admin":
+        raise HTTPException(403, translate("errors.auth.admin_required", language))
+    return user
+
+
 def require_active_lagerort(
     request: Request,
     user: User = Depends(require_chef_api),
