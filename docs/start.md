@@ -22,6 +22,7 @@ Arbeitsbranch: `feature/warenwirtschaft-v2`; tatsächlichen Branch und offene Ä
 | Sicherheit / Ladeneinsatz | `docs/sicherheit.md`, bei Deployment `docs/SERVER-SETUP.md` |
 | Ursprüngliche Bedienungswünsche / Etiketten | `docs/anforderungen-inbox-2026-09-23.md`, `docs/anforderungen-inbox-2026-09-24.md` |
 | Graphify, Auswahl, lokale Suche | `docs/obsidian-graphify.md` |
+| Oberfläche, Farben, Schrift, Komponenten | `DESIGN.md` |
 
 Unbekannte Zusammenhänge: `python3 scripts/projektwissen.py query "Umlagerung"` oder `"reduktionen_manuell"`. Liefert Codebeziehungen und Dokumentfundstellen mit begrenzter Ausgabe. Danach gezielt Originalstellen lesen, nicht den gesamten Graphen.
 
