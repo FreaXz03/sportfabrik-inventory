@@ -1433,9 +1433,15 @@ td.description { min-width: 240px; }
 
 td.id { white-space: nowrap; }
 
-tr.warning td { background: var(--warning-bg); }
+/* Diese Klasse ist geteilt: echte Fehler (fehlgeschlagene Buchung, Storno,
+   Verbindung verloren - ausbuchen.js/umlagern.js/history.html) UND reine
+   Hinweise (negativer Bestand, gleicher Lagerort) nutzen dieselbe Klasse.
+   Da eine fehlgeschlagene Buchung nach DESIGN.md §4.3 danger ist, bleibt
+   die Farbe hier bei danger statt warning - sonst wirkt ein echter Fehler
+   harmloser als vorher. */
+tr.warning td { background: var(--danger-bg); }
 
-.warning-text { color: var(--warning-text); font-weight: 600; }
+.warning-text { color: var(--danger-text); font-weight: 600; }
 
 /* Zahlen rechtsbuendig und tabellarisch (DESIGN.md §5.4/§10.4) */
 td.num,
