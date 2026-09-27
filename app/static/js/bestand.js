@@ -72,7 +72,7 @@
     tr.append(mengenZelle);
     tr.append(datumsZelle(zeile));
     // Wirksame Reduktion (24.09.2026): von Hand gewählt oder Empfehlung.
-    tr.append(node('td', window.SportfabrikReduktion.text(zeile.reduktion), zeile.reduktion && zeile.reduktion.wirksam ? 'reduktion-stufe' : 'muted'));
+    tr.append(window.SportfabrikReduktion.chipTd(zeile.reduktion));
     tr.append(abbuchenZelle(zeile, tr, mengenZelle));
     if (Number(zeile.menge) < 0) tr.className = 'warning';
     return tr;

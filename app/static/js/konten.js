@@ -30,7 +30,7 @@
       const tr = document.createElement('tr');
       const loeschKnopf = document.createElement('button');
       loeschKnopf.type = 'button';
-      loeschKnopf.className = 'secondary';
+      loeschKnopf.className = 'danger';
       loeschKnopf.textContent = t('konten.delete');
       loeschKnopf.addEventListener('click', () => loeschen(konto));
       const zelle = document.createElement('td');

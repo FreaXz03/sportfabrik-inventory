@@ -31,6 +31,18 @@
     return el;
   }
 
+  // Icon aus /static/img/icons.svg (DESIGN.md §7) statt Unicode-Zeichen.
+  function icon(name) {
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('class', 'icon icon-16');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS(svgNs, 'use');
+    use.setAttribute('href', '/static/img/icons.svg#icon-' + name);
+    svg.append(use);
+    return svg;
+  }
+
   function sprache() {
     return { de: 'de-CH', fr: 'fr-CH', en: 'en-GB' }[window.SportfabrikI18n.lang] || 'de-CH';
   }
@@ -47,9 +59,25 @@
   function begruessen() {
     const stunde = new Date().getHours();
     const tageszeit = stunde < 11 ? 'morning' : stunde < 18 ? 'day' : 'evening';
-    $('begruessung').textContent = name
-      ? t('dashboard.greeting_' + tageszeit, { name: name })
-      : t('dashboard.greeting_plain');
+    const begruessung = $('begruessung');
+    begruessung.className = 'title-mixed';
+    if (name) {
+      // Mixed-Weight-Titel (DESIGN.md §5.3): der Name traegt die Bedeutung,
+      // darum fett - der Rest der Begruessung bleibt leise (300).
+      const satz = t('dashboard.greeting_' + tageszeit, { name: name });
+      const index = satz.indexOf(name);
+      begruessung.replaceChildren();
+      if (index === -1) {
+        begruessung.textContent = satz;
+      } else {
+        begruessung.append(satz.slice(0, index));
+        const stark = document.createElement('strong');
+        stark.textContent = name;
+        begruessung.append(stark, satz.slice(index + name.length));
+      }
+    } else {
+      begruessung.textContent = t('dashboard.greeting_plain');
+    }
     const heute = new Intl.DateTimeFormat(sprache(), { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
     $('heuteText').textContent = daten && daten.lagerort
       ? daten.lagerort.code + ' · ' + daten.lagerort.name + ' · ' + heute
@@ -148,22 +176,26 @@
     const li = node('li', null, 'shortcut-pick');
     li.draggable = true;
     li.dataset.schluessel = schluessel;
-    const griff = node('span', '⠿', 'shortcut-pick-handle');
+    const griff = node('span', null, 'shortcut-pick-handle');
+    griff.append(icon('grip-vertical'));
     griff.setAttribute('aria-hidden', 'true');
     const label = node('span', eintrag ? t(eintrag.label) : schluessel, 'shortcut-pick-label');
     const reihenfolge = node('span', null, 'shortcut-pick-order');
-    const hoch = node('button', '▲');
+    const hoch = node('button', null, 'ghost icon-only');
+    hoch.append(icon('chevron-up'));
     hoch.type = 'button';
     hoch.disabled = index === 0;
     hoch.setAttribute('aria-label', t('dashboard.shortcuts_move_up_aria', { name: label.textContent }));
     hoch.addEventListener('click', () => { schnellzugriffAuswahl.splice(index - 1, 0, schnellzugriffAuswahl.splice(index, 1)[0]); editorZeichnen(); });
-    const runter = node('button', '▼');
+    const runter = node('button', null, 'ghost icon-only');
+    runter.append(icon('chevron-down'));
     runter.type = 'button';
     runter.disabled = index === anzahl - 1;
     runter.setAttribute('aria-label', t('dashboard.shortcuts_move_down_aria', { name: label.textContent }));
     runter.addEventListener('click', () => { schnellzugriffAuswahl.splice(index + 1, 0, schnellzugriffAuswahl.splice(index, 1)[0]); editorZeichnen(); });
     reihenfolge.append(hoch, runter);
-    const entfernen = node('button', '✕', 'secondary');
+    const entfernen = node('button', null, 'secondary icon-only');
+    entfernen.append(icon('x'));
     entfernen.type = 'button';
     entfernen.setAttribute('aria-label', t('dashboard.shortcuts_remove_aria', { name: label.textContent }));
     entfernen.addEventListener('click', () => { schnellzugriffAuswahl.splice(index, 1); editorZeichnen(); });

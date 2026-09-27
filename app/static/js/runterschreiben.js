@@ -216,7 +216,7 @@
       const zeilen = [];
       for (const m of modelle.values()) {
         const tr = document.createElement('tr');
-        const stand = node('td', window.SportfabrikReduktion.text(m.reduktion));
+        const stand = window.SportfabrikReduktion.chipTd(m.reduktion);
         const wahl = node('td');
         if (m.reduktion) {
           wahl.append(window.SportfabrikReduktion.knoepfe(m.varianten_id, daten.lagerort.id, m.reduktion, (neu) => {
