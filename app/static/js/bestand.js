@@ -98,6 +98,7 @@
     knopf.setAttribute('aria-label', t('bestand.minus_one_label'));
     knopf.addEventListener('click', async function () {
       knopf.disabled = true;
+      knopf.classList.add('is-loading');
       try {
         const antwort = await fetch('/api/ausbuchen', {
           method: 'POST',
@@ -126,6 +127,7 @@
           fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
       } finally {
         knopf.disabled = false;
+        knopf.classList.remove('is-loading');
       }
     });
     if (rechte.ausbuchen) zelle.append(knopf);
@@ -212,6 +214,7 @@
     form.addEventListener('submit', async (ereignis) => {
       ereignis.preventDefault();
       buchen.disabled = true;
+      buchen.classList.add('is-loading');
       try {
         const antwort = await fetch('/api/korrektur', {
           method: 'POST',
@@ -246,6 +249,7 @@
       } catch (fehler) {
         $('status').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
         buchen.disabled = false;
+        buchen.classList.remove('is-loading');
       }
     });
     zelle.append(form);

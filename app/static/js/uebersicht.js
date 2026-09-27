@@ -252,6 +252,7 @@
   async function editorSpeichern() {
     const knopf = $('schnellzugriffeSpeichern');
     knopf.disabled = true;
+    knopf.classList.add('is-loading');
     try {
       const antwort = await fetch('/api/schnellzugriffe', {
         method: 'PUT',
@@ -267,6 +268,7 @@
       $('schnellzugriffeFehler').hidden = false;
     } finally {
       knopf.disabled = false;
+      knopf.classList.remove('is-loading');
     }
   }
 

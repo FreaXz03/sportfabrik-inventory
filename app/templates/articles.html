@@ -8,7 +8,7 @@
   <script src="/static/js/i18n.js?v=1"></script>
   <script src="/static/js/kategorien.js?v=1"></script>
   <title data-i18n="articles.page_title">Artikelsuche · Sport-Fabrik</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=design-1">
+  <link rel="stylesheet" href="/static/css/app.css?v=design-2">
 </head>
 
 <body>
@@ -166,6 +166,7 @@
 
         $('rows').replaceChildren(fragment);
         $('table').hidden = !data.items.length;
+        $('status').classList.toggle('empty-state', !total);
         $('status').textContent = total
           ? t('articles.status.found', { total, from: Math.min((page - 1) * pageSize + 1, total), to: Math.min(page * pageSize, total) })
           : filters.toString()
@@ -176,6 +177,7 @@
         $('next').disabled = page * pageSize >= total;
       } catch (error) {
         if (error.name === 'AbortError') return;
+        $('status').classList.remove('empty-state');
         $('status').textContent =
           error.message === 'Failed to fetch'
             ? t('articles.errors.connection_lost')

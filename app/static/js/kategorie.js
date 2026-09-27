@@ -66,6 +66,7 @@
     if (!stand) return;
     const gewaehlt = $('kategorieAuswahl').value;
     $('kategorieSpeichern').disabled = true;
+    $('kategorieSpeichern').classList.add('is-loading');
     $('kategorieStatus').textContent = t('kategorie.saving');
     try {
       const antwort = await fetch(basis + '/kategorie', {
@@ -87,6 +88,7 @@
         fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
     } finally {
       $('kategorieSpeichern').disabled = false;
+      $('kategorieSpeichern').classList.remove('is-loading');
     }
   }
 

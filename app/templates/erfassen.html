@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="erfassen.page_title">Ware erfassen · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=design-1">
+     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
 </head>
 
 <body>
@@ -39,7 +39,7 @@
                <h2 data-i18n="erfassen.article_heading">Artikel erfassen</h2>
                <form id="artikelForm" novalidate>
                     <div class="filters">
-                         <label><span data-i18n="erfassen.scan_label">EAN scannen oder eingeben</span><input id="ean" type="text"
+                         <label><span data-i18n="erfassen.scan_label">EAN scannen oder eingeben</span><input id="ean" type="text" class="scan-field"
                                         inputmode="numeric" autocomplete="off" autofocus
                                         data-i18n-placeholder="erfassen.scan_placeholder" placeholder="Barcode scannen …"></label>
                          <button id="lookup" type="button" class="secondary" data-i18n="common.search">Suchen</button>
@@ -81,7 +81,7 @@
 
           <section class="panel">
                <h2 data-i18n="erfassen.list_heading">Erfasste Positionen</h2>
-               <p id="listEmpty" class="muted" data-i18n="erfassen.list_empty">Noch keine Position erfasst.</p>
+               <p id="listEmpty" class="muted empty-state" data-i18n="erfassen.list_empty">Noch keine Position erfasst.</p>
                <div id="listWrap" class="tablewrap" hidden>
                     <table>
                          <thead>

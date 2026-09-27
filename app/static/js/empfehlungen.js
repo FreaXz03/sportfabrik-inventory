@@ -93,6 +93,7 @@
         knopf.type = 'button';
         knopf.addEventListener('click', async () => {
           knopf.disabled = true;
+          knopf.classList.add('is-loading');
           try {
             await api('/api/empfehlungen', {
               method: 'POST',
@@ -110,6 +111,7 @@
             $('sucheStatus').textContent = e.message;
           } finally {
             knopf.disabled = false;
+            knopf.classList.remove('is-loading');
           }
         });
         const prozentZelle = node('td');

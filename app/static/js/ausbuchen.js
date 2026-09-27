@@ -147,12 +147,14 @@
 
   async function rueckgaengig(buchung, knopf) {
     knopf.disabled = true;
+    knopf.classList.add('is-loading');
     try {
       const ergebnis = await post('/api/ausbuchen/' + buchung.bewegung_id + '/storno');
       listeLaden(false);
       meldung(ergebnis, 'ausbuchen.undo_done');
     } catch (fehler) {
       knopf.disabled = false;
+      knopf.classList.remove('is-loading');
       $('scanStatus').textContent = fehlertext(fehler);
       $('scanStatus').className = 'warning-text';
     }

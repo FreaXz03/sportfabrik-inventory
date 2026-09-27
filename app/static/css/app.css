@@ -178,6 +178,8 @@
   --icon-sort: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16'><path d='M1 6.4 6 1.6 11 6.4M1 9.6 6 14.4 11 9.6' fill='none' stroke='%235c5a56' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --icon-sort-asc: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 6.4 6 1.6 11 6.4' fill='none' stroke='%238a5300' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --icon-sort-desc: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.6 6 6.4 11 1.6' fill='none' stroke='%238a5300' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --icon-scan: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f6c66' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8V6a2 2 0 0 1 2-2h2'/><path d='M16 4h2a2 2 0 0 1 2 2v2'/><path d='M20 16v2a2 2 0 0 1-2 2h-2'/><path d='M8 20H6a2 2 0 0 1-2-2v-2'/><line x1='6' y1='12' x2='18' y2='12'/></svg>");
+  --icon-empty: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f6c66' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M16.5 9.4 7.5 4.21'/><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/><path d='M3.27 6.96 12 12.01 20.73 6.96'/><line x1='12' y1='22.08' x2='12' y2='12'/></svg>");
 
   font-family: 'Geologica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   color: var(--text);
@@ -237,6 +239,8 @@
     --icon-sort: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16'><path d='M1 6.4 6 1.6 11 6.4M1 9.6 6 14.4 11 9.6' fill='none' stroke='%23a8a59f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
     --icon-sort-asc: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 6.4 6 1.6 11 6.4' fill='none' stroke='%23ffb45c' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>");
     --icon-sort-desc: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.6 6 6.4 11 1.6' fill='none' stroke='%23ffb45c' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    --icon-scan: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8780' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8V6a2 2 0 0 1 2-2h2'/><path d='M16 4h2a2 2 0 0 1 2 2v2'/><path d='M20 16v2a2 2 0 0 1-2 2h-2'/><path d='M8 20H6a2 2 0 0 1-2-2v-2'/><line x1='6' y1='12' x2='18' y2='12'/></svg>");
+    --icon-empty: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8780' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M16.5 9.4 7.5 4.21'/><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/><path d='M3.27 6.96 12 12.01 20.73 6.96'/><line x1='12' y1='22.08' x2='12' y2='12'/></svg>");
   }
 }
 
@@ -292,6 +296,8 @@
   --icon-sort: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16'><path d='M1 6.4 6 1.6 11 6.4M1 9.6 6 14.4 11 9.6' fill='none' stroke='%23a8a59f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --icon-sort-asc: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 6.4 6 1.6 11 6.4' fill='none' stroke='%23ffb45c' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   --icon-sort-desc: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.6 6 6.4 11 1.6' fill='none' stroke='%23ffb45c' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  --icon-scan: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8780' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8V6a2 2 0 0 1 2-2h2'/><path d='M16 4h2a2 2 0 0 1 2 2v2'/><path d='M20 16v2a2 2 0 0 1-2 2h-2'/><path d='M8 20H6a2 2 0 0 1-2-2v-2'/><line x1='6' y1='12' x2='18' y2='12'/></svg>");
+  --icon-empty: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8780' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M16.5 9.4 7.5 4.21'/><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/><path d='M3.27 6.96 12 12.01 20.73 6.96'/><line x1='12' y1='22.08' x2='12' y2='12'/></svg>");
 }
 
 /* 3 · Grundlagen ---------------------------------------------------------- */
@@ -869,30 +875,24 @@ button.danger:hover,
   border-color: var(--danger-text);
 }
 
-/* Ladezustand: Beschriftung bleibt, Breite aendert sich nicht, Spinner statt
-   Icon. Auf dem Button selbst gesetzt (JS: button.classList.add('is-loading')). */
+/* Ladezustand: Beschriftung bleibt sichtbar, Spinner davor statt eines Icons
+   (DESIGN.md §10.1). Auf dem Button selbst gesetzt via
+   button.classList.add('is-loading'); currentColor uebernimmt automatisch
+   die Textfarbe der jeweiligen Variante (primary/secondary/ghost/danger). */
 button.is-loading,
-.button.is-loading {
-  position: relative;
-  color: transparent;
-  pointer-events: none;
-}
+.button.is-loading { pointer-events: none; }
 
-button.is-loading::after,
-.button.is-loading::after {
+button.is-loading::before,
+.button.is-loading::before {
   content: '';
-  position: absolute;
   width: 16px;
   height: 16px;
+  flex: none;
   border-radius: 50%;
   border: 2px solid currentColor;
   border-top-color: transparent;
-  color: var(--accent-on);
   animation: button-spin .6s linear infinite;
 }
-
-.secondary.is-loading::after,
-.ghost.is-loading::after { color: var(--text); }
 
 @keyframes button-spin {
   to { transform: rotate(360deg); }
@@ -1196,6 +1196,19 @@ input[type=checkbox]:focus-visible,
 input[aria-invalid="true"],
 select[aria-invalid="true"],
 textarea[aria-invalid="true"] { border-color: var(--danger-text); }
+
+/* Scan-Feld (DESIGN.md §10.3): gross, volle Breite, Barcode-Icon links.
+   Das Icon ist Hintergrundbild (wie --select-arrow), kein <svg>-Markup noetig -
+   funktioniert an jedem bestehenden id="ean"-Feld allein durch die Klasse. */
+.scan-field {
+  height: 52px;
+  padding-left: 48px;
+  font-size: var(--fs-h3);
+  background-image: var(--icon-scan);
+  background-repeat: no-repeat;
+  background-position: 14px center;
+  background-size: 22px 22px;
+}
 
 /* 8 · Flaechen ------------------------------------------------------------ */
 /* Elevation nach DESIGN.md §6.3: Stufe 0 (Standard-Flaechen wie .panel) ist
@@ -1596,6 +1609,16 @@ th button:hover {
 
 .empty-state svg.icon {
   color: var(--text-faint);
+}
+
+/* Funktioniert sowohl als Wrapper (Icon als Kind) als auch direkt auf einem
+   einzelnen <p> (Icon aus --icon-empty als Pseudo-Element) - so lassen sich
+   bestehende "keine Daten"-Absaetze ohne Markup-Aenderung nachruesten. */
+.empty-state::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  background: var(--icon-empty) center/contain no-repeat;
 }
 
 .empty-state p {

@@ -63,6 +63,7 @@
       knopf.addEventListener('click', async () => {
         if (aktiv) return;
         for (const k of leiste.querySelectorAll('button')) k.disabled = true;
+        knopf.classList.add('is-loading');
         try {
           const antwort = prozent === null
             ? await fetch('/api/reduktion/manuell?' + new URLSearchParams({ varianten_id: variantenId, lagerort_id: lagerortId }), { method: 'DELETE' })
@@ -77,6 +78,7 @@
         } catch (fehler) {
           if (meldung) meldung.textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
           for (const k of leiste.querySelectorAll('button')) k.disabled = false;
+          knopf.classList.remove('is-loading');
         }
       });
       leiste.append(knopf);

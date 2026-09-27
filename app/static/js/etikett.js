@@ -124,9 +124,10 @@
     }
   }
 
-  async function eanSetzen(koerper) {
+  async function eanSetzen(koerper, knopf) {
     $('generateEan').disabled = true;
     $('saveEan').disabled = true;
+    if (knopf) knopf.classList.add('is-loading');
     $('eanStatus').textContent = t('etikett.saving');
     try {
       const antwort = await fetch(basis + '/ean', {
@@ -150,15 +151,16 @@
       $('eanStatus').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
       $('generateEan').disabled = false;
       $('saveEan').disabled = false;
+      if (knopf) knopf.classList.remove('is-loading');
     }
   }
 
-  $('generateEan').addEventListener('click', () => eanSetzen({ generieren: true }));
-  $('saveEan').addEventListener('click', () => eanSetzen({ ean: $('eanInput').value.trim() }));
+  $('generateEan').addEventListener('click', () => eanSetzen({ generieren: true }, $('generateEan')));
+  $('saveEan').addEventListener('click', () => eanSetzen({ ean: $('eanInput').value.trim() }, $('saveEan')));
   $('eanInput').addEventListener('keydown', (ereignis) => {
     if (ereignis.key !== 'Enter') return;
     ereignis.preventDefault();
-    eanSetzen({ ean: $('eanInput').value.trim() });
+    eanSetzen({ ean: $('eanInput').value.trim() }, $('saveEan'));
   });
   $('printEtikett').addEventListener('click', () => {
     window.open(basis + '/etikett.pdf?' + druckParameter().toString(), '_blank', 'noopener');
