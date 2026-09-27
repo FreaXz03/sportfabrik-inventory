@@ -32,6 +32,7 @@ from .artikel import (
 )
 from .parsers import parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
+from .hinweise import erstelle_hinweise, pruefe_und_merke
 from .wareneingang import buche_zugang
 
 
@@ -252,6 +253,9 @@ def import_invoice(
             artikel_cache = {}
             variante_cache = {}
             kategorie_cache = {}
+            # D-F2: vor jeder ersten Buchung eines Modells in dieser Lieferung
+            # merken, ob es vorher schon reduziert war (Nachlieferung).
+            nachlieferungs_cache = {}
             seen = dates["invoice_date"]
             for item in parsed["items"]:
                 ean = item["ean"] or None
@@ -326,6 +330,14 @@ def import_invoice(
                         max(variante.last_seen, seen) if variante.last_seen else seen
                     )
 
+                # D-F2: vor der ersten Buchung dieses Modells in dieser
+                # Lieferung merken, ob es hier schon einmal reduziert war
+                # (Nachlieferung) - muss vor dem Anlegen der Position
+                # passieren, sonst zählt `letzter_wareneingang` die eigene,
+                # gerade erst gebuchte Lieferung schon mit.
+                if ware_ist_da:
+                    pruefe_und_merke(session, variante.artikel_id, lagerort_id, nachlieferungs_cache)
+
                 quantity = Decimal(item["quantity"])
                 uvp = Decimal(item["uvp"])
                 position = WareneingangPosition(
@@ -361,6 +373,7 @@ def import_invoice(
                         zeitpunkt=now,
                     )
 
+            erstelle_hinweise(session, lagerort_id, nachlieferungs_cache)
             result = dict(
                 invoice_id=dokument.id,
                 invoice_number=dokument.dokumentnummer,

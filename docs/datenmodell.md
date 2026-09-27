@@ -325,6 +325,14 @@ Inventur korrigiert.
 
 Von Hand gewählte Reduktionsstufe je Modell (`artikel_id`) × Filiale (`lagerort_id`), eindeutig pro Paar, `prozent` nur 30/50/70. Ohne Zeile gilt die Empfehlung nach Regel 6; mit Zeile ist sie die wirksame Stufe (auch unter der Empfehlung). Benutzer als Momentaufnahme (`benutzer_kassennummer`, `benutzer_name`), dazu `gesetzt_am`. Wird beim Löschen eines von Hand erfassten Artikels mitgelöscht.
 
+### `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` (Phase D, 25.09.2026)
+
+Drei Tabellen zu den offenen Fragen D-F1/D-F2/D-F3, Migration `e2f3a4b5c6d7`:
+
+- `reduktionen_bestaetigt` (D-F1): `artikel_id` × `lagerort_id` eindeutig, `stufe` (die bestätigte automatische Stufe). Weicht die aktuell berechnete Stufe ab, gilt die Bestätigung nicht mehr.
+- `hinweise` (D-F2): `lagerort_id`, `artikel_id`, `typ` (nur `nachlieferung_reduziert`), `alte_stufe`, `erstellt_am` - entsteht automatisch beim Buchen einer Lieferung auf ein Modell, das vorher schon reduziert war (keine Chargentrennung im Bestand, darum nur ein Hinweis statt einer echten Aufteilung).
+- `reduktion_empfehlung_zentrale` (D-F3): `artikel_id`, `lagerort_id`, `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`), `ablehnungsgrund`, Zentrale- und Antwort-Momentaufnahme. Höchstens eine offene Zeile je Modell × Filiale - eine neue Empfehlung ersetzt eine ältere.
+
 ### `article_notes`
 Wie zuvor, jetzt an `artikel_id` statt `product_id` — eine Notiz gilt für das
 ganze Modell (alle Farben/Grössen), nicht mehr nur für die beim Erstellen
@@ -390,6 +398,8 @@ oben):
 | `a8b9c0d1e2f3` | Lieferanten mit eigenem Parser (24.09.2026): ALPINA SPORTS Schweiz AG, CHRIS sports AG, CMP (F.lli Campagnolo S.p.A.) mit `parser_key`, Gruppe Dritte-Händler (999). Nur Daten |
 | `b9c0d1e2f3a4` | Login-Sperre (Sicherheit S2, 24.09.2026): `users.fehlversuche`, `users.gesperrt_bis` |
 | `c0d1e2f3a4b5` | Manuelle Reduktion (24.09.2026): neue Tabelle `reduktionen_manuell` |
+| `d1e2f3a4b5c6` | Schnellzugriffe (Anforderung 14, 25.09.2026): `users.schnellzugriffe` (JSON, gewählte Funktionen und Reihenfolge) |
+| `e2f3a4b5c6d7` | Phase D, offene Fragen (25.09.2026): neue Tabellen `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
 
 Schema-Änderungen laufen ausschliesslich über Alembic
 (`alembic revision --autogenerate`); der Container führt beim Start

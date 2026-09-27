@@ -8,6 +8,7 @@ beim Buchen darf, prüfen die übrigen Ablauf-Tests direkt im jeweiligen Ablauf.
 from conftest import ANNA, CHEF, ZENTRALE
 
 from app.core.i18n import translate
+from app.core.schnellzugriffe import STANDARD
 
 
 def test_anmelden_rollen_filialwahl_sprache(welt):
@@ -112,3 +113,53 @@ def test_login_sperrt_nach_fuenf_fehlversuchen_fuer_20_minuten(welt, monkeypatch
     assert login(CHEF, "geheim123").json()["detail"] == translate("errors.auth.locked", "de", minuten=1)
     jetzt += timedelta(minutes=1)
     assert login(CHEF, "geheim123").status_code == 200
+
+
+def test_schnellzugriffe_je_benutzer(welt):
+    """Punkt 14 (Entscheid 24.09.2026): jedes Konto wählt fünf Funktionen und
+    ihre Reihenfolge selbst. Ohne eigene Wahl gilt die bisherige Voreinstellung,
+    rollengefiltert; die Auswahl ist serverseitig auf erlaubte Funktionen und
+    höchstens fünf Einträge begrenzt und bleibt über die Anmeldung hinweg
+    gespeichert."""
+    client = welt.client
+
+    welt.anmelden(ANNA)
+    # Mitarbeiterin: Voreinstellung ohne die ihr verwehrten Funktionen
+    # ausbuchen/umlagern/upload (Regel 9).
+    ausgangslage = client.get("/api/schnellzugriffe").json()
+    assert ausgangslage["schnellzugriffe"] == ["erfassen", "wareneingaenge"]
+    assert "ausbuchen" not in ausgangslage["verfuegbar"]
+
+    # Zu viele, doppelte oder unbekannte Einträge werden abgelehnt.
+    assert client.put("/api/schnellzugriffe", json={"schnellzugriffe": []}).status_code == 422
+    assert client.put(
+        "/api/schnellzugriffe",
+        json={"schnellzugriffe": ["erfassen", "bestand", "articles", "invoices", "runterschreiben", "wareneingaenge"]},
+    ).status_code == 422
+    assert client.put(
+        "/api/schnellzugriffe", json={"schnellzugriffe": ["erfassen", "erfassen"]}
+    ).status_code == 422
+    assert client.put(
+        "/api/schnellzugriffe", json={"schnellzugriffe": ["erfassen", "unbekannt"]}
+    ).status_code == 422
+    # Nur ihrer Rolle zugängliche Funktionen zählen als gültig (Regel 9).
+    verweigert = client.put("/api/schnellzugriffe", json={"schnellzugriffe": ["ausbuchen", "erfassen"]})
+    assert verweigert.status_code == 422
+
+    eigene = client.put(
+        "/api/schnellzugriffe",
+        json={"schnellzugriffe": ["invoices", "articles", "bestand"]},
+    )
+    assert eigene.status_code == 200
+    assert eigene.json()["schnellzugriffe"] == ["invoices", "articles", "bestand"]
+    # Bleibt gespeichert, auch über eine erneute Anmeldung hinweg.
+    welt.anmelden(ANNA)
+    assert client.get("/api/schnellzugriffe").json()["schnellzugriffe"] == ["invoices", "articles", "bestand"]
+    assert client.get("/api/me").json()["schnellzugriffe"] == ["invoices", "articles", "bestand"]
+
+    # Filialleiter: Voreinstellung deckt sich mit den bisherigen fünf Knöpfen.
+    welt.anmelden(CHEF)
+    assert client.get("/api/schnellzugriffe").json()["schnellzugriffe"] == STANDARD
+
+    assert client.post("/logout")
+    assert client.get("/api/schnellzugriffe").status_code == 401

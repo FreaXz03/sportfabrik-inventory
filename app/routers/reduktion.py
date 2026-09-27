@@ -16,9 +16,11 @@ from pydantic import BaseModel
 
 from ..core.database import get_session
 from ..core.i18n import translate
-from ..core.models import Lagerort
+from ..core.models import Artikel, Lagerort, ReduktionEmpfehlungZentrale
 from ..services.etikett import rolle
 from ..services import reduktion_manuell
+from ..services import reduktion_bestaetigung
+from ..services import reduktion_empfehlung
 from ..services.lagerorte import list_all_lagerorte, list_wareneingang_lagerorte
 from ..services.uebersicht import VORSCHAU_TAGE, reduktions_liste
 from .auth import (
@@ -65,6 +67,8 @@ def api_reduktionen(
         "artikel": artikel,
         # Von Hand gewählte Stufen dieser Filiale (24.09.2026), separat.
         "manuell": reduktion_manuell.liste(session, lagerort.id),
+        # Offene Empfehlungen der Zentrale (D-F3, 25.09.2026).
+        "empfehlungen": reduktion_empfehlung.liste_offen_fuer_filiale(session, lagerort.id),
         "lagerorte": [
             {"id": lo.id, "code": lo.code, "name": lo.name}
             for lo in list_all_lagerorte(session)
@@ -102,6 +106,59 @@ def api_artikel_reduktion(
             if lo.verkauf
         ]
     }
+
+
+class BestaetigenBody(BaseModel):
+    artikel_id: int
+    lagerort_id: int
+    stufe: Literal[50, 70]
+
+
+@router.post("/api/reduktionen/bestaetigen")
+def api_bestaetigen(
+    body: BestaetigenBody,
+    request: Request,
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Runterschreiben bestätigt (D-F1): das Modell verschwindet aus der
+    fälligen Liste dieser Filiale, bis die nächste Stufe fällig wird."""
+    lagerort = _filiale_zum_aendern(request, session, user, body.lagerort_id, language)
+    if session.get(Artikel, body.artikel_id) is None:
+        raise HTTPException(404, translate("errors.bestand.unknown_article", language))
+    reduktion_bestaetigung.bestaetigen(session, body.artikel_id, lagerort.id, body.stufe, user)
+    return {"artikel_id": body.artikel_id, "lagerort_id": lagerort.id, "stufe": body.stufe}
+
+
+class EmpfehlungAntwortBody(BaseModel):
+    status: Literal["uebernommen", "abgelehnt"]
+    grund: str | None = None
+
+
+@router.post("/api/empfehlungen/{empfehlung_id}/antwort")
+def api_empfehlung_antworten(
+    empfehlung_id: int,
+    body: EmpfehlungAntwortBody,
+    request: Request,
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Die Filiale übernimmt eine Empfehlung der Zentrale (setzt dieselbe
+    Stufe von Hand) oder lehnt sie mit Grund ab - gleiche Grenze wie die
+    manuelle Reduktion (Mitarbeiter nur in ihren Filialen)."""
+    eintrag = session.get(ReduktionEmpfehlungZentrale, empfehlung_id)
+    if eintrag is None:
+        raise HTTPException(404, "Empfehlung nicht gefunden.")
+    _filiale_zum_aendern(request, session, user, eintrag.lagerort_id, language)
+    try:
+        ergebnis = reduktion_empfehlung.antworten(
+            session, empfehlung_id, status=body.status, grund=body.grund, benutzer=user
+        )
+    except reduktion_empfehlung.EmpfehlungRejected as exc:
+        raise HTTPException(422, str(exc))
+    return ergebnis
 
 
 class ManuellBody(BaseModel):

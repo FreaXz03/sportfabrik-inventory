@@ -1,12 +1,12 @@
 # Sportfabrik Inventory — Einstieg
 
-Stand: 24.09.2026, nach dem dokumentierten Abendstand. Diese Übersicht ist Orientierung, keine Bestätigung eines Produktivdeployments.
+Stand: 25.09.2026. Diese Übersicht ist Orientierung, keine Bestätigung eines Produktivdeployments.
 
 ## Ziel und aktueller Schwerpunkt
 
 Warenwirtschaft für vier Sportfabrik-Filialen; GEWA, VEBO und Dietikon sind externe Lagerorte ohne Verkauf. Belege werden im Betrieb lokal geparst. Artikelstamm gemeinsam, Bestand und Buchungsrechte filialbezogen. Später Kassenanbindung und Onlineshop.
 
-Phasen A–C sind laut Projektdokumentation abgeschlossen. Phase D ist teilweise umgesetzt (Runterschreiben und manuelle Reduktionen), nicht abgeschlossen. Aktuell hat der Katalog **Artikeldetails und Auswertungen** Vorrang. Dessen Abendstand nennt als offen: **8 Aktuelles, 14 Schnellzugriffe, 9 Statistik, 13 Kontoverwaltung**. Vor Umsetzung den aktuellen Code und das Ende von Abschnitt 11 im Projektkontext abgleichen. Handynutzung folgt am Projektende.
+Phasen A–C sind laut Projektdokumentation abgeschlossen. Phase D ist mit dem Stand vom 25.09.2026 vollständig umgesetzt: Runterschreiben und manuelle Reduktionen, dazu die offenen Fragen D-F1 bis D-F4 (Bestätigen-Liste, Nachlieferungs-Hinweis, Empfehlung der Zentrale, fixe Schwellen — Details Abschnitt 10). Der Katalog **Artikeldetails und Auswertungen** (alle 17 Punkte) ist ebenfalls umgesetzt. Alles nur lokal geprüft (kein PostgreSQL-Durchgang, kein Ladeneinsatz). Nächster Schwerpunkt: Ladeneinsatz vorbereiten (`docs/sicherheit.md`, offene Punkte S1 und Passwort-Mindestlänge) oder Handynutzung (für Projektende geplant). Vor Umsetzung den aktuellen Code und das Ende von Abschnitt 11 im Projektkontext abgleichen.
 
 Arbeitsbranch: `feature/warenwirtschaft-v2`; tatsächlichen Branch und offene Änderungen prüfen. Dokumentierte lokale Tests sind keine Aussage über PostgreSQL oder den laufenden Ladenserver.
 
@@ -22,6 +22,7 @@ Arbeitsbranch: `feature/warenwirtschaft-v2`; tatsächlichen Branch und offene Ä
 | Sicherheit / Ladeneinsatz | `docs/sicherheit.md`, bei Deployment `docs/SERVER-SETUP.md` |
 | Ursprüngliche Bedienungswünsche / Etiketten | `docs/anforderungen-inbox-2026-09-23.md`, `docs/anforderungen-inbox-2026-09-24.md` |
 | Graphify, Auswahl, lokale Suche | `docs/obsidian-graphify.md` |
+| Oberfläche, Farben, Schrift, Komponenten | `DESIGN.md` |
 
 Unbekannte Zusammenhänge: `python3 scripts/projektwissen.py query "Umlagerung"` oder `"reduktionen_manuell"`. Liefert Codebeziehungen und Dokumentfundstellen mit begrenzter Ausgabe. Danach gezielt Originalstellen lesen, nicht den gesamten Graphen.
 

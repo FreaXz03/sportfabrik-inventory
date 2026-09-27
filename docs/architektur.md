@@ -283,7 +283,7 @@ gefunden, Sonstiges (mit Text). Das Eingangsdatum ändert sich nie.
 Stammzahlen die Kennzahlen der **aktiven Filiale** (Stück im Bestand, heute
 verkauft/abgegangen), „Anstehend" (erwartete Lieferungen, negativer Bestand,
 Reduktionsalter je Stufe inkl. Vorschau 30 Tage, Artikel ohne Kategorie bzw.
-EAN) und „Aktuelles" (letzte Lagerbewegungen). Das Reduktionsalter wird in
+EAN) und „Aktuelles“ (Anforderung 8): Lieferungen als ganze Lieferung (Wareneingang je Tag), Umlagerungen als ein Eintrag, Abgänge ausser Verkauf einzeln; Verkäufe, Korrekturen und Zugänge ohne Wareneingang erscheinen nicht. Das Reduktionsalter wird in
 einer Abfrage für alle Artikel gerechnet — dieselbe Regel wie
 `reduktion.letzter_wareneingang()` (Wareneingang oder Umlagerung mit
 Eingangsdatum). Ohne aktive Filiale bleibt `filiale` leer.

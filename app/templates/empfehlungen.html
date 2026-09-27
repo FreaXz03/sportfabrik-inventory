@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width,initial-scale=1">
+     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/i18n.js?v=1"></script>
+     <title data-i18n="empfehlung.page_title">Empfehlung der Zentrale · Sport-Fabrik</title>
+     <link rel="stylesheet" href="/static/css/app.css?v=bedienung-14">
+</head>
+
+<body>
+     <header><a class="brand" href="/" data-i18n-aria-label="empfehlung.brand_aria" aria-label="Sport-Fabrik Inventory – Empfehlung der Zentrale"><img
+                    src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a>
+          <nav data-i18n-aria-label="nav.main_aria" aria-label="Hauptnavigation"></nav>
+     </header>
+     <main>
+          <h1 data-i18n="empfehlung.heading">Empfehlung der Zentrale</h1>
+          <p data-i18n="empfehlung.intro">Je Modell und Filiale eine Reduktionsstufe ab einem Datum empfehlen. Die Filiale übernimmt oder lehnt mit Grund ab.</p>
+
+          <section class="panel">
+               <h2 data-i18n="empfehlung.new_heading">Empfehlung setzen</h2>
+               <form class="filters" onsubmit="return false;">
+                    <label><span data-i18n="empfehlung.field_lagerort">Filiale</span><select id="lagerort"></select></label>
+                    <label><span data-i18n="reduktion_wahl.pick_label">EAN oder Suche</span><input id="sucheFeld" autocomplete="off"
+                                   data-i18n-placeholder="reduktion_wahl.pick_placeholder" placeholder="Barcode scannen oder Artikel suchen …"></label>
+                    <button id="suchen" type="button" data-i18n="common.search">Suchen</button>
+               </form>
+               <p id="sucheStatus" role="status" aria-live="polite"></p>
+               <div id="treffer" class="tablewrap"></div>
+          </section>
+
+          <section class="panel">
+               <h2 data-i18n="empfehlung.overview_heading">Alle Empfehlungen</h2>
+               <p id="status" role="status" aria-live="polite" data-i18n="empfehlung.loading">Wird geladen …</p>
+               <button id="retry" class="secondary" hidden data-i18n="common.retry">Erneut versuchen</button>
+               <p id="leer" class="muted" hidden data-i18n="empfehlung.empty">Noch keine Empfehlung gesetzt.</p>
+               <div class="tablewrap" id="listeWrap" hidden>
+                    <table>
+                         <thead>
+                              <tr>
+                                   <th data-i18n="bestand.table_article">Artikel</th>
+                                   <th data-i18n="empfehlung.field_lagerort">Filiale</th>
+                                   <th data-i18n="empfehlung.table_prozent">Stufe</th>
+                                   <th data-i18n="empfehlung.table_ab">Ab</th>
+                                   <th data-i18n="empfehlung.table_status">Status</th>
+                              </tr>
+                         </thead>
+                         <tbody id="rows"></tbody>
+                    </table>
+               </div>
+          </section>
+     </main>
+     <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
+     <script src="/static/js/empfehlungen.js?v=1"></script>
+     <script src="/static/js/nav.js?v=3"></script>
+     <script src="/static/js/session.js?v=header-2"></script>
+     <script src="/static/js/theme.js?v=i18n-1"></script>
+</body>
+
+</html>
