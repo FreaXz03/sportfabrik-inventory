@@ -11,6 +11,41 @@
     return stand.manuell ? wert + ' ' + t('reduktion_wahl.manual_marker') : wert;
   }
 
+  // Chip in der Rollenfarbe (gelb/rot/gruen, siehe DESIGN.md §4.4) statt
+  // reinem Text - Farbe zeigt sofort, welche Rolle zu holen ist.
+  function chip(stand) {
+    if (!stand || !stand.wirksam) {
+      const span = document.createElement('span');
+      span.className = 'muted';
+      span.textContent = text(stand);
+      return span;
+    }
+    const wrap = document.createElement('span');
+    const pill = document.createElement('span');
+    pill.className = 'chip chip-stage';
+    pill.dataset.stage = String(stand.wirksam);
+    const dot = document.createElement('span');
+    dot.className = 'chip-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    pill.append(dot, document.createTextNode('−' + stand.wirksam + ' %'));
+    wrap.append(pill);
+    if (stand.manuell) {
+      const marker = document.createElement('span');
+      marker.className = 'chip-stage-manual';
+      marker.textContent = t('reduktion_wahl.manual_marker');
+      wrap.append(marker);
+    }
+    return wrap;
+  }
+
+  // Fertige <td> fuer Tabellen: Chip bei wirksamer Stufe, sonst still-grauer
+  // Text ("keine"/"—"). Ersetzt `node('td', text(stand), 'reduktion-stufe')`.
+  function chipTd(stand) {
+    const td = document.createElement('td');
+    td.append(chip(stand));
+    return td;
+  }
+
   // Knopfleiste; `onChange(neuerStand)` nach erfolgreichem Speichern.
   function knoepfe(variantenId, lagerortId, stand, onChange, meldung) {
     const leiste = document.createElement('div');
@@ -28,6 +63,7 @@
       knopf.addEventListener('click', async () => {
         if (aktiv) return;
         for (const k of leiste.querySelectorAll('button')) k.disabled = true;
+        knopf.classList.add('is-loading');
         try {
           const antwort = prozent === null
             ? await fetch('/api/reduktion/manuell?' + new URLSearchParams({ varianten_id: variantenId, lagerort_id: lagerortId }), { method: 'DELETE' })
@@ -42,6 +78,7 @@
         } catch (fehler) {
           if (meldung) meldung.textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
           for (const k of leiste.querySelectorAll('button')) k.disabled = false;
+          knopf.classList.remove('is-loading');
         }
       });
       leiste.append(knopf);
@@ -49,5 +86,5 @@
     return leiste;
   }
 
-  window.SportfabrikReduktion = { text, knoepfe };
+  window.SportfabrikReduktion = { text, chip, chipTd, knoepfe };
 })();

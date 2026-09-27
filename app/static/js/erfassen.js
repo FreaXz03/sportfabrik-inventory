@@ -206,6 +206,7 @@
     const lagerort = gewaehlterLagerort();
     busy = true;
     $('book').disabled = true;
+    $('book').classList.add('is-loading');
     $('bookStatus').textContent = t('erfassen.booking');
     try {
       const antwort = await fetch('/api/erfassen', {
@@ -238,6 +239,7 @@
       $('bookStatus').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
     } finally {
       busy = false;
+      $('book').classList.remove('is-loading');
       listeZeichnen();
     }
   }

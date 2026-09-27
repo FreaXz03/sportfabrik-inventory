@@ -41,6 +41,7 @@
       bestaetigenKnopf.type = 'button';
       bestaetigenKnopf.addEventListener('click', async () => {
         bestaetigenKnopf.disabled = true;
+        bestaetigenKnopf.classList.add('is-loading');
         try {
           const antwort = await fetch('/api/reduktionen/bestaetigen', {
             method: 'POST',
@@ -52,6 +53,7 @@
           await laden();
         } catch (fehler) {
           bestaetigenKnopf.disabled = false;
+          bestaetigenKnopf.classList.remove('is-loading');
           $('status').textContent = fehler.message;
         }
       });
@@ -94,9 +96,10 @@
     uebernehmen.type = 'button';
     const ablehnen = node('button', t('empfehlung.reject'), 'secondary');
     ablehnen.type = 'button';
-    async function antworten(status, grund) {
+    async function antworten(status, grund, knopf) {
       uebernehmen.disabled = true;
       ablehnen.disabled = true;
+      if (knopf) knopf.classList.add('is-loading');
       try {
         const antwort = await fetch('/api/empfehlungen/' + e.id + '/antwort', {
           method: 'POST',
@@ -111,14 +114,15 @@
       } catch (fehler) {
         uebernehmen.disabled = false;
         ablehnen.disabled = false;
+        if (knopf) knopf.classList.remove('is-loading');
         $('status').textContent = fehler.message;
       }
     }
-    uebernehmen.addEventListener('click', () => antworten('uebernommen'));
+    uebernehmen.addEventListener('click', () => antworten('uebernommen', undefined, uebernehmen));
     ablehnen.addEventListener('click', () => {
       const grund = window.prompt(t('empfehlung.reject_prompt'));
       if (grund === null) return;
-      antworten('abgelehnt', grund);
+      antworten('abgelehnt', grund, ablehnen);
     });
     aktion.append(uebernehmen, ablehnen);
     tr.append(aktion);
@@ -216,7 +220,7 @@
       const zeilen = [];
       for (const m of modelle.values()) {
         const tr = document.createElement('tr');
-        const stand = node('td', window.SportfabrikReduktion.text(m.reduktion));
+        const stand = window.SportfabrikReduktion.chipTd(m.reduktion);
         const wahl = node('td');
         if (m.reduktion) {
           wahl.append(window.SportfabrikReduktion.knoepfe(m.varianten_id, daten.lagerort.id, m.reduktion, (neu) => {

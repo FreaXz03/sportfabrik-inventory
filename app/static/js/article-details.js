@@ -44,7 +44,7 @@
     for(const key of ['bestand.table_lagerort','bestand.table_color','bestand.table_size','fields.ean','bestand.table_quantity','bestand.table_arrival_date','reduktion_wahl.heading'])hr.append(node('th',t(key)));
     const head=document.createElement('thead');head.append(hr);table.append(head);const body=document.createElement('tbody');
     for(const z of stock.zeilen){const tr=document.createElement('tr');const arrival=z.aeltestes_eingangsdatum?date(z.aeltestes_eingangsdatum):t(z.lagerort.verkauf?'bestand.no_arrival_date':'bestand.external_no_date');
-      tr.append(node('td',z.lagerort.code+' · '+z.lagerort.name),node('td',z.farbe),node('td',z.groesse),node('td',z.ean),node('td',new Intl.NumberFormat('de-CH').format(Number(z.menge))),node('td',arrival),node('td',window.SportfabrikReduktion.text(z.reduktion)));body.append(tr);}
+      tr.append(node('td',z.lagerort.code+' · '+z.lagerort.name),node('td',z.farbe),node('td',z.groesse),node('td',z.ean),node('td',new Intl.NumberFormat('de-CH').format(Number(z.menge))),node('td',arrival),window.SportfabrikReduktion.chipTd(z.reduktion));body.append(tr);}
     table.append(body);$('stockTable').replaceChildren(table);$('stockTable').hidden=!stock.zeilen.length;
     $('stockStatus').textContent=stock.zeilen.length?t('bestand.count_line',{anzahl:stock.total,summe:new Intl.NumberFormat('de-CH').format(Number(stock.summe))}):t('article_details.stock_empty');
   }
@@ -57,7 +57,7 @@
     for(const key of ['bestand.table_lagerort','reduktion_wahl.col_recommendation','reduktion_wahl.col_effective','reduktion_wahl.col_choice'])hr.append(node('th',t(key)));
     const head=document.createElement('thead');head.append(hr);table.append(head);const body=document.createElement('tbody');
     for(const f of reduktion.filialen){const tr=document.createElement('tr');
-      tr.append(node('td',f.lagerort.code+' · '+f.lagerort.name),node('td',f.empfehlung?'−'+f.empfehlung+' %':t('reduktion_wahl.none')),node('td',window.SportfabrikReduktion.text(f)));
+      tr.append(node('td',f.lagerort.code+' · '+f.lagerort.name),node('td',f.empfehlung?'−'+f.empfehlung+' %':t('reduktion_wahl.none')),window.SportfabrikReduktion.chipTd(f));
       const td=document.createElement('td');
       if(f.darf_aendern)td.append(window.SportfabrikReduktion.knoepfe(match[1],f.lagerort.id,f,neu=>{Object.assign(f,neu);$('reduktionStatus').textContent=t('reduktion_wahl.saved',{filiale:f.lagerort.code,stufe:window.SportfabrikReduktion.text(f)});drawReduktion();loadStock();},$('reduktionStatus')));
       else td.append(node('span',t('reduktion_wahl.no_right'),'muted'));

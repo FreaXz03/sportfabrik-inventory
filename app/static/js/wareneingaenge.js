@@ -109,6 +109,7 @@
       if (eingabe.value !== '' && Number(eingabe.value) !== 0) mengen[eingabe.dataset.position] = eingabe.value;
     }
     knopf.disabled = true;
+    knopf.classList.add('is-loading');
     rueckmeldung.textContent = t('wareneingaenge.saving');
     try {
       const antwort = await fetch('/api/wareneingaenge/' + lieferung.id + '/ankunft', {
@@ -136,6 +137,7 @@
       rueckmeldung.textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
     } finally {
       knopf.disabled = false;
+      knopf.classList.remove('is-loading');
     }
   }
 

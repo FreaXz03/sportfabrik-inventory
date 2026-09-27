@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="ausbuchen.page_title">Ausbuchen · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=bedienung-14">
+     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
 </head>
 
 <body>
@@ -31,7 +31,7 @@
                                         id="freitext" type="text" autocomplete="off" maxlength="150"></label>
                     </div>
                     <div class="filters">
-                         <label><span data-i18n="ausbuchen.scan_label">EAN scannen</span><input id="ean" type="text"
+                         <label><span data-i18n="ausbuchen.scan_label">EAN scannen</span><input id="ean" type="text" class="scan-field"
                                         inputmode="numeric" autocomplete="off" autofocus
                                         data-i18n-placeholder="erfassen.scan_placeholder" placeholder="Barcode scannen …"></label>
                          <button id="buchen" type="submit" data-i18n="ausbuchen.book">1 Stück ausbuchen</button>
@@ -57,7 +57,7 @@
                               <option value="alle" data-i18n="bestand.filter_all">Alle Filialen und Standorte</option>
                          </select></label>
                </div>
-               <p id="leer" class="muted" data-i18n="ausbuchen.list_empty">Noch nichts ausgebucht.</p>
+               <p id="leer" class="muted empty-state" data-i18n="ausbuchen.list_empty">Noch nichts ausgebucht.</p>
                <div class="tablewrap" id="liste" hidden>
                     <table>
                          <thead>
@@ -81,7 +81,7 @@
      <script src="/static/js/ausbuchen.js?v=pick-1"></script>
      <script src="/static/js/nav.js?v=3"></script>
      <script src="/static/js/session.js?v=header-2"></script>
-     <script src="/static/js/theme.js?v=i18n-1"></script>
+     <script src="/static/js/theme.js?v=design-1"></script>
 </body>
 
 </html>

@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="history.page_title">Belege &amp; Historie · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=bedienung-14">
+     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
 </head>
 
 <body>
@@ -118,8 +118,8 @@
                          <tbody id="rows"></tbody>
                     </table>
                </div>
-               <div class="paging"><button id="prev" class="secondary" disabled data-i18n="articles.paging.prev">← Zurück</button><span
-                         id="page"></span><button id="next" class="secondary" disabled data-i18n="articles.paging.next">Weiter →</button></div>
+               <div class="paging"><button id="prev" class="secondary" disabled><svg class="icon icon-16" aria-hidden="true"><use href="/static/img/icons.svg#icon-chevron-left"/></svg><span data-i18n="articles.paging.prev">Zurück</span></button><span
+                         id="page"></span><button id="next" class="secondary" disabled><span data-i18n="articles.paging.next">Weiter</span><svg class="icon icon-16" aria-hidden="true"><use href="/static/img/icons.svg#icon-chevron-right"/></svg></button></div>
           </section>
           <div id="deleteBox" hidden class="notice"></div>
      </main>
@@ -369,11 +369,12 @@
 
                          if (!list && sortKeys[index]) {
                               const key = sortKeys[index];
+                              const active = sortBy === key;
                               th.textContent = '';
-                              const button = el('button', h + (sortBy === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕'));
+                              th.className = 'sortable' + (active ? (sortDir === 'asc' ? ' sort-asc' : ' sort-desc') : '');
+                              const button = el('button', h);
                               button.type = 'button';
-                              button.style.cssText = 'background:none;border:0;color:inherit;font:inherit;padding:0;cursor:pointer;text-align:left';
-                              th.setAttribute('aria-sort', sortBy === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+                              th.setAttribute('aria-sort', active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
                               button.addEventListener('click', () => {
                                    sortDir = sortBy === key && sortDir === 'asc' ? 'desc' : 'asc';
                                    sortBy = key;
@@ -497,9 +498,9 @@
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
      <script src="/static/js/nav.js?v=3"></script>
      <script src="/static/js/session.js?v=header-2"></script>
-     <script src="/static/js/theme.js?v=i18n-1"></script>
-     <script src="/static/js/reduktion-wahl.js?v=1"></script>
-     <script src="/static/js/article-details.js?v=details-3"></script>
+     <script src="/static/js/theme.js?v=design-1"></script>
+     <script src="/static/js/reduktion-wahl.js?v=2"></script>
+     <script src="/static/js/article-details.js?v=details-4"></script>
      <script src="/static/js/etikett.js?v=3"></script>
      <script src="/static/js/kategorien.js?v=1"></script>
      <script src="/static/js/kategorie.js?v=1"></script>

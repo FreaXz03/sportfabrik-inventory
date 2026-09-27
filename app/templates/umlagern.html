@@ -7,7 +7,7 @@
      <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="umlagern.page_title">Umlagern · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=bedienung-14">
+     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
 </head>
 
 <body>
@@ -37,7 +37,7 @@
                <h2 data-i18n="umlagern.items_heading">Ware erfassen</h2>
                <form id="scanForm" novalidate>
                     <div class="filters">
-                         <label><span data-i18n="ausbuchen.scan_label">EAN scannen</span><input id="ean" type="text"
+                         <label><span data-i18n="ausbuchen.scan_label">EAN scannen</span><input id="ean" type="text" class="scan-field"
                                         inputmode="numeric" autocomplete="off" autofocus
                                         data-i18n-placeholder="erfassen.scan_placeholder" placeholder="Barcode scannen …"></label>
                          <button type="submit" class="secondary" data-i18n="umlagern.add">Hinzufügen</button>
@@ -56,7 +56,7 @@
 
           <section class="panel">
                <h2 data-i18n="umlagern.list_heading">Diese Umlagerung</h2>
-               <p id="leer" class="muted" data-i18n="umlagern.list_empty">Noch keine Ware erfasst.</p>
+               <p id="leer" class="muted empty-state" data-i18n="umlagern.list_empty">Noch keine Ware erfasst.</p>
                <div class="tablewrap" id="liste" hidden>
                     <table>
                          <thead>
@@ -80,7 +80,7 @@
      <script src="/static/js/umlagern.js?v=1"></script>
      <script src="/static/js/nav.js?v=3"></script>
      <script src="/static/js/session.js?v=header-2"></script>
-     <script src="/static/js/theme.js?v=i18n-1"></script>
+     <script src="/static/js/theme.js?v=design-1"></script>
 </body>
 
 </html>

@@ -10,7 +10,14 @@
     function t(key){return window.SportfabrikI18n?window.SportfabrikI18n.t(key):key;}
     function refresh(){
       var dark=currentTheme()==='dark';
-      btn.textContent=(dark?'☀️ ':'🌙 ')+t(dark?'theme.light_mode':'theme.dark_mode');
+      var svgNs='http://www.w3.org/2000/svg';
+      var svg=document.createElementNS(svgNs,'svg');
+      svg.setAttribute('class','icon');
+      svg.setAttribute('aria-hidden','true');
+      var use=document.createElementNS(svgNs,'use');
+      use.setAttribute('href','/static/img/icons.svg#icon-'+(dark?'sun':'moon'));
+      svg.append(use);
+      btn.replaceChildren(svg,document.createTextNode(t(dark?'theme.light_mode':'theme.dark_mode')));
       btn.setAttribute('aria-label',t(dark?'theme.enable_light':'theme.enable_dark'));
     }
     refresh();
