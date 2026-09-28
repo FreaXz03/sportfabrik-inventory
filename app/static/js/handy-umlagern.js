@@ -9,7 +9,6 @@
   var quelleSelect = document.getElementById('quelle');
   var zielSelect = document.getElementById('ziel');
   var regel = document.getElementById('regel');
-  var dateField = document.getElementById('dateField');
   var dateInput = document.getElementById('eingangsdatum');
   var liste = document.getElementById('liste');
   var leer = document.getElementById('leer');
@@ -46,7 +45,6 @@
     else if (quelle && ziel) key = 'umlagern.rule_between_branches';
     regel.textContent = key ? t(key) : '';
     regel.className = key === 'umlagern.rule_same' ? 'warning-text' : 'm-hint';
-    dateField.hidden = !ziel || !ziel.verkauf;
     updateButton();
   }
 
@@ -122,8 +120,8 @@
       var data = await P.fetchJson('/api/umlagerung/stammdaten');
       quellen = data.quellen;
       ziele = data.ziele;
-      fill(quelleSelect, quellen, null);
-      fill(zielSelect, ziele, data.ziel_aktiv);
+      fill(quelleSelect, quellen, data.quelle_aktiv);
+      fill(zielSelect, ziele, null);
       dateInput.max = data.heute;
       if (!dateInput.value) dateInput.value = data.heute;
       showRule();
@@ -148,7 +146,7 @@
         body: JSON.stringify({
           quelle_id: quelle.id,
           ziel_id: ziel.id,
-          eingangsdatum: ziel.verkauf ? dateInput.value || null : null,
+          versanddatum: dateInput.value || null,
           positionen: Array.from(items, function (pair) {
             return { varianten_id: pair[0], menge: String(pair[1].menge) };
           })

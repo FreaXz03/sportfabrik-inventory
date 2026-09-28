@@ -31,8 +31,8 @@
           <label for="ziel" data-i18n="umlagern.target_label">Nach</label>
           <select id="ziel"></select>
           <p id="regel" class="m-hint"></p>
-          <div id="dateField" hidden>
-               <label for="eingangsdatum" data-i18n="wareneingaenge.arrival_date">Eingangsdatum</label>
+          <div id="dateField">
+               <label for="eingangsdatum" data-i18n="umlagern.ship_date">Versanddatum</label>
                <input id="eingangsdatum" type="date">
           </div>
 
@@ -44,12 +44,12 @@
           <ul id="liste" class="m-positions" hidden></ul>
 
           <p id="bookError" class="error" role="alert" hidden></p>
-          <button type="button" class="large m-wide" id="buchen" disabled data-i18n="umlagern.book">Umlagerung buchen</button>
+          <button type="button" class="large m-wide" id="buchen" disabled data-i18n="umlagern.book">Versenden</button>
      </main>
      <script src="/static/js/handy-core.js?v=1"></script>
      <script src="/static/js/handy-scan.js?v=1"></script>
      <script src="/static/js/handy-pick.js?v=1"></script>
-     <script src="/static/js/handy-umlagern.js?v=1"></script>
+     <script src="/static/js/handy-umlagern.js?v=2"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>

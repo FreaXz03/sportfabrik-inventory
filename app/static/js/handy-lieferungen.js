@@ -17,6 +17,21 @@
   var deliveries = [];
   var state = { delivery: null, busy: false };
 
+  // A transfer on its way (28.09.2026) has no document - show source and dispatch date.
+  function describe(delivery) {
+    var u = delivery.umlagerung;
+    if (u) {
+      var sent = t('wareneingaenge.sent_on', { datum: formatDate(u.versanddatum) });
+      return { title: t('wareneingaenge.transfer_line', { von: u.von.code }), sub: sent, meta: sent };
+    }
+    var d = delivery.dokument;
+    return {
+      title: t('wareneingaenge.document_line', { typ: t('document_types.' + d.typ), nummer: d.nummer }),
+      sub: [d.lieferant, formatDate(d.datum)].filter(Boolean).join(' · '),
+      meta: [d.lieferant ? t('wareneingaenge.supplier_prefix') + d.lieferant : null, formatDate(d.datum)].filter(Boolean).join(' · ')
+    };
+  }
+
   function today() {
     return new Date().toISOString().slice(0, 10);
   }
@@ -30,14 +45,15 @@
     if (!deliveries.length) { status.textContent = t('wareneingaenge.empty'); return; }
     status.textContent = '';
     deliveries.forEach(function (delivery) {
+      var info = describe(delivery);
       var count = delivery.positionen.length;
       var li = el('li');
       var button = el('button');
       button.type = 'button';
       button.append(
-        el('strong', null, t('wareneingaenge.document_line', { typ: t('document_types.' + delivery.dokument.typ), nummer: delivery.dokument.nummer })),
+        el('strong', null, info.title),
         el('span', 'm-num', String(count)),
-        el('span', 'm-sub', [delivery.dokument.lieferant, formatDate(delivery.dokument.datum)].filter(Boolean).join(' · '))
+        el('span', 'm-sub', info.sub)
       );
       button.addEventListener('click', function () { openDelivery(delivery, true); });
       li.append(button);
@@ -74,11 +90,9 @@
     var delivery = state.delivery;
     if (!delivery) return;
     document.getElementById('detailType').textContent = delivery.lagerort.code + ' · ' + delivery.lagerort.name;
-    document.getElementById('detailTitle').textContent = t('wareneingaenge.document_line', { typ: t('document_types.' + delivery.dokument.typ), nummer: delivery.dokument.nummer });
-    document.getElementById('detailMeta').textContent = [
-      delivery.dokument.lieferant ? t('wareneingaenge.supplier_prefix') + delivery.dokument.lieferant : null,
-      formatDate(delivery.dokument.datum)
-    ].filter(Boolean).join(' · ');
+    var info = describe(delivery);
+    document.getElementById('detailTitle').textContent = info.title;
+    document.getElementById('detailMeta').textContent = info.meta;
     var positions = document.getElementById('positionList');
     positions.replaceChildren();
     delivery.positionen.forEach(function (position) { positions.append(positionRow(position)); });

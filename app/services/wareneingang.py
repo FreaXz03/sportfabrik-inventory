@@ -25,6 +25,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import func, select, text
+from sqlalchemy.orm import aliased
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import (
@@ -120,20 +121,24 @@ def _zahl(wert) -> str:
 
 def liste_erwartete(session, lagerort_id: int | None = None) -> list[dict]:
     """Offene (erwartete) Wareneingänge samt Positionen - für die Filiale, die
-    die Ware erwartet. Ohne `lagerort_id` filialübergreifend (Admin)."""
+    die Ware erwartet. Ohne `lagerort_id` filialübergreifend (Admin).
+    Dazu gehören seit 28.09.2026 auch Umlagerungen unterwegs: ohne Dokument,
+    mit `umlagerung` (Quelle und Versanddatum)."""
+    herkunft = aliased(Lagerort)
     abfrage = (
-        select(Wareneingang, Dokument, Lagerort, Lieferant)
-        .join(Dokument, Dokument.id == Wareneingang.dokument_id)
+        select(Wareneingang, Dokument, Lagerort, Lieferant, herkunft)
+        .outerjoin(Dokument, Dokument.id == Wareneingang.dokument_id)
         .join(Lagerort, Lagerort.id == Wareneingang.lagerort_id)
-        .join(Lieferant, Lieferant.id == Dokument.lieferant_id, isouter=True)
+        .outerjoin(Lieferant, Lieferant.id == Dokument.lieferant_id)
+        .outerjoin(herkunft, herkunft.id == Wareneingang.herkunft_lagerort_id)
         .where(Wareneingang.status == "erwartet")
-        .order_by(Dokument.dokumentdatum, Wareneingang.id)
+        .order_by(func.coalesce(Dokument.dokumentdatum, Wareneingang.versanddatum), Wareneingang.id)
     )
     if lagerort_id is not None:
         abfrage = abfrage.where(Wareneingang.lagerort_id == lagerort_id)
 
     ergebnis = []
-    for wareneingang, dokument, lagerort, lieferant in session.execute(abfrage).all():
+    for wareneingang, dokument, lagerort, lieferant, quelle in session.execute(abfrage).all():
         positionen = session.execute(
             select(WareneingangPosition, Variante, Artikel)
             .join(Variante, Variante.id == WareneingangPosition.varianten_id)
@@ -144,7 +149,9 @@ def liste_erwartete(session, lagerort_id: int | None = None) -> list[dict]:
         ergebnis.append(
             {
                 "id": wareneingang.id,
-                "dokument": {
+                "dokument": None
+                if dokument is None
+                else {
                     "id": dokument.id,
                     "typ": dokument.typ,
                     "nummer": dokument.dokumentnummer,
@@ -152,6 +159,14 @@ def liste_erwartete(session, lagerort_id: int | None = None) -> list[dict]:
                     if dokument.dokumentdatum
                     else None,
                     "lieferant": lieferant.name if lieferant else None,
+                },
+                "umlagerung": None
+                if quelle is None
+                else {
+                    "von": {"id": quelle.id, "code": quelle.code, "name": quelle.name},
+                    "versanddatum": wareneingang.versanddatum.isoformat()
+                    if wareneingang.versanddatum
+                    else None,
                 },
                 "lagerort": {
                     "id": lagerort.id,
@@ -248,6 +263,30 @@ def bestaetige_ankunft(
         )
         datum = (eingangsdatum or date.today()) if lagerort_verkauft else None
         jetzt = datetime.now(timezone.utc)
+
+        if wareneingang.herkunft_lagerort_id is not None:
+            # Umlagerung (28.09.2026): Zugang mit den Datumsregeln der
+            # Umlagerung, kein neuer Wareneingang für die Uhr, kein Hinweis.
+            from .umlagerung import buche_ankunft
+
+            mehr = []
+            for position_id, menge in gebucht.items():
+                position = positionen[position_id]
+                position.menge_eingetroffen = (position.menge_eingetroffen or 0) + menge
+                if position.menge_eingetroffen > (position.menge or 0):
+                    mehr.append(
+                        {
+                            "position_id": position.id,
+                            "menge_erwartet": _zahl(position.menge),
+                            "menge_eingetroffen": _zahl(position.menge_eingetroffen),
+                            "menge_zuviel": _zahl(position.menge_eingetroffen - (position.menge or 0)),
+                        }
+                    )
+            buche_ankunft(
+                session, wareneingang, gebucht, positionen,
+                eingangsdatum or date.today(), benutzer, jetzt,
+            )
+            return _abschluss(session, wareneingang, positionen, gebucht, mehr)
         dokumentdatum = session.scalar(
             select(Dokument.dokumentdatum).where(
                 Dokument.id == wareneingang.dokument_id
@@ -303,24 +342,30 @@ def bestaetige_ankunft(
         erstelle_hinweise(session, wareneingang.lagerort_id, nachlieferungs_cache)
         if datum and wareneingang.eingangsdatum is None:
             wareneingang.eingangsdatum = datum
-        offen = [
-            position
-            for position in positionen.values()
-            if (position.menge or 0) > (position.menge_eingetroffen or 0)
-        ]
-        if not offen:
-            wareneingang.status = "eingetroffen"
-        session.flush()
-        return {
-            "wareneingang_id": wareneingang.id,
-            "status": wareneingang.status,
-            "gebuchte_positionen": len(gebucht),
-            "offene_positionen": len(offen),
-            "mehrlieferungen": mehrlieferungen,
-            "eingangsdatum": wareneingang.eingangsdatum.isoformat()
-            if wareneingang.eingangsdatum
-            else None,
-        }
+        return _abschluss(session, wareneingang, positionen, gebucht, mehrlieferungen)
+
+
+def _abschluss(session, wareneingang, positionen: dict, gebucht: dict, mehrlieferungen: list) -> dict:
+    """Status nachführen (D22: erst ohne offene Position `eingetroffen`) und
+    die Antwort der Ankunftsbestätigung bauen."""
+    offen = [
+        position
+        for position in positionen.values()
+        if (position.menge or 0) > (position.menge_eingetroffen or 0)
+    ]
+    if not offen:
+        wareneingang.status = "eingetroffen"
+    session.flush()
+    return {
+        "wareneingang_id": wareneingang.id,
+        "status": wareneingang.status,
+        "gebuchte_positionen": len(gebucht),
+        "offene_positionen": len(offen),
+        "mehrlieferungen": mehrlieferungen,
+        "eingangsdatum": wareneingang.eingangsdatum.isoformat()
+        if wareneingang.eingangsdatum
+        else None,
+    }
 
 
 def zaehle_erwartete(session, lagerort_id: int | None = None) -> int:

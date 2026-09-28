@@ -328,6 +328,11 @@ class Wareneingang(Base):
     lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
     status: Mapped[str] = mapped_column(String(20))
     eingangsdatum: Mapped[date | None] = mapped_column(Date)
+    # Umlagerung wie eine Lieferung (28.09.2026): Quelle und Versanddatum.
+    # Leer bei Dokumenten und manueller Erfassung. Eine Umlagerung setzt nie
+    # `eingangsdatum` - ob sie die Uhr startet, steht an ihrer Lagerbewegung.
+    herkunft_lagerort_id: Mapped[int | None] = mapped_column(ForeignKey("lagerorte.id"))
+    versanddatum: Mapped[date | None] = mapped_column(Date)
 
 
 class WareneingangPosition(Base):
@@ -356,6 +361,9 @@ class WareneingangPosition(Base):
     einheit: Mapped[str | None] = mapped_column(String(30))
     uvp: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     ek: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # Nur bei einer Umlagerung: das Eingangsdatum der Ware an der Quelle beim
+    # Versand (D17 - Filiale -> Filiale behält ihr Datum).
+    mitgebracht_datum: Mapped[date | None] = mapped_column(Date)
 
 
 class WareneingangPositionQuelle(Base):

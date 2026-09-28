@@ -1,9 +1,10 @@
 """Ware zwischen Lagerorten umlagern (Phase C, Teilaufgabe C4).
 
-Rechte (24.09.2026): Umlagern dürfen nur Filialleiter/Zentrale. Gebucht wird beim Empfang von der empfangenden Filiale:
-vorgewählt ist deshalb die aktive Filiale als **Ziel**; ob auf das gewählte
-Ziel gebucht werden darf, prüft der Server (`resolve_wareneingang_lagerort`).
-Quelle kann jeder Lagerort sein - die Ware kommt ja von dort.
+Rechte (24.09.2026): Umlagern dürfen nur Filialleiter/Zentrale. Seit
+28.09.2026 wie eine Lieferung: die **Quelle** versendet (vorgewählt ist die
+aktive Filiale; ob von dort gebucht werden darf, prüft der Server mit
+`resolve_wareneingang_lagerort`), das Ziel bestätigt die Ankunft unter
+„Lieferungen" (`/api/wareneingaenge/{id}/ankunft`, alle Rollen, D21).
 """
 
 from datetime import date
@@ -17,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 
 from ..core.database import get_session
 from ..core.i18n import translate
+from ..core.models import Lagerort
 from ..services.lagerorte import list_all_lagerorte, list_wareneingang_lagerorte
 from ..services.umlagerung import UmlagerungRejected, umlagern
 from .auth import (
@@ -53,14 +55,14 @@ def api_stammdaten(
     lagerort=Depends(get_active_lagerort),
     session=Depends(get_session),
 ):
-    """Quellen (alle Lagerorte), Ziele (buchbare, eigene zuerst), die aktive
-    Filiale als vorgewähltes Ziel und das heutige Datum vom Server."""
+    """Quellen (buchbare, eigene zuerst), Ziele (alle Lagerorte), die aktive
+    Filiale als vorgewählte Quelle und das heutige Datum vom Server."""
     return {
-        "quellen": [_lagerort(eintrag) for eintrag in list_all_lagerorte(session)],
-        "ziele": [
+        "quellen": [
             _lagerort(eintrag) for eintrag in list_wareneingang_lagerorte(session, user)
         ],
-        "ziel_aktiv": None if lagerort is None else lagerort.id,
+        "ziele": [_lagerort(eintrag) for eintrag in list_all_lagerorte(session)],
+        "quelle_aktiv": None if lagerort is None else lagerort.id,
         "heute": date.today().isoformat(),
     }
 
@@ -76,9 +78,9 @@ class UmlagerungPosition(BaseModel):
 class UmlagerungBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    quelle_id: int
-    ziel_id: int | None = None
-    eingangsdatum: str | None = None
+    quelle_id: int | None = None
+    ziel_id: int
+    versanddatum: str | None = None
     positionen: list[UmlagerungPosition] = Field(default_factory=list)
 
 
@@ -92,11 +94,13 @@ async def api_umlagern(
 ):
     from ..core.database import SessionLocal
 
-    ziel = resolve_wareneingang_lagerort(request, session, user, body.ziel_id, language)
-    eingangsdatum = None
-    if body.eingangsdatum:
+    quelle = resolve_wareneingang_lagerort(request, session, user, body.quelle_id, language)
+    if session.get(Lagerort, body.ziel_id) is None:
+        raise HTTPException(404, translate("errors.bestand.unknown_lagerort", language))
+    versanddatum = None
+    if body.versanddatum:
         try:
-            eingangsdatum = date.fromisoformat(body.eingangsdatum)
+            versanddatum = date.fromisoformat(body.versanddatum)
         except ValueError as exc:
             raise HTTPException(
                 422, translate("errors.wareneingang.invalid_date", language)
@@ -105,10 +109,10 @@ async def api_umlagern(
         return await run_in_threadpool(
             lambda: umlagern(
                 SessionLocal,
-                quelle_id=body.quelle_id,
-                ziel_id=ziel.id,
+                quelle_id=quelle.id,
+                ziel_id=body.ziel_id,
                 positionen=[position.model_dump() for position in body.positionen],
-                eingangsdatum=eingangsdatum,
+                versanddatum=versanddatum,
                 benutzer={"kassennummer": user.kassennummer, "name": user.name},
                 language=language,
             )

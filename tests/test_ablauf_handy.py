@@ -3,7 +3,7 @@ agreed phone features. The server enforces this; hiding buttons is not enough.""
 
 from decimal import Decimal
 
-from conftest import ANNA, CHEF, PASSWOERTER, ZENTRALE
+from conftest import ANNA, BEAT, CHEF, PASSWOERTER, ZENTRALE
 
 from app.core.i18n import translate
 
@@ -233,7 +233,7 @@ def test_transfer_on_the_phone_is_reserved_for_managers(welt):
     assert antwort.status_code == 200
 
     stamm = c.get("/api/umlagerung/stammdaten", headers=h).json()
-    assert stamm["ziel_aktiv"] == welt.codes["SF1"]
+    assert stamm["quelle_aktiv"] == welt.codes["SF1"]
 
     antwort = c.post("/api/umlagerung", headers=h, json={
         "quelle_id": welt.codes["SF1"], "ziel_id": welt.codes["SF2"],
@@ -241,6 +241,14 @@ def test_transfer_on_the_phone_is_reserved_for_managers(welt):
     })
     assert antwort.status_code == 200, antwort.text
     assert antwort.json()["ziel"]["code"] == "SF2" and antwort.json()["stueck"] == "2.00"
+
+    # Transfer as a delivery (28.09.2026): SF2 confirms the arrival on its phone.
+    _login(welt, BEAT, IPHONE)
+    lieferung = c.get("/api/wareneingaenge", headers=h).json()["wareneingaenge"][0]
+    assert lieferung["umlagerung"]["von"]["code"] == "SF1"
+    position = lieferung["positionen"][0]["id"]
+    ankunft = c.post(f"/api/wareneingaenge/{lieferung['id']}/ankunft", headers=h, json={"mengen": {str(position): "2"}})
+    assert ankunft.status_code == 200, ankunft.text
 
     _login(welt, ANNA, IPHONE)
     assert c.get("/m/umlagern", headers=h, follow_redirects=False).status_code == 303
