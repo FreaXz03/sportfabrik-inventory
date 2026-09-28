@@ -1,47 +1,46 @@
-# Datenmodell
+# Data model
 
-Verwaltet über SQLAlchemy 2.0 (`app/core/models.py`) und Alembic-Migrationen
-(`migrations/`). Seit Migration `c3d4e5f6a7b8` (Phase A Punkt 3) gilt das
-Datenmodell aus `projekt-kontext.md` Abschnitt 8.2: Artikelstamm
-filialübergreifend, Bestand/Wareneingänge/Reduktionen filialbezogen, Bestand
-nie direkt überschrieben, sondern als `lagerbewegungen`-Journal geführt
-(Regel 2).
+Managed via SQLAlchemy 2.0 (`app/core/models.py`) and Alembic migrations
+(`migrations/`). Since migration `c3d4e5f6a7b8` (Phase A, item 3), the data
+model from `projekt-kontext.md` section 8.2 applies: item master shared
+across branches, stock/goods receipts/markdowns are branch-specific, stock
+is never overwritten directly but kept as a `lagerbewegungen` journal
+(rule 2).
 
-## Alte Tabellen (`products`, `invoices`, `invoice_items`,
+## Old tables (`products`, `invoices`, `invoice_items`,
 `invoice_item_sources`)
 
-Bleiben unangetastet in der Datenbank (kein `DROP`, „nie verwerfen"), sind
-aber **nicht mehr gemappt** — die App liest/schreibt sie seit
-`c3d4e5f6a7b8` nicht mehr. Ihre Daten wurden vollständig in die neuen
-Tabellen migriert (siehe „Migration der Altdaten" unten). Eine Ausnahme:
-`products.article_no` (INTERSPORT-eigene Artikelnummer je Variante) wird
-**nicht** übernommen — das neue Modell führt nur noch die
-Lieferanten-Artikelnummer (`artikel.lieferanten_artikelnr`) als
-Artikel-Schlüssel (Regel 5); der historische Wert bleibt in der alten,
-unangetasteten `products`-Tabelle einsehbar.
+Stay untouched in the database (no `DROP`, "never discard"), but are
+**no longer mapped** — the app has not read/written them since
+`c3d4e5f6a7b8`. Their data was fully migrated into the new tables (see
+"Migrating the legacy data" below). One exception:
+`products.article_no` (the INTERSPORT-internal item number per variant) is
+**not** carried over — the new model only keeps the supplier item number
+(`artikel.lieferanten_artikelnr`) as the item key (rule 5); the historical
+value remains visible in the old, untouched `products` table.
 
-## Neue Tabellen
+## New tables
 
 ```mermaid
 erDiagram
-    LIEFERANTEN ||--o{ ARTIKEL : "liefert"
-    KATEGORIEN ||--o{ ARTIKEL : "kategorisiert"
-    ARTIKEL ||--o{ VARIANTEN : "hat"
-    VARIANTEN ||--o{ PREISE : "Preisverlauf"
-    VARIANTEN ||--o{ WARENEINGANG_POSITIONEN : "Position in"
-    VARIANTEN ||--o{ LAGERBEWEGUNGEN : "betrifft"
-    VARIANTEN ||--o{ BESTAND : "Bestand je Filiale"
-    ARTIKEL ||--o{ ARTICLE_NOTES : "hat Notizen"
-    LIEFERANTEN ||--o{ DOKUMENTE : "Absender"
-    LAGERORTE ||--o{ DOKUMENTE : "Zielfiliale"
-    DOKUMENTE ||--o{ WARENEINGAENGE : "erzeugt"
-    LAGERORTE ||--o{ WARENEINGAENGE : "Filiale"
-    WARENEINGAENGE ||--o{ WARENEINGANG_POSITIONEN : "enthält"
-    WARENEINGANG_POSITIONEN ||--o| WARENEINGANG_POSITIONEN_QUELLE : "Original-Snapshot"
-    DOKUMENTE ||--o{ PREISE : "Quelle"
-    LAGERORTE ||--o{ LAGERBEWEGUNGEN : "Filiale"
-    LAGERORTE ||--o{ BESTAND : "Filiale"
-    WARENEINGANG_POSITIONEN ||--o| LAGERBEWEGUNGEN : "erzeugt Zugang"
+    LIEFERANTEN ||--o{ ARTIKEL : "supplies"
+    KATEGORIEN ||--o{ ARTIKEL : "categorizes"
+    ARTIKEL ||--o{ VARIANTEN : "has"
+    VARIANTEN ||--o{ PREISE : "price history"
+    VARIANTEN ||--o{ WARENEINGANG_POSITIONEN : "line in"
+    VARIANTEN ||--o{ LAGERBEWEGUNGEN : "affects"
+    VARIANTEN ||--o{ BESTAND : "stock per branch"
+    ARTIKEL ||--o{ ARTICLE_NOTES : "has notes"
+    LIEFERANTEN ||--o{ DOKUMENTE : "sender"
+    LAGERORTE ||--o{ DOKUMENTE : "target branch"
+    DOKUMENTE ||--o{ WARENEINGAENGE : "creates"
+    LAGERORTE ||--o{ WARENEINGAENGE : "branch"
+    WARENEINGAENGE ||--o{ WARENEINGANG_POSITIONEN : "contains"
+    WARENEINGANG_POSITIONEN ||--o| WARENEINGANG_POSITIONEN_QUELLE : "original snapshot"
+    DOKUMENTE ||--o{ PREISE : "source"
+    LAGERORTE ||--o{ LAGERBEWEGUNGEN : "branch"
+    LAGERORTE ||--o{ BESTAND : "branch"
+    WARENEINGANG_POSITIONEN ||--o| LAGERBEWEGUNGEN : "creates receipt"
 
     LIEFERANTEN {
         int id PK
@@ -150,257 +149,284 @@ erDiagram
     }
 ```
 
-`article_notes.artikel_id` (bis `c3d4e5f6a7b8`: `product_id`) steht wie
-`dokumente`/`lagerbewegungen` absichtlich ohne Fremdschlüssel auf
-`users.id` für den Autor — siehe Begründung weiter unten bei `users`.
+`article_notes.artikel_id` (before `c3d4e5f6a7b8`: `product_id`), like
+`dokumente`/`lagerbewegungen`, deliberately has no foreign key to
+`users.id` for the author — see the rationale further below under `users`.
 
-## Tabellen im Detail
+## Tables in detail
 
 ### `lieferanten`
-Ein Datensatz je Lieferant. `typ` (`intersport`/`ecom`/`drittanbieter`/
-`extern`/`intern`) ist zugleich die **Lieferantengruppe**, aus der der
-Etikett-Code folgt (Intersport 111, ECOM 555, Händler = `extern` 333,
-Dritte-Händler = `drittanbieter` 999, Intern = Nike/adidas/The North Face 444;
-seit 24.09.2026, Migration `f2a3b4c5d6e7`). `typ` und `parser_key` (verweist auf das passende Parser-Modul in
-`app/services/parsers/`, aktuell nur `intersport`) steuern die automatische
-Lieferanten-Erkennung beim Dokumenten-Upload: die Registry erkennt das Layout
-und der Import schlägt den Lieferanten über denselben `parser_key` nach
-(Phase B, Teilaufgabe B1 — siehe `docs/architektur.md`, „PDF-Parsing"). Ein
-Lieferant ohne passendes Parser-Modul (bzw. umgekehrt) lässt den Import
-scheitern, darum prüft `tests/test_parser.py` beide Seiten
-gegeneinander. Seed-Daten in `app/core/lieferanten.py`.
+One row per supplier. `typ` (`intersport`/`ecom`/`drittanbieter`/
+`extern`/`intern`) is also the **supplier group**, from which the label
+code follows (Intersport 111, ECOM 555, dealer = `extern` 333,
+third-party dealer = `drittanbieter` 999, internal = Nike/adidas/The North
+Face 444; since 2026-09-24, migration `f2a3b4c5d6e7`). `typ` and
+`parser_key` (points to the matching parser module in
+`app/services/parsers/`, currently only `intersport`) drive automatic
+supplier detection on document upload: the registry recognizes the layout
+and the importer looks up the supplier via the same `parser_key`
+(Phase B, subtask B1 — see `docs/architektur.md`, "PDF parsing"). A
+supplier without a matching parser module (or vice versa) makes the
+import fail, which is why `tests/test_parser.py` checks both sides
+against each other. Seed data in `app/core/lieferanten.py`.
 
 ### `kategorien`
-Kassenkategorien: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) ×
-Sportbereich (Regel 8) — Velo und Food ohne Sportbereich. 35 fixe
-Kombinationen, Seed-Daten in `app/core/kategorien.py`. Ein FEDAS→Kategorie-
-Mapping: `app/core/fedas.py` (Phase B, siehe `projekt-kontext.md` Details zu
-Phase B), aktuell nur die aus echten Rechnungen bestätigten Codes. Was dort
-fehlt, wird von Hand gewählt (`app/services/kategorien.py`, Teilaufgabe B8);
-die Auswahlliste kommt über `GET /api/kategorien` in der Reihenfolge der
-Kasse.
+POS categories: main group (textile, hardware, footwear, bike, food) ×
+sport area (rule 8) — bike and food have no sport area. 35 fixed
+combinations, seed data in `app/core/kategorien.py`. A FEDAS→category
+mapping: `app/core/fedas.py` (Phase B, see `projekt-kontext.md` for Phase
+B details), currently only the codes confirmed from real invoices.
+Anything missing there is chosen manually (`app/services/kategorien.py`,
+subtask B8); the selection list comes via `GET /api/kategorien` in the
+till's order.
 
 ### `artikel`
-Modell-Ebene, filialübergreifend (Regel 4): Marke + Lieferanten-Artikelnummer
-identifizieren ein Modell über alle Farben/Grössen hinweg. Fehlt die
-Lieferanten-Artikelnummer, bleibt jedes Vorkommen ein eigener Artikel (echte
-Fremdschlüsselbeziehung statt der früheren Laufzeit-Gruppierung in
-`app/services/article_groups.py`, die jetzt nur noch `varianten.artikel_id`
-abfragt). `fedas_code` wird beim Import mitgeschrieben, sofern die Rechnung
-ihn liefert. `kategorie_id` wird beim Anlegen eines neuen Artikels automatisch
-aus dem FEDAS-Code vorgeschlagen (`app/core/fedas.py` + `app/services/
-importer.py`), sofern die Kombination bekannt ist - sonst bleibt sie leer und
-wird von Hand gewählt (Teilaufgabe B8, siehe unten). Ein einmal gesetzter Wert
-wird nie überschrieben, ein noch leerer aber bei einer späteren Rechnung mit
-bekanntem Code nachträglich befüllt.
+Model level, shared across branches (rule 4): brand + supplier item
+number identify a model across all colors/sizes. If the supplier item
+number is missing, every occurrence stays its own item (a real foreign
+key relationship instead of the former runtime grouping in
+`app/services/article_groups.py`, which now only queries
+`varianten.artikel_id`). `fedas_code` is recorded during import if the
+invoice provides it. `kategorie_id` is automatically suggested when a new
+item is created, from the FEDAS code (`app/core/fedas.py` +
+`app/services/importer.py`), if the combination is known — otherwise it
+stays empty and is chosen manually (subtask B8, see below). A value that
+has been set is never overwritten; one still empty is filled in
+retroactively if a later invoice has a known code.
 
-`kategorie_manuell` (Migration `c9d0e1f2a3b4`) sagt, woher die Kategorie
-stammt: `false` = Vorschlag aus dem FEDAS-Code, `true` = von Hand gewählt
-(Artikelseite oder manuelle Erfassung, `app/services/kategorien.py`). Die
-Oberfläche zeigt den Unterschied an - die FEDAS-Tabelle ist noch nicht
-vollständig bestätigt. Leeren setzt beides zurück: der Artikel ist wieder
-offen, ein späterer Beleg mit bekanntem Code darf wieder vorschlagen.
+`kategorie_manuell` (migration `c9d0e1f2a3b4`) says where the category
+came from: `false` = suggested from the FEDAS code, `true` = chosen
+manually (item page or manual entry, `app/services/kategorien.py`). The
+UI shows the difference — the FEDAS table is not yet fully confirmed.
+Clearing it resets both: the item is open again, and a later document
+with a known code may suggest again.
 
-`lieferant_id` darf seit Migration `a7b8c9d0e1f2` **leer** sein: von Hand
-erfasste Ware braucht keinen Lieferanten (D23) — aus einem Lieferantendokument
-kommt er dagegen immer mit. Artikel ohne Lieferant werden untereinander
-zusammengeführt, aber nie mit den Artikeln eines Lieferanten vermischt
-(gemeinsame Regeln: `app/services/artikel.py`).
+`lieferant_id` may be **empty** since migration `a7b8c9d0e1f2`: manually
+entered goods don't need a supplier (D23) — one coming from a supplier
+document always has one, though. Items without a supplier are merged
+among themselves, but never mixed with a supplier's items (shared rules:
+`app/services/artikel.py`).
 
 ### `varianten`
-Farbe/Grösse/EAN eines Artikels (Regel 5: EAN optional — Schlüssel ohne EAN
-ist Lieferant + Artikelnummer + Farbe + Grösse über `artikel_id`). Seit
-Teilaufgabe B3 gilt das auch beim Upload: eine Position ohne EAN läuft mit
-Hinweis durch und landet als Variante mit leerer EAN. Mehrere solche Varianten
-stören sich nicht, weil NULL im Unique-Index nicht kollidiert.
-`ean_intern` markiert vom System erzeugte EANs (EAN-13 im GS1-Bereich
-20–29, D10). Seit Teilaufgabe B7 wird das gesetzt: fehlt die Hersteller-EAN,
-erzeugt `app/services/ean.py` auf Knopfdruck eine interne Nummer nach dem
-Muster `20` + zehnstellige Varianten-Id + Prüfziffer. Eine bestehende EAN
-wird nie überschrieben. `first_seen`/`last_seen` wie früher auf
-`products`, bei jedem Import/jeder Löschung neu berechnet.
+Color/size/EAN of an item (rule 5: EAN optional — the key without an EAN
+is supplier + item number + color + size via `artikel_id`). Since
+subtask B3 this also applies on upload: a line without an EAN goes
+through with a note and ends up as a variant with an empty EAN. Several
+such variants don't conflict, because NULL doesn't collide in the unique
+index. `ean_intern` marks EANs generated by the system (EAN-13 in the
+GS1 range 20–29, D10). Since subtask B7 this is set: if the
+manufacturer's EAN is missing, `app/services/ean.py` generates an
+internal number on demand following the pattern `20` + ten-digit variant
+id + check digit. An existing EAN is never overwritten.
+`first_seen`/`last_seen` as before on `products`, recalculated on every
+import/deletion.
 
 ### `preise`
-UVP/EK-Verlauf je Variante (Regel 10: EK optional, nie Pflicht), mit Datum
-und verweisendem Dokument. Ersetzt die frühere implizite Preishistorie über
-`invoice_items.uvp` + `invoices.invoice_date`.
+UVP (RRP)/EK (cost) history per variant (rule 10: EK optional, never
+mandatory), with date and the referencing document. Replaces the former
+implicit price history via `invoice_items.uvp` + `invoices.invoice_date`.
 
 ### `dokumente`
-Verallgemeinert die frühere `invoices`-Tabelle auf alle Dokumenttypen aus D6
-(Rechnung, Lieferschein, Auftragsbestätigung, Bestellung). `typ` kommt seit
-Teilaufgabe B1 aus dem Dokument selbst (das erkannte Parser-Modul liefert ihn
-mit) statt fest als `rechnung`; ohne erkannten Typ wird nicht importiert.
-`datei_hash` ist global eindeutig (dieselbe Datei ist dasselbe Dokument, egal
-von wem), die Belegnummer dagegen nur **je Lieferant**:
-`UNIQUE (lieferant_id, dokumentnummer)` seit Migration e5f6a7b8c9d0 (Phase B,
-Teilaufgabe B2). Belegnummern sind Lieferantensache und überschneiden sich
-zwangslos — vorher hätte die Rechnung eines neuen Lieferanten nur deshalb als
-Duplikat gegolten, weil INTERSPORT die Nummer schon verwendet hatte. Ist
-`lieferant_id` leer, greift die Eindeutigkeit nicht (NULL gilt als von allem
-verschieden); der Import weist ein Dokument ohne erkannten Lieferanten aber ab,
-darum kommt das nicht vor. Die verständliche Meldung („Rechnung … wurde bereits
-importiert") kommt aus dem Importer, der Constraint ist der Rückfall für zwei
-gleichzeitige Importe. `lagerort_id` ist die Zielfiliale: seit Teilaufgabe B4 der beim Import
-gewählte Lagerort, vorgeschlagen aus der Lieferadresse des Dokuments
-(`app/services/lieferadresse.py`, D19) und sonst die aktive Filiale. Ein
-Dokument hat genau einen Lagerort (D20).
-`ocr_verwendet` markiert Dokumente, die mangels Textebene per Tesseract-OCR
-gelesen wurden.
+Generalizes the former `invoices` table to all document types from D6
+(invoice, delivery note, order confirmation, purchase order). `typ` has
+come from the document itself since subtask B1 (the recognized parser
+module supplies it) instead of being fixed as `rechnung`; without a
+recognized type, nothing is imported. `datei_hash` is globally unique
+(the same file is the same document, no matter who uploads it), while
+the document number is unique only **per supplier**:
+`UNIQUE (lieferant_id, dokumentnummer)` since migration `e5f6a7b8c9d0`
+(Phase B, subtask B2). Document numbers are a supplier matter and
+overlap freely — previously, a new supplier's invoice would have counted
+as a duplicate for no reason other than INTERSPORT already having used
+that number. If `lieferant_id` is empty, uniqueness doesn't apply (NULL
+counts as different from everything); however, the importer rejects a
+document with no recognized supplier, so this case doesn't occur. The
+understandable message ("Invoice … has already been imported") comes
+from the importer; the constraint is the fallback for two simultaneous
+imports. `lagerort_id` is the target branch: since subtask B4 it is the
+storage location chosen at import, suggested from the document's
+delivery address (`app/services/lieferadresse.py`, D19), otherwise the
+active branch. A document has exactly one storage location (D20).
+`ocr_verwendet` marks documents that were read via Tesseract OCR for
+lack of a text layer.
 
 ### `wareneingaenge`
-Ein Wareneingang je Dokument (aktuell 1:1, das Schema erlaubt später mehrere
-je Dokument z. B. bei Teillieferungen) — oder **ohne** Dokument: von Hand
-erfasste Ware ist ein direkter Wareneingang ohne Beleg (D27), `dokument_id`
-bleibt dann leer (Migration `a7b8c9d0e1f2`, Teilaufgabe B6). Ein solcher
-Wareneingang ist sofort `eingetroffen`. `status` unterscheidet `erwartet`
-(nur bei Auftragsbestätigungen — noch keine Bestandsbuchung, Regel 3) von
-`eingetroffen` (Ware ist da, `lagerbewegungen`/`bestand` werden geschrieben).
-Rechnungen und Lieferscheine sind sofort `eingetroffen`, Auftragsbestätigungen
-und Bestellungen erst `erwartet` (Teilaufgabe B5). `eingangsdatum` wird beim
-ersten Zugang gesetzt — rückwirkend möglich (D13), in einem Lager ohne Verkauf
-gar nicht (Regel 6).
+One goods receipt per document (currently 1:1; the schema allows several
+per document later, e.g. for partial deliveries) — or **without** a
+document: manually entered goods are a direct goods receipt without a
+document (D27), `dokument_id` then stays empty (migration
+`a7b8c9d0e1f2`, subtask B6). Such a goods receipt is immediately
+`eingetroffen` (arrived). `status` distinguishes `erwartet` (expected —
+only for order confirmations, no stock booking yet, rule 3) from
+`eingetroffen` (arrived — goods are here, `lagerbewegungen`/`bestand`
+are written). Invoices and delivery notes are immediately `eingetroffen`,
+order confirmations and purchase orders start as `erwartet` (subtask
+B5). `eingangsdatum` (receipt date) is set on first receipt —
+retroactively if needed (D13), and not at all in a storage location
+without sale (rule 6).
 
-`eingangsdatum` folgt Regel 6: Bei einer Filiale (`lagerorte.verkauf = true`)
-ist es das Rechnungsdatum, an einem Standort ohne Verkauf bleibt es **leer**
-und wird erst bei Ankunft in einer Filiale gesetzt — die Reduktionsuhr (18/36
-Monate) soll nicht schon extern laufen. Das gilt für alle drei externen
-Standorte: die Verarbeitungsstellen GEWA und VEBO ebenso wie das Lager
-Dietikon. Massgeblich ist immer `lagerorte.verkauf`, nie der einzelne Code —
-ein weiterer externer Standort greift dadurch automatisch. Dasselbe gilt für
+`eingangsdatum` follows rule 6: at a branch (`lagerorte.verkauf = true`)
+it is the invoice date; at a location without sale it stays **empty**
+and is only set on arrival at a branch — the markdown clock (18/36
+months) should not already be running externally. This applies to all
+three external locations: the processing sites GEWA and VEBO as well as
+the DIETIKON warehouse. What always matters is `lagerorte.verkauf`,
+never the individual code — this means a further external location is
+picked up automatically. The same applies to
 `bestand.aeltestes_eingangsdatum`.
 
 ### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
-Eine Zeile je Position eines Wareneingangs — verallgemeinert die frühere
-`invoice_items`-Tabelle. `wareneingang_positionen_quelle` ist der optionale
-1:1-Original-Snapshot (Rohtext, Seiten-/Zeilennummer, Parser-Warnungen,
-`correction_audit`) als JSON, genau wie früher `invoice_item_sources` —
-bleibt auch erhalten, wenn sich `varianten`/`artikel` später ändern. Bei
-manueller Erfassung steht dort die unveränderte Eingabe samt erfassender
-Person und Zeitpunkt (`quelle: "manuelle-erfassung"`). `menge` ist die Menge laut Beleg (erwartet),
-`menge_eingetroffen` die davon tatsächlich angekommene; die Differenz ist die
-offene Restmenge (D22, Migration `f6a7b8c9d0e1`). Bei Rechnung/Lieferschein
-sind beide von Anfang an gleich.
+One row per line of a goods receipt — generalizes the former
+`invoice_items` table. `wareneingang_positionen_quelle` is the optional
+1:1 original snapshot (raw text, page/line number, parser warnings,
+`correction_audit`) as JSON, just like `invoice_item_sources` before —
+also preserved if `varianten`/`artikel` change later. For manual entry
+it holds the unchanged input along with the person who entered it and
+the timestamp (`quelle: "manuelle-erfassung"`). `menge` is the quantity
+per the document (expected), `menge_eingetroffen` the quantity actually
+arrived; the difference is the open remaining quantity (D22, migration
+`f6a7b8c9d0e1`). For invoices/delivery notes both are equal from the
+start.
 
 ### `lagerbewegungen`
-Append-only-Journal jeder Bestandsänderung (Regel 2): `typ` ist `zugang`,
-`verkauf`, `ausbuchung`, `korrektur` oder `umlagerung`. Geschrieben werden
-bisher `zugang`, seit C3 auch `verkauf` und `ausbuchung` (Menge −1 je Scan,
-Grund in `grund`, z. B. `defekt` oder `sonstiges: …`) sowie `korrektur` als
-Gegenbuchung beim Rückgängigmachen (`grund = 'storno:<id>'`), seit C4
-`umlagerung` (zwei Zeilen je Variante: `−menge` an der Quelle mit
-`grund = 'nach:<Ziel>'`, `+menge` am Ziel mit `grund = 'von:<Quelle>'`).
-Seit C5 auch allgemeine `korrektur`-Zeilen: gebucht wird die Differenz zur gezählten Menge, Grund `inventur`, `falsch_gebucht`, `gefunden` oder `sonstiges: …`.
+Append-only journal of every stock change (rule 2): `typ` is `zugang`
+(receipt), `verkauf` (sale), `ausbuchung` (write-off), `korrektur`
+(correction), or `umlagerung` (transfer). So far `zugang` is written;
+since C3 also `verkauf` and `ausbuchung` (quantity −1 per scan, reason
+in `grund`, e.g. `defekt` or `sonstiges: …`), plus `korrektur` as a
+counter-booking when reversing (`grund = 'storno:<id>'`); since C4
+`umlagerung` (two rows per variant: `−menge` at the source with
+`grund = 'nach:<target>'`, `+menge` at the target with
+`grund = 'von:<source>'`). Since C5 also general `korrektur` rows: the
+difference to the counted quantity is booked, reason `inventur`
+(stock-take), `falsch_gebucht` (booked wrong), `gefunden` (found), or
+`sonstiges: …`.
 
-`eingangsdatum` ist nur an der Zielzeile einer Umlagerung gesetzt, die dort
-die Reduktionsuhr startet — externer Standort → Filiale (D13) oder eine
-Filiale, die den Artikel noch nie hatte (F11); sonst leer. Die Uhr
-(`reduktion.letzter_wareneingang()`) nimmt das spätere Datum aus
-Wareneingängen und solchen Umlagerungen. Jede importierte
-Rechnungsposition erzeugt genau eine Bewegung vom Typ `zugang`; von Hand
-erfasste Ware ebenso, dort mit `grund = 'manuelle-erfassung'` (ein fester
-Schlüssel, kein UI-Text — übersetzt wird erst bei der Anzeige). Benutzer wird
-als Momentaufnahme gespeichert (wie bei `dokumente`/`article_notes`), nicht
-als Fremdschlüssel.
+`eingangsdatum` is set only on the target row of a transfer, which
+starts the markdown clock there — external location → branch (D13), or
+a branch that never had the item before (F11); otherwise empty. The
+clock (`reduktion.letzter_wareneingang()`) takes the later date from
+goods receipts and such transfers. Every imported invoice line creates
+exactly one movement of type `zugang`; manually entered goods likewise,
+with `grund = 'manuelle-erfassung'` there (a fixed key, not UI text —
+translation only happens at display time). The user is stored as a
+snapshot (as with `dokumente`/`article_notes`), not as a foreign key.
 
 ### `bestand`
-Aktueller Bestand je Variante × Filiale (zusammengesetzter Primärschlüssel),
-aus `lagerbewegungen` abgeleitet und dort auch aktuell gehalten (nie direkt
-geschrieben ausser beim Nachführen der Summe). `aeltestes_eingangsdatum`
-dient später der Reduktionslogik (Phase D, 18/36 Monate ab letztem
-Wareneingang derselben Lieferanten-Artikelnummer in dieser Filiale). Gelesen
-wird der Bestand seit Phase C, Teilaufgabe C2 auf der Seite `/bestand`
-(`app/services/bestand.py`).
+Current stock per variant × branch (composite primary key), derived from
+`lagerbewegungen` and also kept in sync there (never written directly
+except to update the running total). `aeltestes_eingangsdatum` (oldest
+receipt date) later serves the markdown logic (Phase D, 18/36 months
+from the last goods receipt of the same supplier item number at that
+branch). Stock has been read on the `/bestand` page since Phase C,
+subtask C2 (`app/services/bestand.py`).
 
-Ein **negativer** Bestand ist möglich: beim Ausbuchen von Hand warnt das
-System, bucht aber trotzdem (seit C3) (bestätigt am 22.09.2026). Die Ansicht
-blendet ihn deshalb nie aus.
+A **negative** stock is possible: when writing off manually, the system
+warns but still books it (since C3) (confirmed 2026-09-22). The view
+therefore never hides it.
 
-**Bekannte Einschränkung nach der Migration:** Da das alte System nie
-Verkäufe/Ausbuchungen erfasst hat, entspricht der migrierte `bestand` der
-kumulierten historischen Wareneingänge, nicht dem tatsächlichen physischen
-Bestand — wird erst mit dem manuellen Ausbuchen (Phase C) bzw. einer
-Inventur korrigiert.
+**Known limitation after the migration:** since the old system never
+recorded sales/write-offs, the migrated `bestand` corresponds to the
+cumulative historical goods receipts, not the actual physical stock —
+this is only corrected once manual write-offs (Phase C) or a stock-take
+happen.
 
 ### `reduktionen_manuell`
 
-Von Hand gewählte Reduktionsstufe je Modell (`artikel_id`) × Filiale (`lagerort_id`), eindeutig pro Paar, `prozent` nur 30/50/70. Ohne Zeile gilt die Empfehlung nach Regel 6; mit Zeile ist sie die wirksame Stufe (auch unter der Empfehlung). Benutzer als Momentaufnahme (`benutzer_kassennummer`, `benutzer_name`), dazu `gesetzt_am`. Wird beim Löschen eines von Hand erfassten Artikels mitgelöscht.
+Manually chosen markdown level per model (`artikel_id`) × branch
+(`lagerort_id`), unique per pair, `prozent` only 30/50/70. Without a row,
+the recommendation from rule 6 applies; with a row, it is the effective
+level (even below the recommendation). User as a snapshot
+(`benutzer_kassennummer`, `benutzer_name`), plus `gesetzt_am` (set on).
+Deleted along with a manually entered item when that item is deleted.
 
-### `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` (Phase D, 25.09.2026)
+### `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` (Phase D, 2026-09-25)
 
-Drei Tabellen zu den offenen Fragen D-F1/D-F2/D-F3, Migration `e2f3a4b5c6d7`:
+Three tables for the open questions D-F1/D-F2/D-F3, migration
+`e2f3a4b5c6d7`:
 
-- `reduktionen_bestaetigt` (D-F1): `artikel_id` × `lagerort_id` eindeutig, `stufe` (die bestätigte automatische Stufe). Weicht die aktuell berechnete Stufe ab, gilt die Bestätigung nicht mehr.
-- `hinweise` (D-F2): `lagerort_id`, `artikel_id`, `typ` (nur `nachlieferung_reduziert`), `alte_stufe`, `erstellt_am` - entsteht automatisch beim Buchen einer Lieferung auf ein Modell, das vorher schon reduziert war (keine Chargentrennung im Bestand, darum nur ein Hinweis statt einer echten Aufteilung).
-- `reduktion_empfehlung_zentrale` (D-F3): `artikel_id`, `lagerort_id`, `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`), `ablehnungsgrund`, Zentrale- und Antwort-Momentaufnahme. Höchstens eine offene Zeile je Modell × Filiale - eine neue Empfehlung ersetzt eine ältere.
+- `reduktionen_bestaetigt` (D-F1): `artikel_id` × `lagerort_id` unique,
+  `stufe` (the confirmed automatic level). If the currently calculated
+  level deviates, the confirmation no longer applies.
+- `hinweise` (D-F2): `lagerort_id`, `artikel_id`, `typ` (only
+  `nachlieferung_reduziert`), `alte_stufe`, `erstellt_am` — created
+  automatically when booking a delivery for a model that was already
+  marked down before (no batch separation in stock, hence only a hint
+  instead of a real split).
+- `reduktion_empfehlung_zentrale` (D-F3): `artikel_id`, `lagerort_id`,
+  `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`),
+  `ablehnungsgrund`, head-office and response snapshot. At most one open
+  row per model × branch — a new recommendation replaces an older one.
 
 ### `article_notes`
-Wie zuvor, jetzt an `artikel_id` statt `product_id` — eine Notiz gilt für das
-ganze Modell (alle Farben/Grössen), nicht mehr nur für die beim Erstellen
-angezeigte Variante. Optimistisches Sperren über `version` unverändert.
+As before, now keyed on `artikel_id` instead of `product_id` — a note
+applies to the whole model (all colors/sizes), no longer just the
+variant shown when it was created. Optimistic locking via `version`
+unchanged.
 
 ### `lagerorte`
-Sieben Einträge: die vier Filialen SF1 Volketswil, SF2 Conthey, SF3
-Regensdorf und SF4 Hägendorf (`verkauf = true`) und drei externe
-Standorte ohne Verkauf — die Verarbeitungsstellen `GEWA` und `VEBO` und das
-Lager `DIETIKON`. Verarbeitungsstelle und Lager unterscheidet das Schema
-bewusst **nicht**: Für jede Regel zählt allein `verkauf`. Seed-Daten in
-`app/core/lagerorte.py` (einzige Quelle, Migration und Tests nutzen sie).
+Seven entries: the four branches SF1 Volketswil, SF2 Conthey, SF3
+Regensdorf, and SF4 Hägendorf (`verkauf = true`), and three external
+locations without sale — the processing sites `GEWA` and `VEBO`, and the
+`DIETIKON` warehouse. The schema deliberately does **not** distinguish
+between processing site and warehouse: only `verkauf` matters for every
+rule. Seed data in `app/core/lagerorte.py` (single source, used by
+migrations and tests).
 
 ### `users`, `benutzer_lagerorte`
-Seit Phase A Punkt 1/2 unverändert, ausser der Login-Sperre (Sicherheit S2,
-Migration `b9c0d1e2f3a4`): `users.fehlversuche` zählt falsche Passwörter,
-`users.gesperrt_bis` (UTC) sperrt das Konto nach 5 Fehlversuchen für
-20 Minuten (`app/services/anmeldung.py`).
+Unchanged since Phase A, items 1/2, except for the login lockout
+(security S2, migration `b9c0d1e2f3a4`): `users.fehlversuche` counts
+wrong passwords, `users.gesperrt_bis` (UTC) locks the account for 20
+minutes after 5 failed attempts (`app/services/anmeldung.py`).
 
-## Migration der Altdaten (`c3d4e5f6a7b8`)
+## Migrating the legacy data (`c3d4e5f6a7b8`)
 
-Läuft automatisch beim `alembic upgrade head` (nicht im Offline-`--sql`-
-Modus, siehe unten) und ist verlustfrei bis auf `products.article_no` (siehe
-oben):
+Runs automatically on `alembic upgrade head` (not in offline `--sql`
+mode, see below) and is lossless except for `products.article_no` (see
+above):
 
-1. **Lieferanten/Kategorien**: Seed-Daten wie oben.
-2. **`products` → `artikel` + `varianten`**: gleiche Gruppierung wie zuvor
-   `article_groups.py` — gleiche Marke (getrimmt, ohne Gross-/
-   Kleinschreibung) + gleiche, nicht-leere Lieferanten-Artikelnummer
-   (getrimmt) = ein Artikel; fehlt die Nummer, bleibt jedes Produkt ein
-   eigener Artikel.
+1. **Suppliers/categories**: seed data as above.
+2. **`products` → `artikel` + `varianten`**: same grouping as the former
+   `article_groups.py` — same brand (trimmed, case-insensitive) + same
+   non-empty supplier item number (trimmed) = one item; if the number is
+   missing, every product stays its own item.
 3. **`invoices` → `dokumente` + `wareneingaenge`**: `typ = 'rechnung'`,
-   `status` immer `'eingetroffen'` (altes System kannte nur eingetroffene
-   Ware), Lagerort SF1 (Altdaten-Regel aus CLAUDE.md).
+   `status` always `'eingetroffen'` (the old system only knew goods that
+   had arrived), storage location SF1 (legacy-data rule from CLAUDE.md).
 4. **`invoice_items` + `invoice_item_sources` → `wareneingang_positionen`
-   (+ `_quelle`) + `preise` (falls UVP vorhanden) + `lagerbewegungen`**
-   (Typ `zugang`, falls Menge vorhanden).
-5. **`bestand`**: aus den neu erzeugten `lagerbewegungen` aggregiert.
-6. **`article_notes.product_id` → `artikel_id`**: über die in Schritt 2
-   gebildete Zuordnung.
+   (+ `_quelle`) + `preise` (if a UVP is present) + `lagerbewegungen`**
+   (type `zugang`, if a quantity is present).
+5. **`bestand`**: aggregated from the newly created `lagerbewegungen`.
+6. **`article_notes.product_id` → `artikel_id`**: via the mapping built
+   in step 2.
 
-## Migrationshistorie
+## Migration history
 
-| Revision | Beschreibung |
+| Revision | Description |
 |---|---|
 | `5ce94c6a96e3` | Baseline: `products`, `invoices`, `invoice_items`, `invoice_item_sources` |
-| `7129c5082ac9` | `users`-Tabelle inkl. beider Check-Constraints |
-| `246c67c1d45e` | `imported_by_kassennummer`/`imported_by_name` auf `invoices` |
-| `d567ef887517` | `ocr_used` (Boolean, Default `false`) auf `invoices` |
-| `e901abc23456` | Neue Tabelle `article_notes` inkl. Autor-Snapshot und Versionsfeld |
-| `a1b2c3d4e5f6` | Neue Tabellen `lagerorte` (SF1-SF4 + GEWA, Seed-Daten) und `benutzer_lagerorte` (m:n); `users.role` um `admin` erweitert; bestehende Benutzer auf SF1 zugeordnet |
-| `b2c3d4e5f6a7` | `users.language` (DE/FR/EN, Default `de`) inkl. Check-Constraint |
-| `c3d4e5f6a7b8` | Neues Datenmodell (Phase A Punkt 3): `lieferanten`, `kategorien`, `artikel`, `varianten`, `preise`, `dokumente`, `wareneingaenge`, `wareneingang_positionen` (+`_quelle`), `lagerbewegungen`, `bestand`; vollständige Datenmigration der Altdaten; `article_notes.product_id` → `artikel_id` |
-| `d4e5f6a7b8c9` | Reparatur: Id-Sequenzen der neuen Tabellen auf `MAX(id)` setzen. `c3d4e5f6a7b8` hat sie in seiner ersten Fassung nur nachgezogen, wenn es Altdaten gab — auf einer frischen Datenbank scheiterte dadurch der erste Insert ohne explizite Id. Idempotent, nur PostgreSQL, auf einer korrekten Datenbank ein No-Op |
-| `e5f6a7b8c9d0` | Belegnummer nur je Lieferant eindeutig (Teilaufgabe B2): `UNIQUE (lieferant_id, dokumentnummer)` statt global eindeutiger `dokumentnummer` |
-| `f6a7b8c9d0e1` | `wareneingang_positionen.menge_eingetroffen` (Teilaufgabe B5) inkl. Auffüllen der Altdaten — die Differenz zu `menge` ist die offene Restmenge (D22) |
-| `a7b8c9d0e1f2` | Manuelle Erfassung (Teilaufgabe B6): `wareneingaenge.dokument_id` und `artikel.lieferant_id` dürfen leer bleiben (Wareneingang ohne Beleg, D27; Artikel ohne Lieferant, D23) |
-| `b8c9d0e1f2a3` | Zwei weitere Lagerorte ohne Verkauf: `VEBO` (Verarbeitungsstelle wie GEWA) und `DIETIKON` (externes Lager); GEWA umbenannt in „GEWA (externe Verarbeitung)“. Idempotent; der Downgrade löscht einen der beiden nur, solange nichts daran hängt |
-| `c9d0e1f2a3b4` | `artikel.kategorie_manuell` (Teilaufgabe B8): merkt, ob die Kategorie von Hand gewählt wurde; Server-Default `false`, weil bestehende Artikel ihre Kategorie ausschliesslich über den FEDAS-Vorschlag bekommen haben |
-| `d0e1f2a3b4c5` | Filialcodes korrigiert (22.09.2026): SF2 ist Conthey, SF3 Regensdorf, SF4 Hägendorf. Getauscht wird nur der `code` der bestehenden Zeile — der Ort bleibt, wo er ist, und Buchungen hängen an `lagerorte.id`. Ringtausch über Zwischencodes, weil `code` eindeutig ist |
-| `e1f2a3b4c5d6` | `lagerbewegungen.eingangsdatum` (Teilaufgabe C4): Datum, ab dem eine Umlagerung die Reduktionsuhr der Zielfiliale startet. Bestehende Zeilen sind Zugänge, deren Datum am Wareneingang steht — dort bleibt die Spalte leer |
-| `f2a3b4c5d6e7` | Lieferantengruppen (Anforderung 23.09.2026, umgesetzt 24.09.2026): `lieferanten.typ` kennt neu `intern` (Direktbestellung bei Nike, adidas, The North Face); je Gruppe ein Lieferant für die Erfassung von Hand. Der Etikett-Code (111/555/333/999/444) wird aus `typ` abgeleitet (`app/core/lieferanten.py`), nicht gespeichert |
-| `a8b9c0d1e2f3` | Lieferanten mit eigenem Parser (24.09.2026): ALPINA SPORTS Schweiz AG, CHRIS sports AG, CMP (F.lli Campagnolo S.p.A.) mit `parser_key`, Gruppe Dritte-Händler (999). Nur Daten |
-| `b9c0d1e2f3a4` | Login-Sperre (Sicherheit S2, 24.09.2026): `users.fehlversuche`, `users.gesperrt_bis` |
-| `c0d1e2f3a4b5` | Manuelle Reduktion (24.09.2026): neue Tabelle `reduktionen_manuell` |
-| `d1e2f3a4b5c6` | Schnellzugriffe (Anforderung 14, 25.09.2026): `users.schnellzugriffe` (JSON, gewählte Funktionen und Reihenfolge) |
-| `e2f3a4b5c6d7` | Phase D, offene Fragen (25.09.2026): neue Tabellen `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
+| `7129c5082ac9` | `users` table including both check constraints |
+| `246c67c1d45e` | `imported_by_kassennummer`/`imported_by_name` on `invoices` |
+| `d567ef887517` | `ocr_used` (boolean, default `false`) on `invoices` |
+| `e901abc23456` | New table `article_notes` including author snapshot and version field |
+| `a1b2c3d4e5f6` | New tables `lagerorte` (SF1–SF4 + GEWA, seed data) and `benutzer_lagerorte` (m:n); `users.role` extended with `admin`; existing users assigned to SF1 |
+| `b2c3d4e5f6a7` | `users.language` (DE/FR/EN, default `de`) including check constraint |
+| `c3d4e5f6a7b8` | New data model (Phase A, item 3): `lieferanten`, `kategorien`, `artikel`, `varianten`, `preise`, `dokumente`, `wareneingaenge`, `wareneingang_positionen` (+`_quelle`), `lagerbewegungen`, `bestand`; full data migration of legacy data; `article_notes.product_id` → `artikel_id` |
+| `d4e5f6a7b8c9` | Fix: set id sequences of the new tables to `MAX(id)`. The first version of `c3d4e5f6a7b8` only did this when legacy data existed — on a fresh database, the first insert without an explicit id then failed. Idempotent, PostgreSQL only, a no-op on a correct database |
+| `e5f6a7b8c9d0` | Document number unique only per supplier (subtask B2): `UNIQUE (lieferant_id, dokumentnummer)` instead of a globally unique `dokumentnummer` |
+| `f6a7b8c9d0e1` | `wareneingang_positionen.menge_eingetroffen` (subtask B5) including backfill of legacy data — the difference to `menge` is the open remaining quantity (D22) |
+| `a7b8c9d0e1f2` | Manual entry (subtask B6): `wareneingaenge.dokument_id` and `artikel.lieferant_id` may stay empty (goods receipt without a document, D27; item without a supplier, D23) |
+| `b8c9d0e1f2a3` | Two further storage locations without sale: `VEBO` (processing site like GEWA) and `DIETIKON` (external warehouse); GEWA renamed to "GEWA (external processing)". Idempotent; the downgrade only removes one of the two as long as nothing depends on it |
+| `c9d0e1f2a3b4` | `artikel.kategorie_manuell` (subtask B8): tracks whether the category was chosen manually; server default `false`, because existing items got their category solely via the FEDAS suggestion |
+| `d0e1f2a3b4c5` | Branch codes corrected (2026-09-22): SF2 is Conthey, SF3 Regensdorf, SF4 Hägendorf. Only the `code` of the existing row is swapped — the location stays where it is, and bookings hang off `lagerorte.id`. Swapped in a ring via intermediate codes, because `code` is unique |
+| `e1f2a3b4c5d6` | `lagerbewegungen.eingangsdatum` (subtask C4): date from which a transfer starts the markdown clock of the target branch. Existing rows are receipts whose date is on the goods receipt — there the column stays empty |
+| `f2a3b4c5d6e7` | Supplier groups (requirement 2026-09-23, implemented 2026-09-24): `lieferanten.typ` newly knows `intern` (direct orders from Nike, adidas, The North Face); one supplier per group for manual entry. The label code (111/555/333/999/444) is derived from `typ` (`app/core/lieferanten.py`), not stored |
+| `a8b9c0d1e2f3` | Suppliers with their own parser (2026-09-24): ALPINA SPORTS Schweiz AG, CHRIS sports AG, CMP (F.lli Campagnolo S.p.A.) with `parser_key`, group third-party dealer (999). Data only |
+| `b9c0d1e2f3a4` | Login lockout (security S2, 2026-09-24): `users.fehlversuche`, `users.gesperrt_bis` |
+| `c0d1e2f3a4b5` | Manual markdown (2026-09-24): new table `reduktionen_manuell` |
+| `d1e2f3a4b5c6` | Quick access (requirement 14, 2026-09-25): `users.schnellzugriffe` (JSON, chosen functions and order) |
+| `e2f3a4b5c6d7` | Phase D, open questions (2026-09-25): new tables `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
 
-Schema-Änderungen laufen ausschliesslich über Alembic
-(`alembic revision --autogenerate`); der Container führt beim Start
-automatisch `alembic upgrade head` aus (siehe `SERVER-SETUP.md`).
+Schema changes run exclusively through Alembic
+(`alembic revision --autogenerate`); the container automatically runs
+`alembic upgrade head` on startup (see `SERVER-SETUP.md`).

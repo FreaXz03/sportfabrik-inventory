@@ -1,218 +1,222 @@
-# API-Referenz
+# API reference
 
-Alle Endpunkte ausser `/login`, `/logout`, `/static/*` und `/db-test`
-verlangen eine gültige Anmeldung; die mit 🔒 markierten zusätzlich eine
-Filialleiter- oder Admin-Rolle (intern weiterhin `chef`/`admin`). Seiten-Endpunkte
-(HTML) leiten bei fehlender Anmeldung zu `/login` um, JSON-Endpunkte antworten
-mit HTTP 401 bzw. 403 — siehe `architektur.md`, Abschnitt „Sicherheitsmodell".
+All endpoints except `/login`, `/logout`, `/static/*`, and `/db-test`
+require a valid login; those marked 🔒 additionally require a branch
+manager or admin role (internally still `chef`/`admin`). Page endpoints
+(HTML) redirect to `/login` when not logged in; JSON endpoints respond
+with HTTP 401 or 403 — see `architektur.md`, section "Security model".
 
-Fehlermeldungen (`detail`) sind serverseitig lokalisiert: eingeloggt in der
-Kontosprache des Benutzers, sonst (z. B. `/login`) nach dem
-`Accept-Language`-Header — siehe `architektur.md`, Abschnitt „Mehrsprachigkeit
+Error messages (`detail`) are localized server-side: when logged in, in
+the user's account language; otherwise (e.g. `/login`) based on the
+`Accept-Language` header — see `architektur.md`, section "Multilingualism
 (i18n)".
 
-## Anmeldung
+## Login
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/login` | Login-Seite |
-| POST | `/login` | Kassennummer (+ Passwort bei Filialleitern/Admin) prüfen, Session setzen. Antwort `{"requires_password": true}`, wenn eine Filialleiter-/Admin-Kassennummer ohne Passwort gesendet wurde. Nach 5 falschen Passwörtern ist das Konto 20 Minuten gesperrt: Antwort **429** mit der restlichen Wartezeit, auch bei richtigem Passwort (Sicherheit S2) |
-| POST | `/logout` | Session beenden, Redirect zu `/login` |
-| GET | `/api/me` | Angemeldete Person: `{kassennummer, name, role, role_label, language, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `role_label` und Fehlermeldungen sind in `language` (`de`/`fr`/`en`) übersetzt. `lagerort` ist die aktive Filiale (`{id, code, name}` oder `null` = „alle Filialen", nur für Admin möglich), `lagerorte` die Filialen, zwischen denen gewechselt werden darf (Admin: alle) |
-| POST | `/api/active-lagerort` | Aktive Filiale für die Session wechseln. Body `{"lagerort_id": <id oder null>}`; `null` nur für Admin erlaubt (= „alle Filialen"), sonst muss die Filiale dem Benutzer zugewiesen sein (sonst 403) |
-| POST | `/api/language` | Sprache des angemeldeten Kontos setzen. Body `{"language": "de"｜"fr"｜"en"}`, sonst HTTP 422. Antwort `{"language": "..."}` |
+| GET | `/login` | Login page |
+| POST | `/login` | Checks till number (+ password for branch managers/admin), sets the session. Response `{"requires_password": true}` if a branch-manager/admin till number was sent without a password. After 5 wrong passwords the account is locked for 20 minutes: response **429** with the remaining wait time, even with the correct password (security S2) |
+| POST | `/logout` | Ends the session, redirects to `/login` |
+| GET | `/api/me` | The logged-in person: `{kassennummer, name, role, role_label, language, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `role_label` and error messages are translated into `language` (`de`/`fr`/`en`). `lagerort` is the active branch (`{id, code, name}`, or `null` = "all branches", possible only for admin); `lagerorte` are the branches the user may switch between (admin: all) |
+| POST | `/api/active-lagerort` | Switches the active branch for the session. Body `{"lagerort_id": <id or null>}`; `null` is allowed only for admin (= "all branches"), otherwise the branch must be assigned to the user (otherwise 403) |
+| POST | `/api/language` | Sets the logged-in account's language. Body `{"language": "de"｜"fr"｜"en"}`, otherwise HTTP 422. Response `{"language": "..."}` |
 
-Der `next`-Parameter von `/login?next=…` (wohin nach dem Login weitergeleitet
-wird) wird clientseitig gegen eine Whitelist bekannter Routen geprüft
-(`app/static/js/login-redirect.js`) — verhindert, dass ein manipulierter Link
-nach dem Login auf eine fremde Seite weiterleitet (offener Redirect).
+The `next` parameter of `/login?next=…` (where to redirect after login) is
+checked client-side against a whitelist of known routes
+(`app/static/js/login-redirect.js`) — this prevents a tampered link from
+redirecting to a foreign site after login (open redirect).
 
-## Übersicht
+## Overview
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/` | Übersichtsseite (Dashboard) |
-| GET | `/api/dashboard` | Kennzahlen (Anzahl Varianten/Belege/Positionen, gelieferte Gesamtmenge) + die letzten 5 importierten Belege; dazu `lagerort` und `filiale` (Stück, heute verkauft/abgegangen, negativer Bestand, erwartete Lieferungen, `reduktionen` je Stufe mit `faellig`/`bald`) der aktiven Filiale, `aktuelles` (bis 8 zusammengefasste Einträge: `art` = `lieferung` je Wareneingang und Tag, `umlagerung` je Vorgang mit `von`/`nach`, `abgang` je Ausbuchung ohne Verkauf; Lieferung/Umlagerung mit `positionen` und `stueck`) und `stamm` (`ohne_kategorie`, `ohne_ean`) |
+| GET | `/` | Overview page (dashboard) |
+| GET | `/api/dashboard` | Key figures (number of variants/documents/lines, total quantity delivered) + the last 5 imported documents; plus `lagerort` and `filiale` (pieces, sold/removed today, negative stock, expected deliveries, `reduktionen` per level with `faellig`/`bald`) for the active branch, `aktuelles` (up to 8 combined entries: `art` = `lieferung` per goods receipt and day, `umlagerung` per transfer with `von`/`nach`, `abgang` per write-off without a sale; delivery/transfer with `positionen` and `stueck`), and `stamm` (`ohne_kategorie`, `ohne_ean`) |
 
-## Artikel
+## Items
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/articles` | Artikelsuche-Seite |
-| GET | `/api/brands` | Liste aller vorkommenden Marken |
-| GET | `/api/articles` | Artikelsuche; Filter: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `kategorie_id`/`kategorie_fehlt` (Kassenkategorie bzw. „noch keine"; `kategorie_fehlt=true` sticht `kategorie_id`), `last_delivery_from`/`last_delivery_to` (Datumsbereich auf die letzte Lieferung), `ohne_ean=true` (nur Varianten ohne EAN); Sortierung `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); Paginierung `page`/`page_size` (max. 100) |
-| GET | `/api/articles/export` | Dieselben Filter wie `/api/articles`, aber **ohne** Paginierung: liefert eine fertig formatierte Excel-Datei (`.xlsx`) mit allen Treffern zum Download |
-| GET | `/api/articles/{product_id}/history` | Vollständige Lieferhistorie eines Artikels **inkl. aller Farb-/Grössenvarianten mit gleicher Marke + Lieferanten-Artikelnummer**, neueste Rechnung zuerst; sortierbar (`sort_by`/`sort_dir`, siehe unten) |
-| GET | `/api/articles/{product_id}/prices` | Preisverlauf (UVP je Rechnung/Einheit) für die Artikelgruppe |
-| GET | `/api/articles/{product_id}/kategorie` | Kassenkategorie des Artikels: gesetzte Kategorie, `manuell` (von Hand gewählt oder aus dem FEDAS-Code vorgeschlagen), `fedas_code` und der aktuelle `vorschlag` |
-| PUT | `/api/articles/{product_id}/kategorie` | Kategorie von Hand setzen (`{"kategorie_id": 12}`) oder wieder leeren (`{"kategorie_id": null}`); jede Anmeldung, auch Mitarbeiter (Regel 9/D21) |
-| GET | `/api/articles/{product_id}/notes` | Notizen zur Artikelgruppe, paginiert (`page`, 20 je Seite), neueste zuerst |
-| POST | `/api/articles/{product_id}/notes` | Neue Notiz anlegen (`body`, max. 2000 Zeichen) |
-| PUT | `/api/articles/{product_id}/notes/{note_id}` | Notiz bearbeiten; verlangt `version` der zuletzt gelesenen Notiz (optimistisches Sperren, sonst HTTP 409); nur eigene Notiz oder als Filialleiter |
-| DELETE | `/api/articles/{product_id}/notes/{note_id}` | Notiz löschen; verlangt `version`; nur eigene Notiz oder als Filialleiter |
+| GET | `/articles` | Item search page |
+| GET | `/api/brands` | List of all brands that occur |
+| GET | `/api/articles` | Item search; filters: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `kategorie_id`/`kategorie_fehlt` (POS category, or "none yet"; `kategorie_fehlt=true` overrides `kategorie_id`), `last_delivery_from`/`last_delivery_to` (date range on the last delivery), `ohne_ean=true` (variants without an EAN only); sorting `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); pagination `page`/`page_size` (max. 100) |
+| GET | `/api/articles/export` | Same filters as `/api/articles`, but **without** pagination: returns a ready-formatted Excel file (`.xlsx`) with all matches for download |
+| GET | `/api/articles/{product_id}/history` | Full delivery history of an item **including all color/size variants with the same brand + supplier item number**, newest invoice first; sortable (`sort_by`/`sort_dir`, see below) |
+| GET | `/api/articles/{product_id}/prices` | Price history (UVP/RRP per invoice/unit) for the item group |
+| GET | `/api/articles/{product_id}/kategorie` | The item's POS category: category set, `manuell` (chosen manually, or suggested from the FEDAS code), `fedas_code`, and the current `vorschlag` (suggestion) |
+| PUT | `/api/articles/{product_id}/kategorie` | Set the category manually (`{"kategorie_id": 12}`) or clear it again (`{"kategorie_id": null}`); any logged-in user, including employees (rule 9/D21) |
+| GET | `/api/articles/{product_id}/notes` | Notes on the item group, paginated (`page`, 20 per page), newest first |
+| POST | `/api/articles/{product_id}/notes` | Create a new note (`body`, max. 2000 characters) |
+| PUT | `/api/articles/{product_id}/notes/{note_id}` | Edit a note; requires the `version` of the last-read note (optimistic locking, otherwise HTTP 409); own note only, or as branch manager |
+| DELETE | `/api/articles/{product_id}/notes/{note_id}` | Delete a note; requires `version`; own note only, or as branch manager |
 
-`sort_by` für Positionslisten (Rechnungsdetail und Artikelhistorie, siehe
-unten) akzeptiert: `position`, `invoice_date`, `description`, `ean`,
-`article_no`, `color`, `size`, `quantity`, `unit`, `uvp`. Fehlende Werte
-werden ans Ende sortiert; `size` erkennt gängige Kleidergrössen (`XS`…`5XL`)
-sowie gemischte Zahlen/Text (z. B. Schuhgrössen) und sortiert sie sinnvoll
-statt rein alphabetisch. `article_no` (die frühere INTERSPORT-eigene
-Artikelnummer) wird seit dem neuen Datenmodell (Phase A Punkt 3) nicht mehr
-als eigene Spalte geführt — der Wert kommt hier, sofern vorhanden, aus dem
-unveränderten Original-Snapshot der Position.
+`sort_by` for line-item lists (invoice detail and item history, see
+below) accepts: `position`, `invoice_date`, `description`, `ean`,
+`article_no`, `color`, `size`, `quantity`, `unit`, `uvp`. Missing values
+are sorted to the end; `size` recognizes common clothing sizes
+(`XS`…`5XL`) as well as mixed numbers/text (e.g. shoe sizes) and sorts
+them sensibly instead of purely alphabetically. `article_no` (the former
+INTERSPORT-internal item number) is no longer kept as its own column
+since the new data model (Phase A, item 3) — here the value, if present,
+comes from the line's unchanged original snapshot.
 
-## Kassenkategorie
+## POS category
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/kategorien` | Alle 35 Kassenkategorien (Hauptgruppe × Sportbereich, Regel 8) in der Reihenfolge der Kasse: `{"items": [{"id": 1, "hauptgruppe": "Textil", "sportbereich": "Velo"}, …]}` — Velo und Food haben `sportbereich: null` |
+| GET | `/api/kategorien` | All 35 POS categories (main group × sport area, rule 8) in the till's order: `{"items": [{"id": 1, "hauptgruppe": "Textil", "sportbereich": "Velo"}, …]}` — bike and food have `sportbereich: null` |
 
-Die Kategorie hängt am **Artikel** (Regel 4: filialübergreifend, für alle
-Farben und Grössen), wird aber wie Notizen und Preise über die Varianten-Id
-(`product_id`) angesprochen. Normalerweise schlägt der FEDAS-Code der
-Rechnung sie vor (`app/core/fedas.py`); fehlt er oder ist er unbekannt, wird
-sie von Hand gewählt (`PUT …/kategorie`, siehe oben). Von Hand gewählt gilt
-sie als verbindlich: kein späterer Import überschreibt sie noch. Leeren stellt
-den Ausgangszustand wieder her, ein späterer Beleg mit bekanntem Code darf
-dann wieder vorschlagen. Unbekannte Kategorie → HTTP 422, unbekannte Variante
-→ HTTP 404, unbekannte Felder im Rumpf → HTTP 422.
+The category hangs off the **item** (rule 4: shared across branches, for
+all colors and sizes), but is addressed via the variant id (`product_id`)
+like notes and prices. Normally the invoice's FEDAS code suggests it
+(`app/core/fedas.py`); if it's missing or unknown, it's chosen manually
+(`PUT …/kategorie`, see above). Once chosen manually, it counts as
+binding: no later import overwrites it again. Clearing it restores the
+initial state, and a later document with a known code may suggest again.
+Unknown category → HTTP 422, unknown variant → HTTP 404, unknown fields
+in the body → HTTP 422.
 
-Die Kategorie lässt sich auch beim manuellen Erfassen mitgeben (Feld
-`kategorie_id` je Position, siehe unten) — dort gibt es keinen FEDAS-Code.
-Sie füllt nur eine noch leere Kategorie.
+The category can also be supplied during manual entry (field
+`kategorie_id` per line, see below) — there is no FEDAS code there. It
+only fills in a category that is still empty.
 
-## Rechnungen
+## Invoices
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/invoices` | Rechnungsliste-Seite |
-| GET | `/invoices/{id}` | Rechnungsdetail-Seite |
-| GET | `/articles/{id}/history` | Artikelhistorie-Seite (inkl. Notizen und Preisverlauf) |
-| GET | `/api/invoices` | Rechnungsliste; Filter `q` (Rechnungsnummer), Paginierung |
-| GET | `/api/invoices/{invoice_id}` | Rechnungsdetails inkl. aller Positionen; sortierbar (`sort_by`/`sort_dir`, siehe oben) |
-| DELETE | `/api/invoices/{invoice_id}` | 🔒 Rechnung inkl. Positionen und Original-Snapshots unwiderruflich löschen; betroffene Artikel-Kennzahlen werden neu berechnet |
+| GET | `/invoices` | Invoice list page |
+| GET | `/invoices/{id}` | Invoice detail page |
+| GET | `/articles/{id}/history` | Item history page (including notes and price history) |
+| GET | `/api/invoices` | Invoice list; filter `q` (invoice number), pagination |
+| GET | `/api/invoices/{invoice_id}` | Invoice details including all lines; sortable (`sort_by`/`sort_dir`, see above) |
+| DELETE | `/api/invoices/{invoice_id}` | 🔒 Irrevocably delete an invoice including lines and original snapshots; affected item metrics are recalculated |
 
-## Upload & Import
+## Upload & import
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/preview` | 🔒 Upload-Seite (unterstützt mehrere PDFs gleichzeitig, siehe „Stapel-Import" unten) |
-| POST | `/upload-preview` | 🔒 Eine PDF hochladen, Lieferant/Dokumenttyp erkennen und Positionen als Vorschau zurückgeben (max. 20 MB, keine DB-Änderung) |
-| POST | `/validate-preview` | 🔒 Manuell korrigierte Positionen (siehe `corrections`) gegen dieselbe Datei erneut validieren, bevor importiert wird; verlangt `expected_hash` |
-| POST | `/import-invoice` | 🔒 Import bestätigen; verlangt `expected_hash` (SHA-256 der geprüften Datei), `confirmed=true`, optional `corrections` (JSON, siehe unten) und optional `lagerort_id` (Ziel des Wareneingangs, siehe unten). Ohne `lagerort_id` wird gegen die aktive Filiale des Kontos gebucht (`GET /api/me`, `lagerort`) — ohne gewählte Filiale (nur für Admin möglich, alle Filialen) HTTP 400 |
-| GET | `/invoice-import-status` | 🔒 Prüft per Datei-Hash (`file_hash`) oder per Belegnummer **beim erkannten Lieferanten** (`invoice_number` **und** `parser_key`, beide aus der Vorschau-Antwort), ob eine Rechnung bereits importiert ist — wird von der Stapel-Import-Warteschlange genutzt, um bereits importierte Dateien zu überspringen. Ohne `parser_key` zählt nur der Datei-Hash: dieselbe Belegnummer kann bei einem anderen Lieferanten eine völlig andere Rechnung sein |
+| GET | `/preview` | 🔒 Upload page (supports several PDFs at once, see "Batch import" below) |
+| POST | `/upload-preview` | 🔒 Upload one PDF, recognize supplier/document type, and return the lines as a preview (max. 20 MB, no DB change) |
+| POST | `/validate-preview` | 🔒 Re-validate manually corrected lines (see `corrections`) against the same file before importing; requires `expected_hash` |
+| POST | `/import-invoice` | 🔒 Confirm the import; requires `expected_hash` (SHA-256 of the checked file), `confirmed=true`, optionally `corrections` (JSON, see below) and optionally `lagerort_id` (target of the goods receipt, see below). Without `lagerort_id`, booking goes against the account's active branch (`GET /api/me`, `lagerort`) — without a chosen branch (possible only for admin, all branches) HTTP 400 |
+| GET | `/invoice-import-status` | 🔒 Checks, via file hash (`file_hash`) or via document number **at the recognized supplier** (`invoice_number` **and** `parser_key`, both from the preview response), whether an invoice has already been imported — used by the batch-import queue to skip already-imported files. Without `parser_key`, only the file hash counts: the same document number can be a completely different invoice at a different supplier |
 
-**Warnungen und Hinweise je Position**: Jede Position der Antwort hat zwei
-Listen — `warnings` (blockiert den Import, bis geprüft/korrigiert) und `hints`
-(nicht blockierend, aktuell: Position ohne EAN, Regel 5). Dazu die Zähler
-`rows_with_warnings` und `rows_with_hints`. `/import-invoice` weist ein
-Dokument nur wegen `warnings` ab, nie wegen `hints`.
+**Warnings and hints per line**: each line in the response has two
+lists — `warnings` (blocks the import until checked/corrected) and
+`hints` (non-blocking, currently: line without an EAN, rule 5). Plus the
+counters `rows_with_warnings` and `rows_with_hints`. `/import-invoice`
+rejects a document only because of `warnings`, never because of `hints`.
 
-**Ziel-Lagerort (`/upload-preview`, `/validate-preview`, `/import-invoice`)**:
-Die Vorschau liefert `lagerort_suggestion` (aus der Lieferadresse erkannt, mit
-`code`, `name`, `from_delivery_address` und den getroffenen Merkmalen — `null`,
-wenn nichts Eindeutiges gefunden wurde), `lagerort_options` (worauf dieses
-Konto buchen darf, eigene Filiale zuerst) und `lagerort_active` (aktive
-Filiale). `/import-invoice` nimmt dazu das Formularfeld `lagerort_id`; fehlt
-es, wird gegen die aktive Filiale gebucht. Ein unbekannter Lagerort ergibt
-HTTP 403 (D19, siehe docs/architektur.md).
+**Target storage location (`/upload-preview`, `/validate-preview`,
+`/import-invoice`)**: the preview returns `lagerort_suggestion`
+(recognized from the delivery address, with `code`, `name`,
+`from_delivery_address`, and the matched features — `null` if nothing
+unambiguous was found), `lagerort_options` (what this account may book
+against, own branch first), and `lagerort_active` (active branch).
+`/import-invoice` takes the form field `lagerort_id` for this; if
+missing, booking goes against the active branch. An unknown storage
+location results in HTTP 403 (D19, see `docs/architektur.md`).
 
-**Erkannter Lieferant (`/upload-preview`, `/validate-preview`)**: Die Antwort
-enthält neben den Positionen `parser_key` (zuständiges Parser-Modul, =
-`lieferanten.parser_key`), `supplier_name` (Anzeige in der Vorschau) und
-`document_type` (`rechnung`, `lieferschein`, `auftragsbestaetigung`,
-`bestellung` — `null`, wenn der Typ im Dokument nicht erkennbar ist). Ist das
-Layout unbekannt, antwortet der Upload mit HTTP 422 und der Meldung, dass das
-Dokumentlayout noch nicht bekannt ist (siehe docs/architektur.md, „PDF-Parsing").
+**Recognized supplier (`/upload-preview`, `/validate-preview`)**: besides
+the lines, the response contains `parser_key` (the responsible parser
+module = `lieferanten.parser_key`), `supplier_name` (shown in the
+preview), and `document_type` (`rechnung`, `lieferschein`,
+`auftragsbestaetigung`, `bestellung` — `null` if the type can't be
+recognized in the document). If the layout is unknown, the upload
+responds with HTTP 422 and a message that the document layout isn't
+known yet (see `docs/architektur.md`, "PDF parsing").
 
-**Korrekturen (`corrections`)**: JSON-Objekt `{"<Positionsnummer>": {"<Feld>": "<neuer Wert>"}}`.
-Erlaubte Felder: `brand`, `supplier_article_no`, `article_no`, `ean`,
-`description`, `color`, `size`, `quantity`, `unit`, `uvp` — `ean`, `color` und
-`size` dürfen leer bleiben (Regel 5). Der Server validiert jede Position
-vollständig neu (Pflichtfelder, EAN-Format sofern eine EAN eingetragen ist,
-Zahlenformat) statt der übermittelten Werte blind zu vertrauen; jede
-tatsächliche Änderung wird als `correction_audit` (vorher/nachher, wer, wann)
-dauerhaft mit der Position gespeichert.
+**Corrections (`corrections`)**: JSON object
+`{"<line number>": {"<field>": "<new value>"}}`. Allowed fields: `brand`,
+`supplier_article_no`, `article_no`, `ean`, `description`, `color`,
+`size`, `quantity`, `unit`, `uvp` — `ean`, `color`, and `size` may stay
+empty (rule 5). The server fully re-validates every line (required
+fields, EAN format if an EAN is entered, number format) instead of
+blindly trusting the submitted values; every actual change is
+permanently stored with the line as `correction_audit` (before/after,
+who, when).
 
-**Stapel-Import**: Die Upload-Seite erlaubt die Auswahl mehrerer PDFs auf
-einmal. Jede Datei durchläuft einzeln Vorschau → Prüfung → Bestätigung; der
-Browser verarbeitet die Warteschlange automatisch weiter, sobald eine Datei
-importiert ist, und markiert bereits importierte oder fehlerhafte Dateien
-sichtbar (Zustände: wartend, bereit, Duplikat, Fehler, importiert). Serverseitig
-ist das keine Sonderfunktion — jede Datei läuft durch denselben
-Upload/Validierungs-/Import-Ablauf wie ein Einzel-Upload.
+**Batch import**: the upload page allows selecting several PDFs at once.
+Each file goes through preview → check → confirmation individually; the
+browser automatically works through the queue as soon as one file has
+been imported, and visibly marks files that are already imported or
+faulty (states: waiting, ready, duplicate, error, imported). Server-side
+this is not a special function — every file runs through the same
+upload/validation/import flow as a single upload.
 
-## Erwartete Lieferungen (Wareneingang)
+## Expected deliveries (goods receipt)
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/wareneingaenge` | Seite „Erwartete Lieferungen" (jede Anmeldung) |
-| GET | `/api/wareneingaenge` | Offene (erwartete) Lieferungen der aktiven Filiale samt Positionen; ohne aktive Filiale (Admin) alle |
-| POST | `/api/wareneingaenge/{id}/ankunft` | Ankunft bestätigen: `{"mengen": {"<positions-id>": "<menge>"}, "eingangsdatum": "YYYY-MM-DD"}`. Bucht den Zugang, setzt das Eingangsdatum (rückwirkend möglich) und schliesst die Lieferung, sobald keine Position mehr offen ist. Antwort enthält `mehrlieferungen`: je Position, bei der mehr eingetroffen ist als erwartet, die Positions-Id sowie erwartete, eingetroffene und überzählige Menge — gebucht wird trotzdem |
+| GET | `/wareneingaenge` | "Expected deliveries" page (any login) |
+| GET | `/api/wareneingaenge` | Open (expected) deliveries of the active branch including lines; without an active branch (admin) all of them |
+| POST | `/api/wareneingaenge/{id}/ankunft` | Confirm arrival: `{"mengen": {"<line id>": "<quantity>"}, "eingangsdatum": "YYYY-MM-DD"}`. Books the receipt, sets the receipt date (retroactively if needed), and closes the delivery once no line is open anymore. The response includes `mehrlieferungen`: for each line where more arrived than expected, the line id plus expected, arrived, and surplus quantity — it is booked regardless |
 
-Auch **Mitarbeiter** dürfen bestätigen (D21) — das ist Lagerarbeit, kein
-Dokumentrecht. Unplausible Mengen, fremde Positionen oder eine bereits
-vollständig eingetroffene Lieferung ergeben HTTP 409, ein ungültiges Datum
-HTTP 422; gebucht wird in beiden Fällen nichts.
+**Employees** may confirm too (D21) — this is warehouse work, not a
+document privilege. Implausible quantities, foreign lines, or an already
+fully arrived delivery result in HTTP 409, an invalid date HTTP 422;
+nothing is booked in either case.
 
-## Bestand
+## Stock
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/bestand` | Seite „Bestand" (jede Anmeldung) |
-| GET | `/api/bestand` | Bestand je Variante × Lagerort. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true` (filialübergreifend), `q` (Marke, Bezeichnung, Lieferanten-Artikelnr., EAN), `nur_vorhanden` (Standard `true`, blendet Zeilen mit Menge 0 aus; die Oberfläche setzt es immer), `nur_negativ=true` (nur negativer Bestand), `reduktion` (50/70) mit `reduktion_status` (`faellig`/`bald`, braucht eine Filiale; dieselbe Auswahl, die die Übersicht unter „Anstehend“ zählt), `artikel_von` (Varianten-Id; zeigt alle Grössen und Farben desselben Artikels, für die Artikeldetails, 404 bei unbekannter Id), `limit` (max. 500) und `offset`. Antwort: `zeilen` (je Zeile auch `hauptgruppe`, `artikel_id` und `reduktion` mit `empfehlung`/`manuell`/`wirksam`, bei externen Lagern `null`), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+| GET | `/bestand` | "Stock" page (any login) |
+| GET | `/api/bestand` | Stock per variant × storage location. Parameters: `lagerort_id` (the active branch if not given), `alle=true` (across all branches), `q` (brand, description, supplier item no., EAN), `nur_vorhanden` (default `true`, hides rows with quantity 0; the UI always sets it), `nur_negativ=true` (negative stock only), `reduktion` (50/70) with `reduktion_status` (`faellig`/`bald`, needs a branch; the same selection the overview counts under "Upcoming"), `artikel_von` (variant id; shows all sizes and colors of the same item, for the item detail page, 404 for an unknown id), `limit` (max. 500), and `offset`. Response: `zeilen` (rows; each row also has `hauptgruppe`, `artikel_id`, and `reduktion` with `empfehlung`/`manuell`/`wirksam`, `null` for external storage locations), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
 
-**Lesen darf jede Anmeldung alle Filialen** (bestätigt am 22.09.2026) — auch
-die, zu denen das Konto nicht wechseln kann. Ein unbekannter `lagerort_id`
-ergibt HTTP 404. Mengen kommen als Text (`"5.00"`), nie als Zahl; ein
-negativer Bestand wird gezeigt, nicht versteckt.
+**Any login may read all branches** (confirmed 2026-09-22) — even the
+ones the account cannot switch to. An unknown `lagerort_id` results in
+HTTP 404. Quantities come as text (`"5.00"`), never as a number; a
+negative stock is shown, not hidden.
 
-## Ausbuchen
+## Write-off
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/ausbuchen` | Seite „Ausbuchen" (Filialleiter/Zentrale) |
-| GET | `/api/ausbuchen/stammdaten` | Buchbare Lagerorte (`lagerorte`, eigene zuerst), `lagerort_aktiv`, `gruende` (`verkauf`, `defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges`) |
-| POST | `/api/ausbuchen` | Ein Stück ausbuchen. JSON: `grund`, genau eines von `ean` oder `varianten_id`, `freitext` (Pflicht bei `sonstiges`), `lagerort_id` (ohne Angabe die aktive Filiale). Antwort: `bewegung_id`, `typ`, `grund`, Artikeldaten, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 bei unbekannter EAN/Variante oder unbekanntem Grund — dann ist nichts gebucht |
-| GET | `/api/ausbuchungen` | Verkäufe und Abgänge, neueste zuerst. Parameter: `lagerort_id` (ohne Angabe die aktive Filiale), `alle=true`, `limit` (max. 200), `offset`. Je Zeile Zeitpunkt, Artikel, Lagerort, Grund, Person (`benutzer_name`), `storniert` |
-| POST | `/api/ausbuchen/{bewegung_id}/storno` | Ausbuchung per Gegenbuchung (`korrektur`, `storno:<id>`) aufheben; 409, wenn schon aufgehoben oder keine Ausbuchung |
+| GET | `/ausbuchen` | "Write off" page (branch manager/head office) |
+| GET | `/api/ausbuchen/stammdaten` | Storage locations that can be booked (`lagerorte`, own first), `lagerort_aktiv`, `gruende` (`verkauf` sale, `defekt` defective, `diebstahl` theft, `eigenbedarf` own use, `retoure` return, `sonstiges` other) |
+| POST | `/api/ausbuchen` | Write off one piece. JSON: `grund`, exactly one of `ean` or `varianten_id`, `freitext` (required for `sonstiges`), `lagerort_id` (the active branch if not given). Response: `bewegung_id`, `typ`, `grund`, item data, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 for an unknown EAN/variant or unknown reason — nothing is booked then |
+| GET | `/api/ausbuchungen` | Sales and removals, newest first. Parameters: `lagerort_id` (the active branch if not given), `alle=true`, `limit` (max. 200), `offset`. Per row: timestamp, item, storage location, reason, person (`benutzer_name`), `storniert` |
+| POST | `/api/ausbuchen/{bewegung_id}/storno` | Reverse a write-off via a counter-booking (`korrektur`, `storno:<id>`); 409 if already reversed or not a write-off |
 
-Der Grund `test` gehört zum vorübergehenden Knopf „−1" in der
-Bestandsansicht und steht nicht in `gruende`.
+The reason `test` belongs to the temporary "−1" button on the stock
+view and isn't listed in `gruende`.
 
-## Artikel löschen
+## Delete item
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| DELETE | `/api/articles/{id}` | Falsch erfassten Artikel (Varianten-Id) ganz entfernen — nur Filialleiter/Zentrale, nur ohne Beleg (sonst 409). Entfernt Artikel, Varianten, Preise, Notizen, manuelle Wareneingangspositionen, Bestand und Lagerbewegungen. `GET /api/articles/{id}/history` meldet dafür `product.manuell` |
+| DELETE | `/api/articles/{id}` | Fully remove a mis-entered item (variant id) — branch manager/head office only, only without a document (otherwise 409). Removes item, variants, prices, notes, manual goods-receipt lines, stock, and stock movements. `GET /api/articles/{id}/history` reports `product.manuell` for this |
 
-`GET /api/articles` kennt dazu den Filter `nur_manuell=true` (nur Artikel ohne Beleg).
+`GET /api/articles` has a matching filter `nur_manuell=true` (items
+without a document only).
 
-## Korrigieren
+## Correct
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/korrektur/gruende` | `gruende`: `inventur`, `falsch_gebucht`, `gefunden`, `sonstiges` |
-| POST | `/api/korrektur` | Gezählte Menge buchen. JSON: `varianten_id`, `lagerort_id` (ohne Angabe die aktive Filiale), `gezaehlt` (Text, ≥ 0), `grund`, `freitext` (Pflicht bei `sonstiges`). Antwort: `bestand_vorher`, `bestand_nachher`, `differenz`, `gebucht` (`false`, wenn der Bestand schon stimmte), `bewegung_id`. 409 bei ungültiger Menge, unbekanntem Grund oder unbekannter Variante |
+| GET | `/api/korrektur/gruende` | `gruende`: `inventur` (stock-take), `falsch_gebucht` (booked wrong), `gefunden` (found), `sonstiges` (other) |
+| POST | `/api/korrektur` | Book a counted quantity. JSON: `varianten_id`, `lagerort_id` (the active branch if not given), `gezaehlt` (text, ≥ 0), `grund`, `freitext` (required for `sonstiges`). Response: `bestand_vorher`, `bestand_nachher`, `differenz`, `gebucht` (`false` if stock was already correct), `bewegung_id`. 409 for an invalid quantity, unknown reason, or unknown variant |
 
-## Umlagern
+## Transfer
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/umlagern` | Seite „Umlagern" (Filialleiter/Zentrale) |
-| GET | `/api/umlagerung/stammdaten` | `quellen` (alle Lagerorte), `ziele` (buchbare, eigene zuerst), `ziel_aktiv`, `heute`; je Lagerort `verkauf` |
-| POST | `/api/umlagerung` | Umlagerung beim Empfang buchen. JSON: `quelle_id`, `ziel_id` (ohne Angabe die aktive Filiale), `eingangsdatum` (optional, `YYYY-MM-DD`, nicht in der Zukunft; zählt nur, wo die Uhr startet), `positionen` (`varianten_id`, `menge` als Text; gleiche Varianten werden zusammengezählt). Antwort: `quelle`, `ziel`, `positionen` (je Variante Bestand vorher/nachher und `uhr_start`), `fehlbestand`, `stueck`. 409 bei gleichem Quell- und Ziel-Lagerort, ungültiger Menge oder unbekannter Variante — dann ist nichts gebucht |
+| GET | `/umlagern` | "Transfer" page (branch manager/head office) |
+| GET | `/api/umlagerung/stammdaten` | `quellen` (all storage locations), `ziele` (bookable targets, own first), `ziel_aktiv`, `heute`; per storage location `verkauf` |
+| POST | `/api/umlagerung` | Book a transfer on receipt. JSON: `quelle_id`, `ziel_id` (the active branch if not given), `eingangsdatum` (optional, `YYYY-MM-DD`, not in the future; only determines where the clock starts), `positionen` (`varianten_id`, `menge` as text; identical variants are summed). Response: `quelle`, `ziel`, `positionen` (per variant, stock before/after and `uhr_start`), `fehlbestand`, `stueck`. 409 for the same source and target storage location, an invalid quantity, or an unknown variant — nothing is booked then |
 
-## Ware von Hand erfassen (ohne Beleg)
+## Manually entering goods (without a document)
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/erfassen` | Seite „Ware erfassen" (jede Anmeldung) |
-| GET | `/api/erfassen/stammdaten` | Auswahllisten: buchbare Lagerorte (eigene zuerst, D26), Lieferanten nur als fünf Gruppen (`id`, `gruppe`, `code` 111/333/444/555/999; 24.09.2026), Kassenkategorien (Regel 8), heutiges Datum vom Server |
-| GET | `/api/erfassen/variante?ean=<ean>` | Nachschlag für den Scanner: `{"gefunden": true, "variante": {…}}` mit Marke, Bezeichnung, Farbe, Grösse, Einheit, letztem UVP/EK und der bestehenden Kategorie als Vorschlag; unbekannte EAN ergibt `{"gefunden": false, "variante": null}` |
-| POST | `/api/erfassen` | Alle Positionen als **einen** Wareneingang ohne Beleg buchen (D27) |
+| GET | `/erfassen` | "Enter goods" page (any login) |
+| GET | `/api/erfassen/stammdaten` | Selection lists: bookable storage locations (own first, D26), suppliers only as five groups (`id`, `gruppe`, `code` 111/333/444/555/999; 2026-09-24), POS categories (rule 8), today's date from the server |
+| GET | `/api/erfassen/variante?ean=<ean>` | Lookup for the scanner: `{"gefunden": true, "variante": {…}}` with brand, description, color, size, unit, last UVP/EK, and the existing category as a suggestion; an unknown EAN gives `{"gefunden": false, "variante": null}` |
+| POST | `/api/erfassen` | Book all lines as **one** goods receipt without a document (D27) |
 
-Rumpf von `POST /api/erfassen`:
+Body of `POST /api/erfassen`:
 
 ```json
 {
@@ -227,83 +231,122 @@ Rumpf von `POST /api/erfassen`:
 }
 ```
 
-Pflicht sind nur `marke`, `bezeichnung`, `menge` und `uvp` (D23); alles andere
-darf fehlen (Regel 5/10). `kategorie_id` setzt die Kassenkategorie **nur**,
-wenn der Artikel noch keine hat — eine bestehende bleibt unangetastet; eine
-unbekannte Id ergibt HTTP 409 und bucht nichts. Mengen und Preise sind **Text**, damit nichts über
-`float` läuft (Komma wird akzeptiert). Unbekannte Felder werden abgewiesen
-(HTTP 422). Ohne `lagerort_id` gilt die aktive Filiale, `eingangsdatum` ist
-ohne Angabe heute — in einem Lager ohne Verkauf bleibt es leer (Regel 6).
+Only `marke`, `bezeichnung`, `menge`, and `uvp` are required (D23);
+everything else may be missing (rule 5/10). `kategorie_id` sets the POS
+category **only** if the item doesn't have one yet — an existing one
+stays untouched; an unknown id results in HTTP 409 and books nothing.
+Quantities and prices are **text**, so nothing goes through `float`
+(commas are accepted). Unknown fields are rejected (HTTP 422). Without
+`lagerort_id` the active branch applies; `eingangsdatum` defaults to
+today if not given — in a storage location without sale it stays empty
+(rule 6).
 
-Antwort: `{"wareneingang_id": …, "lagerort": {…}, "positionen": 2,
+Response: `{"wareneingang_id": …, "lagerort": {…}, "positionen": 2,
 "neue_varianten": 1, "bekannte_varianten": 1, "eingangsdatum": "2026-09-21"}`.
 
-Auch **Mitarbeiter** dürfen erfassen (Regel 9/D21) — es entsteht kein
-Dokument. Unplausible Eingaben (fehlendes Pflichtfeld, Menge ≤ 0, ungültige
-EAN, Datum in der Zukunft) ergeben HTTP 409 und buchen **nichts**; ein
-Lagerort ohne Zugriff ergibt HTTP 403, ein ungültiges Datumsformat HTTP 422.
+**Employees** may enter goods too (rule 9/D21) — no document is created.
+Implausible input (a missing required field, quantity ≤ 0, invalid EAN,
+date in the future) results in HTTP 409 and books **nothing**; a
+storage location without access results in HTTP 403, an invalid date
+format HTTP 422.
 
-## EAN und Etiketten
+## EAN and labels
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/varianten/{id}/ean` | EAN setzen: `{"generieren": true}` erzeugt eine interne EAN-13 (GS1 20–29, D24), `{"ean": "4006381333931"}` trägt eine vorhandene nach (Format **und** Prüfziffer werden geprüft) |
-| GET | `/api/varianten/{id}/etikett` | Was auf dem Etikett stünde (Vorschau für die Oberfläche) samt Auswahllisten für Grösse und Reduktion; `rolle` sagt, welche vorgedruckte Rolle einzulegen ist (`{"prozent": 50, "farbe": "rot"}`), Parameter `reduktion` wie beim PDF |
-| GET | `/api/varianten/{id}/etikett.pdf` | Etikett als PDF in Etikettengrösse. Parameter: `groesse` (nur `47x83`, die vorgedruckte Rolle), `reduktion` (0/30/50/70, bestimmt die Rolle), `anzahl` (1–100), `muster=true` zeichnet den Vordruck zur Vorschau mit |
-| GET | `/api/wareneingaenge/{id}/etiketten.pdf` | Alle Etiketten eines Wareneingangs — `je_stueck=true` (Voreinstellung) druckt eines pro Stück, sonst eines je Position |
-| GET | `/api/artikel/{artikel_id}/etiketten.pdf` | Runterschreiben (Phase D): ein Etikett je Stück im Bestand der Filiale, für alle Farben und Grössen des Artikels. Parameter `reduktion` (bestimmt die Rolle), `lagerort_id` (ohne Angabe die aktive Filiale). 404 ohne Bestand |
-| GET | `/api/reduktionen` | Runterschreiben (Phase D): Artikel einer Filiale (`lagerort_id`, sonst die aktive), die −70 %/−50 % erreicht haben (`stand: faellig`) oder in 30 Tagen erreichen (`bald`), je mit `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; dazu die wählbaren Filialen und `manuell` (von Hand gewählte Stufen der Filiale mit `prozent`, `gesetzt_von`, `gesetzt_am`) |
-| GET | `/api/articles/{varianten_id}/reduktion` | Je Filiale mit Verkauf: `empfehlung` (Regel 6), `manuell` (30/50/70 oder `null`), `wirksam`, `darf_aendern` (eigene Filiale wie bei Erfassung/Korrektur) |
-| PUT | `/api/reduktion/manuell` | Stufe von Hand setzen: `varianten_id`, `lagerort_id`, `prozent` (30/50/70, sonst 422). Alle Rollen, Mitarbeiter nur in zugewiesenen Filialen (403); externe Lager 409. Antwort: `empfehlung`, `manuell`, `wirksam` |
-| DELETE | `/api/reduktion/manuell?varianten_id=&lagerort_id=` | Zurück zur Empfehlung; gleiche Rechte |
+| POST | `/api/varianten/{id}/ean` | Set the EAN: `{"generieren": true}` generates an internal EAN-13 (GS1 20–29, D24); `{"ean": "4006381333931"}` records an existing one (format **and** check digit are checked) |
+| GET | `/api/varianten/{id}/etikett` | What would be on the label (preview for the UI), plus selection lists for size and markdown; `rolle` says which pre-printed roll to load (`{"prozent": 50, "farbe": "rot"}`), parameter `reduktion` as with the PDF |
+| GET | `/api/varianten/{id}/etikett.pdf` | Label as a PDF in label size. Parameters: `groesse` (only `47x83`, the pre-printed roll), `reduktion` (0/30/50/70, determines the roll), `anzahl` (1–100), `muster=true` also draws the pre-print for preview |
+| GET | `/api/wareneingaenge/{id}/etiketten.pdf` | All labels of a goods receipt — `je_stueck=true` (default) prints one per piece, otherwise one per line |
+| GET | `/api/artikel/{artikel_id}/etiketten.pdf` | Markdown printing (Phase D): one label per piece in the branch's stock, for all colors and sizes of the item. Parameters `reduktion` (determines the roll), `lagerort_id` (the active branch if not given). 404 without stock |
+| GET | `/api/reduktionen` | Markdown printing (Phase D): items of a branch (`lagerort_id`, otherwise the active one) that have reached −70%/−50% (`stand: faellig`) or will in 30 days (`bald`), each with `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; plus the selectable branches and `manuell` (the branch's manually chosen levels with `prozent`, `gesetzt_von`, `gesetzt_am`) |
+| GET | `/api/articles/{varianten_id}/reduktion` | Per branch with sale: `empfehlung` (rule 6), `manuell` (30/50/70 or `null`), `wirksam`, `darf_aendern` (own branch, as for entry/correction) |
+| PUT | `/api/reduktion/manuell` | Set the level manually: `varianten_id`, `lagerort_id`, `prozent` (30/50/70, otherwise 422). All roles; employees only in assigned branches (403); external storage locations 409. Response: `empfehlung`, `manuell`, `wirksam` |
+| DELETE | `/api/reduktion/manuell?varianten_id=&lagerort_id=` | Revert to the recommendation; same rights |
 
-Beide PDF-Antworten kommen als `application/pdf` mit `Content-Disposition:
-inline`, eine Seite je Etikett; die Seitengrösse ist die Etikettengrösse,
-damit der Drucker nichts skaliert.
+Both PDF responses come as `application/pdf` with `Content-Disposition:
+inline`, one page per label; the page size is the label size, so the
+printer doesn't scale anything.
 
-Jahrgang und Reduktionsvorschlag stammen vom letzten Wareneingang **in der
-betreffenden Filiale** (Regel 6): beim einzelnen Etikett aus der aktiven
-Filiale, beim Wareneingang aus dessen eigener. Eine bestehende EAN wird nie
-überschrieben (HTTP 409), eine falsche Prüfziffer ebenso abgelehnt; eine
-unbekannte Variante ergibt HTTP 404, eine unbekannte Grösse oder
-Reduktionsstufe HTTP 422. Auch **Mitarbeiter** dürfen beides (Regel 9) — es
-entsteht kein Dokument.
+Model year and markdown suggestion come from the last goods receipt **at
+the branch in question** (rule 6): from the active branch for a single
+label, from the goods receipt's own branch for a goods receipt. An
+existing EAN is never overwritten (HTTP 409), a wrong check digit is
+likewise rejected; an unknown variant results in HTTP 404, an unknown
+size or markdown level HTTP 422. **Employees** may do both too (rule 9)
+— no document is created.
 
-## Statistik (25.09.2026)
+## Statistics (2026-09-25)
 
-Nur Filialleiter/Zentrale. `GET /statistiken` (Seite), `GET /api/statistik?zeitraum=tag|woche|monat|jahr|gesamt&lagerort_id=` (optional; ohne Filiale alle). Antwort: `zeitraum` (Anfang/Ende), `kategorien` (verkaufte Stück je Kassenkategorie), `einnahmen_geschaetzt` + `einnahmen_ist_schaetzung: true`, `bestellempfehlung` (Top-10 meistverkaufte Artikel mit aktuellem Bestand), `lagerorte` (Filialauswahl). Die Einnahmenschätzung nutzt den UVP und die automatisch fällige Reduktion zum jeweiligen Verkaufszeitpunkt (`app/services/statistik.py`); eine von Hand gewählte Reduktion hat keine Historie und fliesst nicht ein.
+Branch manager/head office only. `GET /statistiken` (page),
+`GET /api/statistik?zeitraum=tag|woche|monat|jahr|gesamt&lagerort_id=`
+(optional; all branches if none given). Response: `zeitraum` (start/end),
+`kategorien` (pieces sold per POS category), `einnahmen_geschaetzt` +
+`einnahmen_ist_schaetzung: true`, `bestellempfehlung` (top-10 best-selling
+items with current stock), `lagerorte` (branch selection). The revenue
+estimate uses the UVP and the markdown automatically due at the
+respective time of sale (`app/services/statistik.py`); a manually chosen
+markdown has no history and isn't included.
 
-## Kontoverwaltung (25.09.2026)
+## Account management (2026-09-25)
 
-Nur Zentrale (`admin`). `GET /konten` (Seite), `GET /api/konten` (Liste), `POST /api/konten` (`kassennummer`, `name`, `role`, optional `password`, `lagerort_ids`), `DELETE /api/konten/{id}`. Löschen entfernt das Konto und seine Filialzuordnungen; bisherige Buchungen bleiben unverändert (sie speichern Name/Kassennummer als Momentaufnahme). Die Zentrale kann sich nicht selbst löschen (`409`).
+Head office only (`admin`). `GET /konten` (page), `GET /api/konten`
+(list), `POST /api/konten` (`kassennummer`, `name`, `role`, optional
+`password`, `lagerort_ids`), `DELETE /api/konten/{id}`. Deleting removes
+the account and its branch assignments; past bookings stay unchanged
+(they store name/till number as a snapshot). Head office cannot delete
+itself (`409`).
 
-## Phase D — offene Fragen (25.09.2026)
+## Phase D — open questions (2026-09-25)
 
-- **D-F1 Bestätigen:** `POST /api/reduktionen/bestaetigen` (`artikel_id`, `lagerort_id`, `stufe`) - gleiche Rechte wie manuelle Reduktion. Das Modell verschwindet aus der fälligen Liste (`GET /api/reduktionen`), bis die nächste Stufe fällig wird.
-- **D-F2 Hinweise:** `GET /api/dashboard` liefert zusätzlich `hinweise` (Nachlieferung auf bereits reduzierten Bestand, nur mit aktiver Filiale). Keine eigenen Endpunkte zum Anlegen - entsteht automatisch beim Buchen einer Lieferung (Import oder Ankunftsbestätigung).
-- **D-F3 Empfehlung der Zentrale:** `GET/POST /api/empfehlungen` (nur Zentrale; Liste bzw. Setzen mit `artikel_id`, `lagerort_id`, `prozent`, `ab_datum`) und `POST /api/empfehlungen/{id}/antwort` (`status`: `uebernommen`/`abgelehnt`, bei Ablehnung `grund` nötig; gleiche Rechte wie manuelle Reduktion). `GET /api/reduktionen` liefert zusätzlich `empfehlungen` (offene, für die aktive Filiale).
+- **D-F1 Confirm:** `POST /api/reduktionen/bestaetigen` (`artikel_id`,
+  `lagerort_id`, `stufe`) — same rights as manual markdown. The model
+  disappears from the due list (`GET /api/reduktionen`) until the next
+  level becomes due.
+- **D-F2 Hints:** `GET /api/dashboard` additionally returns `hinweise`
+  (new delivery on stock already marked down, only with an active
+  branch). No dedicated endpoints to create these — they arise
+  automatically when booking a delivery (import or arrival confirmation).
+- **D-F3 Head-office recommendation:** `GET/POST /api/empfehlungen`
+  (head office only; list, or set with `artikel_id`, `lagerort_id`,
+  `prozent`, `ab_datum`) and `POST /api/empfehlungen/{id}/antwort`
+  (`status`: `uebernommen`/`abgelehnt`, `grund` required on rejection;
+  same rights as manual markdown). `GET /api/reduktionen` additionally
+  returns `empfehlungen` (open ones, for the active branch).
 
-## Sonstiges
+## Miscellaneous
 
-| Methode | Pfad | Zweck |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/db-test` | Health-Check: prüft, ob die Datenbankverbindung steht (kein Auth nötig; wird vom Docker-Healthcheck verwendet) |
-| GET | `/static/{pfad}` | Statische Dateien: `css/`, `js/`, `fonts/`, `img/` |
-| GET | `/docs`, `/redoc`, `/openapi.json` | Automatisch generierte FastAPI-Dokumentation (Swagger/ReDoc) |
+| GET | `/db-test` | Health check: verifies the database connection is up (no auth needed; used by the Docker healthcheck) |
+| GET | `/static/{path}` | Static files: `css/`, `js/`, `fonts/`, `img/` |
+| GET | `/docs`, `/redoc`, `/openapi.json` | Automatically generated FastAPI documentation (Swagger/ReDoc) |
 
-## Fehlerformat
+## Error format
 
-JSON-Fehlerantworten folgen dem FastAPI-Standard `{"detail": "<deutsche Meldung>"}`.
-Typische Statuscodes: `400` (z. B. Import ohne gewählte Filiale), `401`
-(nicht angemeldet), `403` (falsche Rolle oder keine Filialzuweisung),
-`404` (Rechnung/Artikel/Notiz nicht gefunden), `409` (Import abgelehnt, z. B.
-Duplikat oder Hash-Konflikt; oder Notiz wurde zwischenzeitlich geändert),
-`413` (Datei zu gross), `422` (PDF konnte nicht gelesen/geparst werden, oder
-ungültige Korrekturdaten), `503` (Datenbank nicht erreichbar).
+JSON error responses follow the FastAPI standard
+`{"detail": "<German message>"}`. Typical status codes: `400` (e.g.
+import without a chosen branch), `401` (not logged in), `403` (wrong
+role or no branch assignment), `404` (invoice/item/note not found),
+`409` (import rejected, e.g. duplicate or hash conflict; or the note was
+changed in the meantime), `413` (file too large), `422` (PDF could not
+be read/parsed, or invalid correction data), `503` (database
+unreachable).
 
 
-## Buchungsrechte ab 24.09.2026
+## Booking rights as of 2026-09-24
 
-Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert.
+Employees may manually book in and correct stock, but only in their
+assigned branches. Booking out a sale/removal, cancelling, and
+transferring are reserved for branch managers and head office. Their
+existing cross-branch booking rights remain in place; read rights are
+unchanged.
 
-`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`, `POST /api/ausbuchen/{id}/storno` sowie `/umlagern` und alle `/api/umlagerung`-Endpunkte verlangen Filialleiter/Zentrale. Die Ausbuchungsliste (`GET /api/ausbuchungen`) bleibt für alle lesbar. `GET /api/erfassen/stammdaten` bietet Mitarbeitern nur zugewiesene Filialen an; Erfassung/Korrektur prüfen diese Grenze auch serverseitig. `GET /api/bestand` liefert zusätzlich `rechte.ausbuchen` und `rechte.korrektur_lagerorte`, anhand derer die Aktionen angezeigt werden.
+`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`,
+`POST /api/ausbuchen/{id}/storno`, as well as `/umlagern` and all
+`/api/umlagerung` endpoints require branch manager/head office. The
+write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
+`GET /api/erfassen/stammdaten` offers employees only their assigned
+branches; entry/correction also enforce this boundary server-side.
+`GET /api/bestand` additionally returns `rechte.ausbuchen` and
+`rechte.korrektur_lagerorte`, which determine which actions are shown.

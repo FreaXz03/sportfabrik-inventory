@@ -1,164 +1,163 @@
-# Historischer Stand — nicht als aktuelle Anleitung laden
+# Historical snapshot — do not load as current guidance
 
-Ersetzt durch die aktuelle CLAUDE.md. Nur bei historischen Fragen lesen.
+Superseded by the current CLAUDE.md. Read only for historical questions.
 
-# CLAUDE.md — Sportfabrik Warenwirtschaftssystem
+# CLAUDE.md — Sportfabrik Inventory Management System
 
-Anleitung für Claude Code in diesem Repo. **Zuerst `docs/projekt-kontext.md` lesen** — dort stehen Zielbild, alle Entscheidungen (D1–D27), Datenmodell-Vorschlag und Roadmap. Bei Widerspruch zwischen altem Code/alter Doku und `projekt-kontext.md` gilt `projekt-kontext.md`.
+Guidance for Claude Code in this repo. **First read `docs/projekt-kontext.md`** — it holds the target picture, all decisions (D1–D27), the proposed data model, and the roadmap. If old code/old docs conflict with `projekt-kontext.md`, `projekt-kontext.md` wins.
 
-## Worum es geht
+## What this is about
 
-Warenwirtschaftssystem für die **Sportfabrik** (Intersport-Outlet, 4 Filialen in der Schweiz: SF1 Volketswil, SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf). Dazu drei externe Standorte ohne Verkauf: die Verarbeitungsstellen **GEWA** und **VEBO** (fachlich gleichwertig) und das **Lager Dietikon**.
-Ware wird per Upload (Rechnung / Lieferschein / Auftragsbestätigung) oder manuell erfasst, der Artikelstamm bleibt für immer, Bestand wird pro Filiale geführt, Filialen bekommen Runterschreib-Hinweise (30/50/70 %). Später Anbindung an die Intersport-Kasse.
+Inventory management system for **Sportfabrik** (Intersport outlet, 4 branches in Switzerland: SF1 Volketswil, SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf). Plus three external locations without sale: the processing sites **GEWA** and **VEBO** (functionally equivalent) and the **Dietikon warehouse**.
+Goods are entered via upload (invoice / delivery note / order confirmation) or manually; the item master stays forever, stock is tracked per branch, branches get markdown hints (30/50/70%). Later, connection to the Intersport till.
 
-Das bestehende Repo (FastAPI-App für Intersport-Rechnungen) ist die Ausgangsbasis und wird **umgebaut**, nicht neu geschrieben: Parser, zweistufiger Import, Hash-Prüfung, Audit-Snapshot, Advisory-Lock, Auth und Tests weiterverwenden.
+The existing repo (a FastAPI app for Intersport invoices) is the starting point and is being **rebuilt**, not rewritten from scratch: reuse the parser, two-stage import, hash check, audit snapshot, advisory lock, auth, and tests.
 
-## Harte Regeln
+## Hard rules
 
-1. **Belegdaten bleiben lokal — sonst ist KI erlaubt.** Rechnungen, Lieferscheine und Auftragsbestätigungen werden von **eigenen Parsern** gelesen, die vollständig auf dem Server laufen (PyMuPDF, Tesseract, OpenCV o. ä.): kein Sprachmodell, kein Cloud-Dienst bekommt Belegdaten zu sehen, und ein unbekanntes Layout wird gemeldet statt geraten. Das gilt für den **Betrieb**. Für den **Parserbau** darf Fabian einzelne Belege bewusst zeigen (Entscheid 22.09.2026) — der Inhalt geht damit an den Modellanbieter, dient nur diesem Zweck und wird nirgends veröffentlicht. Belege massenhaft oder unbemerkt einlesen bleibt verboten (siehe Graphify). Ausserhalb der Belegverarbeitung ist KI zulässig, auch extern. Entwicklungswerkzeuge nach demselben Kriterium: Graphify nur mit `--code-only` laufen lassen, sonst gehen Rechnungen aus `uploads/` bzw. `Rechnungen/` an ein Sprachmodell (siehe `docs/obsidian-graphify.md`). Unabhängig von KI bleibt das Frontend **ohne externe CDNs** — es muss im Ladennetz ohne Internet laufen.
-2. **Bestand nie direkt überschreiben** — jede Änderung ist eine Zeile in `lagerbewegungen` (Zugang, Verkauf, Ausbuchung, Korrektur, Umlagerung). Bestand wird daraus abgeleitet bzw. konsistent mitgeführt.
-3. **Bestand erst buchen, wenn Ware eingetroffen ist** — Auftragsbestätigungen erzeugen nur einen *erwarteten* Wareneingang.
-4. **Artikelstamm ist filialübergreifend**, Bestand / Wareneingänge / Reduktionen sind filialbezogen (`lagerort_id`). Der Stamm bleibt — einzige Ausnahme: einen von Hand erfassten Artikel ohne Beleg dürfen Filialleiter/Zentrale ganz löschen (Fehleintrag, Entscheid 24.09.2026).
-5. **EAN ist optional.** Varianten ohne EAN müssen funktionieren (Schlüssel: Lieferant + Artikelnr. + Farbe + Grösse). Interne EANs: EAN-13 im GS1-Bereich 20–29 mit korrekter Prüfziffer, als intern markiert.
-6. **Eingangsdatum-Regeln** (für Lagerdauer / Reduktion):
-   - Ware an einen externen Standort (GEWA, VEBO, Dietikon — alle `verkauf = false`): noch **kein** Eingangsdatum; gesetzt bei Ankunft in einer Filiale SF1–SF4 (auch rückwirkend). Massgeblich ist immer `lagerorte.verkauf`, nie der einzelne Code.
-   - Umlagerung Filiale → Filiale: **ursprüngliches Datum bleibt**.
-   - Reduktions-Hinweise pro Filiale: 18 Monate → 50 %, 36 Monate → 70 %, gerechnet ab letztem Wareneingang derselben Lieferanten-Artikelnummer **in dieser Filiale**; Nachlieferung startet die Uhr neu.
-7. **Mehrsprachig DE / FR / EN.** Keine neuen hartcodierten UI-Texte — immer Übersetzungs-Keys (Templates + JS + Fehlermeldungen). Deutsch ist Standard. Artikeldaten aus Lieferantendokumenten werden nicht übersetzt.
-8. **Kassenkategorien** exakt wie in der Kasse: Hauptgruppe (Textil, Hartware, Schuhe, Velo, Food) × Sportbereich (Velo, Freizeit, Tennis, Winter, Outdoor, Fussball, Kids, Baden, Indoor, Running, Rollsport); Velo und Food ohne Sportbereich.
-9. **Rechte (24.09.2026):** Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert. Dokumente hochladen/bearbeiten/löschen bleibt Filialleitern/Zentrale vorbehalten. „Ware eingetroffen“ bestätigen bleibt erlaubt (D21).
-10. **Einkaufspreis (EK)** optional speichern, wenn im Dokument vorhanden — nie Pflicht.
+1. **Document data stays local — AI is otherwise allowed.** Invoices, delivery notes, and order confirmations are read by **our own parsers**, running entirely on the server (PyMuPDF, Tesseract, OpenCV or similar): no language model, no cloud service gets to see document data, and an unknown layout is reported rather than guessed. This applies to **operations**. For **building the parser**, Fabian may deliberately show individual documents (decision 2026-09-22) — that content then goes to the model provider, serves only that purpose, and is never published anywhere. Reading documents in bulk or unnoticed remains forbidden (see Graphify). Outside of document processing, AI is permitted, including external services. Development tools follow the same criterion: only run Graphify with `--code-only`, otherwise invoices from `uploads/` or `Rechnungen/` go to a language model (see `docs/obsidian-graphify.md`). Regardless of AI, the frontend stays **free of external CDNs** — it must run on the store network without internet access.
+2. **Never overwrite stock directly** — every change is a line in `lagerbewegungen` (receipt, sale, write-off, correction, transfer). Stock is derived from this, or kept consistent with it.
+3. **Only book stock once goods have arrived** — order confirmations only create an *expected* goods receipt.
+4. **The item master is shared across branches**; stock / goods receipts / markdowns are branch-specific (`lagerort_id`). The master record stays — the only exception: a manually entered item without a document may be deleted entirely by branch manager/head office (mis-entry, decision 2026-09-24).
+5. **EAN is optional.** Variants without an EAN must work (key: supplier + item number + color + size). Internal EANs: EAN-13 in the GS1 range 20–29 with a correct check digit, marked as internal.
+6. **Receipt-date rules** (for storage duration / markdown):
+   - Goods to an external location (GEWA, VEBO, Dietikon — all `verkauf = false`): still **no** receipt date; set on arrival at a branch SF1–SF4 (retroactively if needed). What matters is always `lagerorte.verkauf`, never the individual code.
+   - Branch-to-branch transfer: **the original date stays**.
+   - Markdown thresholds per branch: 18 months → 50%, 36 months → 70%, counted from the last goods receipt of the same supplier item number **at that branch**; a new delivery restarts the clock.
+7. **Multilingual DE / FR / EN.** No new hardcoded UI text — always translation keys (templates + JS + error messages). German is the default. Item data from supplier documents is not translated.
+8. **POS categories** exactly as in the till: main group (textile, hardware, footwear, bike, food) × sport area (bike, leisure, tennis, winter, outdoor, football, kids, swimming, indoor, running, skating); bike and food have no sport area.
+9. **Rights (2026-09-24):** Employees may manually book in and correct stock, but only in their assigned branches. Booking out a sale/removal, cancelling, and transferring are reserved for branch managers and head office. Their existing cross-branch booking rights remain in place; read rights are unchanged. Uploading/editing/deleting documents remains reserved for branch managers/head office. Confirming "goods arrived" remains allowed (D21).
+10. **Purchase price (EK)** may optionally be saved if present in the document — never mandatory.
 
-## Ergänzende Produktanforderungen vom 23.09.2026
+## Supplementary product requirements from 2026-09-23
 
-Benutzerfreundlichkeit und gute Lesbarkeit sind besonders wichtig: mehrere Mitarbeitende nutzen eine Brille und/oder haben wenig PC-Erfahrung. Oberflächen übersichtlich halten, Suche vereinfachen und Scanner-Abläufe unterstützen. Die neuen Anforderungen und Lieferantencodes stehen in `docs/anforderungen-inbox-2026-09-23.md`. Die Artikellöschung ist am 24.09.2026 geklärt und umgesetzt (nur von Hand erfasste Artikel ohne Beleg, nur Filialleiter/Zentrale — siehe Regel 4).
+Usability and good readability matter a lot: several staff wear glasses and/or have little PC experience. Keep interfaces clear, simplify search, and support scanner workflows. The new requirements and supplier codes are in `docs/anforderungen-inbox-2026-09-23.md`. Item deletion was clarified and implemented on 2026-09-24 (only manually entered items without a document, only by branch manager/head office — see rule 4).
 
-## Technik & Konventionen
+## Tech & conventions
 
-- Python 3.10+, FastAPI, SQLAlchemy 2.0, PostgreSQL, Jinja-Templates, Vanilla JS/CSS (kein Framework, keine Build-Pipeline).
-- **Schema-Änderungen nur über Alembic** (`alembic revision --autogenerate`, danach Migration prüfen). Bestehende Daten migrieren (Altdaten → Lagerort SF1), nie verwerfen.
-- Beträge/Mengen als `Numeric`, nie `float`.
-- Serverseitig validieren — Client-Werten nie vertrauen (siehe `app/services/corrections.py`).
-- Struktur beibehalten: `app/core/` (DB, Modelle, Security), `app/routers/` (Endpunkte), `app/services/` (Logik), `app/static/`, `app/templates/`. Neue Lieferanten-Parser als eigene Module (z. B. `app/services/parsers/<lieferant>.py`) mit gemeinsamer Schnittstelle + automatischer Lieferanten-Erkennung.
-- Code und Bezeichner Englisch oder Deutsch wie im bestehenden Code; UI-Texte über i18n; Commit-Messages kurz und aussagekräftig.
+- Python 3.10+, FastAPI, SQLAlchemy 2.0, PostgreSQL, Jinja templates, vanilla JS/CSS (no framework, no build pipeline).
+- **Schema changes only via Alembic** (`alembic revision --autogenerate`, then check the migration). Migrate existing data (legacy data → storage location SF1), never discard it.
+- Amounts/quantities as `Numeric`, never `float`.
+- Validate server-side — never trust client values (see `app/services/corrections.py`).
+- Keep the structure: `app/core/` (DB, models, security), `app/routers/` (endpoints), `app/services/` (logic), `app/static/`, `app/templates/`. New supplier parsers as their own modules (e.g. `app/services/parsers/<supplier>.py`) with a shared interface + automatic supplier detection.
+- Code and identifiers in English or German as in the existing code; UI text via i18n; commit messages short and to the point.
 
-## Wissensgraph (Graphify)
+## Knowledge graph (Graphify)
 
-Liegt lokal ein `graphify-out/graph.json`, zuerst dort nachschlagen (Module,
-Funktionen, Aufrufbeziehungen), dann `docs/projekt-kontext.md` /
-`docs/architektur.md` für das Warum, und erst zuletzt einzelne Quelldateien
-öffnen. Der Graph ist eine Momentaufnahme — **bei Widerspruch gilt der
-Quellcode**.
+If a local `graphify-out/graph.json` exists, check there first (modules,
+functions, call relationships), then `docs/projekt-kontext.md` /
+`docs/architektur.md` for the why, and only open individual source files
+last. The graph is a snapshot — **on conflict, the source code wins**.
 
-`graphify-out/` ist bewusst gitignored: das Repo ist öffentlich, und ein ohne
-`--code-only` gebauter Graph enthält Inhalte aus Lieferantenrechnungen.
-Cloud-Sessions haben den Graphen deshalb nicht. Details:
+`graphify-out/` is deliberately gitignored: the repo is public, and a graph
+built without `--code-only` contains content from supplier invoices.
+Cloud sessions therefore don't have the graph. Details:
 `docs/obsidian-graphify.md`.
 
 ## Tests
 
-- `DATABASE_URL=sqlite:// .venv/bin/pytest -q` im Projektordner; Tests für jede neue Logik (Lagerbewegungen, Reduktionsregeln, EAN-Prüfziffer, Parser, Rechte).
-- **Tests zuerst** (Entscheid 24.09.2026): für jede neue Funktion zuerst den Test schreiben, ihn rot sehen, dann die Funktion bauen, bis er grün ist.
-- **Wenige, grosse Tests** (Entscheid 24.09.2026): ein Ablauf-Test deckt einen ganzen Hauptablauf ab (z. B. Beleg hochladen → Import → Bestand). Kleine Einzeltests nur für harte Regeln (EAN-Prüfziffer, Reduktionsuhr, Eingangsdatum, Parser). Keine Tests für Nebensächliches.
-- **Belege nie ins Repo** (öffentlich): Parser-Tests mit echten Belegen lesen die Dateien über eine Umgebungsvariable und werden ohne sie übersprungen.
-- Vor jedem Commit: alle Tests grün.
+- `DATABASE_URL=sqlite:// .venv/bin/pytest -q` in the project folder; tests for every new piece of logic (stock movements, markdown rules, EAN check digit, parsers, rights).
+- **Tests first** (decision 2026-09-24): for every new feature, write the test first, watch it fail (red), then build the feature until it passes (green).
+- **Few, large tests** (decision 2026-09-24): one flow test covers a whole main workflow (e.g. upload document → import → stock). Small individual tests only for hard rules (EAN check digit, markdown clock, receipt date, parsers). No tests for incidental things.
+- **Documents never go into the repo** (it's public): parser tests with real documents read the files via an environment variable and are skipped without it.
+- Before every commit: all tests green.
 
-## Arbeitsweise
+## Way of working
 
-- Arbeits-Branch: `feature/warenwirtschaft-v2`. Nicht direkt auf `main` committen.
-- In kleinen, nachvollziehbaren Commits arbeiten (eine Teilaufgabe = ein Commit).
-- Nach jeder abgeschlossenen Phase: `docs/projekt-kontext.md` (Abschnitt „Stand der Umsetzung“), `README.md` und `docs/datenmodell.md` / `docs/api-referenz.md` nachführen.
-- Bei fachlichen Unklarheiten (Filialabläufe, Preise, Kasse) nachfragen statt raten — Fabian arbeitet im Laden und kennt die Abläufe.
+- Working branch: `feature/warenwirtschaft-v2`. Don't commit directly to `main`.
+- Work in small, traceable commits (one subtask = one commit).
+- After every completed phase: update `docs/projekt-kontext.md` (section "Implementation status"), `README.md`, and `docs/datenmodell.md` / `docs/api-referenz.md`.
+- For open business questions (branch workflows, pricing, till), ask instead of guessing — Fabian works in the store and knows the workflows.
 
-## Abgeschlossen: Phase A — Fundament
+## Completed: Phase A — Foundation
 
-1. Lagerorte SF1–SF4 + GEWA/VEBO/DIETIKON (Seed-Daten), Benutzer ↔ Lagerort, Rollen gemäss Regel 9, Filialwechsel in der Oberfläche. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.
-2. i18n-Grundgerüst (DE/FR/EN), Sprachwahl pro Benutzer, bestehende Seiten auf Keys umstellen. ✅ abgeschlossen (inkl. Backend-Fehlermeldungen) — siehe `docs/projekt-kontext.md` Abschnitt 11 und `docs/architektur.md` Abschnitt „Mehrsprachigkeit (i18n)".
-3. Neues Datenmodell gemäss `docs/projekt-kontext.md` Abschnitt 8.2 (Lieferanten, Kategorien, Artikel/Varianten, Preise, Dokumente, Wareneingänge, Lagerbewegungen, Bestand) + Alembic-Migration der bestehenden Daten. ✅ abgeschlossen, inkl. Umstellung des Live-Imports (nicht nur der Migration) — siehe `docs/projekt-kontext.md` Abschnitt 11.
-4. Tests + Doku nachführen. ✅ abgeschlossen — siehe `docs/projekt-kontext.md` Abschnitt 11.
+1. Storage locations SF1–SF4 + GEWA/VEBO/DIETIKON (seed data), user ↔ storage location, roles per rule 9, branch switching in the UI. ✅ completed — see `docs/projekt-kontext.md` section 11.
+2. i18n groundwork (DE/FR/EN), per-user language choice, existing pages switched to keys. ✅ completed (incl. backend error messages) — see `docs/projekt-kontext.md` section 11 and `docs/architektur.md` section "Multilingualism (i18n)".
+3. New data model per `docs/projekt-kontext.md` section 8.2 (suppliers, categories, items/variants, prices, documents, goods receipts, stock movements, stock) + Alembic migration of existing data. ✅ completed, including switching over the live import (not just the migration) — see `docs/projekt-kontext.md` section 11.
+4. Update tests + docs. ✅ completed — see `docs/projekt-kontext.md` section 11.
 
-Phase A ist damit vollständig abgeschlossen.
+Phase A is now fully complete.
 
-## Abgeschlossen: Phase B — Wareneingang v2
+## Completed: Phase B — Goods receipt v2
 
-Teilaufgaben (Details und Begründung der Reihenfolge: `docs/projekt-kontext.md`
-Abschnitt 11, „Phase B — Aufteilung in Teilaufgaben"):
+Subtasks (details and rationale for the order: `docs/projekt-kontext.md`
+section 11, "Phase B — split into subtasks"):
 
-1. **Parser-Registry**: ein Modul je Lieferanten-Layout (`app/services/parsers/`)
-   mit gemeinsamer Schnittstelle, automatische Lieferanten- und
-   Dokumenttyp-Erkennung, unbekanntes Layout klar melden. ✅ abgeschlossen —
-   siehe `docs/architektur.md`, Abschnitt „PDF-Parsing".
-2. Belegnummer nur **je Lieferant** eindeutig (`UNIQUE (lieferant_id,
-   dokumentnummer)`) inkl. Duplikatsprüfung im Importer. ✅ abgeschlossen —
-   Migration `e5f6a7b8c9d0`.
-3. **EAN wirklich optional** (Regel 5) auch in Parser/Korrekturen.
-   ✅ abgeschlossen — fehlende EAN ist ein Hinweis (sperrt den Import nicht),
-   eine unleserliche EAN bleibt eine Warnung.
-4. **Lagerort aus der Lieferadresse** erkennen und beim Upload vorschlagen.
-   ✅ abgeschlossen — Vorschlag (D19), änderbar; ein Beleg = ein Lagerort (D20);
-   buchbar sind alle Lagerorte (D26).
-5. **Erwartet → eingetroffen** (Regel 3, D6): Auftragsbestätigung/Bestellung
-   erzeugen nur einen erwarteten Wareneingang; auch Mitarbeiter dürfen die
-   Ankunft bestätigen (D21), Restmengen bleiben offen (D22).
-   ✅ abgeschlossen — Seite `/wareneingaenge`, Migration `f6a7b8c9d0e1`.
-6. **Manuelle Erfassung** mit Scanner (Z2), auch als Weg für unbekannte Layouts.
-   Pflicht sind nur Marke + Bezeichnung + Menge + UVP (D23); es entsteht **kein
-   Beleg** — direkter Wareneingang (D27). ✅ abgeschlossen — Seite `/erfassen`,
-   Migration `a7b8c9d0e1f2`; erfassen dürfen auch Mitarbeiter (Regel 9/D21).
-7. **EAN nachtragen/generieren** (interne EAN-13, GS1 20–29) + Etikett als PDF.
-   ✅ abgeschlossen — auf Knopfdruck (D24), Etikett mit Jahrgang, Lieferant,
-   UVP, Reduktionsstufe und Strichcode (D25); Etikettengrösse einstellbar
-   (Voreinstellung 50 × 30 mm, echte Rollengrösse noch offen).
-8. **Kategorie von Hand wählen**, wenn der FEDAS-Code fehlt oder unbekannt ist.
-   ✅ abgeschlossen — Artikelseite, Erfassung und Filter „Ohne Kategorie" in der
-   Artikelsuche, Migration `c9d0e1f2a3b4`; eine Wahl von Hand überschreibt kein
-   Import mehr (`artikel.kategorie_manuell`).
+1. **Parser registry**: one module per supplier layout (`app/services/parsers/`)
+   with a shared interface, automatic supplier and document-type
+   detection, unknown layouts clearly reported. ✅ completed —
+   see `docs/architektur.md`, section "PDF parsing".
+2. Document number unique only **per supplier** (`UNIQUE (lieferant_id,
+   dokumentnummer)`) incl. duplicate check in the importer. ✅ completed —
+   migration `e5f6a7b8c9d0`.
+3. **EAN truly optional** (rule 5), also in parser/corrections.
+   ✅ completed — a missing EAN is a hint (doesn't block the import),
+   an unreadable EAN stays a warning.
+4. **Storage location from the delivery address**, detected and suggested on upload.
+   ✅ completed — suggestion (D19), changeable; one document = one storage location (D20);
+   all storage locations are bookable (D26).
+5. **Expected → arrived** (rule 3, D6): order confirmation/order
+   only creates an expected goods receipt; employees may also
+   confirm arrival (D21), remaining quantities stay open (D22).
+   ✅ completed — page `/wareneingaenge`, migration `f6a7b8c9d0e1`.
+6. **Manual entry** with scanner (Z2), also a path for unknown layouts.
+   Only brand + description + quantity + RRP are mandatory (D23); this creates **no
+   document** — direct goods receipt (D27). ✅ completed — page `/erfassen`,
+   migration `a7b8c9d0e1f2`; employees may also enter items (rule 9/D21).
+7. **Add/generate EAN afterwards** (internal EAN-13, GS1 20–29) + label as PDF.
+   ✅ completed — at the push of a button (D24), label with year, supplier,
+   RRP, markdown stage, and barcode (D25); label size configurable
+   (default 50 × 30 mm, actual roll size still open).
+8. **Choose category manually** when the FEDAS code is missing or unknown.
+   ✅ completed — item page, entry, and "No category" filter in the
+   item search, migration `c9d0e1f2a3b4`; a manual choice no longer gets
+   overwritten by import (`artikel.kategorie_manuell`).
 
-Phase B ist damit vollständig abgeschlossen. Nächste Phase gemäss Roadmap
-(`docs/projekt-kontext.md` Abschnitt 9): **C — Lagerbestand**.
+Phase B is now fully complete. Next phase per the roadmap
+(`docs/projekt-kontext.md` section 9): **C — Stock**.
 
-## Abgeschlossen: Phase C — Lagerbestand
+## Completed: Phase C — Stock
 
-Teilaufgaben und Begründung der Reihenfolge: `docs/projekt-kontext.md`
-Abschnitt 11, „Phase C — Lagerbestand, Aufteilung in Teilaufgaben". Kurz:
+Subtasks and rationale for the order: `docs/projekt-kontext.md`
+section 11, "Phase C — Stock, split into subtasks". In short:
 
-1. **Warnung bei Mehrlieferung** — mehr eingetroffen als erwartet: warnen, trotzdem buchen. ✅ abgeschlossen
-2. **Bestandsansicht je Lagerort** — alle Filialen lesbar, externe Standorte separat sichtbar. ✅ abgeschlossen
-3. **Ausbuchen per Scan** — Verkauf/Abgang von Hand; reicht der Bestand nicht: warnen, trotzdem buchen. ✅ abgeschlossen (ein Scan = ein Stück)
-4. **Umlagerung** — extern → Filiale setzt das Eingangsdatum (D13), Filiale → Filiale behält es und startet die Reduktionsuhr der Zielfiliale nicht neu; hatte die Zielfiliale die Artikelnummer nie, startet die Uhr ab Eintreffen (F11). ✅ abgeschlossen
-5. **Korrekturen** — Differenz mit Grund buchen. ✅ abgeschlossen (gezählte Menge eingeben, System bucht die Differenz)
+1. **Warning on over-delivery** — more arrived than expected: warn, book anyway. ✅ completed
+2. **Stock view per storage location** — all branches readable, external locations shown separately. ✅ completed
+3. **Booking out via scan** — manual sale/removal; if stock isn't enough: warn, book anyway. ✅ completed (one scan = one unit)
+4. **Transfer** — external → branch sets the receipt date (D13), branch → branch keeps it and doesn't restart the destination branch's markdown clock; if the destination branch never had that item number, the clock starts on arrival (F11). ✅ completed
+5. **Corrections** — book the difference with a reason. ✅ completed (enter the counted quantity, the system books the difference)
 
-Phase C ist damit vollständig abgeschlossen (23.09.2026). Vorübergehend hat die
-Bestandsansicht einen Test-Knopf „−1"; er wird entfernt, sobald das Ausbuchen
-im Laden erprobt ist. Nächste Phase gemäss Roadmap: **D — Preise & Reduktion**.
+Phase C is now fully complete (2026-09-23). The stock view temporarily has a
+test "−1" button; it will be removed once booking-out has been tried in the
+store. Next phase per the roadmap: **D — Prices & markdown**.
 
-Jede Buchung bleibt eine Zeile in `lagerbewegungen` (Regel 2) und läuft über
-dieselbe Sperre wie der Zugang.
+Every booking remains a line in `lagerbewegungen` (rule 2) and goes through
+the same lock as the receipt.
 
-Der FEDAS-Kategorievorschlag (`app/core/fedas.py`) ist seit 24.09.2026
-vollständig: alle 54 Erlebnisbereiche der FEDAS-Liste sind einem der 11
-Sportbereiche zugeordnet (von Fabian bestätigt), dazu Velo (ganze Fahrräder)
-und Food (Sportnahrung). Nur **Kids** lässt sich aus FEDAS nicht ableiten und
-wird von Hand gewählt.
+The FEDAS category suggestion (`app/core/fedas.py`) has been complete since 2026-09-24:
+all 54 FEDAS-list activity areas are mapped to one of the 11
+sport areas (confirmed by Fabian), plus bike (whole bicycles)
+and food (sports nutrition). Only **Kids** can't be derived from FEDAS
+and is chosen manually.
 
-## Inbox-Präzisierungen vom 24.09.2026
+## Inbox refinements from 2026-09-24
 
-Etikett: **47 mm Breite × 83 mm Höhe**, vorgedruckte Rollen 30 % gelb / 50 % rot / 70 % grün — umgesetzt (gedruckt werden nur UVP, Lieferantencode, Jahrgang, Strichcode; Positionen in `LAYOUT` von `app/services/etikett.py`). FEDAS-Liste geprüft und zugeordnet (siehe oben). Tests aufgeräumt (siehe „Tests"). Details: `docs/anforderungen-inbox-2026-09-24.md`.
+Label: **47 mm width × 83 mm height**, pre-printed rolls 30% yellow / 50% red / 70% green — implemented (only RRP, supplier code, year, and barcode are printed; positions in `LAYOUT` in `app/services/etikett.py`). FEDAS list checked and mapped (see above). Tests cleaned up (see "Tests"). Details: `docs/anforderungen-inbox-2026-09-24.md`.
 
-## Sicherheit
+## Security
 
-Befunde und offene Massnahmen der Sicherheitsprüfung vom 24.09.2026 stehen in `docs/sicherheit.md` (S1–S9, mit Status). Bei jeder Behebung dort den Status nachführen. Vor dem Einsatz im Laden (Phase F) Pflicht: HTTPS, Login-Sperre (umgesetzt: 5 Fehlversuche → 20 Minuten), Netztrennung, verschlüsselte Backups.
+Findings and open measures from the security review on 2026-09-24 are in `docs/sicherheit.md` (S1–S9, with status). Update the status there whenever one is fixed. Mandatory before store deployment (phase F): HTTPS, login lockout (implemented: 5 failed attempts → 20 minutes), network separation, encrypted backups.
 
-## Visuelle Dokumentation mitpflegen
+## Keep the visual documentation up to date
 
-Bei Änderungen an Kontext, Status, Progress, Decisions oder sonstiger Projektdokumentation beide lokalen HTML-Übersichten aktualisieren: `/Users/fabianmorf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Main/Anhänge/Sportfabrik Warenwirtschaft.html` und `Sportfabrik Warenfluss.html` im gleichen Ordner. Ist-Stand, Anforderungen und Ideen trennen. Neue Bedienungswünsche und mobile Planungsfragen stehen in `docs/anforderungen-inbox-2026-09-24.md`.
+For changes to context, status, progress, decisions, or other project documentation, update both local HTML overviews: `/Users/fabianmorf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Main/Anhänge/Sportfabrik Warenwirtschaft.html` and `Sportfabrik Warenfluss.html` in the same folder. Keep current state, requirements, and ideas separate. New usability requests and mobile planning questions are in `docs/anforderungen-inbox-2026-09-24.md`.
 
-## Verbindliche Priorität – 24.09.2026
+## Binding priority — 2026-09-24
 
-Fabian hat entschieden: **Zuerst die neuen Wünsche aus der Inbox umsetzen, danach Phase D weiterführen.** Die bereits gebaute Runterschreiben-Seite bleibt bestehen; Phase D wird dadurch weder zurückgesetzt noch als abgeschlossen markiert.
+Fabian has decided: **First implement the new requests from the inbox, then continue phase D.** The already-built markdown page stays as-is; this neither resets phase D nor marks it as complete.
 
-Vorrang hat der gesamte neue Anforderungskatalog „Artikeldetails und Auswertungen“: Artikeldetails aufräumen, Listen und Arbeitsabläufe vereinfachen, Übersicht und Schnellzugriffe personalisieren, Statistik und Kontoverwaltung ergänzen. Auch die ausdrücklich gewünschten manuellen Reduktionen (alle Mitarbeitenden je Filiale, 30/50/70 %, Auswahl per EAN oder Bestand, Anzeige in Artikeldetails und Bestand) gehören zu diesem vorgezogenen Paket, obwohl sie fachlich Phase D berühren.
+Priority goes to the entire new requirements catalog "Item details and reports": clean up item details, simplify lists and workflows, personalize the overview and quick access, add statistics and account management. The explicitly requested manual markdowns (all staff, per branch, 30/50/70%, selection via EAN or stock list, shown in item details and stock) also belong to this pulled-forward package, even though they technically touch phase D.
 
-Erst danach folgen die übrigen Arbeiten und offenen Entscheidungen von Phase D. Die Handynutzung bleibt wie vereinbart für das Projektende geplant. Erforderliche Prüfungen vor dem Ladeneinsatz bleiben bestehen. Dies ist eine Prioritätsentscheidung, keine Implementierungsbestätigung.
+Only after that come the remaining phase D work and open decisions. Mobile usage stays planned for the end of the project, as agreed. Required checks before store deployment remain in place. This is a priority decision, not a confirmation of implementation.
 
 Details: `docs/anforderungen-artikeldetails-auswertungen-2026-09-24.md`.

@@ -1,31 +1,31 @@
-# Vorbereitung für Linux
+# Preparation for Linux
 
-Die Serverdateien sind vorbereitet. Ein Docker-Build, Datenumzug und eine
-Backup-Wiederherstellung wurden noch nicht durchgeführt. Die Windows-App und
-ihre `.env` bleiben weiter nutzbar.
+The server files are prepared. A Docker build, data migration, and a
+backup restore have not yet been performed. The Windows app and
+its `.env` remain usable in the meantime.
 
-## Dateien
+## Files
 
-- `Dockerfile`: App ohne Entwicklungsmodus, als Benutzer ohne Root-Rechte;
-  installiert auch Tesseract OCR (für eingescannte Papierrechnungen ohne
-  Textebene) — auf dem Server ist dafür kein manueller Schritt nötig,
-  anders als beim lokalen Windows-Setup (siehe `README.md`).
-- `requirements-server.txt`: Serverpakete getrennt von der Windows-Installation.
-- `compose.yaml`: App und PostgreSQL 18, dauerhaftes Datenvolume, Startprüfungen.
-- `.env.server.example`: Vorlage für Servereinstellungen.
-- `.dockerignore`: nur App-Code und Serverabhängigkeiten gelangen ins Image.
+- `Dockerfile`: app without development mode, running as a non-root user;
+  also installs Tesseract OCR (for scanned paper invoices without a
+  text layer) — no manual step is needed for this on the server,
+  unlike the local Windows setup (see `README.md`).
+- `requirements-server.txt`: server packages, separate from the Windows installation.
+- `compose.yaml`: app and PostgreSQL 18, persistent data volume, startup checks.
+- `.env.server.example`: template for server settings.
+- `.dockerignore`: only app code and server dependencies go into the image.
 
-## Lokal testen, sobald Docker und das Compose-Plugin vorhanden sind
+## Test locally once Docker and the Compose plugin are present
 
-Im Projektordner:
+In the project folder:
 
 ```powershell
 Copy-Item .env.server.example .env.server
 ```
 
-In `.env.server` zwischen den einfachen Anführungszeichen bei `POSTGRES_PASSWORD`
-ein neues, langes Passwort eintragen. Das Tutorial-Passwort nicht wiederverwenden.
-Die vorhandene `.env` nicht verändern. Dann:
+In `.env.server`, enter a new, long password between the single quotes for
+`POSTGRES_PASSWORD`. Do not reuse the tutorial password.
+Do not modify the existing `.env`. Then:
 
 ```powershell
 docker compose --env-file .env.server config --quiet
@@ -33,73 +33,74 @@ docker compose --env-file .env.server up -d --build
 docker compose --env-file .env.server ps
 ```
 
-Testadresse: http://127.0.0.1:8080. Die Container verwenden eine neue, separate
-Datenbank. Anfangs sind keine Rechnungen vorhanden. Die Windows-App auf Port
-8000 und ihre bisherigen Daten bleiben getrennt.
+Test address: http://127.0.0.1:8080. The containers use a new, separate
+database. Initially there are no invoices. The Windows app on port
+8000 and its existing data stay separate.
 
-## Später auf Linux
+## Later on Linux
 
-1. Serververwaltung stellt Docker Engine und das Compose-Plugin bereit.
-2. Projektordner anlegen, beispielsweise `/opt/sportfabrik-inventory`.
-3. `app/`, `Dockerfile`, `requirements-server.txt`, `compose.yaml` und die
-   Einstellungsvorlage übertragen. Keine Windows-`.env` oder `.venv` ins Image kopieren.
-4. Vorlage als `.env.server` kopieren, Passwort setzen und Datei mit
-   `chmod 600 .env.server` schützen.
-5. Mit obigen Compose-Befehlen starten. Docker muss beim Systemstart starten.
-   `restart: unless-stopped` startet die Dienste dann wieder, sofern sie nicht
-   bewusst gestoppt wurden.
+1. Server administration provisions Docker Engine and the Compose plugin.
+2. Create a project folder, for example `/opt/sportfabrik-inventory`.
+3. Transfer `app/`, `Dockerfile`, `requirements-server.txt`, `compose.yaml`, and the
+   settings template. Do not copy the Windows `.env` or `.venv` into the image.
+4. Copy the template as `.env.server`, set the password, and protect the file with
+   `chmod 600 .env.server`.
+5. Start with the Compose commands above. Docker must start at system boot.
+   `restart: unless-stopped` will then restart the services unless they were
+   deliberately stopped.
 
-## Datenumzug und Backups: nächster gesonderter Schritt
+## Data migration and backups: next, separate step
 
-Vor dem Umzug die Hauptversion der Windows-PostgreSQL-Installation prüfen.
-Das Ziel muss mindestens dieselbe Hauptversion unterstützen. Die Vorlage nutzt
-PostgreSQL 18, passend zur aktuell geprüften Windows-Version 18.6. Falls die Quelle neuer ist, Zielversion und Volume-Pfad vor dem
-ersten Start passend ändern. Ein bestehendes Volume nicht einfach mit einer
-anderen PostgreSQL-Hauptversion verwenden.
+Before the migration, check the major version of the Windows PostgreSQL
+installation. The target must support at least the same major version. The template uses
+PostgreSQL 18, matching the currently verified Windows version 18.6. If the source is newer,
+adjust the target version and volume path accordingly before the
+first start. Do not simply reuse an existing volume with a
+different PostgreSQL major version.
 
-Mit `pg_dump` ein vollständiges Backup erstellen und zuerst in einer leeren
-Testdatenbank mit `pg_restore` wiederherstellen. Artikel, Rechnungen, Positionen
-und Originaltexte vergleichen. Vor dem endgültigen Export neue Uploads anhalten,
-damit zwischen Sicherung und Umzug keine Rechnungen fehlen.
+Create a full backup with `pg_dump` and first restore it into an empty
+test database with `pg_restore`. Compare items, invoices, line items,
+and original texts. Pause new uploads before the final export
+so no invoices are missing between the backup and the migration.
 
-Original-PDFs liegen zusätzlich im Windows-Ordner `Recchnungen/` und müssen
-separat gesichert und bei Bedarf übertragen werden.
-Backupautomatisierung, Aufbewahrung, externer Sicherungsort und der
-Wiederherstellungstest stehen noch aus. Ein Docker-Volume ist kein Backup.
+Original PDFs also live in the Windows folder `Recchnungen/` and must be
+backed up separately and transferred if needed.
+Backup automation, retention, an offsite backup location, and the
+restore test are still outstanding. A Docker volume is not a backup.
 
-## Zugriff der vier PCs
+## Access from the four PCs
 
-Erst nach erfolgreichem Test `APP_BIND_IP` auf die interne Server-IP setzen
-und `docker compose --env-file .env.server up -d` erneut ausführen.
-Zugriff dann über `http://SERVER-IP:8080`. PostgreSQL veröffentlicht keinen Port.
+Only after a successful test, set `APP_BIND_IP` to the internal server IP
+and run `docker compose --env-file .env.server up -d` again.
+Access is then via `http://SERVER-IP:8080`. PostgreSQL does not publish a port.
 
-Anmeldung nach Kassensystem-Muster: Mitarbeiter melden sich nur mit ihrer
-Kassennummer an, Chefs zusätzlich mit Passwort. Nur Chef-Konten dürfen
-Rechnungen hochladen, importieren und löschen; Mitarbeiter können Artikel
-suchen und Rechnungen ansehen. Netzwerkzugriff trotzdem nur für berechtigte
-Laden-PCs freigeben, keine Internet-Portweiterleitung. Serververwaltung muss
-Docker-Portfreigaben und Firewallregeln gemeinsam prüfen. Laut Sicherheitsprüfung
-vom 24.09.2026 ist HTTPS **Pflicht vor dem Einsatz im Laden** (Passwörter und
-Sitzungen sonst im Klartext im Netz), ebenso eine Begrenzung von Login-
-Fehlversuchen und die Netztrennung vom Gäste-WLAN — siehe
-[`sicherheit.md`](sicherheit.md), S1/S2/S5–S7. Ursprünglicher Hinweis: HTTPS bei Bedarf vor
-Freigabe ergänzen.
+Login follows the POS-system pattern: employees log in with just their
+till number; managers additionally with a password. Only manager accounts may
+upload, import, and delete invoices; employees can search
+items and view invoices. Network access should still only be granted to authorized
+store PCs, with no internet port forwarding. Server administration must
+review Docker port exposure and firewall rules together. Per the security review
+of 2026-09-24, HTTPS is **mandatory before deployment in the store**
+(otherwise passwords and sessions travel in cleartext on the network), as is a limit on
+failed login attempts and network separation from the guest WiFi — see
+[`sicherheit.md`](sicherheit.md), S1/S2/S5–S7. Original note: add HTTPS as needed before
+go-live.
 
-### Erste Konten anlegen
+### Create the first accounts
 
-`SESSION_SECRET` muss in `.env.server` gesetzt sein (siehe `.env.server.example`),
-sonst startet die App nicht. Danach im laufenden Container mindestens ein
-Chef-Konto anlegen:
+`SESSION_SECRET` must be set in `.env.server` (see `.env.server.example`),
+otherwise the app won't start. Afterwards, create at least one
+manager account in the running container:
 
 ```sh
 docker compose --env-file .env.server exec app python scripts/manage_users.py add-chef 910199 "Fabian Morf"
 docker compose --env-file .env.server exec app python scripts/manage_users.py add-mitarbeiter 910141 "Anna Muster"
 ```
 
-Weitere Befehle: `list` (alle Konten anzeigen), `set-password <kassennummer>`
-(Chef-Passwort zurücksetzen), `remove <kassennummer>` (Konto entfernen).
+Further commands: `list` (show all accounts), `set-password <kassennummer>`
+(reset a manager's password), `remove <kassennummer>` (remove an account).
 
-## Betrieb
+## Operation
 
 ```sh
 docker compose --env-file .env.server ps
@@ -108,37 +109,37 @@ docker compose --env-file .env.server stop
 docker compose --env-file .env.server start
 ```
 
-`docker compose down` behält das Datenvolume. **Kein `down -v` verwenden, wenn
-Daten erhalten bleiben sollen.** Eine Passwortänderung in `.env.server` ändert
-nicht automatisch das Passwort einer bereits initialisierten Datenbank.
+`docker compose down` keeps the data volume. **Do not use `down -v` if
+data should be preserved.** Changing the password in `.env.server` does not
+automatically change the password of an already-initialized database.
 
-Die App legt Tabellen nicht mehr selbst an. Datenbankschema wird mit Alembic
-verwaltet (Ordner `migrations/`). Der Container führt beim Start automatisch
-`alembic upgrade head` aus, bevor die App startet (siehe `Dockerfile`).
+The app no longer creates tables itself. The database schema is managed with Alembic
+(folder `migrations/`). The container automatically runs
+`alembic upgrade head` on startup, before the app starts (see `Dockerfile`).
 
-## Alembic: einmalige Umstellung auf der bestehenden Windows-Datenbank
+## Alembic: one-time switch-over on the existing Windows database
 
-Die lokale Windows-Datenbank hat ihre Tabellen bereits über die alte
-`create_all()`-Logik erhalten, bevor Migrationen eingeführt wurden. Damit
-Alembic nicht versucht, dieselben Tabellen ein zweites Mal anzulegen, einmalig
-im Projektordner (mit aktivierter `.venv`) ausführen:
+The local Windows database already got its tables through the old
+`create_all()` logic, before migrations were introduced. So that
+Alembic doesn't try to create the same tables a second time, run this once
+in the project folder (with `.venv` activated):
 
 ```powershell
 alembic stamp head
 ```
 
-Das trägt nur in einer neuen Tabelle `alembic_version` ein, dass der aktuelle
-Stand ("baseline schema") bereits erreicht ist – es verändert keine
-bestehenden Daten oder Tabellen. Auf einer neuen, leeren Datenbank (z. B. beim
-ersten Start auf dem Linux-Server) macht stattdessen `alembic upgrade head`
-(automatisch beim Containerstart) alle Tabellen von Grund auf.
+This only records, in a new `alembic_version` table, that the current
+state ("baseline schema") has already been reached — it does not change any
+existing data or tables. On a new, empty database (e.g. on the
+first start on the Linux server), `alembic upgrade head` (run automatically
+on container start) instead builds all tables from scratch.
 
-## Künftige Schemaänderungen
+## Future schema changes
 
-1. Modell in `app/core/models.py` anpassen.
-2. Migration erzeugen: `alembic revision --autogenerate -m "kurze Beschreibung"`.
-3. Die erzeugte Datei in `migrations/versions/` kontrollieren (Autogenerate
-   erkennt nicht alles zuverlässig, z. B. Umbenennungen).
-4. Lokal testen: `alembic upgrade head`.
-5. Migration zusammen mit der Codeänderung committen. Beim nächsten Deployment
-   wendet der Container sie automatisch an.
+1. Adjust the model in `app/core/models.py`.
+2. Generate a migration: `alembic revision --autogenerate -m "short description"`.
+3. Review the generated file in `migrations/versions/` (autogenerate
+   doesn't reliably detect everything, e.g. renames).
+4. Test locally: `alembic upgrade head`.
+5. Commit the migration together with the code change. On the next deployment
+   the container will apply it automatically.

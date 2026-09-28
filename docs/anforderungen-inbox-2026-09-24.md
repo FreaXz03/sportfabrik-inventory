@@ -1,64 +1,64 @@
-# Inbox-Ergänzungen vom 24.09.2026
+# Inbox additions from 2026-09-24
 
-## Verbindliche Priorität – 24.09.2026
+## Binding priority – 2026-09-24
 
-Fabian hat entschieden: **Zuerst die neuen Wünsche aus der Inbox umsetzen, danach Phase D weiterführen.** Die bereits gebaute Runterschreiben-Seite bleibt bestehen; Phase D wird dadurch weder zurückgesetzt noch als abgeschlossen markiert.
+Fabian has decided: **First implement the new requests from the inbox, then continue phase D.** The already-built markdown page stays as-is; this neither resets phase D nor marks it as complete.
 
-Vorrang hat der gesamte neue Anforderungskatalog „Artikeldetails und Auswertungen“: Artikeldetails aufräumen, Listen und Arbeitsabläufe vereinfachen, Übersicht und Schnellzugriffe personalisieren, Statistik und Kontoverwaltung ergänzen. Auch die ausdrücklich gewünschten manuellen Reduktionen (alle Mitarbeitenden je Filiale, 30/50/70 %, Auswahl per EAN oder Bestand, Anzeige in Artikeldetails und Bestand) gehören zu diesem vorgezogenen Paket, obwohl sie fachlich Phase D berühren.
+Priority goes to the entire new requirements catalog "Item details and reports": clean up item details, simplify lists and workflows, personalize the overview and quick access, add statistics and account management. The explicitly requested manual markdowns (all staff, per branch, 30/50/70%, selection via EAN or stock list, shown in item details and stock) also belong to this pulled-forward package, even though they technically touch phase D.
 
-Erst danach folgen die übrigen Arbeiten und offenen Entscheidungen von Phase D. Die Handynutzung bleibt wie vereinbart für das Projektende geplant. Erforderliche Prüfungen vor dem Ladeneinsatz bleiben bestehen. Dies ist eine Prioritätsentscheidung, keine Implementierungsbestätigung.
+Only after that come the remaining phase D work and open decisions. Mobile usage stays planned for the end of the project, as agreed. Required checks before store deployment remain in place. This is a priority decision, not a confirmation of implementation.
 
-Anforderungskatalog: [Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md).
+Requirements catalog: [Item details and reports](anforderungen-artikeldetails-auswertungen-2026-09-24.md).
 
 
-Status: Dokumentationsabgleich; keine Code-, Parser- oder Teständerung.
+Status: documentation sync; no code, parser, or test changes.
 
-## Etiketten – aktuelle Vorgabe
+## Labels – current specification
 
-Fabians neueste ausdrückliche Angabe: **Breite 47 mm, Höhe 83 mm** (Hochformat). Dies ersetzt die bisherige Zielangabe 84 × 47 mm. Die dokumentierte bisherige Code-Voreinstellung ist dadurch nicht automatisch geändert.
+Fabian's latest explicit spec: **width 47 mm, height 83 mm** (portrait). This replaces the previous target of 84 × 47 mm. This does not automatically change the previously documented code default.
 
-Drei wechselbare Rollen sind bereits vorgedruckt: 30 % mit gelbem Punkt, 50 % mit rotem Punkt, 70 % mit grünem Punkt. Der Scan zeigt eine leere 30%-Vorlage und zwei bedruckte Beispiele: durchgestrichener Preis 333.00 / Lieferant 111 / Jahrgang 25 sowie 499.00 / Lieferant 999 / Jahrgang 27. Drucklayout auf vorgedruckte Elemente abstimmen; Barcodeposition und Druckausrichtung am Muster klären.
+Three interchangeable rolls are already pre-printed: 30% with a yellow dot, 50% with a red dot, 70% with a green dot. The scan shows a blank 30% template and two printed examples: struck-through price 333.00 / supplier 111 / year 25, and 499.00 / supplier 999 / year 27. Match the print layout to the pre-printed elements; clarify barcode position and print orientation against the sample.
 
-Lokale Quelle im Obsidian-Vault Main: `03 Ressourcen/Sportfabrik Inventory – Etikettenbeispiele.md`.
+Local source in the Obsidian vault Main: `03 Ressourcen/Sportfabrik Inventory – Etikettenbeispiele.md`.
 
-## FEDAS-Quelle
+## FEDAS source
 
-Fabian hat die deutsche Übersicht nachgereicht: http://download.fedas.com/actualversion/download/pdf/ger_pdf_overview.pdf . Er bezeichnet sie als Liste mit allen Codes. Abruf am 24.09.2026 fehlgeschlagen (HTTP 502); Version, Vollständigkeit und konkrete Codes noch nicht geprüft. Die bisherige Aussage, dass keine Liste bekannt sei, ist damit überholt; der geprüfte Import und die Zuordnung zu Kassenkategorien bleiben offen. Keine ungeprüften Codes übernehmen.
+Fabian has provided the German overview: http://download.fedas.com/actualversion/download/pdf/ger_pdf_overview.pdf . He describes it as the list with all codes. Retrieval on 2026-09-24 failed (HTTP 502); version, completeness, and specific codes not yet checked. This supersedes the earlier statement that no list was known; the verified import and mapping to POS categories remain open. Do not adopt unverified codes.
 
-Lokale Quelle: `03 Ressourcen/Sportfabrik Inventory – FEDAS-Liste.md`.
+Local source: `03 Ressourcen/Sportfabrik Inventory – FEDAS-Liste.md`.
 
-## Alpina-Papierscan
+## Alpina paper scan
 
-Zusätzliches lokales Parserbeispiel: Lieferschein 119719, Versanddatum 01.09.2026, Auftrag 151850, SF1 Volketswil, eine Seite, vier Positionen, 29 Stück, offene Menge 0. JPEG-Scan mit EAN-Barcodes, UVP, Mengen und handschriftlicher Markierung. Keine Bestandsbuchung oder Parserimplementierung durch diesen Abgleich.
+Additional local parser sample: delivery note 119719, ship date 2026-09-01, order 151850, SF1 Volketswil, one page, four line items, 29 units, open quantity 0. JPEG scan with EAN barcodes, RRP, quantities, and a handwritten mark. No stock booking or parser implementation from this sync.
 
-Lokale Quelle: `03 Ressourcen/Sportfabrik Inventory – Alpina-Lieferschein 119719.md`. Scan bleibt im lokalen Vault und wird nicht in das öffentliche Repository kopiert.
+Local source: `03 Ressourcen/Sportfabrik Inventory – Alpina-Lieferschein 119719.md`. The scan stays in the local vault and is not copied into the public repository.
 
-## Testbereinigung – gewünschte Arbeit
+## Test cleanup – requested work
 
-Fabians Wunsch: alle Tests aufräumen, nur wichtigste Tests behalten, weniger wichtige Grundfeature-Tests zur Löschung prüfen und grosse aktuelle Hauptfeature-Tests bauen. Ziel: geringerer Tokenverbrauch. Auswahl und Umfang noch offen; keine pauschale Testlöschung und keine Behauptung, dies sei bereits umgesetzt. Die Projektregel zum grünen Testlauf vor Commits bleibt bestehen.
+Fabian's request: clean up all tests, keep only the most important ones, review less important basic-feature tests for deletion, and build large, current main-feature tests. Goal: lower token usage. Selection and scope still open; no blanket test deletion, and no claim that this has already been done. The project rule requiring a green test run before commits stays in place.
 
-Lokale Quelle: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory Tests aufräumen.md`.
+Local source: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory Tests aufräumen.md`.
 
-## Weitere Inbox-Anforderungen – 24.09.2026, nachmittags
+## Further inbox requirements – 2026-09-24, afternoon
 
-Status: alle fünf Punkte umgesetzt am 24.09.2026 (Commits `431dc6f`, `fd95054`), im Browser gegen eine Testdatenbank geprüft.
+Status: all five points implemented on 2026-09-24 (commits `431dc6f`, `fd95054`), checked in the browser against a test database.
 
-- [x] Beim Klick auf einen Eintrag unter „Anstehend“ direkt die dazu passende gefilterte Liste öffnen; z. B. „2 Varianten ohne EAN“ zeigt genau diese zwei Varianten.
-- [x] Schnellsuche auf der Bestandsseite beim Öffnen automatisch fokussieren.
-- [x] Auf der Artikelseite „Spalten anzeigen“ in „Weitere Filter“ verschieben.
-- [x] Aktuell ausgewählte Filiale gross im Titel der Bestandsseite anzeigen; der kleinere Filialwechsler bleibt bestehen.
-- [x] Schnellzugriffsknöpfe auf der Übersicht einheitlich gross gestalten.
+- [x] Clicking an entry under "Upcoming" opens the matching filtered list directly; e.g. "2 variants without EAN" shows exactly those two variants.
+- [x] Auto-focus quick search on the stock page when it opens.
+- [x] Move "Show columns" on the item page into "More filters".
+- [x] Show the currently selected branch prominently in the stock page's title; the smaller branch switcher stays as well.
+- [x] Make the quick-access buttons on the overview a consistent size.
 
-### Handynutzung – abgestimmte Planung für das Projektende
+### Mobile usage – agreed plan for the end of the project
 
-Am 24.09.2026 mit Fabian abgestimmt; **ausschliesslich Planung, Umsetzung erst gegen Projektende**. Web-App auf privaten Handys mit Kamera-Scan und Lagerabläufen. Mitarbeitende nur im Geschäfts-WLAN; Filialleiter und Geschäftsleitung/Zentrale zusätzlich von ausserhalb. Bestehende Rechte und zentrale Datenhaltung bleiben erhalten. Technische VPN-/WLAN-Lösung noch offen. Vollständiger Plan: [Handynutzung](handynutzung.md).
+Agreed with Fabian on 2026-09-24; **planning only, implementation not until near the end of the project**. Web app on personal phones with camera scanning and stock workflows. Staff only on the store Wi-Fi; branch managers and management/head office also from outside. Existing rights and central data storage stay unchanged. Technical VPN/Wi-Fi solution still open. Full plan: [Mobile usage](handynutzung.md).
 
-### Visuelle Dokumentation gemeinsam pflegen
+### Keep the visual documentation up to date together
 
-Bei jeder Änderung an Kontext, Progress, Decisions oder sonstiger Projektdokumentation auch beide HTML-Dokumente im lokalen Obsidian-Vault Main aktualisieren: `Anhänge/Sportfabrik Warenwirtschaft.html` und `Anhänge/Sportfabrik Warenfluss.html`. Ist-Stand, offene Anforderungen und Ideen ausdrücklich unterscheiden. Keine private Bilddatei in das öffentliche Repository kopieren.
+For every change to context, progress, decisions, or other project documentation, also update both HTML documents in the local Obsidian vault Main: `Anhänge/Sportfabrik Warenwirtschaft.html` and `Anhänge/Sportfabrik Warenfluss.html`. Explicitly distinguish current state, open requirements, and ideas. Don't copy any private image file into the public repository.
 
-Quellen im Vault: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Bedienungswünsche vom 24.09.2026.md`, `Sportfabrik inventory aufs Handy.md` im gleichen Ordner sowie `03 Ressourcen/Sportfabrik Inventory – Visuelle Übersichten.md`.
+Sources in the vault: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Bedienungswünsche vom 24.09.2026.md`, `Sportfabrik inventory aufs Handy.md` in the same folder, and `03 Ressourcen/Sportfabrik Inventory – Visuelle Übersichten.md`.
 
-## Weitere Anforderungen: Artikeldetails und Auswertungen
+## Further requirements: item details and reports
 
-17 neue Punkte aus zwei Inbox-Notizen sind in [Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md) integriert. Bestätigt: Einnahmen als Schätzung zum damaligen reduzierten Preis, manuelle Reduktion durch alle Mitarbeitenden je Filiale auf 30/50/70 %, Schnellzugriffe pro Benutzer. Keine Implementierungsbestätigung.
+17 new points from two inbox notes are consolidated in [Item details and reports](anforderungen-artikeldetails-auswertungen-2026-09-24.md). Confirmed: revenue as an estimate at the reduced price at the time, manual markdown by all staff per branch to 30/50/70%, per-user quick access. No confirmation of implementation.

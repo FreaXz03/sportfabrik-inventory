@@ -1,52 +1,52 @@
-# Anforderungen aus der Obsidian-Inbox – 23.09.2026
+# Requirements from the Obsidian inbox – 2026-09-23
 
-Status: fachliche Anforderungen, keine Umsetzung durch diesen Dokumentationsabgleich.
+Status: business requirements, no implementation implied by this documentation sync.
 
-- Header auf allen Seiten vereinheitlichen.
-- Artikelsuche aufräumen und für Benutzer ohne PC-Erfahrung vereinfachen.
-- EAN-Suchfeld beim Öffnen der Artikelseite automatisch fokussieren.
-- Im Bestand Grösse und Farbe in getrennten Spalten sowie die Hauptgruppe anzeigen.
-- Übersicht hochwertiger gestalten: Statistiken, bevorstehende Vorgänge und Aktuelles.
-- Artikel mit Menge 0 aus der Bestandsansicht entfernen; im Artikelstamm erhalten.
-- Ausbuchungen als Liste mit Zeitpunkt, ausführender Person und Grund anzeigen.
-- Manuell einzeln importierte Artikel auflisten; gewünschte vollständige Löschung planen und Umgang mit Historie klären.
-- Artikel im Stamm nur durch Filialleiter löschbar machen; Konflikt mit dauerhafter Stammhaltung vor Umsetzung klären.
-- Parser für alle Beispielbelege im Vault ergänzen; siehe der lokalen Belegsammlung im Obsidian-Vault.
-- Benutzerfreundlichkeit und gute Lesbarkeit für Mitarbeitende mit Brille oder wenig PC-Erfahrung durchgehend berücksichtigen.
-- Lieferantengruppen und Codes gemäss der folgenden Tabelle umsetzen und Codes auf Etiketten drucken.
+- Unify the header across all pages.
+- Clean up item search and simplify it for users without PC experience.
+- Auto-focus the EAN search field when the item page opens.
+- Show size and color in separate columns in the stock view, plus the main group.
+- Make the overview more polished: statistics, upcoming events, and recent activity.
+- Remove items with quantity 0 from the stock view; keep them in the item master.
+- Show write-offs as a list with timestamp, person who performed it, and reason.
+- List manually, individually imported items; plan the requested full deletion and clarify how to handle history.
+- Make items in the master deletable only by branch managers; clarify the conflict with permanent master retention before implementation.
+- Add parsers for all sample documents in the vault; see the local document collection in the Obsidian vault.
+- Apply usability and good readability throughout, for staff with glasses or little PC experience.
+- Implement supplier groups and codes per the table below and print the codes on labels.
 
-## Fachliche Vorgaben
+## Business specifications
 
-Benutzerfreundlichkeit ist eine zentrale Projektanforderung: Mitarbeitende mit Brille und/oder wenig PC-Erfahrung sollen das System einfach bedienen können. Gute Lesbarkeit, klare Navigation und wenige übersichtliche Suchparameter sind entsprechend wichtig.
+Usability is a central project requirement: staff with glasses and/or little PC experience should be able to use the system easily. Good readability, clear navigation, and few, clear search parameters matter accordingly.
 
-| Lieferantengruppe | Code für Etiketten | Bedeutung |
+| Supplier group | Label code | Meaning |
 | --- | --- | --- |
-| Intersport | 111 | Direkte Bestellung bei Intersport |
-| ECOM | 555 | Onlineshop-Retouren vom Intersportshop |
-| Händler | 333 | Verkaufsläden in der Umgebung, die Artikel nicht mehr brauchen |
-| Dritte-Händler | 999 | Direktbestellungen bei Marken, z. B. Puma, Alpina, Columbia, Salomon; die unten genannten Intern-Marken sind ausgenommen |
-| Intern | 444 | Direktbestellungen ausschliesslich bei Nike, Adidas und Northface |
+| Intersport | 111 | Direct order from Intersport |
+| ECOM | 555 | Online shop returns from the Intersport shop |
+| Retailer | 333 | Local sales shops that no longer need the items |
+| Third-party retailer | 999 | Direct orders from brands, e.g. Puma, Alpina, Columbia, Salomon; the in-house brands listed below are excluded |
+| In-house | 444 | Direct orders exclusively from Nike, Adidas, and Northface |
 
-Etikettengrösse erneut bestätigt: **8.4 cm × 4.7 cm = 84 × 47 mm**. Keine erneute Änderung erforderlich.
+Label size reconfirmed: **8.4 cm × 4.7 cm = 84 × 47 mm**. No further change needed.
 
-Gewünschtes Verhalten bei Menge 0: Artikel aus der Bestandsansicht entfernen, im Stamm erhalten. Separater Wunsch: manuell importierte Artikel vollständig löschbar machen und allgemeines Löschen im Stamm auf Filialleiter beschränken. **Offene fachliche Frage:** Wie soll die vollständige Löschung bei bereits vorhandenen Belegen und Lagerbewegungen funktionieren? Dies widerspricht der bisherigen Regel „Artikelstamm bleibt für immer“; noch keine Löschstrategie festgelegt.
+Desired behavior at quantity 0: remove the item from the stock view, keep it in the master. Separate request: make manually imported items fully deletable and restrict general deletion in the master to branch managers. **Open business question:** how should full deletion work when documents and stock movements already exist for the item? This conflicts with the existing rule "the item master stays forever"; no deletion strategy has been defined yet.
 
 
-Quellen im lokalen Obsidian-Vault Main: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Anforderungen vom 23.09.2026.md` und `03 Ressourcen/Bilder Kassensystem Sportfabrik.md` (acht Screenshots). Originale bleiben lokal im Vault; keine Bilder oder Belege ins Repository kopiert.
+Sources in the local Obsidian vault Main: `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Anforderungen vom 23.09.2026.md` and `03 Ressourcen/Bilder Kassensystem Sportfabrik.md` (eight screenshots). Originals stay local in the vault; no images or documents copied into the repository.
 
-## Umsetzung
+## Implementation
 
-- **Lieferantengruppen und Codes** (24.09.2026): Gruppe = `lieferanten.typ`, Code daraus abgeleitet (`app/core/lieferanten.py`), fett rechts neben dem Lieferanten auf dem Etikett und in der Lieferantenauswahl der Erfassung. Je Gruppe ein Lieferant für Ware von Hand. **Einschränkung:** ECOM-Retouren kommen im Intersport-Layout und werden vom Parser noch dem Lieferanten INTERSPORT zugeordnet (Code 111), bis der Parser sie erkennt (Referenz „ret.Ecom").
-- **Bestandsansicht** (24.09.2026): Farbe und Grösse in eigenen Spalten, dazu die Hauptgruppe (unübersetzt wie in der Kasse). Zeilen mit Menge 0 erscheinen nicht mehr, der Schalter dafür ist weg; bucht man eine Zeile auf 0, verschwindet sie sofort. Der Artikel bleibt im Stamm, ein negativer Bestand bleibt sichtbar.
-- **Liste der Ausbuchungen** (24.09.2026): auf der Seite „Ausbuchen" alle Verkäufe und Abgänge aus dem Journal, neueste zuerst, mit Zeit, Artikel, Filiale, Grund und Person; filterbar nach Filiale, mit „Rückgängig". API `GET /api/ausbuchungen`.
-- **Artikelsuche** (24.09.2026): oben nur zwei grosse Felder — „EAN scannen" (beim Öffnen aktiv, Scan + Enter sucht sofort und markiert das Feld für den nächsten Scan) und „Schnellsuche"; Marke, Lieferanten-Artikelnummer, Bezeichnung, Kategorie und Lieferdatum stehen unter „Weitere Filter".
-- **Übersicht** (24.09.2026): Begrüssung mit Filiale und Datum, grosse Schnellzugriffe (Ausbuchen, Erfassen, Umlagern, Lieferungen, Beleg hochladen), Kennzahlen der aktiven Filiale (Stück im Bestand, heute verkauft), „Anstehend" (angekündigte Lieferungen, negativer Bestand zum Zählen, Artikel im Alter für −50 %/−70 % oder in den nächsten 30 Tagen, Artikel ohne Kategorie, Varianten ohne EAN) und „Aktuelles" (letzte Buchungen mit Person). Service `app/services/uebersicht.py`.
+- **Supplier groups and codes** (2026-09-24): group = `lieferanten.typ`, code derived from it (`app/core/lieferanten.py`), shown bold to the right of the supplier on the label and in the supplier picker during entry. One supplier per group for manual goods. **Limitation:** ECOM returns arrive in the Intersport layout and are still assigned by the parser to supplier INTERSPORT (code 111), until the parser recognizes them (reference "ret.Ecom").
+- **Stock view** (2026-09-24): color and size in their own columns, plus the main group (untranslated, as in the till). Rows with quantity 0 no longer appear, the toggle for it is gone; booking a row down to 0 makes it disappear immediately. The item stays in the master, a negative stock figure stays visible.
+- **List of write-offs** (2026-09-24): on the "Write off" page, all sales and removals from the journal, newest first, with time, item, branch, reason, and person; filterable by branch, with "Undo". API `GET /api/ausbuchungen`.
+- **Item search** (2026-09-24): only two large fields at the top — "Scan EAN" (active on open, scan + Enter searches immediately and re-arms the field for the next scan) and "Quick search"; brand, supplier item number, description, category, and delivery date sit under "More filters".
+- **Overview** (2026-09-24): greeting with branch and date, large quick-access buttons (write off, enter, transfer, deliveries, upload document), key figures for the active branch (units in stock, sold today), "Upcoming" (announced deliveries, negative stock to count, items aged into −50%/−70% or within the next 30 days, items without a category, variants without an EAN), and "Recent activity" (latest bookings with person). Service `app/services/uebersicht.py`.
 
-## Entscheid vom 24.09.2026 zur Artikellöschung
+## Decision of 2026-09-24 on item deletion
 
-Löschen braucht es vor allem für **von Hand erfasste** Artikel: trägt jemand einen Artikel falsch neu ein, muss ihn jemand wieder herausnehmen können. Umsetzung:
+Deletion is mainly needed for **manually entered** items: if someone enters an item wrong, someone needs to be able to remove it again. Implementation:
 
-- Löschen dürfen nur **Filialleiter und Zentrale**.
-- Gelöscht werden kann ein Artikel nur, wenn **kein Beleg** an ihm hängt (alle seine Wareneingänge sind manuelle Erfassungen ohne Dokument). Artikel aus Belegen bleiben im Stamm (Regel 4) — dort korrigiert man den Beleg bzw. löscht den Beleg.
-- Beim Löschen verschwinden Artikel, Varianten, Preise, Notizen, die manuellen Wareneingangspositionen, Bestand und die zugehörigen Lagerbewegungen — der Fehleintrag soll keine Spuren im Bestand hinterlassen. Das ist eine bewusste Ausnahme von Regel 2 nur für diesen Fall; der Vorgang wird protokolliert (wer, wann, welcher Artikel).
-- **Umgesetzt** (24.09.2026): Knopf „Artikel löschen" auf der Artikelseite (nur Filialleiter/Zentrale, mit Rückfrage), `DELETE /api/articles/{id}`, `app/services/artikel_loeschen.py`. In der Artikelsuche unter „Weitere Filter" der Haken „Nur von Hand erfasst" (`nur_manuell=true`). Artikel aus Belegen zeigen stattdessen einen Hinweis.
+- Only **branch managers and head office** may delete.
+- An item can only be deleted if **no document** is attached to it (all its goods receipts are manual entries without a document). Items from documents stay in the master (rule 4) — there you correct the document, or delete the document.
+- Deleting an item removes the item, variants, prices, notes, the manual goods-receipt lines, stock, and the associated stock movements — the mis-entry should leave no trace in stock. This is a deliberate exception to rule 2, only for this case; the action is logged (who, when, which item).
+- **Implemented** (2026-09-24): "Delete item" button on the item page (branch manager/head office only, with a confirmation prompt), `DELETE /api/articles/{id}`, `app/services/artikel_loeschen.py`. In item search, under "More filters", the checkbox "Manually entered only" (`nur_manuell=true`). Items from documents show a note instead.
