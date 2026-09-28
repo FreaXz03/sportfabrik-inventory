@@ -9,7 +9,7 @@ Lieferanten-Artikelnummer (Modell); nur Ware mit Bestand zählt.
 from datetime import date, timedelta
 
 import pymupdf
-from conftest import ANNA, CHEF
+from conftest import ANNA, CHEF, ZENTRALE
 from sqlalchemy import select
 from testbelege import importieren, kopf, rechnung_pdf
 
@@ -172,3 +172,45 @@ def test_runterschreiben_bestaetigen(welt):
 
     assert client.post(url, json={"artikel_id": 999999, "lagerort_id": codes["SF1"], "stufe": 70}).status_code == 404
     assert client.post(url, json={"artikel_id": polo_id, "lagerort_id": codes["SF1"], "stufe": 40}).status_code == 422
+
+
+def test_reduktion_aendern_nur_in_eigenen_filialen(welt):
+    """Entscheid 28.09.2026: Reduktionen ändern (von Hand, bestätigen,
+    Empfehlung beantworten) dürfen Mitarbeiter **und Filialleiter** nur in
+    ihren eigenen Filialen; die anderen sehen sie nur. Die Zentrale darf alle."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    welt.anmelden(ZENTRALE)
+    pdf = rechnung_pdf(
+        header_lines=kopf(nummer="9000000061", datum=_monate_zurueck(heute, 40).strftime("%d.%m.%Y")),
+        rows=[_zeile("1", "F6", "4006632041234", "Poloshirt", "5")],
+    )
+    assert importieren(client, pdf, lagerort_id=str(codes["SF3"])).status_code == 200
+    variante = client.get("/api/articles?ean=4006632041234").json()["items"][0]["id"]
+    with welt.sessions() as session:
+        artikel_id = session.scalar(select(Artikel.id).where(Artikel.lieferanten_artikelnr == "F6"))
+    empfehlung = client.post("/api/empfehlungen", json={
+        "artikel_id": artikel_id, "lagerort_id": codes["SF3"], "prozent": 50, "ab_datum": heute.isoformat(),
+    })
+    assert empfehlung.status_code == 200, empfehlung.text
+
+    welt.anmelden(CHEF)  # Filialleiter SF1 + SF2
+    darf = {e["lagerort"]["code"]: e["darf_aendern"] for e in client.get(f"/api/articles/{variante}/reduktion").json()["filialen"]}
+    assert darf == {"SF1": True, "SF2": True, "SF3": False, "SF4": False}
+    assert client.get(f"/api/reduktionen?lagerort_id={codes['SF3']}").json()["darf_aendern"] is False
+    assert client.get(f"/api/reduktionen?lagerort_id={codes['SF1']}").json()["darf_aendern"] is True
+    manuell = {"varianten_id": variante, "lagerort_id": codes["SF3"], "prozent": 50}
+    assert client.put("/api/reduktion/manuell", json=manuell).status_code == 403
+    assert client.delete(f"/api/reduktion/manuell?varianten_id={variante}&lagerort_id={codes['SF3']}").status_code == 403
+    bestaetigen = {"artikel_id": artikel_id, "lagerort_id": codes["SF3"], "stufe": 70}
+    assert client.post("/api/reduktionen/bestaetigen", json=bestaetigen).status_code == 403
+    antwort = {"status": "uebernommen"}
+    assert client.post(f"/api/empfehlungen/{empfehlung.json()['id']}/antwort", json=antwort).status_code == 403
+    assert client.put("/api/reduktion/manuell", json={**manuell, "lagerort_id": codes["SF1"]}).status_code == 200
+
+    welt.anmelden(ZENTRALE)
+    darf = {e["lagerort"]["code"]: e["darf_aendern"] for e in client.get(f"/api/articles/{variante}/reduktion").json()["filialen"]}
+    assert all(darf.values())
+    assert client.put("/api/reduktion/manuell", json=manuell).status_code == 200
+    assert client.post("/api/reduktionen/bestaetigen", json=bestaetigen).status_code == 200
+    assert client.post(f"/api/empfehlungen/{empfehlung.json()['id']}/antwort", json=antwort).status_code == 200

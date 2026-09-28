@@ -36,7 +36,8 @@
       window.open('/api/artikel/' + artikel.artikel_id + '/etiketten.pdf?' + parameter.toString(), '_blank', 'noopener');
     });
     aktion.append(knopf);
-    if (artikel.stand === 'faellig') {
+    // Ändern nur in eigenen Filialen, Zentrale überall (28.09.2026).
+    if (artikel.stand === 'faellig' && daten.darf_aendern) {
       const bestaetigenKnopf = node('button', t('reduktion.confirm'), 'secondary');
       bestaetigenKnopf.type = 'button';
       bestaetigenKnopf.addEventListener('click', async () => {
@@ -124,7 +125,8 @@
       if (grund === null) return;
       antworten('abgelehnt', grund, ablehnen);
     });
-    aktion.append(uebernehmen, ablehnen);
+    if (daten.darf_aendern) aktion.append(uebernehmen, ablehnen);
+    else aktion.append(node('span', t('reduktion_wahl.no_right'), 'muted'));
     tr.append(aktion);
     return tr;
   }
@@ -222,7 +224,7 @@
         const tr = document.createElement('tr');
         const stand = window.SportfabrikReduktion.chipTd(m.reduktion);
         const wahl = node('td');
-        if (m.reduktion) {
+        if (m.reduktion && daten.darf_aendern) {
           wahl.append(window.SportfabrikReduktion.knoepfe(m.varianten_id, daten.lagerort.id, m.reduktion, (neu) => {
             $('sucheStatus').textContent = t('reduktion_wahl.saved', { filiale: daten.lagerort.code, stufe: window.SportfabrikReduktion.text(neu) });
             laden().then(suchen);

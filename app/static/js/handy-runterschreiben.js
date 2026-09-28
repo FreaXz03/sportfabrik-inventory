@@ -48,7 +48,7 @@
       el('span', null, t('reduktion.table_arrival') + ': ' + datum(a.eingang))
     );
     card.append(head, counts);
-    if (a.stand === 'faellig') {
+    if (a.stand === 'faellig' && daten.darf_aendern) {
       var field = el('div', 'm-position-field');
       var button = el('button', 'secondary', t('reduktion.confirm'));
       button.type = 'button';
