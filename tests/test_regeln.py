@@ -75,12 +75,12 @@ def test_strichcode_nur_fuer_druckbare_nummern():
 @pytest.mark.parametrize(
     "eingang,erwartet",
     [
-        (date(2026, 9, 21), 0),
-        (date(2025, 3, 22), 0),  # einen Tag zu jung für 18 Monate
+        (date(2026, 9, 21), 30),  # ab Eingang mindestens 30 % (28.09.2026)
+        (date(2025, 3, 22), 30),  # einen Tag zu jung für 18 Monate
         (date(2025, 3, 21), 50),  # genau 18 Monate
         (date(2023, 9, 22), 50),  # einen Tag zu jung für 36 Monate
         (date(2023, 9, 21), 70),  # genau 36 Monate
-        (None, 0),
+        (None, 0),  # ohne Eingangsdatum keine Uhr (externes Lager)
     ],
 )
 def test_reduktionsstufe(eingang, erwartet):
