@@ -17,13 +17,13 @@
      </header>
      <main>
           <h1 data-i18n="statistik.heading">Statistik</h1>
-          <p data-i18n="statistik.intro">Verkäufe je Kassenkategorie, geschätzte Einnahmen und eine Bestellempfehlung.</p>
+          <p data-i18n="statistik.intro">Verkäufe je Kassenkategorie, geschätzte Einnahmen, eine Bestellempfehlung und die Abgänge ausser Verkauf.</p>
           <form class="filters" onsubmit="return false;">
                <label><span data-i18n="statistik.filter_zeitraum">Zeitraum</span>
                     <select id="zeitraum">
                          <option value="tag" data-i18n="statistik.zeitraum.tag">Heute</option>
-                         <option value="woche" data-i18n="statistik.zeitraum.woche">Diese Woche</option>
-                         <option value="monat" selected data-i18n="statistik.zeitraum.monat">Dieser Monat</option>
+                         <option value="woche" selected data-i18n="statistik.zeitraum.woche">Diese Woche</option>
+                         <option value="monat" data-i18n="statistik.zeitraum.monat">Dieser Monat</option>
                          <option value="jahr" data-i18n="statistik.zeitraum.jahr">Dieses Jahr</option>
                          <option value="gesamt" data-i18n="statistik.zeitraum.gesamt">Insgesamt</option>
                     </select>
@@ -63,9 +63,41 @@
                     </table>
                </div>
           </section>
+
+          <section class="panel" id="abgaengePanel" hidden>
+               <h2 data-i18n="statistik.abgaenge_heading">Abgänge ausser Verkauf</h2>
+               <p class="stat-big" id="abgaengeTotal"></p>
+               <p id="abgaengeLeer" class="muted empty-state" hidden data-i18n="statistik.abgaenge_empty">In diesem Zeitraum keine Abgänge.</p>
+               <div class="tablewrap" id="abgaengeGruende">
+                    <table>
+                         <thead>
+                              <tr>
+                                   <th data-i18n="statistik.table_reason">Grund</th>
+                                   <th data-i18n="statistik.table_pieces">Stück</th>
+                              </tr>
+                         </thead>
+                         <tbody id="abgaengeGrundRows"></tbody>
+                    </table>
+               </div>
+               <h3 data-i18n="statistik.abgaenge_latest">Letzte Abgänge</h3>
+               <div class="tablewrap" id="abgaengeLetzte">
+                    <table>
+                         <thead>
+                              <tr>
+                                   <th data-i18n="statistik.table_when">Wann</th>
+                                   <th data-i18n="bestand.table_article">Artikel</th>
+                                   <th data-i18n="statistik.table_reason">Grund</th>
+                                   <th data-i18n="statistik.table_branch">Filiale</th>
+                                   <th data-i18n="statistik.table_person">Gebucht von</th>
+                              </tr>
+                         </thead>
+                         <tbody id="abgaengeLetzteRows"></tbody>
+                    </table>
+               </div>
+          </section>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/statistiken.js?v=1"></script>
+     <script src="/static/js/statistiken.js?v=2"></script>
      <script src="/static/js/nav.js?v=3"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>

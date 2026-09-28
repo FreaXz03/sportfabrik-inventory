@@ -110,3 +110,35 @@ def test_statistik_je_zeitraum_und_kategorie(welt):
 
     client.post("/logout")
     assert client.get("/api/statistik?zeitraum=monat").status_code == 401
+
+
+def test_statistik_abgaenge_je_grund_und_person(welt):
+    """Klarstellung 25.09.2026: die Statistik zeigt auch, wie viele Artikel
+    aus welchem Grund ausgebucht wurden (ohne Verkauf), die letzten Abgänge
+    und wer sie gebucht hat. Stornierte Abgänge zählen nicht."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    welt.anmelden(CHEF)
+    pdf = rechnung_pdf(
+        header_lines=kopf(nummer="9100000009", datum=heute.strftime("%d.%m.%Y"), belegdatum=heute.strftime("%d.%m.%Y")),
+        rows=[_zeile("P1", "1", "224100", POLO_EAN, "Poloshirt", "10", "49.90")],
+    )
+    assert importieren(client, pdf, lagerort_id=str(codes["SF1"])).status_code == 200
+    for grund in ("defekt", "defekt", "diebstahl"):
+        assert client.post("/api/ausbuchen", json={"ean": POLO_EAN, "grund": grund}).status_code == 200
+    sonstiges = client.post("/api/ausbuchen", json={"ean": POLO_EAN, "grund": "sonstiges", "freitext": "Muster"})
+    assert client.post(f"/api/ausbuchen/{sonstiges.json()['bewegung_id']}/storno").status_code == 200
+    assert client.post("/api/ausbuchen", json={"ean": POLO_EAN, "grund": "verkauf"}).status_code == 200
+
+    abgaenge = client.get("/api/statistik?zeitraum=woche").json()["abgaenge"]
+    assert abgaenge["stueck"] == "3.00"
+    assert abgaenge["je_grund"] == [
+        {"grund": "defekt", "stueck": "2.00"},
+        {"grund": "diebstahl", "stueck": "1.00"},
+    ]
+    letzte = abgaenge["letzte"]
+    assert [a["grund"] for a in letzte] == ["diebstahl", "defekt", "defekt"]
+    assert letzte[0] == {**letzte[0], "person": "Chef", "lagerort": "SF1", "bezeichnung": "Poloshirt", "stueck": "1.00"}
+
+    leer = client.get(f"/api/statistik?zeitraum=woche&lagerort_id={codes['SF2']}").json()["abgaenge"]
+    assert leer == {"stueck": "0.00", "je_grund": [], "letzte": []}
