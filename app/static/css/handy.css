@@ -218,3 +218,26 @@ body.m-scanning { overflow: hidden; }
   text-align: center;
 }
 .m-scanner-cancel { position: relative; width: 100%; max-width: 420px; }
+
+/* Booking pages: which store, which article, one big form. */
+.m-store-line { margin: 0 0 var(--space-3); font-weight: 600; color: var(--accent-text); }
+.m-store-line.error { color: var(--danger-text); }
+.m-article-card {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.m-article-card strong { font-size: var(--fs-h3); line-height: 1.3; }
+.m-article-card span { font-size: var(--fs-sm); color: var(--text-muted); }
+.m-current { margin: var(--space-4) 0; font-size: var(--fs-body); font-weight: 600; color: var(--text); }
+body.phone form label { margin-top: var(--space-4); }
+body.phone select,
+body.phone form input { height: 52px; font-size: var(--fs-h3); }
+.m-stepper { display: grid; grid-template-columns: 52px 1fr 52px; gap: var(--space-2); }
+.m-stepper button.icon-only { width: 52px; height: 52px; }
+.m-stepper input { text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+body.phone .notice { margin: 0 0 var(--space-4); }

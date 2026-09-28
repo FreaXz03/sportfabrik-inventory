@@ -4,89 +4,24 @@
   var P = window.SFPhone;
   var t = P.t;
   var el = P.el;
-  var STORE_KEY = 'sfPhoneSearch';
 
-  var form = document.getElementById('searchForm');
-  var input = document.getElementById('searchInput');
-  var status = document.getElementById('status');
-  var results = document.getElementById('results');
   var searchView = document.getElementById('searchView');
   var articleView = document.getElementById('articleView');
   var back = document.getElementById('back');
 
-  var state = { query: '', items: [], total: 0, article: null, stock: null, stockError: null };
+  var state = { article: null, stock: null, stockError: null };
   var me = null;
-  var searchSeq = 0;
-
-  function remember() {
-    try { sessionStorage.setItem(STORE_KEY, JSON.stringify({ query: state.query, items: state.items, total: state.total })); } catch (e) { }
-  }
-
-  function restore() {
-    try {
-      var saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || 'null');
-      if (saved) { state.query = saved.query || ''; state.items = saved.items || []; state.total = saved.total || 0; }
-    } catch (e) { }
-  }
-
-  function variantText(item) {
-    return [item.color, item.size].filter(Boolean).join(' · ');
-  }
-
-  function renderResults() {
-    results.replaceChildren();
-    if (!state.query) { status.textContent = ''; return; }
-    if (!state.items.length) { status.textContent = t('phone.search_none'); return; }
-    status.textContent = state.total > state.items.length
-      ? t('phone.search_more', { shown: state.items.length, total: state.total })
-      : t('phone.search_count', { n: state.total });
-    state.items.forEach(function (item) {
-      var li = document.createElement('li');
-      var button = el('button');
-      button.type = 'button';
-      button.append(
-        el('strong', null, [item.brand, item.description].filter(Boolean).join(' ')),
-        el('span', 'm-num', P.money(item.latest_uvp) || ''),
-        el('span', 'm-sub', [variantText(item), item.supplier_article_no].filter(Boolean).join(' · '))
-      );
-      button.addEventListener('click', function () { openArticle(item, true); });
-      li.append(button);
-      results.append(li);
-    });
-  }
-
-  async function search(query) {
-    query = query.trim();
-    if (!query) return;
-    var seq = ++searchSeq;
-    state.query = query;
-    status.textContent = t('phone.searching');
-    results.replaceChildren();
-    try {
-      if (/^\d{8,14}$/.test(query)) {
-        var exact = await P.fetchJson('/api/articles?page_size=25&ean=' + encodeURIComponent(query));
-        if (seq !== searchSeq) return;
-        if (exact.items.length === 1) {
-          state.items = exact.items; state.total = 1; remember();
-          openArticle(exact.items[0], true);
-          return;
-        }
-      }
-      var data = await P.fetchJson('/api/articles?page_size=25&q=' + encodeURIComponent(query));
-      if (seq !== searchSeq) return;
-      state.items = data.items; state.total = data.total;
-      remember();
-      renderResults();
-    } catch (error) {
-      if (seq === searchSeq) status.textContent = error.message;
-    }
-  }
+  var variantText = P.variantText;
+  var pick = P.picker({
+    container: document.getElementById('picker'),
+    storeKey: 'sfPhoneSearch',
+    onPick: function (item) { openArticle(item, true); }
+  });
 
   function showSearch() {
     state.article = null;
     articleView.hidden = true;
     searchView.hidden = false;
-    renderResults();
   }
 
   function stageChip(prozent) {
@@ -184,33 +119,18 @@
 
   function fromUrl() {
     var id = Number(new URLSearchParams(location.search).get('v'));
-    var item = id ? state.items.find(function (i) { return i.id === id; }) : null;
+    var item = id ? pick.items().find(function (i) { return i.id === id; }) : null;
     if (item) { openArticle(item, false); return; }
     if (id) history.replaceState(null, '', location.pathname);
     showSearch();
   }
 
-  document.getElementById('cameraButton').addEventListener('click', async function () {
-    var code = await P.scan();
-    if (!code) return;
-    input.value = code;
-    search(code);
-  });
   back.addEventListener('click', function (event) {
     if (!articleView.hidden) { event.preventDefault(); history.back(); }
   });
-  form.addEventListener('submit', function (event) {
-    event.preventDefault();
-    input.blur();
-    search(input.value);
-  });
   window.addEventListener('popstate', fromUrl);
   document.addEventListener('sportfabrik:me', function (event) { me = event.detail; renderStock(); });
-  document.addEventListener('sportfabrik:i18n-ready', function () {
-    if (state.article) renderArticle(); else renderResults();
-  });
+  document.addEventListener('sportfabrik:i18n-ready', renderArticle);
 
-  restore();
-  input.value = state.query;
   fromUrl();
 })();

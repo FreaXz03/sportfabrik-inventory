@@ -918,5 +918,17 @@
   "phone.scan_error_denied": "Accès à la caméra refusé. Autorisez la caméra pour ce site dans les réglages du navigateur.",
   "phone.scan_error_no_camera": "Aucune caméra trouvée.",
   "phone.scan_error_busy": "La caméra est utilisée par une autre application.",
-  "phone.scan_error_generic": "Impossible de démarrer la caméra. Saisissez l'EAN à la main."
+  "phone.scan_error_generic": "Impossible de démarrer la caméra. Saisissez l'EAN à la main.",
+  "phone.tile_count": "Compter le stock",
+  "phone.tile_count_hint": "Saisir la quantité en rayon et corriger le stock",
+  "phone.count_title": "Compter le stock",
+  "phone.count_in": "Comptage à {store}",
+  "phone.choose_store": "Veuillez choisir une filiale en haut.",
+  "phone.count_current": "Stock à {store} : {n} pce",
+  "phone.count_label": "Quantité comptée en rayon",
+  "phone.count_minus": "Un de moins",
+  "phone.count_plus": "Un de plus",
+  "phone.count_book": "Corriger le stock",
+  "phone.count_text_required": "Veuillez indiquer le motif avec vos propres mots.",
+  "phone.pick_other": "Choisir un autre article"
 }

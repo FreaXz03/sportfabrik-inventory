@@ -1,6 +1,8 @@
 """Phone access (decision 28.09.2026): a login from a phone may only use the
 agreed phone features. The server enforces this; hiding buttons is not enough."""
 
+from decimal import Decimal
+
 from conftest import ANNA, PASSWOERTER, ZENTRALE
 
 from app.core.i18n import translate
@@ -131,3 +133,30 @@ def test_phone_home_needs_login_and_can_be_installed(welt):
     assert manifest["start_url"] == "/m" and manifest["display"] == "standalone"
     for icon in manifest["icons"]:
         assert c.get(icon["src"]).status_code == 200, icon["src"]
+
+
+def test_count_and_correct_on_the_phone(welt):
+    _login(welt, ANNA, IPHONE)
+    c = welt.client
+    h = {"User-Agent": IPHONE}
+    assert c.get("/m/zaehlen", headers=h).status_code == 200
+
+    # Employees may book goods in by hand in their own store (rule 9) - on the
+    # phone too, and that gives us something to count.
+    antwort = c.post("/api/erfassen", headers=h, json={
+        "lagerort_id": welt.codes["SF1"],
+        "positionen": [{"marke": "Nike", "bezeichnung": "Polo", "menge": "3", "uvp": "39.90", "ean": "4006632041233"}],
+    })
+    assert antwort.status_code == 200, antwort.text
+    variante = c.get("/api/articles?ean=4006632041233", headers=h).json()["items"][0]["id"]
+
+    antwort = c.post("/api/korrektur", headers=h, json={
+        "varianten_id": variante, "lagerort_id": welt.codes["SF1"], "gezaehlt": "1", "grund": "inventur",
+    })
+    assert antwort.status_code == 200, antwort.text
+    assert antwort.json()["gebucht"] and Decimal(antwort.json()["differenz"]) == -2
+
+    antwort = c.post("/api/korrektur", headers=h, json={
+        "varianten_id": variante, "lagerort_id": welt.codes["SF2"], "gezaehlt": "5", "grund": "inventur",
+    })
+    assert antwort.status_code == 403

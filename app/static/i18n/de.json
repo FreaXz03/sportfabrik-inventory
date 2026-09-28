@@ -918,5 +918,17 @@
   "phone.scan_error_denied": "Kamerazugriff nicht erlaubt. In den Einstellungen des Browsers die Kamera für diese Seite erlauben.",
   "phone.scan_error_no_camera": "Keine Kamera gefunden.",
   "phone.scan_error_busy": "Die Kamera wird gerade von einer anderen App benutzt.",
-  "phone.scan_error_generic": "Die Kamera konnte nicht gestartet werden. EAN von Hand eingeben."
+  "phone.scan_error_generic": "Die Kamera konnte nicht gestartet werden. EAN von Hand eingeben.",
+  "phone.tile_count": "Bestand zählen",
+  "phone.tile_count_hint": "Menge im Regal erfassen und Bestand korrigieren",
+  "phone.count_title": "Bestand zählen",
+  "phone.count_in": "Gezählt wird in {store}",
+  "phone.choose_store": "Bitte oben eine Filiale wählen.",
+  "phone.count_current": "Bestand in {store}: {n} Stk.",
+  "phone.count_label": "Gezählte Menge im Regal",
+  "phone.count_minus": "Eins weniger",
+  "phone.count_plus": "Eins mehr",
+  "phone.count_book": "Bestand korrigieren",
+  "phone.count_text_required": "Bitte den Grund in eigenen Worten angeben.",
+  "phone.pick_other": "Anderen Artikel wählen"
 }

@@ -918,5 +918,17 @@
   "phone.scan_error_denied": "Camera access is not allowed. Allow the camera for this site in the browser settings.",
   "phone.scan_error_no_camera": "No camera found.",
   "phone.scan_error_busy": "The camera is being used by another app.",
-  "phone.scan_error_generic": "The camera could not be started. Enter the EAN by hand."
+  "phone.scan_error_generic": "The camera could not be started. Enter the EAN by hand.",
+  "phone.tile_count": "Count stock",
+  "phone.tile_count_hint": "Enter the shelf count and correct the stock",
+  "phone.count_title": "Count stock",
+  "phone.count_in": "Counting in {store}",
+  "phone.choose_store": "Please choose a store at the top.",
+  "phone.count_current": "Stock in {store}: {n} pcs",
+  "phone.count_label": "Counted quantity on the shelf",
+  "phone.count_minus": "One less",
+  "phone.count_plus": "One more",
+  "phone.count_book": "Correct stock",
+  "phone.count_text_required": "Please give the reason in your own words.",
+  "phone.pick_other": "Choose another article"
 }

@@ -21,3 +21,8 @@ def phone_home(user=Depends(require_login_page)):
 @router.get("/m/suche", include_in_schema=False)
 def phone_search(user=Depends(require_login_page)):
     return FileResponse(TEMPLATES / "handy-suche.html")
+
+
+@router.get("/m/zaehlen", include_in_schema=False)
+def phone_count(user=Depends(require_login_page)):
+    return FileResponse(TEMPLATES / "handy-zaehlen.html")
