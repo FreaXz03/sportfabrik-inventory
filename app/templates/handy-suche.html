@@ -15,7 +15,7 @@
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="phone.search_title">Artikel suchen</title>
      <link rel="stylesheet" href="/static/css/app.css?v=design-2">
-     <link rel="stylesheet" href="/static/css/handy.css?v=1">
+     <link rel="stylesheet" href="/static/css/handy.css?v=2">
 </head>
 
 <body class="phone">
@@ -26,11 +26,12 @@
 
           <section id="searchView">
                <h1 data-i18n="phone.search_title">Artikel suchen</h1>
+               <button type="button" id="cameraButton" class="large m-wide"><svg class="icon" aria-hidden="true"><use href="/static/img/icons.svg#icon-scan"></use></svg><span data-i18n="phone.scan_button">Mit Kamera scannen</span></button>
                <form id="searchForm" class="m-scan" role="search">
                     <label for="searchInput" data-i18n="phone.search_label">EAN, Lief.-Nr. oder Bezeichnung</label>
                     <div class="m-scan-row">
                          <input id="searchInput" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="200">
-                         <button type="submit" class="large" data-i18n="phone.search_button">Suchen</button>
+                         <button type="submit" class="large secondary" data-i18n="phone.search_button">Suchen</button>
                     </div>
                </form>
                <p id="status" role="status" aria-live="polite" class="muted"></p>
@@ -52,7 +53,8 @@
           </section>
      </main>
      <script src="/static/js/handy-core.js?v=1"></script>
-     <script src="/static/js/handy-suche.js?v=1"></script>
+     <script src="/static/js/handy-scan.js?v=1"></script>
+     <script src="/static/js/handy-suche.js?v=2"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>

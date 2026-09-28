@@ -2,3 +2,8 @@ Logo: https://images.squarespace-cdn.com/content/v1/68a6c0ddf461675868b9dcee/505
 Font CSS: https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&display=swap
 Reference: https://www.sportfabrik.ch/
 Orange #F39200; dark grey #2E2E2E.
+
+Third-party code: `app/static/vendor/zxing/zxing-library-0.21.3.min.js` is the
+unmodified UMD build of `@zxing/library` 0.21.3 from npm (source-map comment
+removed), Apache License 2.0 (`LICENSE` next to it). Used for camera barcode
+scanning on phones without a built-in barcode reader (iPhone).

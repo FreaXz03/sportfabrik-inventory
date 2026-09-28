@@ -97,11 +97,11 @@ const origin = 'http://localhost:8080';
 for (const input of [null, '', 'https://evil.example', '//evil.example',
     '/\\evil.example', 'javascript:alert(1)', '/static/js/theme.js',
     '/login?next=https://evil.example', '/%2f%2fevil.example', '/\tevil.example',
-    ' /articles', '/api/invoices', '/unknown']) {
+    ' /articles', '/api/invoices', '/unknown', '/m/', '/m/../konten', '/m/suche/x']) {
   assert.equal(safeLoginRedirect(input, origin), '/', String(input));
 }
 for (const input of ['/', '/articles', '/invoices', '/preview',
-    '/invoices/123', '/articles/7/history', '/articles?q=Hoka#results']) {
+    '/invoices/123', '/articles/7/history', '/articles?q=Hoka#results', '/m', '/m/suche']) {
   assert.equal(safeLoginRedirect(input, origin), input);
 }
 """

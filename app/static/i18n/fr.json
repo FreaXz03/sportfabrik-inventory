@@ -909,5 +909,14 @@
   "phone.pieces": "{n} pce",
   "phone.no_variant": "sans couleur/taille",
   "phone.error_offline": "Pas de connexion au serveur. Vérifiez le Wi-Fi et réessayez.",
-  "phone.error_generic": "Cela n'a pas fonctionné. Veuillez réessayer."
+  "phone.error_generic": "Cela n'a pas fonctionné. Veuillez réessayer.",
+  "phone.scan_button": "Scanner avec la caméra",
+  "phone.scan_title": "Scanner le code-barres",
+  "phone.scan_hint": "Placez le code-barres dans le cadre",
+  "phone.scan_cancel": "Annuler",
+  "phone.scan_error_https": "La caméra ne fonctionne qu'en HTTPS avec un certificat de confiance.",
+  "phone.scan_error_denied": "Accès à la caméra refusé. Autorisez la caméra pour ce site dans les réglages du navigateur.",
+  "phone.scan_error_no_camera": "Aucune caméra trouvée.",
+  "phone.scan_error_busy": "La caméra est utilisée par une autre application.",
+  "phone.scan_error_generic": "Impossible de démarrer la caméra. Saisissez l'EAN à la main."
 }

@@ -190,6 +190,12 @@
     showSearch();
   }
 
+  document.getElementById('cameraButton').addEventListener('click', async function () {
+    var code = await P.scan();
+    if (!code) return;
+    input.value = code;
+    search(code);
+  });
   back.addEventListener('click', function (event) {
     if (!articleView.hidden) { event.preventDefault(); history.back(); }
   });

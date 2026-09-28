@@ -909,5 +909,14 @@
   "phone.pieces": "{n} pcs",
   "phone.no_variant": "no colour/size",
   "phone.error_offline": "No connection to the server. Check the Wi-Fi and try again.",
-  "phone.error_generic": "That did not work. Please try again."
+  "phone.error_generic": "That did not work. Please try again.",
+  "phone.scan_button": "Scan with camera",
+  "phone.scan_title": "Scan barcode",
+  "phone.scan_hint": "Hold the barcode inside the frame",
+  "phone.scan_cancel": "Cancel",
+  "phone.scan_error_https": "The camera only works over HTTPS with a trusted certificate.",
+  "phone.scan_error_denied": "Camera access is not allowed. Allow the camera for this site in the browser settings.",
+  "phone.scan_error_no_camera": "No camera found.",
+  "phone.scan_error_busy": "The camera is being used by another app.",
+  "phone.scan_error_generic": "The camera could not be started. Enter the EAN by hand."
 }

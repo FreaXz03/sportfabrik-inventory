@@ -169,3 +169,52 @@ body.phone h2 { font-size: var(--fs-h3); margin: var(--space-8) 0 var(--space-3)
 .m-store li.is-selected { background: var(--accent-soft-bg); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
 .m-store li .m-num { font-variant-numeric: tabular-nums; font-weight: 600; }
 .m-store li .m-num.negative { color: var(--danger-text); }
+
+.m-wide { width: 100%; margin-top: var(--space-4); }
+
+/* Camera scanner: full screen, dark in both themes, frame in the middle. */
+body.m-scanning { overflow: hidden; }
+.m-scanner {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+  background: #000;
+}
+.m-scanner video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.m-scanner-frame {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 50%;
+  height: 28%;
+  transform: translateY(-50%);
+  border: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .45);
+  pointer-events: none;
+}
+.m-scanner.has-error .m-scanner-frame { display: none; }
+.m-scanner-hint {
+  position: relative;
+  max-width: 34ch;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, .6);
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+}
+.m-scanner-cancel { position: relative; width: 100%; max-width: 420px; }

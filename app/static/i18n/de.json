@@ -909,5 +909,14 @@
   "phone.pieces": "{n} Stk.",
   "phone.no_variant": "ohne Farbe/Grösse",
   "phone.error_offline": "Keine Verbindung zum Server. WLAN prüfen und erneut versuchen.",
-  "phone.error_generic": "Das hat nicht geklappt. Bitte erneut versuchen."
+  "phone.error_generic": "Das hat nicht geklappt. Bitte erneut versuchen.",
+  "phone.scan_button": "Mit Kamera scannen",
+  "phone.scan_title": "Barcode scannen",
+  "phone.scan_hint": "Barcode in den Rahmen halten",
+  "phone.scan_cancel": "Abbrechen",
+  "phone.scan_error_https": "Die Kamera funktioniert nur über HTTPS mit vertrautem Zertifikat.",
+  "phone.scan_error_denied": "Kamerazugriff nicht erlaubt. In den Einstellungen des Browsers die Kamera für diese Seite erlauben.",
+  "phone.scan_error_no_camera": "Keine Kamera gefunden.",
+  "phone.scan_error_busy": "Die Kamera wird gerade von einer anderen App benutzt.",
+  "phone.scan_error_generic": "Die Kamera konnte nicht gestartet werden. EAN von Hand eingeben."
 }

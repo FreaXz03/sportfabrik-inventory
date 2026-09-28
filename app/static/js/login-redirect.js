@@ -5,7 +5,7 @@ function safeLoginRedirect(value, origin) {
   try {
     const url = new URL(value, origin);
     if (url.origin !== origin ||
-        !/^(?:\/|\/articles|\/invoices|\/preview|\/invoices\/\d+|\/articles\/\d+\/history)$/.test(url.pathname)) return '/';
+        !/^(?:\/|\/articles|\/invoices|\/preview|\/invoices\/\d+|\/articles\/\d+\/history|\/m|\/m\/[a-z]+)$/.test(url.pathname)) return '/';
     return url.pathname + url.search + url.hash;
   } catch (_) {
     return '/';
