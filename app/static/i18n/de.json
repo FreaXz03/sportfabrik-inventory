@@ -939,5 +939,7 @@
   "phone.tile_writeoff": "Ausbuchen",
   "phone.tile_writeoff_hint": "Verkauf oder Abgang buchen",
   "phone.tile_manual_entry": "Ware erfassen",
-  "phone.tile_manual_entry_hint": "Ware ohne Beleg einbuchen"
+  "phone.tile_manual_entry_hint": "Ware ohne Beleg einbuchen",
+  "phone.tile_reductions": "Runterschreiben",
+  "phone.tile_reductions_hint": "Fällige Reduktionen und von Hand reduzieren"
 }

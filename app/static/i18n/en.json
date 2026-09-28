@@ -939,5 +939,7 @@
   "phone.tile_writeoff": "Book out",
   "phone.tile_writeoff_hint": "Record a sale or removal",
   "phone.tile_manual_entry": "Record goods",
-  "phone.tile_manual_entry_hint": "Book in goods without a document"
+  "phone.tile_manual_entry_hint": "Book in goods without a document",
+  "phone.tile_reductions": "Mark down",
+  "phone.tile_reductions_hint": "Due mark-downs and manual reduction"
 }

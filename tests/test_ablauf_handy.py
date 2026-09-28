@@ -330,3 +330,60 @@ def test_manual_goods_entry_on_the_phone(welt):
         "positionen": [{"marke": "Nike", "bezeichnung": "Poloshirt", "menge": "1", "uvp": "39.90"}],
     })
     assert manager.status_code == 200, manager.text
+
+
+def test_reductions_on_the_phone(welt):
+    """Rule 6/D5: mark-down list with a "Done" button, plus manual reduction
+    30/50/70% - open to everyone, but only in the employee's own stores."""
+    from datetime import date
+
+    from testbelege import importieren, kopf, rechnung_pdf
+
+    from app.core.models import Artikel
+    from app.services.uebersicht import _monate_zurueck
+    from sqlalchemy import select
+
+    heute = date.today()
+    c = welt.client
+
+    # Setup: a document import is desktop-only (rule 9) - done from a
+    # desktop session, before switching to the phone for the actual test.
+    welt.anmelden(CHEF)
+    eingang = _monate_zurueck(heute, 40)
+    pdf = rechnung_pdf(
+        header_lines=kopf(nummer="9100000001", datum=eingang.strftime("%d.%m.%Y")),
+        rows=[["Nike", "224100", "A1", "1", "4006632041234", "Poloshirt", "5", "Stk", "49.90", "20.00"]],
+    )
+    assert importieren(c, pdf, lagerort_id=str(welt.codes["SF1"])).status_code == 200, "setup import failed"
+
+    _login(welt, CHEF, IPHONE)
+    h = {"User-Agent": IPHONE}
+
+    assert c.get("/m/runterschreiben", headers=h, follow_redirects=False).status_code == 200
+    liste = c.get("/api/reduktionen", headers=h).json()
+    assert liste["lagerort"]["code"] == "SF1"
+    assert [(a["lieferanten_artikelnr"], a["stand"], a["stufe"]) for a in liste["artikel"]] == [("A1", "faellig", 70)]
+
+    with welt.sessions() as session:
+        polo_id = session.scalar(select(Artikel.id).where(Artikel.lieferanten_artikelnr == "A1"))
+
+    # Mark the due model as done -> it drops off the due list.
+    bestaetigt = c.post("/api/reduktionen/bestaetigen", headers=h, json={
+        "artikel_id": polo_id, "lagerort_id": welt.codes["SF1"], "stufe": 70,
+    })
+    assert bestaetigt.status_code == 200, bestaetigt.text
+    assert c.get("/api/reduktionen", headers=h).json()["artikel"] == []
+
+    # Manual reduction: an employee may set it only in their own store.
+    variante = c.get("/api/articles?ean=4006632041234", headers=h).json()["items"][0]["id"]
+    _login(welt, ANNA, IPHONE)
+    gesetzt = c.put("/api/reduktion/manuell", headers=h, json={
+        "varianten_id": variante, "lagerort_id": welt.codes["SF1"], "prozent": 50,
+    })
+    assert gesetzt.status_code == 200, gesetzt.text
+    assert gesetzt.json()["manuell"] == 50 and gesetzt.json()["wirksam"] == 50
+
+    verboten = c.put("/api/reduktion/manuell", headers=h, json={
+        "varianten_id": variante, "lagerort_id": welt.codes["SF2"], "prozent": 50,
+    })
+    assert verboten.status_code == 403

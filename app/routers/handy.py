@@ -46,3 +46,8 @@ def phone_write_off(user=Depends(require_chef_page)):
 @router.get("/m/erfassen", include_in_schema=False)
 def phone_manual_entry(user=Depends(require_login_page)):
     return FileResponse(TEMPLATES / "handy-erfassen.html")
+
+
+@router.get("/m/runterschreiben", include_in_schema=False)
+def phone_reductions(user=Depends(require_login_page)):
+    return FileResponse(TEMPLATES / "handy-runterschreiben.html")
