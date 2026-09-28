@@ -867,3 +867,30 @@ write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
 branches; entry/correction also check this boundary server-side.
 `GET /api/bestand` additionally returns `rechte.ausbuchen` and
 `rechte.korrektur_lagerorte`, which determine which actions are shown.
+
+## Phone layer (implemented 2026-09-28)
+
+A login from a phone is flagged in the session. `app/core/handy.py` holds
+the allowlist and the server-side check; every route (page and API) is
+checked against it. A blocked API call returns a translated 403, a
+blocked page redirects to `/m`. The flag survives "Request desktop
+site"; roles and branch limits from the sections above apply unchanged,
+and tablets keep the desktop version.
+
+`app/routers/handy.py` serves the phone-only pages under `/m/*`:
+- `/m`, `/m/suche` — home screen and article search/detail
+- `/m/zaehlen` — count and correct stock
+- `/m/lieferungen` — confirm goods arrival
+- `/m/umlagern` — transfer (branch manager/head office only)
+- `/m/ausbuchen` — write off a sale/removal (branch manager/head office only)
+- `/m/erfassen` — manual goods entry
+- `/m/runterschreiben` — mark-downs and manual reduction
+
+These pages call the existing desktop APIs (`bestand`, `wareneingaenge`,
+`umlagerung`, `ausbuchen`, `erfassen`, `reduktion`) rather than adding a
+parallel API surface; only the phone layer and templates are new.
+Camera scanning uses the browser's native barcode reader where available
+and a bundled ZXing library otherwise (no CDN, per rule 1); a code counts
+only after two identical reads with a valid check digit. Full feature
+list and decisions: `docs/projekt-kontext.md`, "Mobile phone use –
+implemented 2026-09-28"; original requirements: `docs/handynutzung.md`.

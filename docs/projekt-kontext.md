@@ -1185,12 +1185,27 @@ Adopted cloud-main `d1c6533`. Local suite with `DATABASE_URL=sqlite:// .venv/bin
 
 ## Inbox addendum – 2026-09-24, afternoon
 
-Usability requirements (filter lists from "pending," autofocus in stock, column selection under "more filters," branch in the page title, equally sized overview buttons), mobile planning questions, and binding joint maintenance of the two HTML overviews: see [Inbox requirements 2026-09-24](anforderungen-inbox-2026-09-24.md#weitere-inbox-anforderungen--24092026-nachmittags). The five usability requests were implemented on 2026-09-24 (commits `431dc6f`, `fd95054`): clicking "pending" opens the filtered list with exactly the counted entries (now counted per variant), the stock search field active immediately, "show columns" under "more filters," branch shown large in the stock page title, equally sized quick-access buttons. The mobile questions stay at the planning stage.
+Usability requirements (filter lists from "pending," autofocus in stock, column selection under "more filters," branch in the page title, equally sized overview buttons), mobile planning questions, and binding joint maintenance of the two HTML overviews: see [Inbox requirements 2026-09-24](anforderungen-inbox-2026-09-24.md#weitere-inbox-anforderungen--24092026-nachmittags). The five usability requests were implemented on 2026-09-24 (commits `431dc6f`, `fd95054`): clicking "pending" opens the filtered list with exactly the counted entries (now counted per variant), the stock search field active immediately, "show columns" under "more filters," branch shown large in the stock page title, equally sized quick-access buttons. The mobile questions were resolved by implementation on 2026-09-28 — see "Mobile phone use – implemented 2026-09-28" below.
 
-## Mobile phone use – agreed plan for the end of the project
+## Mobile phone use – implemented 2026-09-28
 
-**Planning only; implementation only near the end of the project, currently no implementation order.** Web app on personal phones: search/camera scan, price and stock lookup, counting/correcting, goods receipt, transfer, and booking out. Staff only on the approved store WiFi; branch managers and management/head office additionally via protected remote access. Existing rights stay in place; access checked server-side, no GPS tracking. Shared central database, no offline bookings initially. VPN/WiFi and the exact timing within the later project phases stay open. Full specification: [Mobile phone use](handynutzung.md).
+Originally planned for the end of the project (see below), then built early on 2026-09-28 as commits `7a9c7eb`…`2b655ea` on `feature/warenwirtschaft-v2`. Full specification: [Mobile phone use](handynutzung.md).
 
+**Access control:** a login from a phone is flagged in the session (`app/core/handy.py`); every route checks an allowlist. Blocked API calls get a translated 403, blocked pages redirect to the phone home `/m`. The flag survives "Request desktop site"; existing roles and branch limits apply unchanged, and tablets keep the desktop version.
+
+**Implemented pages, in build order:**
+- `/m`, `/m/suche` — home screen with large role-based tiles, installable as a home-screen app (manifest, icons, safe areas); article search by EAN, supplier number, or name; article view shows retail price, sizes/colours, and stock per location with the reduction stage.
+- Camera scanning — browser barcode reader where available (Android Chrome), bundled ZXing otherwise (iPhone), no CDN. A code counts only after two identical reads with a valid check digit; camera stops at the first accepted code. Login returns phones to the `/m` page they opened.
+- `/m/zaehlen` — scan or search an article, see stock in the active store, enter the shelf count with large -/+ buttons and a reason; server books only the difference and checks store rights. Introduced a shared article-picker (`handy-pick.js`) reused by search and count.
+- `/m/lieferungen` — lists expected deliveries for the active store; confirms partial or full arrival with an arrival-date field for stores with sales. Open to everyone, including employees (rule 9, D21).
+- `/m/umlagern` — reserved for branch managers/head office (rule 9); choose source and destination, scan/search items into a list, book removal and receipt in one step, matching the desktop flow.
+- `/m/ausbuchen` — reserved for branch managers/head office (rule 9); cancelling a booking stays desktop-only. Pick store and reason, then scan/search and tap "1 piece" repeatably. Negative-stock warning (F9) works as on desktop.
+- `/m/erfassen` — manual goods entry without a document; known EAN pre-fills brand/description/colour/size/last price/category. Employees book only to their own stores, branch managers/head office to any location (rule 9). Label printing stays desktop-only.
+- `/m/runterschreiben` — shows models reaching -50%/-70% (rule 6) in the chosen store or within 30 days, each with a "Done" button; scan/search to set 30/50/70% by hand or reset to the recommendation. Head-office recommendations stay desktop-only.
+
+**Not built (deferred, matching original scope):** cancelling a booking, label printing, head-office markdown recommendations — all desktop-only by design. VPN/protected remote access for branch managers/management while off the store WiFi is still open (see original plan below); the phone allowlist enforces which *features* are reachable, not network origin.
+
+**Original plan (2026-09-24), for reference:** web app on personal phones: search/camera scan, price and stock lookup, counting/correcting, goods receipt, transfer, and booking out. Staff only on the approved store WiFi; branch managers and management/head office additionally via protected remote access. Existing rights stay in place; access checked server-side, no GPS tracking. Shared central database, no offline bookings initially. VPN/WiFi and the exact timing within the later project phases stay open.
 
 ### Rights refined on 2026-09-24
 

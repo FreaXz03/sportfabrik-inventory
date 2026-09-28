@@ -1,8 +1,10 @@
-# Mobile Usage – Planning
+# Mobile Usage
 
-## Agreed plan for mobile usage – 2026-09-24
+## Status: implemented 2026-09-28
 
-**Status: planning only. Implementation not until near the end of the project; no implementation now.** An exact date and where it fits relative to phases F/G are not yet set.
+Built earlier than planned, as commits `7a9c7eb`…`2b655ea` on `feature/warenwirtschaft-v2`: home screen, article search, camera scanning, counting/correcting, goods-receipt confirmation, transfer, write-off, manual entry, and markdowns — see the "Mobile phone use – implemented 2026-09-28" section in `docs/projekt-kontext.md` for the page-by-page detail and what was deferred (cancelling, label printing, head-office markdown recommendations stay desktop-only). VPN/protected remote access for branch managers off the store WiFi is still open. The original plan below is kept for reference; it no longer reflects current status.
+
+## Agreed plan for mobile usage – 2026-09-24 (superseded, see status above)
 
 - **App form:** extend the existing Sportfabrik Inventory as a mobile-friendly web app, opened via a link and saved as an icon on the home screen. No separate native app or app-store release is planned.
 - **Devices:** staff, branch managers', and management's personal phones; personal logins and existing roles/permissions stay in place.

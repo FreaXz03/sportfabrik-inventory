@@ -51,7 +51,7 @@ Status: all five points implemented on 2026-09-24 (commits `431dc6f`, `fd95054`)
 
 ### Mobile usage – agreed plan for the end of the project
 
-Agreed with Fabian on 2026-09-24; **planning only, implementation not until near the end of the project**. Web app on personal phones with camera scanning and stock workflows. Staff only on the store Wi-Fi; branch managers and management/head office also from outside. Existing rights and central data storage stay unchanged. Technical VPN/Wi-Fi solution still open. Full plan: [Mobile usage](handynutzung.md).
+Agreed with Fabian on 2026-09-24; **planning only, implementation not until near the end of the project**. Web app on personal phones with camera scanning and stock workflows. Staff only on the store Wi-Fi; branch managers and management/head office also from outside. Existing rights and central data storage stay unchanged. Technical VPN/Wi-Fi solution still open. Full plan: [Mobile usage](handynutzung.md). **Status update:** built earlier than planned, on 2026-09-28 — see `docs/handynutzung.md` and the "Mobile phone use – implemented 2026-09-28" section in `docs/projekt-kontext.md`.
 
 ### Keep the visual documentation up to date together
 
