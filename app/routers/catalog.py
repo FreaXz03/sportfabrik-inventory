@@ -12,8 +12,8 @@ from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import (
     Artikel,
-    Dokument,
     Kategorie,
+    Preis,
     Variante,
     Wareneingang,
     WareneingangPosition,
@@ -203,30 +203,22 @@ def articles(
                         ),
                     }
                 )
+            # Preis (Regel 10) ist die gemeinsame Quelle für Beleg- und
+            # Handeinträge (Preis.dokument_id ist bei Handeinträgen leer) -
+            # der WareneingangPosition/Dokument-Weg sah nur Belege.
             ranked = (
                 select(
-                    WareneingangPosition.varianten_id,
-                    WareneingangPosition.uvp,
-                    Dokument.dokumentdatum,
+                    Preis.varianten_id,
+                    Preis.uvp,
+                    Preis.datum,
                     func.row_number()
                     .over(
-                        partition_by=WareneingangPosition.varianten_id,
-                        order_by=(
-                            Dokument.dokumentdatum.desc().nulls_last(),
-                            Dokument.hochgeladen_am.desc(),
-                            Dokument.id.desc(),
-                            WareneingangPosition.id.desc(),
-                        ),
+                        partition_by=Preis.varianten_id,
+                        order_by=(Preis.datum.desc().nulls_last(), Preis.id.desc()),
                     )
                     .label("rank"),
                 )
-                .select_from(WareneingangPosition)
-                .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
-                .join(Dokument, Dokument.id == Wareneingang.dokument_id)
-                .where(
-                    WareneingangPosition.varianten_id.in_(ids),
-                    WareneingangPosition.uvp.is_not(None),
-                )
+                .where(Preis.varianten_id.in_(ids))
                 .subquery()
             )
             for row in session.execute(
@@ -251,7 +243,7 @@ def articles(
             item.update(
                 delivered=totals.get(v.id, []),
                 latest_uvp=format(price["uvp"], "f") if price else None,
-                uvp_date=price["dokumentdatum"] if price else None,
+                uvp_date=price["datum"] if price else None,
             )
             items.append(item)
         if exporting:

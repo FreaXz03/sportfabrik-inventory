@@ -66,6 +66,13 @@ def test_erfassen_ean_etikett_kategorie(welt):
     assert antwort.status_code == 200, antwort.text
     assert antwort.json()["positionen"] == 2
     assert antwort.json()["eingangsdatum"] == date.today().isoformat()
+
+    # Ware ohne Beleg hat keinen Wareneingang mit Dokument - der UVP kommt bei
+    # der Artikelsuche trotzdem, aus der Preishistorie (`preise`, Regel 10).
+    gefunden = client.get("/api/articles?ean=4006632041234").json()["items"][0]
+    assert gefunden["latest_uvp"] == "39.90"
+    assert gefunden["uvp_date"] == date.today().isoformat()
+
     with sessions() as session:
         assert session.scalar(select(Wareneingang.dokument_id)) is None
         bewegungen = session.scalars(select(Lagerbewegung)).all()
