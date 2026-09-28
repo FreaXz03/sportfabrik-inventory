@@ -935,5 +935,7 @@
   "phone.tile_deliveries_hint": "Ankunft von erwarteter Ware bestätigen",
   "phone.deliveries_title": "Lieferungen",
   "phone.tile_transfer": "Umlagern",
-  "phone.tile_transfer_hint": "Ware zwischen Lagerorten umbuchen"
+  "phone.tile_transfer_hint": "Ware zwischen Lagerorten umbuchen",
+  "phone.tile_writeoff": "Ausbuchen",
+  "phone.tile_writeoff_hint": "Verkauf oder Abgang buchen"
 }

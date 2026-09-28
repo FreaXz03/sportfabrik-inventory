@@ -101,7 +101,7 @@ for (const input of [null, '', 'https://evil.example', '//evil.example',
   assert.equal(safeLoginRedirect(input, origin), '/', String(input));
 }
 for (const input of ['/', '/articles', '/invoices', '/preview',
-    '/invoices/123', '/articles/7/history', '/articles?q=Hoka#results', '/m', '/m/suche', '/m/zaehlen', '/m/lieferungen', '/m/umlagern']) {
+    '/invoices/123', '/articles/7/history', '/articles?q=Hoka#results', '/m', '/m/suche', '/m/zaehlen', '/m/lieferungen', '/m/umlagern', '/m/ausbuchen']) {
   assert.equal(safeLoginRedirect(input, origin), input);
 }
 """

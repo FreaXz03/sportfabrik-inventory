@@ -248,3 +248,45 @@ def test_transfer_on_the_phone_is_reserved_for_managers(welt):
     assert c.post("/api/umlagerung", headers=h, json={
         "quelle_id": welt.codes["SF1"], "ziel_id": welt.codes["SF2"], "positionen": [],
     }).status_code == 403
+
+
+def test_write_off_on_the_phone_is_reserved_for_managers(welt):
+    """Rule 9: booking out a sale/removal is reserved for branch managers and
+    head office. Each tap books exactly one piece (F15); the negative-stock
+    warning (F9) works as on desktop."""
+    _login(welt, CHEF, IPHONE)
+    c = welt.client
+    h = {"User-Agent": IPHONE}
+
+    antwort = c.post("/api/erfassen", headers=h, json={
+        "lagerort_id": welt.codes["SF1"],
+        "positionen": [{"marke": "Nike", "bezeichnung": "Polo", "menge": "1", "uvp": "39.90", "ean": "4006632041233"}],
+    })
+    assert antwort.status_code == 200, antwort.text
+    variante = c.get("/api/articles?ean=4006632041233", headers=h).json()["items"][0]["id"]
+
+    assert c.get("/m/ausbuchen", headers=h, follow_redirects=False).status_code == 200
+
+    stamm = c.get("/api/ausbuchen/stammdaten", headers=h).json()
+    assert stamm["lagerort_aktiv"] == welt.codes["SF1"]
+    assert "verkauf" in stamm["gruende"]
+
+    erste = c.post("/api/ausbuchen", headers=h, json={
+        "grund": "verkauf", "varianten_id": variante, "lagerort_id": welt.codes["SF1"],
+    })
+    assert erste.status_code == 200, erste.text
+    assert erste.json()["bestand_nachher"] == "0.00" and not erste.json()["bestand_reicht_nicht"]
+
+    zweite = c.post("/api/ausbuchen", headers=h, json={
+        "grund": "verkauf", "varianten_id": variante, "lagerort_id": welt.codes["SF1"],
+    })
+    assert zweite.status_code == 200
+    assert zweite.json()["bestand_nachher"] == "-1.00" and zweite.json()["bestand_reicht_nicht"]
+
+    # Cancelling stays on the computer - not offered on the phone.
+    assert c.post(f"/api/ausbuchen/{erste.json()['bewegung_id']}/storno", headers=h).status_code == 403
+
+    _login(welt, ANNA, IPHONE)
+    assert c.get("/m/ausbuchen", headers=h, follow_redirects=False).status_code == 303
+    assert c.get("/api/ausbuchen/stammdaten", headers=h).status_code == 403
+    assert c.post("/api/ausbuchen", headers=h, json={"grund": "verkauf", "varianten_id": variante}).status_code == 403

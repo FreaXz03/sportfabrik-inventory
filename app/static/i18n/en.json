@@ -935,5 +935,7 @@
   "phone.tile_deliveries_hint": "Confirm arrival of expected goods",
   "phone.deliveries_title": "Deliveries",
   "phone.tile_transfer": "Transfer",
-  "phone.tile_transfer_hint": "Move goods between locations"
+  "phone.tile_transfer_hint": "Move goods between locations",
+  "phone.tile_writeoff": "Book out",
+  "phone.tile_writeoff_hint": "Record a sale or removal"
 }

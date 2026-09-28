@@ -9,6 +9,7 @@
     { href: '/m/zaehlen', icon: 'package', key: 'count' },
     { href: '/m/lieferungen', icon: 'download', key: 'deliveries' },
     { href: '/m/umlagern', icon: 'swap', key: 'transfer', chefOnly: true },
+    { href: '/m/ausbuchen', icon: 'trash-2', key: 'writeoff', chefOnly: true },
   ];
   var me = null;
 
