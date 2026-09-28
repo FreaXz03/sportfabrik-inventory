@@ -725,21 +725,40 @@ table, also remembered via `localStorage`.
 `app/static/css/app.css` is the single source of styling (no inline
 styles in the templates, no external CDNs — rule 1). It's organized into
 numbered sections; colors, spacing, radii, shadows, and transitions exist
-exclusively as custom properties on `:root`:
+exclusively as custom properties on `:root`. The full design system
+(mission, rules, component specs, migration plan) lives in
+[DESIGN.md](../DESIGN.md), implemented across all pages 2026-09-27
+(see the "UI redesign after DESIGN.md" addendum in `docs/projekt-kontext.md`
+for what changed and how it was verified); this section gives the
+current token/component shape, not the history.
 
 - **Colors/surfaces**: `--bg`, `--surface`, `--surface-soft`,
   `--surface-alt`, `--text`, `--text-muted`, `--text-faint`, `--border`,
-  `--border-strong`, `--accent` (Sportfabrik orange), and the status
-  colors `--danger-*`.
-- **Shape**: `--radius-xs` … `--radius-xl` plus `--radius-pill` for
-  buttons, `--shadow-sm/md/lg` for the card → panel → overlay
-  progression.
+  `--border-strong`, `--accent` (Sportfabrik orange), status colors
+  `--danger-*`/`--warning-*`/`--info-*`/`--success-*`, and
+  reduction-stage tokens (30/50/70%, coupled to the roles in
+  `etikett.py`).
+- **Shape**: 3 radius steps (`--radius-sm/md/lg`) plus `--radius-pill`
+  for buttons, `--shadow-sm/md/lg` for elevation steps (panels sit at
+  elevation 0, no shadow).
+- **Spacing/type**: a 4px spacing scale and a 9-step type scale
+  (`--fs-*`); every raw font size in the CSS is mapped to one of these
+  tokens.
 - **Motion**: `--ease`, `--fast`, `--slow`; a block under
   `@media (prefers-reduced-motion: reduce)` turns off all transitions.
 - **Grid**: `--page-pad` and `--content-max` (1280 px, 1680 px on wide
   pages). Header and footer calculate their inner padding from
   `--content-max`, so navigation, content, and footer sit on the same
   edge.
+- **Icons**: a single sprite (`app/static/img/icons.svg`, 27 icons)
+  replaces all Unicode symbols previously used in CSS/JS.
+- **Reusable components**: button variants (primary/secondary/ghost/
+  danger/loading), form fields (44px, 16px font against iOS zoom,
+  helper/error pattern), `.chip-stage` (yellow/red/green markdown-stage
+  chip), `.empty-state` (icon + sentence, centered), `.is-loading`
+  (spinner before the label, `currentColor`, label stays visible), and
+  a scan-field variant (`--icon-scan`, 52px, barcode icon left) for the
+  three real scanner inputs (write off/enter/transfer `#ean`).
 
 Dark mode redefines **only** these tokens (twice: once for
 `prefers-color-scheme: dark`, once for the manual choice

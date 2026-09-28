@@ -1,12 +1,12 @@
 # Sportfabrik Inventory — Getting started
 
-Status: 2026-09-25. This overview is orientation, not confirmation of a production deployment.
+Status: 2026-09-28. This overview is orientation, not confirmation of a production deployment.
 
 ## Goal and current focus
 
 Inventory management for four Sportfabrik branches; GEWA, VEBO, and Dietikon are external storage locations without sales. Documents are parsed locally on-site. Item master shared across branches, stock and booking rights are branch-specific. Later: POS integration and online shop.
 
-Phases A–C are complete per project documentation. Phase D is fully implemented as of 2026-09-25: markdown write-downs and manual markdowns, plus the open questions D-F1 to D-F4 (confirmation list, restock notice, head-office recommendation, fixed thresholds — details in section 10). The **Item Details and Reports** catalog (all 17 points) is also implemented. Everything checked locally only (no PostgreSQL run, no store deployment). Next focus: prepare store deployment (`docs/sicherheit.md`, open items S1 and minimum password length) or mobile usage (planned for project end). Before implementation, cross-check the current code and the end of section 11 in the project context.
+Phases A–C are complete per project documentation. Phase D is fully implemented as of 2026-09-25: markdown write-downs and manual markdowns, plus the open questions D-F1 to D-F4 (confirmation list, restock notice, head-office recommendation, fixed thresholds — details in section 10). The **Item Details and Reports** catalog (all 17 points) is also implemented. The **UI redesign after DESIGN.md** (tokens, typography, components, icon sprite, scan/empty/loading states, formal-address decision) is fully implemented as of 2026-09-27, including ultrareview fixes from PR #16 — see the "UI redesign after DESIGN.md" addendum in `docs/projekt-kontext.md`. All project docs were translated German → English on 2026-09-28 (content unchanged). Everything checked locally only (no PostgreSQL run, no store deployment). Next focus: prepare store deployment (`docs/sicherheit.md`, open items S1 and minimum password length) or mobile usage (planned for project end). Before implementation, cross-check the current code and the end of section 11 in the project context.
 
 Working branch: `feature/warenwirtschaft-v2`; check the actual branch and any open changes. Documented local tests say nothing about PostgreSQL or the running store server.
 

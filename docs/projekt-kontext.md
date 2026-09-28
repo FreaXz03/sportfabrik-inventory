@@ -1227,3 +1227,19 @@ All 17 points of the catalog are implemented.
   - Test-first: `tests/test_ablauf_konten.py` (creating with/without password/branch, rights, deletion including self-protection, duplicate till number). Checked in the browser: login, form, live table, validation errors, no console errors — no PostgreSQL run.
 
 Suite: 137 passed / 12 skipped.
+
+## UI redesign after DESIGN.md – 2026-09-27/28
+
+[DESIGN.md](../DESIGN.md) is the new design system (mission, rules, tokens, components, accessibility, migration plan for `app.css`); Geologica 300 added locally and registered for mixed-weight titles. Referenced from `docs/start.md`.
+
+**Decision 2026-09-27:** formal address throughout — German consistently "Sie," French "vous." Affected 9 German and 2 French texts plus template fallbacks (`app/static/i18n/{de,fr}.json`, `articles.html`, `history.html`, `preview.html`).
+
+**Full redesign across all pages** (commit `d62b11c`): tokens (`app.css` §2) — warm neutrals, new status tokens success/warning/info alongside danger, reduction-stage tokens (30/50/70, coupled to `etikett.py` roles), 3 radii + pill instead of 5, 4px spacing scale, 9-step type scale, elevation levels; light/dark kept in sync. All 18 raw font sizes mapped to `--fs-*` tokens; broken `prefers-reduced-motion` rule fixed (missing declaration block). Components: button variants (primary/secondary/ghost/danger/loading), form fields (44px, 16px against iOS zoom, helper/error pattern), panels without shadow (elevation 0), tables (sort icons, right-aligned numbers, selected row), notices with 4 status colors. New `.chip-stage` component (yellow/red/green) replaces the always-red `.reduktion-stufe`, wired via `reduktion-wahl.js` into all tables. Icon sprite (`app/static/img/icons.svg`, 27 icons) replaces all 7 Unicode symbols in CSS/JS and a duplicate sort implementation in `history.html`. Contour motif (`contours.svg`) on the login background and dashboard hero corner; dead `.welcome` CSS replaced by a real `.hero`. Mixed-weight titles (`.title-mixed`) on the dashboard greeting and the branch code in stock/markdown (replaces orange-on-white text that broke contrast rules).
+
+**Follow-up (commit `47a4266`):** scan field (DESIGN.md §10.3, new `--icon-scan` component, 52px, barcode icon left) on the three real scanner fields (write off/enter/transfer `#ean`); empty state (§10.9, `.empty-state`, icon + sentence, centered) on the seven existing "no data" texts; loading state (§10.1) fixed — `.is-loading` no longer hides the label (was `color:transparent`), spinner now positioned before the text and takes `currentColor`, wired at all 13 existing "disabled during fetch" spots across 10 JS files. Checked via Playwright browser (light/dark, real accounts): scan field, empty-state icon, and loading spinner render as intended.
+
+**Ultrareview fixes for PR #16** (commit `34b8f71`): `.warning-text`/`tr.warning` is also used for failed bookings, cancellation errors, and connection drops — the `--warning-*` switch made these real errors show amber instead of red; reverted to `--danger-*` per DESIGN.md §4.3 (a failed booking is danger, not warning); `.stat-warn` (genuine notices like "item without EAN") stays warning. Mixed-weight greeting searched the first name via `indexOf` in the already-interpolated sentence (false bolding if the name coincidentally matched fixed sentence text); now searches the `{name}` placeholder in the raw, untranslated text first — collision-safe.
+
+**Verification throughout:** checked in the browser (Playwright/Chrome, light and dark, real accounts); no automated test changes (pure CSS/JS/markup, no new business logic) and no PostgreSQL/production run.
+
+**Documentation translation (2026-09-28, commit `2e7712c`):** all project docs and `CLAUDE.md` translated German → English; no content/decision changes.
