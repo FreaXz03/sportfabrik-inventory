@@ -423,6 +423,7 @@
   "articles.export_in_progress": "Export wird erstellt …",
   "articles.export_failed": "Export fehlgeschlagen.",
 
+  "errors.phone.not_available": "Diese Funktion ist auf dem Handy nicht verfügbar. Bitte am Computer öffnen.",
   "errors.auth.not_logged_in": "Bitte zuerst anmelden.",
   "errors.auth.chef_required": "Dafür ist ein Filialleiter-Konto nötig.",
   "errors.auth.admin_required": "Dafür ist ein Zentrale-Konto nötig.",

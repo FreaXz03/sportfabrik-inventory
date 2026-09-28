@@ -11,6 +11,7 @@ from .routers.auth import (
     SESSION_HTTPS_ONLY,
     SESSION_MAX_AGE,
     SESSION_SECRET,
+    phone_gate,
     require_login_page,
 )
 from .routers.auth import router as auth_router
@@ -32,7 +33,7 @@ from .routers.statistik import router as statistik_router
 from .routers.konten import router as konten_router
 from .routers.empfehlung import router as empfehlung_router
 
-app = FastAPI(title="Sport-Fabrik Inventory")
+app = FastAPI(title="Sport-Fabrik Inventory", dependencies=[Depends(phone_gate)])
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,

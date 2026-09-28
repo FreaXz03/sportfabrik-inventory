@@ -423,6 +423,7 @@
   "articles.export_in_progress": "Creating export …",
   "articles.export_failed": "Export failed.",
 
+  "errors.phone.not_available": "This function is not available on the phone. Please open it on a computer.",
   "errors.auth.not_logged_in": "Please sign in first.",
   "errors.auth.chef_required": "This requires a store manager account.",
   "errors.auth.admin_required": "This requires a headquarters account.",

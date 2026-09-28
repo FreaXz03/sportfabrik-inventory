@@ -423,6 +423,7 @@
   "articles.export_in_progress": "Création de l'export …",
   "articles.export_failed": "Échec de l'export.",
 
+  "errors.phone.not_available": "Cette fonction n'est pas disponible sur le téléphone. Veuillez l'ouvrir sur l'ordinateur.",
   "errors.auth.not_logged_in": "Veuillez d'abord vous connecter.",
   "errors.auth.chef_required": "Un compte responsable de filiale est nécessaire.",
   "errors.auth.admin_required": "Un compte Centrale est nécessaire.",
