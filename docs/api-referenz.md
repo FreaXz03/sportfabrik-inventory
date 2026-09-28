@@ -21,6 +21,8 @@ the user's account language; otherwise (e.g. `/login`) based on the
 | GET | `/api/me` | The logged-in person: `{kassennummer, name, role, role_label, language, lagerort, lagerorte, kann_alle_filialen_waehlen}`. `role_label` and error messages are translated into `language` (`de`/`fr`/`en`). `lagerort` is the active branch (`{id, code, name}`, or `null` = "all branches", possible only for admin); `lagerorte` are the branches the user may switch between (admin: all) |
 | POST | `/api/active-lagerort` | Switches the active branch for the session. Body `{"lagerort_id": <id or null>}`; `null` is allowed only for admin (= "all branches"), otherwise the branch must be assigned to the user (otherwise 403) |
 | POST | `/api/language` | Sets the logged-in account's language. Body `{"language": "de"｜"fr"｜"en"}`, otherwise HTTP 422. Response `{"language": "..."}` |
+| GET | `/api/schnellzugriffe` | Quick-access shortcuts of the logged-in account (point 14, decision 2026-09-24): `{schnellzugriffe: [...], verfuegbar: [...]}`. `schnellzugriffe` is the saved selection, filtered by role; without an own choice, the previous default (`ausbuchen, erfassen, umlagern, wareneingaenge, upload`, also role-filtered). `verfuegbar` lists every function key selectable for the role (`app/core/schnellzugriffe.py`). `/api/me` returns the same effective list as `schnellzugriffe` |
+| PUT | `/api/schnellzugriffe` | Saves selection and order. Body `{"schnellzugriffe": ["erfassen", "bestand", ...]}`: 1–5 entries, no duplicates, only functions allowed for the role — otherwise HTTP 422. Response `{"schnellzugriffe": [...]}` (the saved selection). Stored in `users.schnellzugriffe` |
 
 The `next` parameter of `/login?next=…` (where to redirect after login) is
 checked client-side against a whitelist of known routes
@@ -259,6 +261,7 @@ format HTTP 422.
 | GET | `/api/varianten/{id}/etikett.pdf` | Label as a PDF in label size. Parameters: `groesse` (only `47x83`, the pre-printed roll), `reduktion` (0/30/50/70, determines the roll), `anzahl` (1–100), `muster=true` also draws the pre-print for preview |
 | GET | `/api/wareneingaenge/{id}/etiketten.pdf` | All labels of a goods receipt — `je_stueck=true` (default) prints one per piece, otherwise one per line |
 | GET | `/api/artikel/{artikel_id}/etiketten.pdf` | Markdown printing (Phase D): one label per piece in the branch's stock, for all colors and sizes of the item. Parameters `reduktion` (determines the roll), `lagerort_id` (the active branch if not given). 404 without stock |
+| GET | `/runterschreiben` | Markdowns page (Phase D): due list, confirmation, manual level, label printing |
 | GET | `/api/reduktionen` | Markdown printing (Phase D): items of a branch (`lagerort_id`, otherwise the active one) that have reached −70%/−50% (`stand: faellig`) or will in 30 days (`bald`), each with `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; plus the selectable branches and `manuell` (the branch's manually chosen levels with `prozent`, `gesetzt_von`, `gesetzt_am`) |
 | GET | `/api/articles/{varianten_id}/reduktion` | Per branch with sale: `empfehlung` (rule 6), `manuell` (30/50/70 or `null`), `wirksam`, `darf_aendern` (own branch, as for entry/correction) |
 | PUT | `/api/reduktion/manuell` | Set the level manually: `varianten_id`, `lagerort_id`, `prozent` (30/50/70, otherwise 422). All roles; employees only in assigned branches (403); external storage locations 409. Response: `empfehlung`, `manuell`, `wirksam` |
@@ -307,12 +310,45 @@ itself (`409`).
   (new delivery on stock already marked down, only with an active
   branch). No dedicated endpoints to create these — they arise
   automatically when booking a delivery (import or arrival confirmation).
-- **D-F3 Head-office recommendation:** `GET/POST /api/empfehlungen`
-  (head office only; list, or set with `artikel_id`, `lagerort_id`,
-  `prozent`, `ab_datum`) and `POST /api/empfehlungen/{id}/antwort`
+- **D-F3 Head-office recommendation:** page `GET /empfehlungen` and
+  `GET/POST /api/empfehlungen` (head office only; list, or set with
+  `artikel_id`, `lagerort_id`, `prozent`, `ab_datum`; unknown item or
+  location 404, invalid level 422) and `POST /api/empfehlungen/{id}/antwort`
   (`status`: `uebernommen`/`abgelehnt`, `grund` required on rejection;
   same rights as manual markdown). `GET /api/reduktionen` additionally
   returns `empfehlungen` (open ones, for the active branch).
+
+## Phone pages (2026-09-28)
+
+A login from a phone (user agent `iPhone|iPod|Mobi|Windows Phone`) sets
+the session flag `phone`. The dependency `phone_gate`
+(`app/routers/auth.py`), registered for every route, then allows only
+the pages under `/m` and the API calls listed in `PHONE_ROUTES`
+(`app/core/handy.py`). Anything else: page requests redirect (303) to
+`/m`, API calls get **403** with the translated message
+`errors.phone.not_available`. The flag survives "Request desktop site".
+Tablets are not matched and keep the desktop version. Roles and branch
+limits apply on top, unchanged.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/m` | Phone home screen: large tiles per role, installable as home-screen app |
+| GET | `/m/suche` | Article search and scan: price, sizes/colours, stock per location, reduction level |
+| GET | `/m/zaehlen` | Count and correct stock in the active branch (books only the difference) |
+| GET | `/m/lieferungen` | Confirm arrival of expected deliveries, partial or full (everyone, D21) |
+| GET | `/m/umlagern` | 🔒 Transfer between locations |
+| GET | `/m/ausbuchen` | 🔒 Write off a sale or removal (cancelling stays desktop-only) |
+| GET | `/m/erfassen` | Manual goods entry without a document (label printing stays desktop-only) |
+| GET | `/m/runterschreiben` | Due markdowns, "done" confirmation, manual 30/50/70 % |
+
+Allowed APIs for phones: login/logout, `/api/me`, `/api/active-lagerort`,
+`/api/language`, `/api/articles`, `/api/bestand`, article prices and
+reduction, `/api/korrektur` (+ `gruende`), `/api/wareneingaenge` and
+`.../{id}/ankunft`, `/api/umlagerung` (+ `stammdaten`), `/api/ausbuchen`
+(+ `stammdaten`), `/api/erfassen` (+ `stammdaten`, `variante`),
+`/api/reduktion/manuell` (PUT/DELETE), `/api/reduktionen` (+
+`bestaetigen`), `/api/dashboard`. The phone pages use exactly these
+desktop APIs — there is no separate phone API.
 
 ## Miscellaneous
 
@@ -325,12 +361,14 @@ itself (`409`).
 ## Error format
 
 JSON error responses follow the FastAPI standard
-`{"detail": "<German message>"}`. Typical status codes: `400` (e.g.
+`{"detail": "<message>"}`, localized as described at the top (a few
+older messages are still German-only). Typical status codes: `400` (e.g.
 import without a chosen branch), `401` (not logged in), `403` (wrong
-role or no branch assignment), `404` (invoice/item/note not found),
-`409` (import rejected, e.g. duplicate or hash conflict; or the note was
-changed in the meantime), `413` (file too large), `422` (PDF could not
-be read/parsed, or invalid correction data), `503` (database
+role, no branch assignment, or a function not available on phones),
+`404` (invoice/item/note not found), `409` (import rejected, e.g.
+duplicate or hash conflict; the note was changed in the meantime; own
+account deletion), `413` (file too large), `422` (PDF could not be
+read/parsed, or invalid data), `429` (login locked, S2), `503` (database
 unreachable).
 
 

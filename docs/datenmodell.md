@@ -377,7 +377,16 @@ migrations and tests).
 Unchanged since Phase A, items 1/2, except for the login lockout
 (security S2, migration `b9c0d1e2f3a4`): `users.fehlversuche` counts
 wrong passwords, `users.gesperrt_bis` (UTC) locks the account for 20
-minutes after 5 failed attempts (`app/services/anmeldung.py`).
+minutes after 5 failed attempts (`app/services/anmeldung.py`). Plus
+`users.schnellzugriffe` (point 14, migration `d1e2f3a4b5c6`): JSON list
+of the chosen function keys in their order, `NULL` without an own
+choice. Catalog and role filtering live in `app/core/schnellzugriffe.py`,
+not in the database — the API re-validates on every save.
+
+Account management (2026-09-25) deletes a `users` row together with its
+`benutzer_lagerorte`; bookings keep name/till number as a snapshot, so
+no foreign key blocks the deletion. The phone flag (2026-09-28) lives
+only in the session cookie, not in the database.
 
 ## Migrating the legacy data (`c3d4e5f6a7b8`)
 

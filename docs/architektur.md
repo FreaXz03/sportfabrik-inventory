@@ -85,6 +85,16 @@ Passwords are hashed with PBKDF2-HMAC-SHA256 (600,000 iterations, random
 salt per account) — see `app/core/security.py`. No plaintext password
 exists in the database.
 
+Further layers added later: `require_admin_page`/`require_admin_api`
+(head office only: accounts, recommendations, 2026-09-25); login lockout
+after 5 wrong passwords (`app/services/anmeldung.py`, S2); HTTPS through
+the Caddy proxy with `SESSION_HTTPS_ONLY` making the cookie `Secure` (S1,
+2026-09-28, see `SERVER-SETUP.md`); and the app-wide `phone_gate`
+dependency limiting phone logins to an allowlist (see "Phone layer"
+below). The "Notes" column above is historical — notes are no longer
+shown in the interface since 2026-09-24 (data and API remain). Current
+booking rights: "Booking rights as of 2026-09-24" below.
+
 ### Branch assignment and branch switching
 
 Which branch(es) a user may see/operate is stored in the m:n table

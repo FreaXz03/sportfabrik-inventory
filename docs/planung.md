@@ -64,9 +64,9 @@ development phases).
 
 ## Deliberately out of scope (as of today)
 
-- Further supplier layouts besides INTERSPORT (deferred until a sample invoice from another supplier is available).
-- Admin interface for user management (deliberately implemented as a simple CLI script, see decision E10).
-- External backup storage location (the backup automation itself is implemented, see F22 and `docs/BACKUPS.md`; a copy outside the PC is still pending).
+- ~~Further supplier layouts besides INTERSPORT~~ — superseded: Alpina, Chris Sports, and CMP parsers exist since 2026-09-24 (Phase E, partly).
+- ~~Admin interface for user management~~ — superseded: head office manages accounts on `/konten` since 2026-09-25; the CLI script (decision E10) still exists.
+- External backup storage location (the backup automation itself is implemented, see F22 and `docs/BACKUPS.md`; a copy outside the PC is still pending, now with encryption, security S4).
 
 **Superseded since Phase A point 3** (see `projekt-kontext.md` section 11):
 stock is now tracked for real (`lagerbewegungen`/`bestand`, see
@@ -92,6 +92,12 @@ with Phase C.
 | 9 | after that | Larger functional extension: corrections directly in the preview (F14), batch import of several invoices (F15), price history and free-text notes per item (F16/F17), Excel export of the item list (F19) |
 | 10 | after that | Item variants (same brand + supplier item number) grouped for history/notes/price history (F18), column selection in the item history simplified |
 | 11 | after that | Further polish to the overview, invoice/item history (sorting, F20), and the batch-import flow |
+| 12 | 2026-09-20 – 2026-09-21 | Target picture and decisions D1–D27 for inventory management v2 (`projekt-kontext.md`) |
+| 13 | 2026-09-21 – 2026-09-25 | Phases A–D implemented: branches, roles, languages, new data model, goods receipt v2, stock, markdowns; item-details catalog (17 points), statistics, accounts, quick access (PRs #9–#15) |
+| 14 | 2026-09-27 – 2026-09-28 | UI redesign after `DESIGN.md` (PRs #16/#17), documentation in English, HTTPS (S1), phone use |
+
+From phase 12 on, `projekt-kontext.md` (section 11 and the dated addenda)
+is the authoritative history; this table only gives the big picture.
 
 Phases 9–11 were largely developed in parallel, independent of the UI-polish
 sessions (Phase 8); the exact timestamps of these commits are not available,
@@ -212,7 +218,9 @@ originally requested page after login).
 
 ## Open points
 
+Current list: `projekt-kontext.md`, section "Status check and next steps – 2026-09-28". Still valid from the original list:
+
 - External backup storage location outside the PC — backup creation and verification themselves are already automated (see `docs/BACKUPS.md`).
-- A second supplier layout, once a sample invoice is available.
+- ~~A second supplier layout~~ — done (Alpina, Chris Sports, CMP).
 - New, long password for `.env.server` (do not reuse the local Windows password).
 - Docker build and data migration to the Linux server at the store (a local test run via `docker compose --env-file .env.server up -d --build` is already possible; the production migration is still pending).

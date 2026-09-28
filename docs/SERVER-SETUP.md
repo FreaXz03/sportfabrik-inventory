@@ -77,16 +77,17 @@ is then `https://SERVER-IP` (see "HTTPS" below). Neither the app nor
 PostgreSQL publishes a port; only the HTTPS proxy does (80 and 443).
 
 Login follows the POS-system pattern: employees log in with just their
-till number; managers additionally with a password. Only manager accounts may
-upload, import, and delete invoices; employees can search
-items and view invoices. Network access should still only be granted to authorized
-store PCs, with no internet port forwarding. Server administration must
-review Docker port exposure and firewall rules together. Per the security review
-of 2026-09-24, HTTPS is **mandatory before deployment in the store**
-(otherwise passwords and sessions travel in cleartext on the network), as is a limit on
-failed login attempts and network separation from the guest WiFi — see
-[`sicherheit.md`](sicherheit.md), S1/S2/S5–S7. Original note: add HTTPS as needed before
-go-live.
+till number; managers additionally with a password. Only branch managers and
+head office may upload, import, and delete documents; booking rights per role
+are described in `architektur.md`, "Booking rights as of 2026-09-24". Network
+access should still only be granted to authorized store PCs (and, for phones,
+the approved store Wi-Fi), with no internet port forwarding. Server
+administration must review Docker port exposure and firewall rules together.
+Per the security review of 2026-09-24, HTTPS, a limit on failed logins, and
+network separation from the guest Wi-Fi are **mandatory before deployment in
+the store**. HTTPS (below) and the login lockout are built; network
+separation happens during server setup — see [`sicherheit.md`](sicherheit.md),
+S1/S2/S5–S7.
 
 ## HTTPS (security S1, 28.09.2026)
 

@@ -41,8 +41,8 @@ Status: requirements consolidated; no code change from this sync. Existing open 
 
 - **Delete account (point 13, answered on the evening of 2026-09-24):** All bookings stay in the database. The user's name stays on the old bookings, but no account is linked to it anymore.
 
-The three follow-up questions are answered. Requirements not yet implemented; this task concerns documentation only.
+The three follow-up questions are answered. **Status 2026-09-28:** all 17 points are implemented (2026-09-24/25); details in `projekt-kontext.md`, section "Implementation status of item details and reports".
 
 ## References
 
-Original wording and screenshots are stored locally in the vault Main under `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Artikeldetails und Auswertungen.md`. No private screenshots copied into the repository.
+Original wording and screenshots are stored locally in the vault Main under `01 Projects/Sportfabrik Inventory/Sportfabrik Inventory Requirements.md`, section "Item details and reports from 2026-09-24". No private screenshots copied into the repository.

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Sportfabrik Goods Flow</title>
+<style>
+  :root{
+    --ground:#f2f5f3;
+    --surface:#ffffff;
+    --surface-2:#e6ebe8;
+    --ink:#16201d;
+    --ink-2:#526059;
+    --ink-3:#7c8a84;
+    --line:#c6d0cb;
+    --line-strong:#8a9a93;
+    --accent:#1b5e57;
+    --accent-soft:#dbeae6;
+    --warm:#a8520f;
+    --warm-soft:#f3e4d6;
+    --radius:7px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#101614;
+      --surface:#19211e;
+      --surface-2:#212b27;
+      --ink:#e7ece9;
+      --ink-2:#a1b0aa;
+      --ink-3:#7e8c87;
+      --line:#35423d;
+      --line-strong:#61736c;
+      --accent:#74c5b3;
+      --accent-soft:#1d332e;
+      --warm:#e0915c;
+      --warm-soft:#33251a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#101614;
+    --surface:#19211e;
+    --surface-2:#212b27;
+    --ink:#e7ece9;
+    --ink-2:#a1b0aa;
+    --ink-3:#7e8c87;
+    --line:#35423d;
+    --line-strong:#61736c;
+    --accent:#74c5b3;
+    --accent-soft:#1d332e;
+    --warm:#e0915c;
+    --warm-soft:#33251a;
+  }
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+    font-size:15px;
+    line-height:1.55;
+    margin:0;
+  }
+  main{
+    max-width:1000px;
+    margin:0 auto;
+    padding-inline:20px;
+    padding-block:44px 72px;
+  }
+
+  h1,h2{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;text-wrap:balance;margin:0;}
+  h1{font-size:clamp(30px,5.4vw,44px);font-weight:700;letter-spacing:-.022em;line-height:1.08;}
+  h2{font-size:20px;font-weight:600;letter-spacing:-.01em;}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--accent);margin:0 0 10px;
+  }
+  .head{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:38px;}
+  .lede{color:var(--ink-2);max-width:60ch;margin:12px 0 0;font-size:16px;}
+
+  section{margin-top:44px;}
+  section > h2 + p.sub{color:var(--ink-2);font-size:14px;margin:6px 0 0;max-width:64ch;}
+
+  figure{margin:20px 0 0;}
+  .scroll{
+    overflow-x:auto;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 16px;
+  }
+  .scroll svg{display:block;height:auto;max-width:100%;}
+  #flow{min-width:760px;}
+  #clock{min-width:620px;}
+  figcaption{color:var(--ink-2);font-size:13.5px;margin-top:12px;max-width:68ch;}
+
+  /* ---- diagram type ---- */
+  .dia text{font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;}
+  .dia .t{font-size:12px;font-weight:600;fill:var(--ink);}
+  .dia .s{font-size:10.5px;fill:var(--ink-2);}
+  .dia .el{font-size:10.5px;font-weight:500;fill:var(--ink-3);}
+  .dia .b{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1.1;}
+  .dia .done{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.3;}
+  .dia .src{fill:none;stroke:var(--line-strong);stroke-width:1.1;stroke-dasharray:4 3;}
+  .dia .edge{stroke:var(--line-strong);stroke-width:1.3;fill:none;}
+  .dia .dash{stroke-dasharray:5 4;}
+  .dia marker path{fill:var(--line-strong);}
+  .dia .bar-a{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1;}
+  .dia .bar-b{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1;}
+  .dia .axis{stroke:var(--ink-2);stroke-width:1.3;fill:none;}
+  .dia .dot{fill:var(--accent);}
+
+  /* ---- legend ---- */
+  .legend{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;margin:14px 0 0;padding:0;font-size:13px;color:var(--ink-2);}
+  .legend li{display:flex;align-items:center;gap:8px;}
+  .swatch{width:26px;height:14px;border-radius:3px;flex:none;}
+  .sw-done{background:var(--accent-soft);border:1.3px solid var(--accent);}
+  .sw-plan{background:var(--surface-2);border:1.1px solid var(--line-strong);}
+
+  /* ---- phases ---- */
+  .phases{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .phases li{background:var(--surface);display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:baseline;padding:14px 16px;}
+  .ph{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:18px;font-weight:500;color:var(--accent);}
+  .phases b{font-weight:600;display:block;font-size:14.5px;}
+  .phases span.d{display:block;color:var(--ink-2);font-size:13.5px;margin-top:2px;}
+  .chip{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:3px 8px;border-radius:99px;white-space:nowrap;align-self:center;
+  }
+  .c-done{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent);}
+  .c-run{background:var(--warm-soft);color:var(--warm);border:1px solid var(--warm);}
+  .c-open{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line-strong);}
+
+  /* ---- rules ---- */
+  .rules{list-style:none;margin:20px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .rules li{background:var(--surface);padding:14px 16px;font-size:13.5px;color:var(--ink-2);}
+  .rules b{display:block;color:var(--ink);font-weight:600;font-size:14px;margin-bottom:3px;}
+
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-3);font-size:12.5px;}
+
+  @media (max-width:520px){
+    .phases li{grid-template-columns:32px 1fr;}
+    .phases .chip{grid-column:2;justify-self:start;margin-top:6px;}
+  }
+</style>
+<main>
+<header class="head">
+<p class="eyebrow">Inventory Management · Vision</p>
+<h1>Sportfabrik Goods Flow</h1>
+<p class="lede">What the finished system should do — from delivery to markdowns, across SF1–SF4 and the external locations GEWA, VEBO, and Dietikon. Only our own parser reads documents on the server in Volketswil — no AI and no cloud.</p>
+</header>
+<section id="prioritaet-wuensche-vor-phase-d"><h2>As of 28.09.2026: status and next steps</h2><p>Implemented: phases A–D, the whole "Item Details and Reports" package (17 points), the UI redesign, HTTPS for the login (security S1), and phone use (search, camera scan, counting, goods arrival, transfer, write-off, manual entry, markdowns). 165 automated tests pass. Everything only checked locally — no PostgreSQL test run, no in-store use yet.</p><p><b>Open decisions:</b> may employees book sales? Minimum markdown 30 % for new goods — exact thresholds? Markdown rights of branch managers only in their own branches? "Pending" per branch? Transfer as a delivery with dispatch date? Confirm arrival immediately or after unpacking? Minimum password length 6 or 10?</p><p><b>Next steps:</b> merge the phone work into <code>main</code>; decide the open questions; build the small statistics and markdown changes; design "transfer as delivery"; prepare the store server (PostgreSQL test, remaining security points, VPN, encrypted backups); test phones in the store with real labels.</p></section>
+<section>
+<h2>The path of a delivery</h2>
+<p class="sub">All goods follow the same path: enter, check, record — stock is only added once the goods have actually arrived.</p>
+<figure>
+<div class="scroll">
+<svg aria-label="Process from delivery to evaluation: Goods sources lead to a preview via upload or manual entry, then to order confirmation or receipt of goods, from there to item master and storage location (external location or branch), via storage movements to the stock per branch and finally to markdown reminders, article search and evaluations." class="dia" id="flow" role="img" viewbox="0 0 820 1046">
+<defs>
+<marker id="ar1" markerheight="6" markerwidth="7" orient="auto" refx="8.4" refy="3.5" viewbox="0 0 9 7">
+<path d="M0,0 L9,3.5 L0,7 Z"></path>
+</marker>
+</defs>
+<!-- Row A: Warenquellen -->
+<rect class="src" height="44" rx="6" width="176" x="40" y="24"></rect>
+<text class="t" text-anchor="middle" x="128" y="44">Intersport</text>
+<text class="s" text-anchor="middle" x="128" y="59">Invoice (PDF)</text>
+<rect class="src" height="44" rx="6" width="176" x="228" y="24"></rect>
+<text class="t" text-anchor="middle" x="316" y="44">ECOM returns</text>
+<text class="s" text-anchor="middle" x="316" y="59">Same layout</text>
+<rect class="src" height="44" rx="6" width="176" x="416" y="24"></rect>
+<text class="t" text-anchor="middle" x="504" y="44">Brands and dealers</text>
+<text class="s" text-anchor="middle" x="504" y="59">Order confirmation · some scans</text>
+<rect class="src" height="44" rx="6" width="176" x="604" y="24"></rect>
+<text class="t" text-anchor="middle" x="692" y="44">External dealers</text>
+<text class="s" text-anchor="middle" x="692" y="59">Often without EAN</text>
+<path class="edge" d="M128,68 L128,88"></path>
+<path class="edge" d="M316,68 L316,88"></path>
+<path class="edge" d="M504,68 L504,88"></path>
+<path class="edge" d="M692,68 L692,88"></path>
+<path class="edge" d="M128,88 L692,88"></path>
+<path class="edge" d="M220,88 L220,118" marker-end="url(#ar1)"></path>
+<path class="edge" d="M600,88 L600,118" marker-end="url(#ar1)"></path>
+<!-- Row B: Erfassung -->
+<rect class="b done" height="68" rx="6" width="360" x="40" y="118"></rect>
+<text class="t" text-anchor="middle" x="220" y="140">Upload: Invoice · Delivery Note · Order Confirmation</text>
+<text class="s" text-anchor="middle" x="220" y="159">Supplier, document type and storage location are recognized</text>
+<text class="s" text-anchor="middle" x="220" y="175">Text PDF parser or OCR — local, excluding AI</text>
+<rect class="b done" height="68" rx="6" width="360" x="420" y="118"></rect>
+<text class="t" text-anchor="middle" x="600" y="140">Capture manually</text>
+<text class="s" text-anchor="middle" x="600" y="159">without document, by scanner</text>
+<text class="s" text-anchor="middle" x="600" y="175">Brand · Description · Quantity · RRP are enough</text>
+<!-- Row C: Vorschau -->
+<path class="edge" d="M220,186 L220,216" marker-end="url(#ar1)"></path>
+<rect class="b done" height="48" rx="6" width="360" x="40" y="216"></rect>
+<text class="t" text-anchor="middle" x="220" y="238">Preview and correct</text>
+<text class="s" text-anchor="middle" x="220" y="256">Uncertain fields highlighted · Confirm</text>
+<path class="edge" d="M220,264 L220,282"></path>
+<path class="edge" d="M190,282 L560,282"></path>
+<path class="edge" d="M190,282 L190,300" marker-end="url(#ar1)"></path>
+<path class="edge" d="M560,282 L560,300" marker-end="url(#ar1)"></path>
+<path class="edge" d="M740,186 L740,300" marker-end="url(#ar1)"></path>
+<!-- Row D: Dokumenttyp -->
+<rect class="b done" height="62" rx="6" width="300" x="40" y="300"></rect>
+<text class="t" text-anchor="middle" x="190" y="322">Order Confirmation</text>
+<text class="s" text-anchor="middle" x="190" y="340">Expected receipt of goods</text>
+<text class="s" text-anchor="middle" x="190" y="356">No stock · Remaining quantity remains open</text>
+<rect class="b done" height="62" rx="6" width="320" x="460" y="300"></rect>
+<text class="t" text-anchor="middle" x="620" y="322">Goods Receipt</text>
+<text class="s" text-anchor="middle" x="620" y="340">Invoice · Delivery note · manual</text>
+<text class="s" text-anchor="middle" x="620" y="356">Goods have arrived</text>
+<path class="edge" d="M340,331 L460,331" marker-end="url(#ar1)"></path>
+<text class="el" text-anchor="middle" x="400" y="323">Goods arrive</text>
+<path class="edge" d="M620,362 L620,380"></path>
+<path class="edge" d="M200,380 L695,380"></path>
+<path class="edge" d="M200,380 L200,396" marker-end="url(#ar1)"></path>
+<path class="edge" d="M485,380 L485,396" marker-end="url(#ar1)"></path>
+<path class="edge" d="M695,380 L695,396" marker-end="url(#ar1)"></path>
+<!-- Row E: Artikelstamm + Lagerort -->
+<rect class="b done" height="120" rx="6" width="320" x="40" y="396"></rect>
+<text class="t" x="58" y="418">Item Master — Retained Permanently</text>
+<text class="s" x="58" y="442">· Shared across branches, even when sold out</text>
+<text class="s" x="58" y="462">· Category: FEDAS proposal or by hand</text>
+<text class="s" x="58" y="482">· Add EAN or generate it internally</text>
+<text class="s" x="58" y="502">· Label · Supplier code · RRP history</text>
+<rect class="b done" height="82" rx="6" width="170" x="400" y="396"></rect>
+<text class="t" text-anchor="middle" x="485" y="416">External locations</text>
+<text class="s" text-anchor="middle" x="485" y="435">GEWA · VEBO · Dietikon</text>
+<text class="s" text-anchor="middle" x="485" y="451">No sale</text>
+<text class="s" text-anchor="middle" x="485" y="467">No date of receipt</text>
+<rect class="b done" height="82" rx="6" width="170" x="610" y="396"></rect>
+<text class="t" text-anchor="middle" x="695" y="416">Branch SF1–SF4</text>
+<text class="s" text-anchor="middle" x="695" y="435">Receipt date set</text>
+<text class="s" text-anchor="middle" x="695" y="451">Transfer SF→SF:</text>
+<text class="s" text-anchor="middle" x="695" y="467">Date remains</text>
+<path class="edge" d="M485,478 L485,506" marker-end="url(#ar1)"></path>
+<rect class="b done" height="66" rx="6" width="230" x="470" y="506"></rect>
+<text class="t" text-anchor="middle" x="585" y="528">Transfer: external → branch</text>
+<text class="s" text-anchor="middle" x="585" y="546">Branch records the receipt</text>
+<text class="s" text-anchor="middle" x="585" y="563">→ Receipt date set</text>
+<path class="edge" d="M665,506 L665,492 L700,492 L700,478" marker-end="url(#ar1)"></path>
+<path class="edge" d="M420,478 L420,592"></path>
+<path class="edge" d="M765,478 L765,592"></path>
+<path class="edge" d="M128,592 L765,592"></path>
+<path class="edge" d="M128,592 L128,624" marker-end="url(#ar1)"></path>
+<text class="el" text-anchor="middle" x="250" y="584">Stock received per location</text>
+<!-- Row F: Bewegungsarten -->
+<rect class="b done" height="52" rx="6" width="176" x="40" y="624"></rect>
+<text class="t" text-anchor="middle" x="128" y="646">Stock Received</text>
+<text class="s" text-anchor="middle" x="128" y="664">Incoming goods booked</text>
+<rect class="b done" height="52" rx="6" width="176" x="228" y="624"></rect>
+<text class="t" text-anchor="middle" x="316" y="646">Sale · Stock Removal</text>
+<text class="s" text-anchor="middle" x="316" y="664">1 Scan = 1 piece, with reason</text>
+<rect class="b" height="52" rx="6" width="176" x="416" y="624"></rect>
+<text class="t" text-anchor="middle" x="504" y="646">POS</text>
+<text class="s" text-anchor="middle" x="504" y="664">Removes stock automatically</text>
+<rect class="b done" height="52" rx="6" width="176" x="604" y="624"></rect>
+<text class="t" text-anchor="middle" x="692" y="646">Correction · Count</text>
+<text class="s" text-anchor="middle" x="692" y="664">Difference is booked</text>
+<path class="edge" d="M128,676 L128,700"></path>
+<path class="edge" d="M316,676 L316,700"></path>
+<path class="edge" d="M504,676 L504,700"></path>
+<path class="edge" d="M692,676 L692,700"></path>
+<path class="edge" d="M128,700 L692,700"></path>
+<path class="edge" d="M410,700 L410,730" marker-end="url(#ar1)"></path>
+<!-- Row G: Lagerbewegungen -->
+<rect class="b done" height="60" rx="6" width="540" x="140" y="730"></rect>
+<text class="t" text-anchor="middle" x="410" y="754">Stock Movements — One Row per Change</text>
+<text class="s" text-anchor="middle" x="410" y="774">Receipt · Sale · Removal · Correction · Transfer</text>
+<path class="edge" d="M410,790 L410,830" marker-end="url(#ar1)"></path>
+<!-- Row H: Bestand -->
+<rect class="b done" height="56" rx="6" width="240" x="290" y="830"></rect>
+<text class="t" text-anchor="middle" x="410" y="854">Stock per branch</text>
+<text class="s" text-anchor="middle" x="410" y="873">Variant × storage location</text>
+<path class="edge dash" d="M80,516 L80,858 L290,858" marker-end="url(#ar1)"></path>
+<text class="el" text-anchor="middle" x="185" y="848">Item Data &amp; RRP</text>
+<path class="edge" d="M410,886 L410,906"></path>
+<path class="edge" d="M156,906 L664,906"></path>
+<path class="edge" d="M156,906 L156,930" marker-end="url(#ar1)"></path>
+<path class="edge" d="M410,906 L410,930" marker-end="url(#ar1)"></path>
+<path class="edge" d="M664,906 L664,930" marker-end="url(#ar1)"></path>
+<!-- Row I: Nutzung -->
+<rect class="b" height="92" rx="6" width="232" x="40" y="930"></rect>
+<text class="t" text-anchor="middle" x="156" y="954">Markdowns</text>
+<text class="s" text-anchor="middle" x="156" y="974">−30 % from receipt date</text>
+<text class="s" text-anchor="middle" x="156" y="990">18 mo. → −50 %, 36 mo. → −70 %</text>
+<text class="s" text-anchor="middle" x="156" y="1006">per branch · central recommendation</text>
+<rect class="b done" height="92" rx="6" width="232" x="294" y="930"></rect>
+<text class="t" text-anchor="middle" x="410" y="954">Articles and Prices</text>
+<text class="s" text-anchor="middle" x="410" y="974">Search: EAN scanning, quick search</text>
+<text class="s" text-anchor="middle" x="410" y="990">RRP history · Notes</text>
+<text class="s" text-anchor="middle" x="410" y="1006">Excel export</text>
+<rect class="b" height="92" rx="6" width="232" x="548" y="930"></rect>
+<text class="t" text-anchor="middle" x="664" y="954">Reports</text>
+<text class="s" text-anchor="middle" x="664" y="974">Stock value · Time in stock</text>
+<text class="s" text-anchor="middle" x="664" y="990">sales by brand;</text>
+<text class="s" text-anchor="middle" x="664" y="1006">Category &amp; branch</text>
+</svg>
+</div>
+<figcaption>The two places where things go wrong easily: one <b>Order Confirmation</b> creates only an expected receipt of goods and not yet an inventory, and goods on a <b>External location</b> (GEWA, VEBO, Dietikon) only receives its arrival date when it reaches a branch. Stock is never overwritten – it always results from the stock movements.</figcaption>
+</figure>
+<ul class="legend">
+<li><span class="swatch sw-done"></span>Already in progress (Phase A–C)</li>
+<li><span class="swatch sw-plan"></span>Planned (phase D–G)</li>
+</ul>
+</section>
+<section>
+<h2>The Markdown Clock</h2>
+<p class="sub">Runs per store and per supplier item number — across all colors and sizes.</p>
+<figure>
+<div class="scroll">
+<svg aria-label="Timeline of the reduction: from the receipt of goods in the store minus 30 percent applies, after 18 months the indication of minus 50 percent appears, after 36 months to minus 70 percent. A subsequent delivery of the same item number to the same branch restarts the clock for both stages." class="dia" id="clock" role="img" viewbox="0 40 760 156">
+<defs>
+<marker id="ar2" markerheight="6" markerwidth="7" orient="auto" refx="8.4" refy="3.5" viewbox="0 0 9 7">
+<path d="M0,0 L9,3.5 L0,7 Z"></path>
+</marker>
+</defs>
+<text class="t" x="226" y="58">Subsequent delivery</text>
+<text class="s" x="226" y="74">Same item number, same branch</text>
+<text class="s" x="226" y="90">Clock starts again (both stages)</text>
+<path class="edge dash" d="M210,136 L210,68"></path>
+<path class="edge dash" d="M210,68 C178,48 118,54 94,92" marker-end="url(#ar2)"></path>
+<rect class="bar-a" height="22" rx="4" width="250" x="90" y="100"></rect>
+<text class="s" text-anchor="middle" x="215" y="115">−30 % (standard)</text>
+<rect class="bar-b" height="22" rx="4" width="250" x="340" y="100"></rect>
+<text class="s" text-anchor="middle" x="465" y="115">−50 % recommended</text>
+<rect class="bar-b" height="22" rx="4" width="120" x="590" y="100"></rect>
+<text class="s" text-anchor="middle" x="650" y="115">−70 % recommended</text>
+<path class="axis" d="M80,140 L715,140" marker-end="url(#ar2)"></path>
+<path class="axis" d="M90,133 L90,147"></path>
+<path class="axis" d="M340,133 L340,147"></path>
+<path class="axis" d="M590,133 L590,147"></path>
+<circle class="dot" cx="210" cy="140" r="3.5"></circle>
+<text class="t" text-anchor="middle" x="90" y="164">Goods Receipt</text>
+<text class="s" text-anchor="middle" x="90" y="180">in the branch</text>
+<text class="t" text-anchor="middle" x="340" y="164">18 months</text>
+<text class="s" text-anchor="middle" x="340" y="180">Note −50 %</text>
+<text class="t" text-anchor="middle" x="590" y="164">36 months</text>
+<text class="s" text-anchor="middle" x="590" y="180">Note −70 %</text>
+</svg>
+</div>
+<figcaption>Goods without a date of receipt – i.e. everything that still lies with GEWA, VEBO or in Dietikon – do not generate any indications at all. A delivery to SF2 does not reset the watch in SF1, and a transfer from store to store does not rejuvenate the goods. If the destination branch has never had the item number, the clock starts there from arrival. Each branch decides for itself; the headquarters sees all recommendations and can set a uniform, deviations remain visible.</figcaption>
+</figure>
+</section>
+<section>
+<h2>Phases A–G</h2>
+<p class="sub">This is how the path is divided up. Order is conscious: without foundation no incoming goods, without incoming goods no stock, without stock no reduction.</p>
+<ol class="phases">
+<li><span class="ph">A</span><span><b>Foundation</b><span class="d">Branch SF1–SF4 + GEWA, VEBO, Dietikon, roles, change of branch, DE/FR/EN, new data model, migration of legacy data</span></span><span class="chip c-done">Finished</span></li>
+<li><span class="ph">B</span><span><b>Incoming goods v2</b><span class="d">Document types, supplier recognition, expected → arrived, storage location from delivery address, manual recording with scanner, add/produce EAN + label, FEDAS category proposal and category by hand</span></span><span class="chip c-done">Finished</span></li>
+<li><span class="ph">C</span><span><b>Stock Levels</b><span class="d">Warning in case of overdelivery, stock per storage location, stock transfer (external → branch and branch → branch), stock removal by scan, corrections by counting</span></span><span class="chip c-done">Finished</span></li>
+<li><span class="ph">D</span><span><b>Prices and reductions</b><span class="d">RRP and purchase-price history, reduction stages, 18/36 monthly notes per branch, confirmation, follow-up note, central recommendation — all implemented</span></span><span class="chip c-done">Finished</span></li>
+<li><span class="ph">E</span><span><b>Other suppliers</b><span class="d">Alpina, Chris Sports and CMP available; check additional merchant layouts and ECOM detection separately — ongoing expansion</span></span><span class="chip c-open">Open</span></li>
+<li><span class="ph">F</span><span><b>Operation</b><span class="d">Servers in Volketswil, VPN to branches, external backups, data transfer — after that all 4 branches are productive. HTTPS already built (28.09.2026).</span></span><span class="chip c-open">Next</span></li>
+<li><span class="ph">G</span><span><b>POS</b><span class="d">Connection of the Intersport cash register: Scan delivers category, RRP and reduction, sale removed from stock automatically – depends on the clarification with Intersport</span></span><span class="chip c-open">Open</span></li>
+</ol>
+<p class="sub" style="margin-top:14px">Phone use (not a phase of its own) was built on 28.09.2026. Label 47 × 83 mm for preprinted color rolls implemented according to local project context. Afterwards in the backlog: price tag printing with reduced price, inventory by scanner, evaluations of stock value and sales, finer user rights.</p>
+</section>
+<section>
+<h2>Applies everywhere</h2>
+<ul class="rules">
+<li><b>Documents Stay Local</b>Documents only reads our own parser, no AI, no cloud. No external CDNs — runs on the store network even without Internet.</li>
+<li><b>Never override stock</b>Every change is a line in the stock movements, the stock is derived from it.</li>
+<li><b>EAN is optional</b>Variants work without an EAN; the key is supplier + item number + color + size.</li>
+<li><b>Shared Item Master</b>One item master for all branches — only stock, receipts and reductions are branch-related.</li>
+<li><b>Categories as in the cash register</b>Main category × sporting activity: 35 combinations; Cycling and Food have no sporting activity.</li>
+<li><b>Rights</b>Employees may manually receive stock and correct stock levels, but only in their assigned branches. Recording sales/stock removals, cancellations, and stock transfers is reserved for branch managers and headquarters. Their existing rights to record transactions across branches remain in place; read permissions are unchanged.</li>
+</ul>
+</section>
+<section id="rechte-2026-09-24"><h2>Permissions · 24.09.2026</h2><p>Employees may manually receive stock and correct stock levels, but only in their assigned branches. Recording sales/stock removals, cancellations, and stock transfers is reserved for branch managers and headquarters. Their existing rights to record transactions across branches remain in place; read permissions are unchanged.</p><p>Implemented in local code; not yet deployed on the server.</p></section>
+<section id="inbox-2026-09-24"><h2>New requirements · 24.09.2026</h2><p class="sub">Operating requests implemented on the 24.09.2026 (checked in the browser against a test database).</p><ul><li>Clicking on an entry under “Pending” opens the filtered list with exactly the counted entries (without EAN, without category, negative stock, reduction due or soon). The list says “Filtered: ...” and has a button “Show all”. The number is now counted per variant, as the lists show.</li><li>The quick-search field on the stock page is focused as soon as the page opens.</li><li>On the article page, “Show Columns” is under “Other Filters”.</li><li>The displayed branch appears prominently in the stock-page title; the small branch switcher remains.</li><li>The overview’s quick-access buttons are the same size, including when they wrap onto another row.</li></ul><h3>Mobile use · Implemented 28.09.2026</h3><p><strong>Built earlier than planned, not at the end of the project.</strong> Web app on personal phones, opened via a link and installable as a home-screen icon, with server-side allowlisting per phone session.</p><ul><li>Home screen, article search, and camera scan (native barcode reader or bundled ZXing) all implemented; view prices, sizes, colors and store inventory.</li><li>Count/correct, confirm goods receipts (everyone), transfer and write off stock (branch manager/head office only, per existing rights), manual goods entry, and mark-downs — all implemented.</li><li>Existing roles and rights are enforced server-side unchanged; tablets keep the desktop version.</li><li>Still open: the VPN/Wi-Fi solution for branch-manager/headquarters access from outside the store.</li></ul><h3>Documented status of development</h3><p>Label 47 mm wide × 83 mm high for pre-printed rolls: 30 % yellow, 50 % red, 70 % green. FEDAS assignment complements; Kids is chosen by hand. Parsers for Alpina, Chris Sports and CMP are available according to the local project context. Check productive release and open layouts separately.</p><p>This overview and the flow of goods document are updated together when changes to context, progress or decisions are made.</p></section>
+<section id="sicherheit-2026-09-24"><h2>Security testing · 24.09.2026</h2><p class="sub">Current status checked: no critical or high findings. Open measures before use in the store; the login lock has been implemented. Details: docs/sicherheit.md in the project.</p><ul><li><b>S1 · partly done:</b> HTTPS via a local proxy is built (28.09.2026, checked locally). Still open: end sessions when a password changes.</li><li><b>S2 · implemented:</b> After 5 incorrect passwords, an account 20 minutes is blocked (decision and implementation 24.09.2026). Remains open: Make servers accessible only in the store network.</li><li><b>S3 · medium:</b> Pillow 12.2.0 with known gaps – Update to 12.3.0.</li><li><b>S4 · medium:</b> Backups on the external data carrier unencrypted – encrypt before copying.</li><li><b>S5–S9 · low:</b> turn off API documentation and /db-test in operation, security headers, hash pins for packages. S9 done 28.09.2026: these overview pages no longer load Google Fonts.</li></ul><p>Good: no secrets in the code or history, all data accesses with login, secure password storage, no infiltration, frontend without Internet, Docker without root.</p></section>
+<section id="phase-d-2026-09-24"><h2>Phase D · Prices &amp; Reduction</h2><p class="sub">Part 1 implemented at 24.09.2026; the four open questions D-F1–D-F4 answered at 25.09.2026 and implemented directly.</p><ul><li><b>Implemented (24.09.2026):</b> Page “Markdowns” per store – Items that have reached −70 % or −50 % or will reach in the next 30 days, with roll note and button “print labels” (one label per item in stock).</li><li><b>D-F1 Confirm — implemented:</b> A list that needs to be confirmed. A confirmed model disappears until the next stage is due.</li><li><b>D-F2 Restocking — Implemented:</b> Only the new pieces restart the watch, plus a note to the store on the overview (no batch tracking in the stock – deliberate simplification, see below).</li><li><b>D-F3 Central recommendation — implemented:</b> Head office sets one level per model and branch from a date, branch takes over or rejects with reason, head office sees deviations.</li><li><b>D-F4 Thresholds 18/36 months — decided:</b> remain fixed and the same for all branches, no adjustment option necessary.</li><li><b>Unresolved contradiction:</b> D-F2 assumes “freshly arrived = 0 % reduction” (rule 6) — the clarification of the 25.09.2026 below (“freshly arrived articles start with 30 %, no articles without reduction”) has not yet been compared.</li></ul></section>
+<section id="artikeldetails-auswertungen-20260924"><h2>Item Details and Reports · New Requirements</h2><p>All 17 points implemented (status 25.09.2026), checked locally in the browser against a test database, not yet in the store, no PostgreSQL test run. Marked with ✅ = implemented.</p><ul><li><b>Article details:</b> ✅ Checkout category only open next to the article name via "Edit"; do not display box by default.</li><li><b>Article details:</b> ✅ EAN and label open in detail only via a small button; do not display box by default.</li><li><b>Article details:</b> ✅ Show RRP history at the top and more compactly; associated small list foldable, initially closed.</li><li><b>Article details:</b> ✅ Remove article notes from the surface. Nothing is decided about a deletion of existing note data.</li><li><b>Article details:</b> ✅ Show the bottom list as the current stock of this article with all sizes and colors.</li><li><b>Article details:</b> ✅ Arrange “Delete Items” with red text at the bottom; maintain existing deletion rights and restrictions.</li><li><b>Reduction:</b> ✅ Show current reduction recommendations in the article details, enable manual adjustment and display them immediately in the inventory.</li><li><b>Current:</b> ✅ Combine delivery arrivals as a whole delivery; stock transfers and departures with a reason other than sale do not show each individual incoming/outgoing.</li><li><b>Statistics:</b> ✅ New page <code>/statistiken</code>, only store manager/head office: sold by cash category, estimated revenue (explicitly marked as an estimate), order recommendation; periods day/week/month/year/total.</li><li><b>Stock:</b> ✅ Link article names to the respective article detail page.</li><li><b>Stock:</b> ✅ Show reduction level in the inventory list; not required in the item search list.</li><li><b>Markdowns:</b> ✅ Enable manual selection of items by EAN as well as by inventory list.</li><li><b>User management:</b> ✅ New page <code>/konten</code>, only head office: create and delete employee and branch manager accounts. Old bookings remain in the database, the name remains, only the link to the account is omitted.</li><li><b>Overview:</b> ✅ Five quick accesses freely selectable and sortable by drag-and-drop; buttons the same height.</li><li><b>Article search:</b> ✅ List visually align to inventory; category first, merge brand and designation, merge supplier item number and EAN.</li><li><b>Stock Removal:</b> ✅ In addition to EAN input, offer an inventory list to browse and select; maintain existing stock removal rights.</li><li><b>Goods Entry:</b> ✅ Limit supplier selection to five groups: 111 Intersport, 333 dealer, 444 Intern, 555 ECOM, 999 third-party dealer. No individual brand suppliers in this selection field.</li></ul></section>
+<p>Project knowledge: current entry into <code>docs/start.md</code>; targeted search via code and document sections. Graphify may process selected project documentation; no automatic documents analysis. State of the art: 24.09.2026.</p>
+<section id="inbox-20260925"><h2>Specifications of 25.09.2026</h2><p>New requirements from the inbox.</p><p><b>Code check 28.09.2026:</b> quick access by drag-and-drop and statistics only for branch managers/headquarters are done. Open: removals in the statistics, "this week" as start period, 30 % start markdown, wording without "recommendation", markdown changes by branch managers only in their own branches. The sales exception for stock removal contradicts the current rule (all write-offs only branch managers/headquarters) and needs a decision.</p><ul><li>Add statistics showing the number of items removed from stock, the reasons, the most recent removals, and the users who performed them.</li><li>Show statistics when opening directly with "this week"; other time periods can be selected afterwards.</li><li>Statistics continue to be visible exclusively for branch managers and headquarters.</li><li>Newly arrived items start at a 30 % discount; there are no items without a discount. Remove the word “recommendation” from the relevant display.</li><li>Change reduction only for your own assigned branch; view other branches only. Headquarters may change all branches.</li><li>Edit quick accesses via drag-and-drop; already existing desire, not a double new task.</li><li>Only branch managers and headquarters may remove stock for reasons other than sales. The sales exception clarifies the earlier blanket restriction; do not expand other branch permissions.</li></ul></section>
+<section id="inbox-20260928"><h2>New requirements · 28.09.2026</h2><p class="sub">From the inbox; recorded in the project (docs/anforderungen-inbox-2026-09-28.md), not yet implemented.</p><ul><li>All items have a minimum markdown of 30 %, also new goods — no item without a markdown.</li><li>When entering goods, choose the item's markdown directly.</li><li>"Pending" on the overview separately per branch; only the head-office account sees everything.</li><li>Treat a transfer like a delivery: choose the dispatch date and destination; the destination branch confirms the arrival like a new delivery.</li></ul></section><section id="project-notes"><h2>Project notes</h2><p>The project notes are organized into six files. Original dated requests and ideas have been combined; their implementation status is unchanged.</p><ul><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory">Overview</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20Requirements">Requirements</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20Decisions">Decisions</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20Progress">Progress</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20on%20Mobile">Mobile planning</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20%E2%80%93%20Security%20Review%20from%202026-09-24">Security review</a></li></ul></section>
+<footer>Sportfabrik Inventory Management · Vision according to<code>docs/projekt-kontext.md</code>(Rev. 6) · As of 24.09.2026 · Afternoon Inbox reconciliation</footer>
+</main>
+</body></html>

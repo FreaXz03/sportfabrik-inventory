@@ -2,12 +2,13 @@
 
 Project work: [Short intro and current priority](docs/start.md) · [Targeted knowledge search](docs/obsidian-graphify.md).
 
-Internal tool for Sport-Fabrik: upload supplier invoices (PDF),
-automatically read out line items, correct them directly in the preview,
-and import them into a PostgreSQL database. Afterward, all items can be
-searched, their complete delivery history including the original invoice
-text and price history can be reviewed, free-text notes can be added, and
-the item list can be exported as an Excel file.
+Internal inventory management for Sport-Fabrik: upload supplier documents
+(PDF), read out line items with our own parsers, correct them in the
+preview, and book them into a PostgreSQL database. Stock is tracked per
+branch as an append-only movement journal; markdowns (30/50/70 %) follow
+the time in stock; staff can also work on their phones. Items can be
+searched, their delivery and price history reviewed, and the item list
+exported as an Excel file.
 
 Runs on a central server (Volketswil); the 4 branches (SF1 Volketswil,
 SF2 Conthey, SF3 Regensdorf, SF4 Hägendorf) as well as the external
@@ -40,19 +41,25 @@ switch between their branches in the interface.
 - **Expected deliveries**: order confirmations and purchase orders only
   announce goods — stock is only created once someone confirms arrival. If
   less arrives than expected, the remaining quantity stays visibly open.
-- **Overview** as the home page: large quick-access shortcuts for the most
-  common tasks, branch metrics, what's coming up (deliveries, stock to
-  count, items at markdown age), and the latest bookings.
+- **Overview** as the home page: up to five quick-access shortcuts chosen
+  per user (order by drag-and-drop or arrows), branch metrics, what's
+  coming up (deliveries, stock to count, items at markdown age, notices
+  about new deliveries of marked-down items), and recent activity
+  summarized (a delivery as a whole, a transfer as one entry, removals
+  other than sales).
 - **Stock per branch** (the "Stock" page): current stock per variant and
   storage location with color, size, and main group, search, branch
-  filter, and oldest receipt date; rows with quantity 0 don't appear.
+  filter, oldest receipt date, and the effective markdown level; item
+  names link to the item details; rows with quantity 0 don't appear.
   Every login may read all branches; goods at an external location are
   recognizable as such because they don't yet have a receipt date.
 - **Scan to write off** (the "Write off" page): every scan immediately
   books out one unit — sale, breakage/defect, theft/shrinkage, own use,
   return, or other. If stock isn't sufficient, the page warns but still
-  books it; a mis-scan can be undone with a counter-booking. Below that,
-  the list of all write-offs with time, person, and reason.
+  books it; a mis-scan can be undone with a counter-booking. Items can
+  also be picked from a stock list. Below that, the list of all
+  write-offs with time, person, and reason. Branch managers and head
+  office only.
 - **Transfer** (the "Transfer" page): the receiving branch books goods out
   of another storage location in one step — by scan or from the source's
   stock. Goods from GEWA, VEBO, or Dietikon get their receipt date set in
@@ -71,9 +78,13 @@ switch between their branches in the interface.
 - **Internal EAN at the push of a button**: items without a manufacturer
   barcode get an in-house EAN-13 (GS1 range 20–29, with check digit) and
   thereby become scannable at the till.
-- **Markdown** (Phase D, part 1): a page with the items of a branch that
-  have reached −50% or −70% or will reach it within 30 days, each with a
-  "Print labels" button (one label per unit, with a roll hint).
+- **Markdowns** (Phase D): a page with the items of a branch that have
+  reached −50% or −70% or will reach it within 30 days, each with "Print
+  labels" (one label per unit, with a roll hint) and "Done" (the model
+  disappears until the next level). Any staff member can set 30/50/70 % by
+  hand for their branches (by EAN or from the stock list); head office can
+  send markdown recommendations per branch, which the branch accepts or
+  declines with a reason.
 - **Price label as PDF** for the pre-printed rolls (47 × 83 mm, portrait;
   logo, percent dot, and mountains are pre-printed): the RRP (struck
   through), the supplier's group code (111/555/333/999/444), the model
@@ -90,13 +101,27 @@ switch between their branches in the interface.
 - **Delete incorrectly recorded items**: branch managers and head office
   can remove a manually recorded item without a document, along with its
   stock and bookings.
-- **Delivery history and price history** per item (including all
-  color/size variants), **free-text notes** with author and change
-  history.
+- **Item details**: RRP history at the top, delivery history, current
+  stock of all sizes and colors across locations, markdown per branch; POS
+  category and EAN/label behind small buttons; "delete item" at the
+  bottom. (Free-text notes were removed from the interface on 2026-09-24;
+  data and API remain.)
 - **Invoice list** with a detail view, irrevocable deletion (including
   correct recalculation of item metrics) by branch managers.
-- **Site-wide light/dark mode**, larger font, and column selection for
-  staff with limited vision.
+- **Statistics** (branch managers and head office): pieces sold per POS
+  category, estimated revenue (marked as an estimate), and an order
+  recommendation, for today/week/month/year/overall.
+- **Account management** (head office): create and delete employee and
+  branch-manager accounts in the browser; past bookings keep the name.
+- **Phone use** (`/m`, 2026-09-28): installable web app for phones —
+  search, camera scan, count/correct, confirm deliveries, transfer, write
+  off, enter goods, markdowns. A phone login only reaches these features
+  (server-side allowlist); roles and branch limits apply unchanged.
+- **Design system** (`DESIGN.md`): one token set for all pages,
+  site-wide light/dark mode, larger font, and column selection for staff
+  with limited vision.
+- **HTTPS only** (security S1): a local Caddy proxy with an internal
+  certificate; the session cookie is `Secure`.
 - **Multilingual DE/FR/EN**: interface and error messages fully translated
   (German is the default), language can be switched per user at any time.
 - **Role-based login** following the POS-system pattern, automated,
@@ -132,9 +157,9 @@ switch between their branches in the interface.
 - **i18n**: its own lightweight catalog (JSON files + `translate()`/
   `i18n.js`, see `docs/architektur.md` section "Multilingual"), no
   additional dependency
-- **Tests**: pytest (533 passed, 20 skipped without optional extra
-  prerequisites such as Node.js or a real sample invoice — as of this
-  documentation)
+- **Tests**: pytest (165 passed, 12 skipped without optional extra
+  prerequisites such as Node.js or a real sample invoice — as of
+  2026-09-28)
 - **Deployment**: Docker / docker compose (see
   [`docs/SERVER-SETUP.md`](docs/SERVER-SETUP.md))
 
@@ -143,6 +168,19 @@ switch between their branches in the interface.
 This README is the quick start. More detailed documentation lives in
 [`docs/`](docs/):
 
+- [`docs/start.md`](docs/start.md) — short orientation, current status,
+  and next steps (**start here**)
+- [`docs/projekt-kontext.md`](docs/projekt-kontext.md) — target picture,
+  business decisions D1–D27, roadmap, open questions, implementation
+  history
+- [`DESIGN.md`](DESIGN.md) — design system: tokens, typography,
+  components, accessibility
+- [`docs/handynutzung.md`](docs/handynutzung.md) — phone use: plan and
+  implementation status
+- `docs/anforderungen-*.md` — dated requirement records from Fabian's
+  inbox, each with implementation status
+- [`docs/overviews/`](docs/overviews/) — two visual HTML overviews
+  (inventory management, goods flow), mirrored from the vault
 - [`docs/planung.md`](docs/planung.md) — requirements, development phases,
   and key decisions (reconstructed retroactively)
 - [`docs/architektur.md`](docs/architektur.md) — layer model, security
@@ -185,6 +223,8 @@ app/
     fedas.py           FEDAS code -> POS category suggestion (Phase B, see docs/projekt-kontext.md)
                        -> manual choice is in app/services/kategorien.py
     i18n.py            translate()/normalize_language(): reads the catalog from app/static/i18n/*.json
+    handy.py           Phone detection and the allowlist of routes a phone may use
+    schnellzugriffe.py Catalog of quick-access functions and role filtering
   routers/           HTTP endpoints (pages + JSON API), grouped by topic
     auth.py            Login/logout, RBAC dependencies, branch switching, language choice (/api/me, /api/active-lagerort, /api/language)
     catalog.py         Item search, Excel export
@@ -192,7 +232,7 @@ app/
     history.py         Invoice list, details, item history, deletion
     article_details.py Notes and price history per item
     preview.py         Upload preview, correction validation, import confirmation
-    wareneingang.py     View expected deliveries and confirm their arrival
+    wareneingang.py    View expected deliveries and confirm their arrival
     erfassung.py       Manually record goods (scanner lookup via EAN, booking without a document)
     etiketten.py       Add/generate an EAN and print labels as PDF
     kategorien.py      View POS category and choose manually (/api/kategorien)
@@ -200,6 +240,11 @@ app/
     ausbuchung.py      Write off by scan, one unit per scan, undo (/ausbuchen, /api/ausbuchen)
     umlagerung.py      Transfer goods on receipt (/umlagern, /api/umlagerung)
     korrektur.py       Book a counted quantity (/api/korrektur)
+    reduktion.py       Markdowns page, due list, confirmation, manual level (/runterschreiben, /api/reduktionen)
+    empfehlung.py      Head-office markdown recommendations (/empfehlungen)
+    statistik.py       Statistics (/statistiken, /api/statistik)
+    konten.py          Account management by head office (/konten, /api/konten)
+    handy.py           Phone pages under /m (access rules: core/handy.py)
   services/          Business logic without HTTP dependency, reusable
     importer.py        Transactional import/deletion of invoices (books goods receipt + stock against the active branch)
     parsers/           One module per supplier layout + registry (see docs/architektur.md)
@@ -229,6 +274,13 @@ app/
     artikel_loeschen.py Fully remove an incorrectly recorded item without a document
     umlagerung.py       Transfer with date rules D13/D17/F10/F11 (C4)
     korrektur.py        Correction: book the difference to the counted quantity (C5)
+    reduktion_manuell.py      Manual markdown per model x branch (30/50/70)
+    reduktion_bestaetigung.py "Done" on the markdown list (D-F1)
+    reduktion_empfehlung.py   Head-office recommendation and branch response (D-F3)
+    hinweise.py         Notice when a marked-down model is delivered again (D-F2)
+    statistik.py        Statistics: sales per category, revenue estimate, order recommendation
+    konten.py           Create/delete accounts (head office)
+    anmeldung.py        Login lockout after 5 wrong passwords (S2)
   templates/         HTML pages (served by the routers via FileResponse)
   static/
     css/, js/          Stylesheet and frontend scripts (theme, session, i18n, preview, item details)
@@ -245,6 +297,7 @@ scripts/
   backup_inventory.py Verified backup of the database and original PDFs (see docs/BACKUPS.md)
   claude-cloud-setup.sh   Plugins for Claude Code cloud sessions (see docs/claude-cloud-setup.md)
   claude-session-deps.sh  Project dependencies in cloud sessions (see docs/claude-cloud-setup.md)
+  projektwissen.py   Local knowledge search over code and doc sections (see docs/obsidian-graphify.md)
 docs/                Detailed documentation (see above) and deployment guides
 tests/               pytest suite, one test module per business area
 ```
@@ -316,7 +369,8 @@ DATABASE_URL=sqlite:// pytest -q
 
 The tests are built around main flows (decision 2026-09-24): a few large
 flow tests over the real app with login (`tests/test_ablauf_*.py`:
-document, recording, stock, items, login), plus small table-driven tests
+document, recording, stock, items, login, markdowns, recommendations,
+notices, statistics, accounts, phone), plus small table-driven tests
 for hard rules (`tests/test_regeln.py`), the parsers
 (`tests/test_parser.py`), and operations (`tests/test_betrieb.py`:
 migrations, scripts, no internet in the frontend). Shared test fixtures

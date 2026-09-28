@@ -10,11 +10,13 @@ Priority goes to the entire new requirements catalog "Item Details and Reports":
 
 Only after that come the remaining Phase D work and open decisions. Mobile phone use stays planned for the end of the project as agreed. Required checks before store deployment remain in place. This is a priority decision, not a confirmation of implementation.
 
+**Status 2026-09-28:** this priority is fulfilled. The whole catalog (17 points) and Phase D (D-F1–D-F4) were implemented on 2026-09-24/25; mobile phone use was built early on 2026-09-28. Current open points and the next steps: section "Status check and next steps – 2026-09-28" at the end of this document.
+
 Requirements catalog: [Item Details and Reports](anforderungen-artikeldetails-auswertungen-2026-09-24.md).
 
 
 Status: 2026-09-24 (Rev. 6 from 2026-09-21: two external processing sites GEWA and VEBO plus external warehouse Dietikon, receipt date only starts at a branch; supplemented with the confirmed answers from 2026-09-22–24 in section 10) · **Authoritative target description** of the project. Actual technical state of the code: `README.md` and `docs/architektur.md`, `docs/datenmodell.md`.
-Repo: github.com/FreaXz03/sportfabrik-inventory (branch `main`: up to Phase C and the inbox of 2026-09-23, taken in via PR #10, merge commit `922cd71`. The work from 2026-09-24 — tests, 47 × 83 label, FEDAS, Alpina/Chris Sports/CMP parsers, usability requests, login lockout, markdowns (Phase D part 1), booking rights — sits on `feature/warenwirtschaft-v2`, not yet in `main`).
+Repo: github.com/FreaXz03/sportfabrik-inventory. Status 2026-09-28: `main` contains everything up to the UI redesign (PR #16, merged 2026-09-27) and its ultrareview fixes (PR #17, merged 2026-09-28). `feature/warenwirtschaft-v2` is ahead of `main` with the English documentation, HTTPS (S1), and the full phone feature set — pushed, no open PR yet. Full PR history: #8–#17, all merged.
 
 ---
 
@@ -261,15 +263,16 @@ FastAPI, PostgreSQL, Alembic, Docker, vanilla JS frontend, two-stage import with
 
 ## 9. Roadmap
 
-| Phase | Content | Result |
-|---|---|---|
-| **A — Foundation** | Branches, roles (D8), branch switching, i18n scaffolding, new data model including categories, migration of existing data (→ SF1) | multi-branch and multilingual capable |
-| **B — Goods receipt v2** | Document types, supplier recognition, expected→arrived, storage location from delivery address, manual entry with scanner, add/generate EAN + label, FEDAS category suggestion | every item enters the system |
-| **C — Stock** | Stock movements, stock per storage location, transfer external location → branch, booking out via scan, corrections | current stock |
-| **D — Prices & markdown** | RRP/purchase price history, markdown levels, central recommendation, 18-/36-month notices | markdown supported |
-| **E — More suppliers** | Parsers for Alpina, Chris Sports, CMP (text + scan), external dealer; more as examples come in | upload for all known suppliers |
-| **F — Operations** | Server Volketswil, VPN, external backups, data migration; required points from the [security review](sicherheit.md): HTTPS, login rate-limiting, network separation, encrypted backups | all 4 branches in production |
-| **G — Till** | Connection to the Intersport till (depends on clarification with Intersport) | no more manual typing |
+| Phase | Content | Result | Status 2026-09-28 |
+|---|---|---|---|
+| **A — Foundation** | Branches, roles (D8), branch switching, i18n scaffolding, new data model including categories, migration of existing data (→ SF1) | multi-branch and multilingual capable | done |
+| **B — Goods receipt v2** | Document types, supplier recognition, expected→arrived, storage location from delivery address, manual entry with scanner, add/generate EAN + label, FEDAS category suggestion | every item enters the system | done |
+| **C — Stock** | Stock movements, stock per storage location, transfer external location → branch, booking out via scan, corrections | current stock | done |
+| **D — Prices & markdown** | RRP/purchase price history, markdown levels, central recommendation, 18-/36-month notices | markdown supported | done (2026-09-25); new requirements 2026-09-25/28 pending (minimum 30 %, see end of document) |
+| **E — More suppliers** | Parsers for Alpina, Chris Sports, CMP (text + scan), external dealer; more as examples come in | upload for all known suppliers | partly: Alpina, Chris Sports, CMP (text); scans and further suppliers open |
+| **F — Operations** | Server Volketswil, VPN, external backups, data migration; required points from the [security review](sicherheit.md): HTTPS, login rate-limiting, network separation, encrypted backups | all 4 branches in production | started: HTTPS and login lockout done locally; server, VPN, encrypted backups, S3–S8 open |
+| **G — Till** | Connection to the Intersport till (depends on clarification with Intersport) | no more manual typing | waiting for Intersport |
+| *(extra)* **Phone** | Phone web app for search, scan, count, receipt, transfer, write-off, entry, markdowns | staff work at the shelf | done (2026-09-28), remote access (VPN) open |
 
 ## 10. Open questions
 
@@ -279,6 +282,7 @@ All questions from Rev. 2 and Rev. 3 are answered (D1–D27). Still open:
 2. ~~**Barcode on the label?**~~ — confirmed on 2026-09-24: **yes**, below the mountains (the roll is currently being redesigned for it).
 3. **Till:** result of the clarification with Intersport (access/interface).
 4. ~~**Manual booking-out outside the till:** the rule for negative stock still needs clarifying here.~~ — answered on 2026-09-22 (see below): warn, allow the booking anyway, same as at the till.
+5. **New open decisions as of 2026-09-28** — see "Status check and next steps – 2026-09-28" at the end: sale booking by employees (contradicts rule 9), minimum 30 % markdown vs. rule 6 and D-F2, transfer as a delivery with dispatch date, timing of the arrival confirmation, minimum password length.
 
 ### Confirmed answers from 2026-09-22
 
@@ -1185,7 +1189,7 @@ Adopted cloud-main `d1c6533`. Local suite with `DATABASE_URL=sqlite:// .venv/bin
 
 ## Inbox addendum – 2026-09-24, afternoon
 
-Usability requirements (filter lists from "pending," autofocus in stock, column selection under "more filters," branch in the page title, equally sized overview buttons), mobile planning questions, and binding joint maintenance of the two HTML overviews: see [Inbox requirements 2026-09-24](anforderungen-inbox-2026-09-24.md#weitere-inbox-anforderungen--24092026-nachmittags). The five usability requests were implemented on 2026-09-24 (commits `431dc6f`, `fd95054`): clicking "pending" opens the filtered list with exactly the counted entries (now counted per variant), the stock search field active immediately, "show columns" under "more filters," branch shown large in the stock page title, equally sized quick-access buttons. The mobile questions were resolved by implementation on 2026-09-28 — see "Mobile phone use – implemented 2026-09-28" below.
+Usability requirements (filter lists from "pending," autofocus in stock, column selection under "more filters," branch in the page title, equally sized overview buttons), mobile planning questions, and binding joint maintenance of the two HTML overviews: see [Inbox requirements 2026-09-24](anforderungen-inbox-2026-09-24.md#further-inbox-requirements--2026-09-24-afternoon). The five usability requests were implemented on 2026-09-24 (commits `431dc6f`, `fd95054`): clicking "pending" opens the filtered list with exactly the counted entries (now counted per variant), the stock search field active immediately, "show columns" under "more filters," branch shown large in the stock page title, equally sized quick-access buttons. The mobile questions were resolved by implementation on 2026-09-28 — see "Mobile phone use – implemented 2026-09-28" below.
 
 ## Mobile phone use – implemented 2026-09-28
 
@@ -1258,3 +1262,68 @@ Suite: 137 passed / 12 skipped.
 **Verification throughout:** checked in the browser (Playwright/Chrome, light and dark, real accounts); no automated test changes (pure CSS/JS/markup, no new business logic) and no PostgreSQL/production run.
 
 **Documentation translation (2026-09-28, commit `2e7712c`):** all project docs and `CLAUDE.md` translated German → English; no content/decision changes.
+
+## Status check and next steps – 2026-09-28
+
+Full review of GitHub, code, and documentation on 2026-09-28.
+
+**GitHub:** PRs #8–#17 all merged, no open PR, no issues. `main` ends at
+PR #17 (ultrareview fixes). `feature/warenwirtschaft-v2` is ahead of `main`
+with the English documentation, HTTPS (S1), the phone feature set, and this
+documentation update. `feature/schnellzugriffe` holds one unmerged German
+doc commit (`2e91a8a`); its content (quick-access API and data model) is now
+in the English `api-referenz.md` and `datenmodell.md`, so the branch can be
+deleted. Remote branches `claude/sportfabrik-inventory-init-06df66` and
+`fix/ultrareview-warning-danger` are fully merged.
+
+**Tests:** `DATABASE_URL=sqlite:// .venv/bin/pytest -q` — 165 passed,
+12 skipped (2026-09-28). Still no PostgreSQL run, no store deployment.
+
+**Documentation fixed in this review:** API reference now lists the
+quick-access API, the phone pages and phone gate, `/runterschreiben`,
+`/empfehlungen`, and all status codes; data model documents
+`users.schnellzugriffe` and account deletion; README reflects Phase D,
+statistics, accounts, quick access, phone, HTTPS, and the design system;
+the two HTML overviews in `docs/overviews/` replace the German copies from
+2026-09-24 (without Google Fonts, security S9).
+
+**Open business decisions** (details and code status:
+[`anforderungen-inbox-2026-09-28.md`](anforderungen-inbox-2026-09-28.md)):
+
+1. **Sale booking by employees** (K8) — the 2026-09-25 clarification
+   implies employees may book sales; rule 9 reserves all write-offs for
+   branch managers/head office.
+2. **Minimum 30 % markdown** (K4, N1) — exact new thresholds, and how D-F2
+   ("new delivery jumps back to 0 %") changes.
+3. **Markdown rights of branch managers** (K6) — own branches only?
+4. **"Pending" per branch** (N3) — how to treat item-master counts.
+5. **Transfer as a delivery** (N4) — dispatch date, goods in transit,
+   arrival confirmation at the destination; effect on rule 6.
+6. **Arrival confirmation timing** — immediately or after unpacking.
+7. **Minimum password length** 6 vs. 10 (S2).
+
+**Next steps, in suggested order:**
+
+1. Merge `feature/warenwirtschaft-v2` into `main` via a PR (phone, HTTPS,
+   English docs); delete `feature/schnellzugriffe` and the two merged
+   remote branches.
+2. Fabian decides points 1–3 above; then implement K1, K2, K4/N1, K5, K6
+   test-first (small, mostly isolated changes).
+3. Short design for N4 (transfer as delivery) together with decision 6;
+   then implement on desktop and phone.
+4. N2 (markdown at goods entry) and N3 (pending per branch) after their
+   questions are answered.
+5. Store deployment preparation (Phase F): PostgreSQL test run of all
+   migrations, S1 rest (invalidate sessions on password change), S3 Pillow
+   12.3.0, S4 encrypted backups, S5–S8, network separation, VPN for
+   off-site branch-manager access, server setup per `SERVER-SETUP.md`.
+6. Test the phone pages on a real iPhone and Android with real labels
+   (camera scan, duplicate-scan protection).
+7. Language rule: translate remaining German code comments and docstrings
+   to English (decision 2026-09-28) in a separate, test-covered commit;
+   decide whether the German management overview
+   (`docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx`) stays
+   German for its readers or gets an English version.
+8. Ongoing: collect more supplier documents (delivery notes, scans),
+   wireless scanner test device, label test on the Sato with the new roll,
+   Intersport till interface (Phase G).

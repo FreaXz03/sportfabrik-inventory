@@ -8,7 +8,15 @@ permissions, configuration (Docker, headers, endpoints), dependencies
 
 **Result:** no critical and no high findings. Four medium items
 should be done **before deployment in the store** (roadmap phase F — operations),
-plus five low ones. Fixed: the login lockout from S2 (2026-09-24).
+plus five low ones. Fixed: the login lockout from S2 (2026-09-24), HTTPS
+from S1 (2026-09-28, locally), and S9 (2026-09-28). Still open before the
+store: rest of S1 (sessions on password change), S3, S4, network
+separation, S5–S8, decision on the minimum password length.
+
+**New since the review (2026-09-28):** phone logins are limited
+server-side to the agreed phone features (`phone_gate`, allowlist in
+`app/core/handy.py`, see `api-referenz.md`, "Phone pages"). Not yet
+reviewed: VPN/remote access for branch managers — no solution chosen.
 
 This file is updated on every fix (status column).
 
@@ -24,7 +32,7 @@ This file is updated on every fix (status column).
 | S6 | low | `/db-test` with no login | Return only `{"ok": true}` (needed by the Docker health check) | open |
 | S7 | low | No security headers | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'self'` | open |
 | S8 | low | Server packages without transitive pins/hashes, images without digest | `pip-compile --generate-hashes`, `pip install --require-hashes`, pin images with `@sha256:` | open |
-| S9 | low | Overview pages load Google Fonts | Remove links in `docs/aktualisiert/*.html` (and the vault versions), use a system font | open |
+| S9 | low | Overview pages load Google Fonts | Remove links in the overview pages (now `docs/overviews/*.html`, and the vault versions), use a system font | **done** (2026-09-28: links removed, system-font fallback; the German copies in `docs/aktualisiert/` were replaced by the English `docs/overviews/`) |
 
 ### Details
 

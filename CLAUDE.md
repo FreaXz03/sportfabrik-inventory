@@ -44,7 +44,7 @@
 
 - `docs/start.md`: short current orientation and next priority. Update at each completed milestone; don't append a running log.
 - `docs/projekt-kontext.md`: business decisions and detailed implementation history. Update architecture, data model, and API sections only when matching changes are made.
-- Vault: ideas and original requirements; link to status and technical details instead of copying the same paragraphs into multiple notes. When docs change, check the two Sportfabrik HTML overviews in the vault for affected content.
+- Vault: ideas and original requirements; link to status and technical details instead of copying the same paragraphs into multiple notes. When docs change, check the two Sportfabrik HTML overviews in the vault for affected content; the repo mirrors them in `docs/overviews/` (copy after updating the vault versions).
 - The automatic codegraph hook stays local and AI-free. The document section index is refreshed locally on every query. Semantic document analysis is optional, only for explicit selections; no full vault scan. Details: `docs/obsidian-graphify.md`.
 - After finishing a task, briefly note the result, open points, and affected files. Recommend a new session for an unrelated change of task; don't abandon work in progress on your own. Condense long sessions with a compact handover when needed.
 - No routine graph/Obsidian exports or parallel agents for minor things. Export only when the view is actually needed; don't change model choice or sessions unasked.
