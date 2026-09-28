@@ -1317,6 +1317,8 @@ the two HTML overviews in `docs/overviews/` replace the German copies from
    migrations, S1 rest (invalidate sessions on password change), S3 Pillow
    12.3.0, S4 encrypted backups, S5–S8, network separation, VPN for
    off-site branch-manager access, server setup per `SERVER-SETUP.md`.
+   Remove the temporary "−1" test button in the stock view
+   (`bestand.minus_one`) once booking out has been tried in the store.
 6. Test the phone pages on a real iPhone and Android with real labels
    (camera scan, duplicate-scan protection).
 7. Language rule: translate remaining German code comments and docstrings
