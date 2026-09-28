@@ -1,7 +1,9 @@
 """Ware von Hand ausbuchen - Verkauf oder Abgang per Scan (Phase C,
 Teilaufgabe C3).
 
-Rechte (24.09.2026): Ausbuchen und Stornieren dürfen nur Filialleiter/Zentrale. Vorgewählt ist die aktive Filiale; welcher Lagerort
+Rechte (28.09.2026): Mitarbeiter buchen nur Verkäufe aus, und nur in ihren
+Filialen; alle anderen Gründe und das Stornieren bleiben Filialleiter/Zentrale.
+Vorgewählt ist die aktive Filiale; welcher Lagerort
 gebucht werden darf, wird wie bei der Erfassung serverseitig geprüft
 (`resolve_wareneingang_lagerort`). Denselben Weg nimmt der vorübergehende
 Knopf „1 Stück abbuchen" in der Bestandsansicht (23.09.2026).
@@ -30,16 +32,23 @@ from .auth import (
     get_active_lagerort,
     get_language,
     require_login_api,
-    require_chef_page,
+    require_login_page,
     require_chef_api,
     resolve_wareneingang_lagerort,
 )
+
+# Mitarbeiter dürfen nur verkaufen (Entscheid 28.09.2026).
+MITARBEITER_GRUENDE = ("verkauf",)
+
+
+def _gruende_fuer(user) -> tuple[str, ...]:
+    return GRUENDE if user.role in ("chef", "admin") else MITARBEITER_GRUENDE
 
 router = APIRouter()
 
 
 @router.get("/ausbuchen", include_in_schema=False)
-def ausbuchen_page(user=Depends(require_chef_page)):
+def ausbuchen_page(user=Depends(require_login_page)):
     return FileResponse(
         Path(__file__).resolve().parents[1] / "templates" / "ausbuchen.html"
     )
@@ -47,18 +56,20 @@ def ausbuchen_page(user=Depends(require_chef_page)):
 
 @router.get("/api/ausbuchen/stammdaten")
 def api_stammdaten(
-    user=Depends(require_chef_api),
+    user=Depends(require_login_api),
     lagerort=Depends(get_active_lagerort),
     session=Depends(get_session),
 ):
-    """Buchbare Lagerorte (eigene zuerst) und die Gründe (F14)."""
+    """Buchbare Lagerorte (eigene zuerst), die für die Rolle erlaubten
+    Gründe (F14) und ob Stornieren erlaubt ist."""
     return {
         "lagerorte": [
             {"id": eintrag.id, "code": eintrag.code, "name": eintrag.name}
             for eintrag in list_wareneingang_lagerorte(session, user)
         ],
         "lagerort_aktiv": None if lagerort is None else lagerort.id,
-        "gruende": list(GRUENDE),
+        "gruende": list(_gruende_fuer(user)),
+        "darf_stornieren": user.role in ("chef", "admin"),
     }
 
 
@@ -102,13 +113,16 @@ class AusbuchenBody(BaseModel):
 async def api_ausbuchen(
     request: Request,
     body: AusbuchenBody,
-    user=Depends(require_chef_api),
+    user=Depends(require_login_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
 ):
     """Ein Stück ausbuchen (F15). Die Antwort meldet `bestand_reicht_nicht`,
     wenn der Bestand vorher unter einem Stück lag - gebucht ist trotzdem."""
     from ..core.database import SessionLocal
+
+    if user.role not in ("chef", "admin") and body.grund not in MITARBEITER_GRUENDE:
+        raise HTTPException(403, translate("errors.ausbuchung.sale_only", language))
 
     lagerort = resolve_wareneingang_lagerort(
         request, session, user, body.lagerort_id, language

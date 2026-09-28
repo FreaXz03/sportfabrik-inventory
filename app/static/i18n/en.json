@@ -701,6 +701,7 @@
   "errors.ausbuchung.unknown_reason": "Unknown reason.",
   "errors.ausbuchung.text_required": "For “Other”, please describe the reason briefly.",
   "errors.ausbuchung.text_too_long": "The reason is too long (at most {max} characters).",
+  "errors.ausbuchung.sale_only": "Employees can only book out sales. Other reasons are booked by the branch manager or head office.",
   "errors.ausbuchung.ean_or_variant": "Please specify exactly one item: EAN or variant.",
   "errors.ausbuchung.variant_not_found": "This variant does not exist.",
   "errors.ausbuchung.ean_unknown": "EAN {ean} is unknown – nothing booked out. Record the item first.",

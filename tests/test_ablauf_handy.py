@@ -286,10 +286,12 @@ def test_write_off_on_the_phone_is_reserved_for_managers(welt):
     # Cancelling stays on the computer - not offered on the phone.
     assert c.post(f"/api/ausbuchen/{erste.json()['bewegung_id']}/storno", headers=h).status_code == 403
 
+    # Employees may book sales - only sales, only in their stores (28.09.2026).
     _login(welt, ANNA, IPHONE)
-    assert c.get("/m/ausbuchen", headers=h, follow_redirects=False).status_code == 303
-    assert c.get("/api/ausbuchen/stammdaten", headers=h).status_code == 403
-    assert c.post("/api/ausbuchen", headers=h, json={"grund": "verkauf", "varianten_id": variante}).status_code == 403
+    assert c.get("/m/ausbuchen", headers=h, follow_redirects=False).status_code == 200
+    assert c.get("/api/ausbuchen/stammdaten", headers=h).json()["gruende"] == ["verkauf"]
+    assert c.post("/api/ausbuchen", headers=h, json={"grund": "verkauf", "varianten_id": variante}).status_code == 200
+    assert c.post("/api/ausbuchen", headers=h, json={"grund": "defekt", "varianten_id": variante}).status_code == 403
 
 
 def test_manual_goods_entry_on_the_phone(welt):

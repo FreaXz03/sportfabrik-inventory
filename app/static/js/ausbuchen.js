@@ -78,7 +78,7 @@
       const aktion = node('td');
       if (buchung.storniert) {
         aktion.append(node('span', t('ausbuchen.undone'), 'muted'));
-      } else {
+      } else if (darfStornieren) {
         const knopf = node('button', t('ausbuchen.undo'), 'secondary');
         knopf.type = 'button';
         knopf.addEventListener('click', () => rueckgaengig(buchung, knopf));
@@ -174,6 +174,8 @@
   }
 
   let gruende = [];
+  // Mitarbeiter buchen nur Verkäufe und stornieren nicht (28.09.2026).
+  let darfStornieren = false;
 
   async function stammdatenLaden() {
     $('retry').hidden = true;
@@ -194,7 +196,9 @@
       }
       if (listenWahl) filter.value = listenWahl;
       gruende = daten.gruende || [];
+      darfStornieren = daten.darf_stornieren === true;
       gruendeFuellen(gruende);
+      if (buchungen.length) zeichnen();
       geladen = true;
       $('status').textContent = '';
     } catch (fehler) {

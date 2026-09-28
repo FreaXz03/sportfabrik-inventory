@@ -701,6 +701,7 @@
   "errors.ausbuchung.unknown_reason": "Motif inconnu.",
   "errors.ausbuchung.text_required": "Pour « Autre », veuillez décrire brièvement le motif.",
   "errors.ausbuchung.text_too_long": "Le motif est trop long ({max} caractères au maximum).",
+  "errors.ausbuchung.sale_only": "Les collaborateurs ne peuvent sortir que des ventes. Les autres motifs sont saisis par la gérance ou la centrale.",
   "errors.ausbuchung.ean_or_variant": "Veuillez indiquer exactement un article : EAN ou variante.",
   "errors.ausbuchung.variant_not_found": "Cette variante n'existe pas.",
   "errors.ausbuchung.ean_unknown": "L'EAN {ean} est inconnu – rien n'a été sorti. Saisir d'abord l'article.",

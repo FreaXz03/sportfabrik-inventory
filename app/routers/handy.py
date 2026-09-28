@@ -39,7 +39,7 @@ def phone_transfer(user=Depends(require_chef_page)):
 
 
 @router.get("/m/ausbuchen", include_in_schema=False)
-def phone_write_off(user=Depends(require_chef_page)):
+def phone_write_off(user=Depends(require_login_page)):
     return FileResponse(TEMPLATES / "handy-ausbuchen.html")
 
 

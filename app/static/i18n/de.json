@@ -701,6 +701,7 @@
   "errors.ausbuchung.unknown_reason": "Unbekannter Grund.",
   "errors.ausbuchung.text_required": "Bei „Sonstiges“ bitte den Grund kurz beschreiben.",
   "errors.ausbuchung.text_too_long": "Der Grund ist zu lang (höchstens {max} Zeichen).",
+  "errors.ausbuchung.sale_only": "Mitarbeitende können nur Verkäufe ausbuchen. Andere Gründe bucht die Filialleitung oder die Zentrale.",
   "errors.ausbuchung.ean_or_variant": "Bitte genau einen Artikel angeben: EAN oder Variante.",
   "errors.ausbuchung.variant_not_found": "Diese Variante gibt es nicht.",
   "errors.ausbuchung.ean_unknown": "EAN {ean} ist unbekannt – nichts ausgebucht. Den Artikel zuerst erfassen.",

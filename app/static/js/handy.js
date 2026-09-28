@@ -11,7 +11,7 @@
     { href: '/m/erfassen', icon: 'upload', key: 'manual_entry' },
     { href: '/m/runterschreiben', icon: 'tag', key: 'reductions' },
     { href: '/m/umlagern', icon: 'swap', key: 'transfer', chefOnly: true },
-    { href: '/m/ausbuchen', icon: 'trash-2', key: 'writeoff', chefOnly: true },
+    { href: '/m/ausbuchen', icon: 'trash-2', key: 'writeoff' },
   ];
   var me = null;
 

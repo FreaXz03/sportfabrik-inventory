@@ -125,10 +125,10 @@ def test_schnellzugriffe_je_benutzer(welt):
 
     welt.anmelden(ANNA)
     # Mitarbeiterin: Voreinstellung ohne die ihr verwehrten Funktionen
-    # ausbuchen/umlagern/upload (Regel 9).
+    # umlagern/upload (Regel 9); ausbuchen darf sie seit 28.09.2026 (nur Verkauf).
     ausgangslage = client.get("/api/schnellzugriffe").json()
-    assert ausgangslage["schnellzugriffe"] == ["erfassen", "wareneingaenge"]
-    assert "ausbuchen" not in ausgangslage["verfuegbar"]
+    assert ausgangslage["schnellzugriffe"] == ["ausbuchen", "erfassen", "wareneingaenge"]
+    assert "umlagern" not in ausgangslage["verfuegbar"]
 
     # Zu viele, doppelte oder unbekannte Einträge werden abgelehnt.
     assert client.put("/api/schnellzugriffe", json={"schnellzugriffe": []}).status_code == 422
@@ -143,7 +143,7 @@ def test_schnellzugriffe_je_benutzer(welt):
         "/api/schnellzugriffe", json={"schnellzugriffe": ["erfassen", "unbekannt"]}
     ).status_code == 422
     # Nur ihrer Rolle zugängliche Funktionen zählen als gültig (Regel 9).
-    verweigert = client.put("/api/schnellzugriffe", json={"schnellzugriffe": ["ausbuchen", "erfassen"]})
+    verweigert = client.put("/api/schnellzugriffe", json={"schnellzugriffe": ["umlagern", "erfassen"]})
     assert verweigert.status_code == 422
 
     eigene = client.put(
