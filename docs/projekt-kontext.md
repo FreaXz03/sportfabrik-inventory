@@ -1323,11 +1323,8 @@ decided the same evening, see the next section (details and code status:
    (`bestand.minus_one`) once booking out has been tried in the store.
 6. Test the phone pages on a real iPhone and Android with real labels
    (camera scan, duplicate-scan protection).
-7. Language rule: translate remaining German code comments and docstrings
-   to English (decision 2026-09-28) in a separate, test-covered commit;
-   decide whether the German management overview
-   (`docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx`) stays
-   German for its readers or gets an English version.
+7. ~~Language rule for code comments and the management overview~~ —
+   decided the same evening: both may stay German.
 8. Ongoing: collect more supplier documents (delivery notes, scans),
    wireless scanner test device, label test on the Sato with the new roll,
    Intersport till interface (Phase G).

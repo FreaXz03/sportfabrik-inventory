@@ -2,7 +2,7 @@
 
 ## Language (decision 28.09.2026)
 
-**All text must be English:** conversation, documentation, code comments, commit messages and pull requests. Exception: the app's user interface stays trilingual DE/FR/EN via translation keys, German remains the UI default (rule 7).
+**All text must be English:** conversation, documentation, commit messages and pull requests. Exceptions: the app's user interface stays trilingual DE/FR/EN via translation keys, German remains the UI default (rule 7); existing German code comments/docstrings and the German management overview (`docs/Sportfabrik-Inventory-Uebersicht-Geschaeftsleitung.docx`) may stay German (decision 2026-09-28).
 
 ## Entry and targeted reading
 
