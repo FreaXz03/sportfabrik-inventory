@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 
-from .auth import require_login_page
+from .auth import require_chef_page, require_login_page
 
 router = APIRouter()
 
@@ -31,3 +31,8 @@ def phone_count(user=Depends(require_login_page)):
 @router.get("/m/lieferungen", include_in_schema=False)
 def phone_deliveries(user=Depends(require_login_page)):
     return FileResponse(TEMPLATES / "handy-lieferungen.html")
+
+
+@router.get("/m/umlagern", include_in_schema=False)
+def phone_transfer(user=Depends(require_chef_page)):
+    return FileResponse(TEMPLATES / "handy-umlagern.html")

@@ -3,7 +3,7 @@ agreed phone features. The server enforces this; hiding buttons is not enough.""
 
 from decimal import Decimal
 
-from conftest import ANNA, PASSWOERTER, ZENTRALE
+from conftest import ANNA, CHEF, PASSWOERTER, ZENTRALE
 
 from app.core.i18n import translate
 
@@ -213,3 +213,38 @@ def test_confirm_goods_arrival_on_the_phone(welt):
                       json={"mengen": {str(position_id): "2"}})
     assert antwort.status_code == 200 and antwort.json()["status"] == "eingetroffen"
     assert c.get("/api/wareneingaenge", headers=h).json()["wareneingaenge"] == []
+
+
+def test_transfer_on_the_phone_is_reserved_for_managers(welt):
+    """Rule 9: transferring is reserved for branch managers and head office -
+    on the phone too, and the page itself redirects employees away."""
+    _login(welt, CHEF, IPHONE)
+    c = welt.client
+    h = {"User-Agent": IPHONE}
+
+    antwort = c.post("/api/erfassen", headers=h, json={
+        "lagerort_id": welt.codes["SF1"],
+        "positionen": [{"marke": "Nike", "bezeichnung": "Polo", "menge": "5", "uvp": "39.90", "ean": "4006632041233"}],
+    })
+    assert antwort.status_code == 200, antwort.text
+    variante = c.get("/api/articles?ean=4006632041233", headers=h).json()["items"][0]["id"]
+
+    antwort = c.get("/m/umlagern", headers=h, follow_redirects=False)
+    assert antwort.status_code == 200
+
+    stamm = c.get("/api/umlagerung/stammdaten", headers=h).json()
+    assert stamm["ziel_aktiv"] == welt.codes["SF1"]
+
+    antwort = c.post("/api/umlagerung", headers=h, json={
+        "quelle_id": welt.codes["SF1"], "ziel_id": welt.codes["SF2"],
+        "positionen": [{"varianten_id": variante, "menge": "2"}],
+    })
+    assert antwort.status_code == 200, antwort.text
+    assert antwort.json()["ziel"]["code"] == "SF2" and antwort.json()["stueck"] == "2.00"
+
+    _login(welt, ANNA, IPHONE)
+    assert c.get("/m/umlagern", headers=h, follow_redirects=False).status_code == 303
+    assert c.get("/api/umlagerung/stammdaten", headers=h).status_code == 403
+    assert c.post("/api/umlagerung", headers=h, json={
+        "quelle_id": welt.codes["SF1"], "ziel_id": welt.codes["SF2"], "positionen": [],
+    }).status_code == 403

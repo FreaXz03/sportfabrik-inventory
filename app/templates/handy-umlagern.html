@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+     <meta name="theme-color" content="#F5F4F2" media="(prefers-color-scheme: light)">
+     <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+     <meta name="apple-mobile-web-app-capable" content="yes">
+     <meta name="mobile-web-app-capable" content="yes">
+     <meta name="apple-mobile-web-app-title" content="SF Inventory">
+     <link rel="manifest" href="/static/manifest.webmanifest">
+     <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/i18n.js?v=1"></script>
+     <title data-i18n="umlagern.page_title">Umlagern · Sport-Fabrik</title>
+     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
+     <link rel="stylesheet" href="/static/css/handy.css?v=3">
+</head>
+
+<body class="phone">
+     <header><a class="brand" href="/m" data-i18n-aria-label="phone.home_aria" aria-label="Startseite"><img
+                    src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"></a></header>
+     <main>
+          <a class="m-back" href="/m" id="back"><svg class="icon" aria-hidden="true"><use href="/static/img/icons.svg#icon-arrow-left"></use></svg><span data-i18n="phone.back">Zurück</span></a>
+          <h1 data-i18n="umlagern.heading">Umlagern</h1>
+          <div id="notice" class="notice success" role="status" aria-live="polite" hidden></div>
+
+          <label for="quelle" data-i18n="umlagern.source_label">Von</label>
+          <select id="quelle"></select>
+          <label for="ziel" data-i18n="umlagern.target_label">Nach</label>
+          <select id="ziel"></select>
+          <p id="regel" class="m-hint"></p>
+          <div id="dateField" hidden>
+               <label for="eingangsdatum" data-i18n="wareneingaenge.arrival_date">Eingangsdatum</label>
+               <input id="eingangsdatum" type="date">
+          </div>
+
+          <h2 data-i18n="umlagern.items_heading">Ware erfassen</h2>
+          <div id="picker"></div>
+
+          <h2 data-i18n="umlagern.list_heading">Diese Umlagerung</h2>
+          <p id="leer" class="muted" data-i18n="umlagern.list_empty">Noch keine Ware erfasst.</p>
+          <ul id="liste" class="m-positions" hidden></ul>
+
+          <p id="bookError" class="error" role="alert" hidden></p>
+          <button type="button" class="large m-wide" id="buchen" disabled data-i18n="umlagern.book">Umlagerung buchen</button>
+     </main>
+     <script src="/static/js/handy-core.js?v=1"></script>
+     <script src="/static/js/handy-scan.js?v=1"></script>
+     <script src="/static/js/handy-pick.js?v=1"></script>
+     <script src="/static/js/handy-umlagern.js?v=1"></script>
+     <script src="/static/js/session.js?v=header-2"></script>
+     <script src="/static/js/theme.js?v=design-1"></script>
+</body>
+
+</html>

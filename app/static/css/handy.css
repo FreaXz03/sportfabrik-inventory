@@ -267,3 +267,9 @@ body.phone .notice { margin: 0 0 var(--space-4); }
 .m-position-field { display: flex; align-items: center; gap: var(--space-3); }
 .m-position-field span { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
 .m-position-field input { flex: 1; min-width: 0; height: 48px; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* Transfer list: a compact quantity stepper plus a remove button per row. */
+.m-stepper-inline { grid-template-columns: 40px 60px 40px; gap: var(--space-2); flex: none; }
+.m-stepper-inline button.icon-only { width: 40px; height: 40px; }
+.m-stepper-inline input { height: 40px; font-size: var(--fs-sm); }
+.m-position-field .ghost { margin-left: auto; flex: none; }

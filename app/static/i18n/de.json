@@ -933,5 +933,7 @@
   "phone.pick_other": "Anderen Artikel wählen",
   "phone.tile_deliveries": "Lieferungen",
   "phone.tile_deliveries_hint": "Ankunft von erwarteter Ware bestätigen",
-  "phone.deliveries_title": "Lieferungen"
+  "phone.deliveries_title": "Lieferungen",
+  "phone.tile_transfer": "Umlagern",
+  "phone.tile_transfer_hint": "Ware zwischen Lagerorten umbuchen"
 }

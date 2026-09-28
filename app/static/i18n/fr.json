@@ -933,5 +933,7 @@
   "phone.pick_other": "Choisir un autre article",
   "phone.tile_deliveries": "Livraisons",
   "phone.tile_deliveries_hint": "Confirmer l'arrivée de marchandises attendues",
-  "phone.deliveries_title": "Livraisons"
+  "phone.deliveries_title": "Livraisons",
+  "phone.tile_transfer": "Transfert",
+  "phone.tile_transfer_hint": "Transférer des marchandises entre sites"
 }
