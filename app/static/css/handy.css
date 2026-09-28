@@ -1,0 +1,171 @@
+/* Phone pages (/m, decision 28.09.2026). Same tokens as app.css; this file only
+   adds the phone layout: one column, large targets, safe areas of notched
+   phones and the home-screen app (standalone, no browser bar). */
+
+body.phone {
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+body.phone header {
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: calc(var(--space-2) + env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right))
+    var(--space-2) max(var(--space-4), env(safe-area-inset-left));
+}
+
+body.phone .brand img { width: 112px; }
+body.phone .store-pill .store-select { max-width: 150px; }
+
+body.phone main {
+  max-width: 560px;
+  padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right)) var(--space-10)
+    max(var(--space-4), env(safe-area-inset-left));
+}
+
+body.phone h1 { font-size: var(--fs-h1); margin: 0 0 var(--space-1); }
+
+/* Home tiles: one per function, full width, thumb-sized. */
+.m-tiles {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.m-tile {
+  display: grid;
+  grid-template-columns: 28px 1fr 20px;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  min-height: 72px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--fast), border-color var(--fast), transform var(--fast);
+}
+
+.m-tile:active { transform: scale(.98); background: var(--surface-alt); }
+.m-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.m-tile .icon { width: 28px; height: 28px; grid-row: span 2; color: var(--accent-text); }
+.m-tile .chevron { width: 20px; height: 20px; grid-column: 3; grid-row: 1 / span 2; color: var(--text-faint); }
+.m-tile strong { font-size: var(--fs-h3); font-weight: 600; line-height: 1.25; }
+.m-tile span { grid-column: 2; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.35; }
+
+/* The one primary action on the home screen. */
+.m-tile.primary { background: var(--accent); border-color: var(--accent); }
+.m-tile.primary:active { background: var(--accent-pressed); }
+.m-tile.primary .icon,
+.m-tile.primary .chevron,
+.m-tile.primary strong,
+.m-tile.primary span { color: var(--accent-on); }
+
+/* Sub-page top bar: back to the home screen + page title. */
+.m-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin: 0 0 var(--space-2) calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.m-back .icon { width: 20px; height: 20px; }
+
+.m-eyebrow {
+  margin: 0;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+body.phone h2 { font-size: var(--fs-h3); margin: var(--space-8) 0 var(--space-3); }
+
+/* Scan / search field (DESIGN.md §10.3): large, full width. */
+.m-scan { margin-top: var(--space-4); }
+.m-scan label { display: block; margin-bottom: var(--space-2); font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+.m-scan-row { display: flex; gap: var(--space-2); }
+.m-scan-row input { flex: 1; min-width: 0; height: 52px; font-size: var(--fs-h3); }
+.m-scan-row button { flex: none; }
+
+/* Result list: each row is one tap target. */
+.m-list { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+.m-list button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--space-3);
+  width: 100%;
+  height: auto;
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+  font: inherit;
+  box-shadow: none;
+}
+.m-list button:active { background: var(--surface-alt); }
+.m-list strong { font-size: var(--fs-body); font-weight: 600; line-height: 1.3; }
+.m-list .m-sub { grid-column: 1; font-size: var(--fs-sm); color: var(--text-muted); }
+.m-list .m-num { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.m-meta { font-size: var(--fs-sm); color: var(--text-muted); margin: var(--space-1) 0 0; }
+.m-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+.m-price {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.m-price span { font-size: var(--fs-sm); font-weight: 500; color: var(--text-muted); }
+.m-price strong { font-size: var(--fs-metric); font-weight: 600; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.m-price strong.is-missing { font-size: var(--fs-h3); letter-spacing: 0; line-height: 1.3; color: var(--text-muted); }
+.m-price small { font-size: var(--fs-sm); color: var(--text-muted); }
+
+/* Stock per location: a card per location, a row per size/colour. */
+.m-store {
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.m-store.is-active { border-color: var(--accent-soft-border); }
+.m-store-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-alt);
+  font-weight: 600;
+}
+.m-store-head .m-num { margin-left: auto; font-variant-numeric: tabular-nums; }
+.m-store ul { list-style: none; margin: 0; padding: 0; }
+.m-store li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+.m-store li.is-selected { background: var(--accent-soft-bg); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+.m-store li .m-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.m-store li .m-num.negative { color: var(--danger-text); }

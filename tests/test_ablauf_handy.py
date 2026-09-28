@@ -114,3 +114,20 @@ def test_every_allowed_phone_route_exists():
     existing = {(m, r.path) for r in api_routes(app.routes) for m in r.methods}
     assert len(existing) > 50
     assert PHONE_ROUTES - existing == set()
+
+
+def test_phone_home_needs_login_and_can_be_installed(welt):
+    c = welt.client
+    c.post("/logout")
+    antwort = c.get("/m", headers={"User-Agent": IPHONE}, follow_redirects=False)
+    assert antwort.status_code == 303 and antwort.headers["location"] == "/login?next=/m"
+
+    _login(welt, ANNA, IPHONE)
+    antwort = c.get("/m", headers={"User-Agent": IPHONE})
+    assert antwort.status_code == 200 and 'rel="manifest"' in antwort.text
+    assert c.get("/m/suche", headers={"User-Agent": IPHONE}).status_code == 200
+
+    manifest = c.get("/static/manifest.webmanifest").json()
+    assert manifest["start_url"] == "/m" and manifest["display"] == "standalone"
+    for icon in manifest["icons"]:
+        assert c.get(icon["src"]).status_code == 200, icon["src"]

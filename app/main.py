@@ -32,6 +32,7 @@ from .routers.reduktion import router as reduktion_router
 from .routers.statistik import router as statistik_router
 from .routers.konten import router as konten_router
 from .routers.empfehlung import router as empfehlung_router
+from .routers.handy import router as handy_router
 
 app = FastAPI(title="Sport-Fabrik Inventory", dependencies=[Depends(phone_gate)])
 app.add_middleware(
@@ -59,6 +60,7 @@ app.include_router(reduktion_router)
 app.include_router(statistik_router)
 app.include_router(konten_router)
 app.include_router(empfehlung_router)
+app.include_router(handy_router)
 app.mount(
     "/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static"
 )
