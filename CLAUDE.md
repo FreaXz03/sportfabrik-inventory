@@ -1,5 +1,9 @@
 # Sportfabrik Inventory — Working Rules
 
+## Language (decision 28.09.2026)
+
+**All text must be English:** conversation, documentation, code comments, commit messages and pull requests. Exception: the app's user interface stays trilingual DE/FR/EN via translation keys, German remains the UI default (rule 7).
+
 ## Entry and targeted reading
 
 - For project work, first read only `docs/start.md` (short orientation). Do not load the full project context, architecture, vault, or history by default.
