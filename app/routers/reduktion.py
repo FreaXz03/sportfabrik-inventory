@@ -21,14 +21,14 @@ from ..services.etikett import rolle
 from ..services import reduktion_manuell
 from ..services import reduktion_bestaetigung
 from ..services import reduktion_empfehlung
-from ..services.lagerorte import list_all_lagerorte, list_wareneingang_lagerorte
+from ..services.lagerorte import list_all_lagerorte, list_reduktion_lagerorte
 from ..services.uebersicht import VORSCHAU_TAGE, reduktions_liste
 from .auth import (
     get_active_lagerort,
     get_language,
+    _resolve_active_lagerort,
     require_login_api,
     require_login_page,
-    resolve_wareneingang_lagerort,
 )
 
 router = APIRouter()
@@ -63,6 +63,8 @@ def api_reduktionen(
         eintrag["rolle"] = rolle(eintrag["stufe"])
     return {
         "lagerort": {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
+        # Ändern nur in eigenen Filialen, Zentrale überall (28.09.2026).
+        "darf_aendern": any(lo.id == lagerort.id for lo in list_reduktion_lagerorte(session, user)),
         "vorschau_tage": VORSCHAU_TAGE,
         "artikel": artikel,
         # Von Hand gewählte Stufen dieser Filiale (24.09.2026), separat.
@@ -94,7 +96,7 @@ def api_artikel_reduktion(
     """Artikeldetails: Empfehlung, Wahl von Hand und wirksame Stufe des
     Modells in jeder Filiale (externe Lager haben keine Reduktion, D13)."""
     artikel_id = _artikel_id(session, varianten_id, language)
-    erlaubt = {lo.id for lo in list_wareneingang_lagerorte(session, user)}
+    erlaubt = {lo.id for lo in list_reduktion_lagerorte(session, user)}
     return {
         "filialen": [
             {
@@ -168,11 +170,21 @@ class ManuellBody(BaseModel):
 
 
 def _filiale_zum_aendern(request, session, user, lagerort_id, language):
-    """Gleiche Grenze wie Erfassung/Korrektur: Mitarbeiter nur eigene
-    Filialen. Dazu nur Filialen mit Verkauf - extern gibt es keine Reduktion."""
-    lagerort = resolve_wareneingang_lagerort(request, session, user, lagerort_id, language)
+    """Reduktion ändern nur in eigenen Filialen - auch für Filialleiter;
+    die Zentrale darf alle (Entscheid 28.09.2026). Nur Filialen mit Verkauf,
+    extern gibt es keine Reduktion."""
+    if lagerort_id is None:
+        lagerort = _resolve_active_lagerort(request, session, user)
+        if lagerort is None:
+            raise HTTPException(400, translate("errors.auth.lagerort_required", language))
+    else:
+        lagerort = session.get(Lagerort, lagerort_id)
+        if lagerort is None:
+            raise HTTPException(404, translate("errors.bestand.unknown_lagerort", language))
     if not lagerort.verkauf:
         raise HTTPException(409, translate("errors.reduktion.no_sales_location", language))
+    if all(lo.id != lagerort.id for lo in list_reduktion_lagerorte(session, user)):
+        raise HTTPException(403, translate("errors.auth.no_lagerort_access", language))
     return lagerort
 
 

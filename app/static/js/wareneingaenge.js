@@ -70,13 +70,19 @@
 
   function abschnitt(lieferung) {
     const panel = node('section', null, 'panel');
-    const typ = t('document_types.' + lieferung.dokument.typ);
-    panel.append(node('h2', t('wareneingaenge.document_line', { typ: typ, nummer: lieferung.dokument.nummer })));
-    const zeile = [
-      lieferung.dokument.lieferant ? t('wareneingaenge.supplier_prefix') + lieferung.dokument.lieferant : null,
-      lieferung.lagerort.code + ' · ' + lieferung.lagerort.name,
-      datum(lieferung.dokument.datum)
-    ].filter(Boolean).join(' · ');
+    // Umlagerung unterwegs (28.09.2026): kein Dokument, dafür Quelle und Versanddatum.
+    const u = lieferung.umlagerung;
+    const titel = u
+      ? t('wareneingaenge.transfer_line', { von: u.von.code })
+      : t('wareneingaenge.document_line', { typ: t('document_types.' + lieferung.dokument.typ), nummer: lieferung.dokument.nummer });
+    panel.append(node('h2', titel));
+    const zeile = (u
+      ? [lieferung.lagerort.code + ' · ' + lieferung.lagerort.name, t('wareneingaenge.sent_on', { datum: datum(u.versanddatum) })]
+      : [
+        lieferung.dokument.lieferant ? t('wareneingaenge.supplier_prefix') + lieferung.dokument.lieferant : null,
+        lieferung.lagerort.code + ' · ' + lieferung.lagerort.name,
+        datum(lieferung.dokument.datum)
+      ]).filter(Boolean).join(' · ');
     panel.append(node('p', zeile, 'muted'));
     panel.append(tabelle(lieferung));
 

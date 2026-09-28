@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from ..core.database import get_session
+from ..core.handy import PHONE_PAGE_PREFIX, is_phone, phone_may_use
 from ..core.i18n import LANGUAGES, normalize_language, translate
 from ..core.models import Lagerort, User
 from ..core.schnellzugriffe import validieren, verfuegbar_fuer, wirksame_auswahl
@@ -36,6 +37,9 @@ if not SESSION_SECRET:
 
 # "Bis manuell abgemeldet": Cookie lebt praktisch unbegrenzt (5 Jahre).
 SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 5
+
+# Security S1: behind the HTTPS proxy the cookie must never be sent over plain HTTP.
+SESSION_HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "").strip().lower() in ("1", "true", "yes")
 
 router = APIRouter()
 
@@ -63,6 +67,21 @@ def _resolve_language(request: Request, user: User | None) -> str:
 def get_language_optional(request: Request, session=Depends(get_session)) -> str:
     """Sprache ermitteln, ohne eine Anmeldung vorauszusetzen (z.B. /login)."""
     return _resolve_language(request, _load_user(request, session))
+
+
+def phone_gate(request: Request, session=Depends(get_session)) -> None:
+    """Runs before every route: a phone login only reaches the phone features.
+    The session flag keeps a phone limited after "Request desktop site"; the
+    user agent covers sessions started before the flag existed."""
+    if not (request.session.get("phone") or is_phone(request.headers.get("user-agent"))):
+        return
+    route = request.scope.get("route")
+    if route is None or phone_may_use(request.method, route.path):
+        return
+    if request.method in ("GET", "HEAD") and not route.path.startswith("/api/"):
+        raise HTTPException(303, headers={"Location": PHONE_PAGE_PREFIX})
+    language = _resolve_language(request, _load_user(request, session))
+    raise HTTPException(403, translate("errors.phone.not_available", language))
 
 
 def require_login_page(request: Request, session=Depends(get_session)) -> User:
@@ -231,6 +250,7 @@ def login(
         session.commit()
     request.session.clear()
     request.session["user_id"] = user.id
+    request.session["phone"] = is_phone(request.headers.get("user-agent"))
     return {"name": user.name, "role": user.role}
 
 

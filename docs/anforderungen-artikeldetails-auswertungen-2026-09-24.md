@@ -1,48 +1,48 @@
-# Artikeldetails und Auswertungen – Inbox vom 24.09.2026
+# Item details and reports – inbox from 2026-09-24
 
-## Verbindliche Priorität – 24.09.2026
+## Binding priority – 2026-09-24
 
-Fabian hat entschieden: **Zuerst die neuen Wünsche aus der Inbox umsetzen, danach Phase D weiterführen.** Die bereits gebaute Runterschreiben-Seite bleibt bestehen; Phase D wird dadurch weder zurückgesetzt noch als abgeschlossen markiert.
+Fabian has decided: **First implement the new requests from the inbox, then continue phase D.** The already-built markdown page stays as-is; this neither resets phase D nor marks it as complete.
 
-Vorrang hat der gesamte neue Anforderungskatalog „Artikeldetails und Auswertungen“: Artikeldetails aufräumen, Listen und Arbeitsabläufe vereinfachen, Übersicht und Schnellzugriffe personalisieren, Statistik und Kontoverwaltung ergänzen. Auch die ausdrücklich gewünschten manuellen Reduktionen (alle Mitarbeitenden je Filiale, 30/50/70 %, Auswahl per EAN oder Bestand, Anzeige in Artikeldetails und Bestand) gehören zu diesem vorgezogenen Paket, obwohl sie fachlich Phase D berühren.
+Priority goes to the entire new requirements catalog "Item details and reports": clean up item details, simplify lists and workflows, personalize the overview and quick access, add statistics and account management. The explicitly requested manual markdowns (all staff, per branch, 30/50/70%, selection via EAN or stock list, shown in item details and stock) also belong to this pulled-forward package, even though they technically touch phase D.
 
-Erst danach folgen die übrigen Arbeiten und offenen Entscheidungen von Phase D. Die Handynutzung bleibt wie vereinbart für das Projektende geplant. Erforderliche Prüfungen vor dem Ladeneinsatz bleiben bestehen. Dies ist eine Prioritätsentscheidung, keine Implementierungsbestätigung.
+Only after that come the remaining phase D work and open decisions. Mobile usage stays planned for the end of the project, as agreed. Required checks before store deployment remain in place. This is a priority decision, not a confirmation of implementation.
 
-Anforderungskatalog: [Artikeldetails und Auswertungen](anforderungen-artikeldetails-auswertungen-2026-09-24.md).
+Requirements catalog: [Item details and reports](anforderungen-artikeldetails-auswertungen-2026-09-24.md).
 
 
-Status: Anforderungen integriert; keine Codeänderung durch diesen Abgleich. Vorhandene offene Änderungen im Projekt stammen aus anderer Arbeit und bleiben unberührt.
+Status: requirements consolidated; no code change from this sync. Existing open changes in the project come from other work and remain untouched.
 
-## Anforderungen
+## Requirements
 
-1. **Artikeldetails:** Kassenkategorie erst über „Editieren“ neben dem Artikelnamen öffnen; Box standardmässig nicht anzeigen.
-2. **Artikeldetails:** EAN und Etikett erst über einen kleinen Knopf ausführlich öffnen; Box standardmässig nicht anzeigen.
-3. **Artikeldetails:** UVP-Verlauf zuoberst und kompakter anzeigen; zugehörige kleine Liste ausklappbar, anfangs geschlossen.
-4. **Artikeldetails:** Artikelnotizen aus der Oberfläche entfernen. Über eine Löschung vorhandener Notizdaten ist damit nichts entschieden.
-5. **Artikeldetails:** Untere Liste als aktuellen Bestand dieses Artikels mit allen Grössen und Farben darstellen.
-6. **Artikeldetails:** „Artikel löschen“ samt rotem Hinweistext ganz unten anordnen; bestehende Löschrechte und Einschränkungen beibehalten.
-7. **Reduktion:** Aktuelle Reduktionsempfehlung in den Artikeldetails anzeigen, manuelle Anpassung durch alle Mitarbeitenden je Filiale auf 30/50/70 % ermöglichen und im Bestand unmittelbar anzeigen.
-8. **Aktuelles:** Lieferankünfte als ganze Lieferung zusammenfassen; Umlagerungen und Abgänge mit anderem Grund als Verkauf zeigen, nicht jeden einzelnen Zu-/Abgang.
-9. **Statistik:** Neue Statistikseite nur für Filialleiter und Zentrale: verkaufte Mengen nach Kategorie, ausdrücklich als Schätzung ausgewiesene Einnahmen auf Basis des damaligen reduzierten Verkaufspreises und Hinweise auf gut laufende Artikel/Nachbestellbedarf; tägliche, wöchentliche, monatliche, jährliche und gesamte Ansicht, mit leicht verständlichen Diagrammen. Weitere Kennzahlen dürfen bei der Planung vorgeschlagen werden.
-10. **Bestand:** Artikelnamen auf die jeweilige Artikeldetailseite verlinken.
-11. **Bestand:** Reduktionsstufe in der Bestandsliste anzeigen; in der Artikelsuchliste nicht erforderlich.
-12. **Runterschreiben:** Manuelle Artikelauswahl sowohl per EAN als auch per Bestandsliste ermöglichen.
-13. **Benutzerverwaltung:** Zentrale soll Mitarbeiter- und Filialleiterkonten hinzufügen und löschen können. Technische Behandlung historischer Buchungen beim Löschen noch festzulegen.
-14. **Übersicht:** Fünf Schnellzugriffe pro Benutzer speichern, frei auswählbar und per Drag-and-drop sortierbar machen. Alle Knöpfe gleich hoch, anhand des höchsten benötigten Inhalts.
-15. **Artikelsuche:** Liste optisch an Bestand angleichen; Kategorie zuerst, Marke und Bezeichnung zusammenführen, Lieferanten-Artikelnummer und EAN zusammenführen.
-16. **Ausbuchen:** Neben EAN-Eingabe eine Bestandsliste zum Durchsehen und Auswählen anbieten; bestehende Ausbuchungsrechte beibehalten.
-17. **Erfassen:** Lieferantenauswahl auf fünf Gruppen beschränken: 111 Intersport, 333 Händler, 444 Intern, 555 ECOM, 999 Dritt-Händler. Keine einzelnen Markenlieferanten in diesem Auswahlfeld.
+1. **Item details:** Only open the POS category via "Edit" next to the item name; don't show the box by default.
+2. **Item details:** Only open EAN and label details via a small button; don't show the box by default.
+3. **Item details:** Show RRP history at the top, more compact; the associated small list is expandable, closed initially.
+4. **Item details:** Remove item notes from the UI. This decides nothing about deleting existing notes data.
+5. **Item details:** Show the lower list as this item's current stock across all sizes and colors.
+6. **Item details:** Place "Delete item," with red warning text, at the very bottom; keep existing deletion rights and restrictions.
+7. **Markdown:** Show the current markdown recommendation in item details, allow manual adjustment by all staff per branch to 30/50/70%, and show it immediately in stock.
+8. **Recent activity:** Summarize delivery arrivals as a whole delivery; show transfers and removals with a reason other than sale, not every single receipt/removal individually.
+9. **Statistics:** New statistics page for branch managers and head office only: quantities sold by category, revenue explicitly shown as an estimate based on the reduced sale price at the time, and hints on well-selling items/reorder needs; daily, weekly, monthly, yearly, and all-time view, with easy-to-read charts. Further metrics may be proposed during planning.
+10. **Stock:** Link item names to their item detail page.
+11. **Stock:** Show the markdown stage in the stock list; not required in the item search list.
+12. **Markdown:** Allow manual item selection both via EAN and via the stock list.
+13. **User management:** Head office should be able to add and delete employee and branch-manager accounts. How historical bookings are handled technically on deletion is still to be defined.
+14. **Overview:** Store five quick-access shortcuts per user, freely selectable and sortable via drag-and-drop. All buttons the same height, based on the tallest needed content.
+15. **Item search:** Align the list visually with stock; category first, merge brand and description, merge supplier item number and EAN.
+16. **Write off:** Besides EAN entry, offer a stock list to browse and select from; keep existing write-off rights.
+17. **Enter:** Restrict the supplier picker to five groups: 111 Intersport, 333 Retailer, 444 In-house, 555 ECOM, 999 Third-party retailer. No individual brand suppliers in this picker.
 
-## Bestätigte Antworten vom 24.09.2026
+## Confirmed answers from 2026-09-24
 
-- **Einnahmen:** Vor der Kassenanbindung als geschätzte Einnahmen aus als „Verkauf“ ausgebuchten Artikeln und ihrem damaligen reduzierten Verkaufspreis berechnen; ausdrücklich als Schätzung anzeigen. Keine Gleichsetzung mit echten Kasseneinnahmen.
-- **Manuelle Reduktion:** Alle Mitarbeitenden dürfen je Filiale zwischen **30 %, 50 % und 70 %** wechseln. Die Entscheidung erweitert nicht die bestehenden Filialzuordnungen; keine freien Prozentsätze. Empfehlung und manuell gewählte Stufe getrennt behandeln; Bestand zeigt die wirksame Stufe.
-- **Schnellzugriffe:** Fünf Funktionen und ihre Reihenfolge **pro Benutzer** speichern.
+- **Revenue:** Before the till connection, calculate as estimated revenue from items written off as "sale" and their reduced sale price at the time; show it explicitly as an estimate. Never equate it with actual till revenue.
+- **Manual markdown:** All staff may switch between **30%, 50%, and 70%** per branch. This decision doesn't extend the existing branch assignments; no free-form percentages. Treat the recommendation and the manually chosen stage separately; stock shows the effective stage.
+- **Quick access:** Store five functions and their order **per user**.
 
-- **Konto löschen (Punkt 13, beantwortet am 24.09.2026 abends):** Alle Buchungen bleiben in der Datenbank. Der Name des Benutzers bleibt bei den alten Buchungen stehen, es ist aber kein Konto mehr damit verknüpft.
+- **Delete account (point 13, answered on the evening of 2026-09-24):** All bookings stay in the database. The user's name stays on the old bookings, but no account is linked to it anymore.
 
-Die drei Rückfragen sind beantwortet. Anforderungen noch nicht implementiert; dieser Auftrag betrifft die Dokumentation.
+The three follow-up questions are answered. **Status 2026-09-28:** all 17 points are implemented (2026-09-24/25); details in `projekt-kontext.md`, section "Implementation status of item details and reports".
 
-## Referenzen
+## References
 
-Originalformulierungen und Screenshots liegen lokal im Vault Main unter `01 Projekte/Sportfabrik Inventory/Sportfabrik Inventory – Artikeldetails und Auswertungen.md`. Keine privaten Screenshots ins Repository kopiert.
+Original wording and screenshots are stored locally in the vault Main under `01 Projects/Sportfabrik Inventory/Sportfabrik Inventory Requirements.md`, section "Item details and reports from 2026-09-24". No private screenshots copied into the repository.

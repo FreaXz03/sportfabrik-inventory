@@ -59,7 +59,6 @@
     else if (quelle && ziel) key = 'umlagern.rule_between_branches';
     $('regel').textContent = key ? t(key) : '';
     $('regel').className = key === 'umlagern.rule_same' ? 'warning-text' : 'muted';
-    $('datumFeld').hidden = !ziel || !ziel.verkauf;
     knopfSchalten();
   }
 
@@ -191,7 +190,7 @@
         body: JSON.stringify({
           quelle_id: quelle.id,
           ziel_id: ziel.id,
-          eingangsdatum: ziel.verkauf ? $('eingangsdatum').value || null : null,
+          versanddatum: $('eingangsdatum').value || null,
           positionen: [...liste].map(([id, eintrag]) => ({ varianten_id: id, menge: String(eintrag.menge) }))
         })
       });
@@ -236,8 +235,8 @@
       const daten = await holen('/api/umlagerung/stammdaten');
       quellen = daten.quellen || [];
       ziele = daten.ziele || [];
-      lagerorteFuellen('quelle', quellen, null);
-      lagerorteFuellen('ziel', ziele, daten.ziel_aktiv);
+      lagerorteFuellen('quelle', quellen, daten.quelle_aktiv);
+      lagerorteFuellen('ziel', ziele, null);
       $('eingangsdatum').max = daten.heute;
       if (!$('eingangsdatum').value) $('eingangsdatum').value = daten.heute;
       $('status').textContent = '';

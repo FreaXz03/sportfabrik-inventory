@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+     <meta name="theme-color" content="#F5F4F2" media="(prefers-color-scheme: light)">
+     <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+     <meta name="apple-mobile-web-app-capable" content="yes">
+     <meta name="mobile-web-app-capable" content="yes">
+     <meta name="apple-mobile-web-app-title" content="SF Inventory">
+     <link rel="manifest" href="/static/manifest.webmanifest">
+     <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/i18n.js?v=1"></script>
+     <title data-i18n="phone.count_title">Bestand zählen</title>
+     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
+     <link rel="stylesheet" href="/static/css/handy.css?v=3">
+</head>
+
+<body class="phone">
+     <header><a class="brand" href="/m" data-i18n-aria-label="phone.home_aria" aria-label="Startseite"><img
+                    src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"></a></header>
+     <main>
+          <a class="m-back" href="/m" id="back"><svg class="icon" aria-hidden="true"><use href="/static/img/icons.svg#icon-arrow-left"></use></svg><span data-i18n="phone.back">Zurück</span></a>
+          <h1 data-i18n="phone.count_title">Bestand zählen</h1>
+          <p class="m-store-line" id="storeLine"></p>
+          <div id="notice" class="notice success" role="status" aria-live="polite" hidden></div>
+
+          <section id="pickView">
+               <div id="picker"></div>
+          </section>
+
+          <section id="countView" hidden>
+               <div class="m-article-card">
+                    <p class="m-eyebrow" id="countBrand"></p>
+                    <strong id="countTitle"></strong>
+                    <span id="countVariant"></span>
+                    <span class="m-mono" id="countEan"></span>
+               </div>
+               <p class="m-current" id="current"></p>
+               <form id="countForm" novalidate>
+                    <label for="counted" data-i18n="phone.count_label">Gezählte Menge im Regal</label>
+                    <div class="m-stepper">
+                         <button type="button" class="secondary large icon-only" id="minus" data-i18n-aria-label="phone.count_minus" aria-label="Eins weniger"><svg class="icon" aria-hidden="true"><use href="/static/img/icons.svg#icon-minus"></use></svg></button>
+                         <input id="counted" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6" required>
+                         <button type="button" class="secondary large icon-only" id="plus" data-i18n-aria-label="phone.count_plus" aria-label="Eins mehr"><svg class="icon" aria-hidden="true"><use href="/static/img/icons.svg#icon-plus"></use></svg></button>
+                    </div>
+                    <label for="reason" data-i18n="ausbuchen.reason_label">Grund</label>
+                    <select id="reason"></select>
+                    <div id="freetextField" hidden>
+                         <label for="freetext" data-i18n="ausbuchen.text_label">Text</label>
+                         <input id="freetext" type="text" maxlength="150" autocomplete="off">
+                    </div>
+                    <p id="formError" class="error" role="alert" hidden></p>
+                    <button type="submit" class="large m-wide" id="book" data-i18n="phone.count_book">Bestand korrigieren</button>
+                    <button type="button" class="secondary large m-wide" id="other" data-i18n="phone.pick_other">Anderen Artikel wählen</button>
+               </form>
+          </section>
+     </main>
+     <script src="/static/js/handy-core.js?v=1"></script>
+     <script src="/static/js/handy-scan.js?v=1"></script>
+     <script src="/static/js/handy-pick.js?v=1"></script>
+     <script src="/static/js/handy-zaehlen.js?v=1"></script>
+     <script src="/static/js/session.js?v=header-2"></script>
+     <script src="/static/js/theme.js?v=design-1"></script>
+</body>
+
+</html>

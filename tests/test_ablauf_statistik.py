@@ -34,8 +34,8 @@ def test_statistik_je_zeitraum_und_kategorie(welt):
     welt.anmelden(CHEF)
 
     # Heutiger Wareneingang: Poloshirt (Textil × Tennis) und Laufschuh
-    # (Schuhe × Tennis) in SF1 - keine Reduktion fällig, die Uhr läuft ab
-    # heute, darum entspricht die Schätzung genau dem UVP.
+    # (Schuhe × Tennis) in SF1 - die Uhr läuft ab heute, darum gilt die
+    # Startstufe von 30 % (Entscheid 28.09.2026): Schätzung = 70 % des UVP.
     pdf = rechnung_pdf(
         header_lines=kopf(nummer="9100000001", datum=heute.strftime("%d.%m.%Y"), belegdatum=heute.strftime("%d.%m.%Y")),
         rows=[
@@ -83,7 +83,7 @@ def test_statistik_je_zeitraum_und_kategorie(welt):
     kategorien = {(k["hauptgruppe"], k["sportbereich"]): k["stueck"] for k in monat["kategorien"]}
     assert kategorien[("Textil", "Tennis")] == "3.00"
     assert kategorien[("Schuhe", "Tennis")] == "1.00"
-    assert monat["einnahmen_geschaetzt"] == "278.70"
+    assert monat["einnahmen_geschaetzt"] == "195.09"
     assert monat["einnahmen_ist_schaetzung"] is True
     empfehlung = [(a["lieferanten_artikelnr"], a["verkauft"]) for a in monat["bestellempfehlung"]]
     assert empfehlung[0] == ("P1", "3.00")
@@ -91,7 +91,7 @@ def test_statistik_je_zeitraum_und_kategorie(welt):
     gesamt = client.get("/api/statistik?zeitraum=gesamt").json()
     kategorien_gesamt = {(k["hauptgruppe"], k["sportbereich"]): k["stueck"] for k in gesamt["kategorien"]}
     assert kategorien_gesamt[("Textil", "Tennis")] == "5.00"
-    assert gesamt["einnahmen_geschaetzt"] == "378.50"
+    assert gesamt["einnahmen_geschaetzt"] == "294.89"
 
     # Alle fünf Zeiträume laufen ohne Fehler.
     for schluessel in ("tag", "woche", "monat", "jahr", "gesamt"):
@@ -103,10 +103,42 @@ def test_statistik_je_zeitraum_und_kategorie(welt):
 
     # Nur SF1 gefiltert bleibt gleich (der ganze Umsatz ist dort).
     sf1 = client.get(f"/api/statistik?zeitraum=gesamt&lagerort_id={codes['SF1']}").json()
-    assert sf1["einnahmen_geschaetzt"] == "378.50"
+    assert sf1["einnahmen_geschaetzt"] == "294.89"
     leer = client.get(f"/api/statistik?zeitraum=gesamt&lagerort_id={codes['SF2']}").json()
     assert leer["einnahmen_geschaetzt"] == "0.00"
     assert leer["kategorien"] == []
 
     client.post("/logout")
     assert client.get("/api/statistik?zeitraum=monat").status_code == 401
+
+
+def test_statistik_abgaenge_je_grund_und_person(welt):
+    """Klarstellung 25.09.2026: die Statistik zeigt auch, wie viele Artikel
+    aus welchem Grund ausgebucht wurden (ohne Verkauf), die letzten Abgänge
+    und wer sie gebucht hat. Stornierte Abgänge zählen nicht."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    welt.anmelden(CHEF)
+    pdf = rechnung_pdf(
+        header_lines=kopf(nummer="9100000009", datum=heute.strftime("%d.%m.%Y"), belegdatum=heute.strftime("%d.%m.%Y")),
+        rows=[_zeile("P1", "1", "224100", POLO_EAN, "Poloshirt", "10", "49.90")],
+    )
+    assert importieren(client, pdf, lagerort_id=str(codes["SF1"])).status_code == 200
+    for grund in ("defekt", "defekt", "diebstahl"):
+        assert client.post("/api/ausbuchen", json={"ean": POLO_EAN, "grund": grund}).status_code == 200
+    sonstiges = client.post("/api/ausbuchen", json={"ean": POLO_EAN, "grund": "sonstiges", "freitext": "Muster"})
+    assert client.post(f"/api/ausbuchen/{sonstiges.json()['bewegung_id']}/storno").status_code == 200
+    assert client.post("/api/ausbuchen", json={"ean": POLO_EAN, "grund": "verkauf"}).status_code == 200
+
+    abgaenge = client.get("/api/statistik?zeitraum=woche").json()["abgaenge"]
+    assert abgaenge["stueck"] == "3.00"
+    assert abgaenge["je_grund"] == [
+        {"grund": "defekt", "stueck": "2.00"},
+        {"grund": "diebstahl", "stueck": "1.00"},
+    ]
+    letzte = abgaenge["letzte"]
+    assert [a["grund"] for a in letzte] == ["diebstahl", "defekt", "defekt"]
+    assert letzte[0] == {**letzte[0], "person": "Chef", "lagerort": "SF1", "bezeichnung": "Poloshirt", "stueck": "1.00"}
+
+    leer = client.get(f"/api/statistik?zeitraum=woche&lagerort_id={codes['SF2']}").json()["abgaenge"]
+    assert leer == {"stueck": "0.00", "je_grund": [], "letzte": []}

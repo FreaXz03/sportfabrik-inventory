@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Sportfabrik Inventory Management</title>
+<style>
+  :root{
+    --ground:#f2f5f3;
+    --surface:#ffffff;
+    --surface-2:#e6ebe8;
+    --ink:#16201d;
+    --ink-2:#526059;
+    --ink-3:#7c8a84;
+    --line:#c6d0cb;
+    --line-strong:#8a9a93;
+    --accent:#1b5e57;
+    --accent-soft:#dbeae6;
+    --warm:#a8520f;
+    --warm-soft:#f3e4d6;
+    --radius:7px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#101614; --surface:#19211e; --surface-2:#212b27;
+      --ink:#e7ece9; --ink-2:#a1b0aa; --ink-3:#7e8c87;
+      --line:#35423d; --line-strong:#61736c;
+      --accent:#74c5b3; --accent-soft:#1d332e;
+      --warm:#e0915c; --warm-soft:#33251a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#101614; --surface:#19211e; --surface-2:#212b27;
+    --ink:#e7ece9; --ink-2:#a1b0aa; --ink-3:#7e8c87;
+    --line:#35423d; --line-strong:#61736c;
+    --accent:#74c5b3; --accent-soft:#1d332e;
+    --warm:#e0915c; --warm-soft:#33251a;
+  }
+
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+    font-size:15px; line-height:1.55; margin:0;
+  }
+  main{max-width:1000px;margin:0 auto;padding-inline:20px;padding-block:44px 72px;}
+
+  h1,h2{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;text-wrap:balance;margin:0;}
+  h1{font-size:clamp(30px,5.4vw,44px);font-weight:700;letter-spacing:-.022em;line-height:1.08;}
+  h2{font-size:20px;font-weight:600;letter-spacing:-.01em;}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--accent);margin:0 0 10px;
+  }
+  .head{border-bottom:1px solid var(--line);padding-bottom:26px;}
+  .lede{color:var(--ink-2);max-width:62ch;margin:14px 0 0;font-size:16px;}
+
+  /* ---- Faktenleiste ---- */
+  .facts{
+    list-style:none;margin:26px 0 0;padding:0;
+    display:flex;flex-wrap:wrap;gap:10px 0;
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
+    overflow:hidden;
+  }
+  .facts li{
+    flex:1 1 140px;padding:13px 16px;
+    border-left:1px solid var(--line);
+  }
+  .facts li:first-child{border-left:0;}
+  .facts b{
+    display:block;font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-size:19px;font-weight:600;
+    letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  }
+  .facts span{display:block;color:var(--ink-2);font-size:12.5px;margin-top:1px;}
+
+  section{margin-top:46px;}
+  .sub{color:var(--ink-2);font-size:14px;margin:6px 0 0;max-width:66ch;}
+
+  /* ---- Legende ---- */
+  .legend{
+    list-style:none;display:flex;flex-wrap:wrap;gap:6px 22px;
+    margin:16px 0 0;padding:0;font-size:13px;color:var(--ink-2);
+  }
+  .legend li{display:flex;align-items:center;gap:9px;}
+
+  .dot{width:9px;height:9px;border-radius:50%;flex:none;box-sizing:border-box;}
+  .on{background:var(--accent);border:1px solid var(--accent);}
+  .off{background:transparent;border:1.5px solid var(--line-strong);}
+
+  /* ---- Fähigkeiten ---- */
+  .caps{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--radius);
+    margin-top:18px;overflow:hidden;
+  }
+  .cap{background:var(--surface);padding:18px 18px 20px;}
+  .cap h3{
+    font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-size:15px;font-weight:600;
+    margin:0 0 12px;letter-spacing:-.005em;
+    display:flex;align-items:baseline;gap:9px;
+  }
+  .cap h3 em{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-style:normal;
+    font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-3);
+  }
+  .cap ul{list-style:none;margin:0;padding:0;display:grid;gap:8px;}
+  .cap li{
+    display:grid;grid-template-columns:9px 1fr;gap:11px;align-items:start;
+    font-size:13.5px;line-height:1.45;color:var(--ink-2);
+  }
+  .cap li .dot{margin-top:6px;}
+  .cap li.is-on{color:var(--ink);}
+
+  /* ---- Fahrplan ---- */
+  .road{
+    list-style:none;margin:18px 0 0;padding:0;
+    display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;
+  }
+  .road li{
+    flex:1 1 118px;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:11px 13px;position:relative;
+  }
+  .road li.done{background:var(--accent-soft);border-color:var(--accent);}
+  .road li.run{background:var(--warm-soft);border-color:var(--warm);}
+  .road em{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;font-style:normal;
+    font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--ink-3);
+  }
+  .road li.done em{color:var(--accent);}
+  .road li.run em{color:var(--warm);}
+  .road b{display:block;font-size:13.5px;font-weight:600;margin-top:3px;}
+  .road span{display:block;font-size:12px;color:var(--ink-2);margin-top:2px;}
+
+  /* ---- Abgrenzung ---- */
+  .notes{
+    list-style:none;margin:18px 0 0;padding:0;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:1px;background:var(--line);border:1px solid var(--line);
+    border-radius:var(--radius);overflow:hidden;
+  }
+  .notes li{background:var(--surface);padding:14px 16px;font-size:13.5px;color:var(--ink-2);}
+  .notes b{display:block;color:var(--ink);font-weight:600;font-size:14px;margin-bottom:3px;}
+
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-3);font-size:12.5px;}
+  code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.92em;}
+</style>
+<main>
+<header class="head">
+<p class="eyebrow">Summary for presentation</p>
+<h1>Sportfabrik Inventory Management</h1>
+<p class="lede">Each item is recorded once upon receipt — by uploading the receipt (invoice, delivery note, order confirmation) or by hand with the scanner. After that, the system permanently knows which item was delivered at which price and when and how much of it is in which store. Self-built, runs on our own server, without license fees — receipts never leave the house.</p>
+<ul class="facts">
+<li><b>4 + 3</b><span>Branches and external locations (GEWA, VEBO, Dietikon)</span></li>
+<li><b>35</b><span>Cash categories 1:1 as at the checkout</span></li>
+<li><b>3</b><span>Languages: DE / FR / EN</span></li>
+<li><b>~20</b><span>Workplaces in all branches</span></li>
+<li><b>4 of 7</b><span>Phases completed: foundation, receipt of goods, stock, markdowns — plus phone use</span></li>
+</ul>
+</header>
+<section id="prioritaet-wuensche-vor-phase-d"><h2>As of 28.09.2026 (evening): status and next steps</h2><p>Implemented: phases A–D, the whole "Item Details and Reports" package (17 points), the UI redesign, HTTPS for the login (security S1), phone use, and all decisions of 28.09.2026: employees book out sales (only sales); every item starts at −30 % on arrival (−50 % after 18, −70 % after 36 months); markdowns are changed only in one's own branches (headquarters all); "Pending" per branch; a transfer is sent with a dispatch date and the destination confirms the arrival like a delivery; statistics show removals and open on "this week". 167 automated tests pass. Everything only checked locally — no PostgreSQL test run, no in-store use yet.</p><p><b>Working rules:</b> confirm arrivals only after unpacking and checking. Passwords with 6 characters are enough as long as only the private store Wi-Fi or the VPN reaches the server.</p><p><b>Open question:</b> when goods are entered by hand with a chosen markdown — save it as the markdown of that branch? <b>Next steps:</b> merge the work into <code>main</code>; prepare the store server (PostgreSQL test, network separation/VPN, remaining security points, encrypted backups); test phones in the store with real labels.</p></section>
+<section>
+<h2>What is possible</h2>
+<ul class="legend">
+<li><span class="dot on"></span>is already running</li>
+<li><span class="dot off"></span>Planned phase D–G</li>
+</ul>
+<div class="caps">
+<article class="cap">
+<h3>Receive Goods<em>Entry</em></h3>
+<ul>
+<li class="is-on"><span class="dot on"></span>Upload document as PDF, also several at once</li>
+<li class="is-on"><span class="dot on"></span>Positions are automatically read out — preview to check and correct, only then is booked</li>
+<li class="is-on"><span class="dot on"></span>Scanned documents via text recognition, uncertain fields marked</li>
+<li class="is-on"><span class="dot on"></span>Order confirmation does not yet book a stock, but an expected receipt - "Goods arrived" can confirm everyone, remaining quantities remain open</li>
+<li class="is-on"><span class="dot on"></span>Supplier, document type and destination storage location are recognized and proposed from the document</li>
+<li class="is-on"><span class="dot on"></span>Record goods without document by hand by scanner — brand, designation, quantity, RRP sufficient</li>
+<li class="is-on"><span class="dot on"></span>Warning when more arrives than expected</li>
+<li><span class="dot off"></span>Parsers available for Alpina, Chris Sports and CMP; additional merchant layouts and ECOM detection remain to be checked separately</li>
+</ul>
+</article>
+<article class="cap">
+<h3>Articles and Prices <em>Looking up</em></h3>
+<ul>
+<li class="is-on"><span class="dot on"></span>Items from supporting documents remain permanently look-upable — exception for manual incorrect entries see below</li>
+<li class="is-on"><span class="dot on"></span>Simple search: large field "scan EAN" is immediately active, plus a quick search - more filters folded in</li>
+<li class="is-on"><span class="dot on"></span>RRP history per item; purchase price if present in the document</li>
+<li class="is-on"><span class="dot on"></span>Delivery history of all colors and sizes, notes on the item, Excel export</li>
+<li class="is-on"><span class="dot on"></span>POS Category is proposed from the FEDAS code, otherwise chosen by hand — Filter “Without Category”</li>
+<li class="is-on"><span class="dot on"></span>Supplier groups with code 111 / 555 / 333 / 999 / 444</li>
+<li class="is-on"><span class="dot on"></span>Articles incorrectly collected by hand may be deleted by the branch management entirely – Articles remain from receipts</li>
+<li class="is-on"><span class="dot on"></span>FEDAS assignment adds: 54 assigned to experience areas; Kids remains manual</li>
+</ul>
+</article>
+<article class="cap">
+<h3>Warehouse &amp; Stock<em>Per branch</em></h3>
+<ul>
+<li class="is-on"><span class="dot on"></span>Stock by branch and variant — SF1–SF4 plus GEWA, VEBO, Dietikon; all branches readable</li>
+<li class="is-on"><span class="dot on"></span>Every change is a movement, stock is never simply overwritten</li>
+<li class="is-on"><span class="dot on"></span>stock transfer: the receiving branch book; external → branch sets the receipt date, branch → branch keeps it</li>
+<li class="is-on"><span class="dot on"></span>Sale and departure by scan – one scan, one piece, with reason; list of all stock removals with time and person</li>
+<li class="is-on"><span class="dot on"></span>Correction: Counting quantity on the shelf, the system booking the difference</li>
+<li><span class="dot off"></span>Inventory for entire branches by scanner</li>
+</ul>
+</article>
+<article class="cap">
+<h3>Markdowns <em>30 / 50 / 70 %</em></h3>
+<ul>
+<li class="is-on"><span class="dot on"></span>−30 % from receipt, −50 % after 18 months, −70 % after 36 — level is already calculated and is available for the label</li>
+<li class="is-on"><span class="dot on"></span>Calculated per store, from the last receipt of the same item number — a re-delivery restarts the clock</li>
+<li class="is-on"><span class="dot on"></span>Overview shows under “Pending” what −50 % / −70 % has achieved or achieved in 30 days</li>
+<li class="is-on"><span class="dot on"></span>Dedicated “Markdowns due” list with direct access to label printing</li>
+<li class="is-on"><span class="dot on"></span>Branch confirms a mature model as done — disappears from the list until the next level matures (25.09.2026)</li>
+<li class="is-on"><span class="dot on"></span>Central recommendation per model and branch from a date; branch accepts or rejects with reason, central office sees deviations (25.09.2026)</li>
+<li class="is-on"><span class="dot on"></span>Decisive: the thresholds 18 and 36 months remain fixed and the same for all branches, no adjustment option (25.09.2026)</li>
+</ul>
+</article>
+<article class="cap">
+<h3>EAN and Labels <em>Scanners</em></h3>
+<ul>
+<li class="is-on"><span class="dot on"></span>EAN comes out of the document; variants work completely without EAN</li>
+<li class="is-on"><span class="dot on"></span>Add EAN at any time by scan</li>
+<li class="is-on"><span class="dot on"></span>Is it missing: create your own internal EAN at the push of a button</li>
+<li class="is-on"><span class="dot on"></span>PDF label — RRP, supplier code, year, and barcode; the system tells you which roll (30 / 50 / 70 %) to load</li>
+<li class="is-on"><span class="dot on"></span>Label 47 × 83 mm on pre-printed color rolls — implemented according to local project context</li>
+<li><span class="dot off"></span>Wireless scanner on any PC, without extra software — test device still needs to be obtained</li>
+</ul>
+</article>
+<article class="cap">
+<h3>Operation <em>Every day</em></h3>
+<ul>
+<li class="is-on"><span class="dot on"></span>Sign in as at the POS: cashier number; password for managers and headquarters</li>
+<li class="is-on"><span class="dot on"></span>German, French, English — interface and error messages</li>
+<li class="is-on"><span class="dot on"></span>Tidy header with menu in groups, branch change and account menu</li>
+<li class="is-on"><span class="dot on"></span>Overview with large quick accesses, key figures of the branch, "Pending" and "Current"</li>
+<li class="is-on"><span class="dot on"></span>Employees receive goods, correct stock and book out sales in their own branches; other write-offs, cancelling, transfers and documents are for branch managers and headquarters</li><li class="is-on"><span class="dot on"></span>Statistics for branch managers/headquarters; headquarters manages accounts; five personal quick accesses</li><li class="is-on"><span class="dot on"></span>On the phone: search, camera scan, count, confirm arrivals and incoming transfers, send transfers, write off, enter goods, markdowns</li>
+<li class="is-on"><span class="dot on"></span>Good to read also with glasses: light/dark mode, larger font, selectable columns</li>
+</ul>
+</article>
+<article class="cap">
+<h3>Operation <em>Own servers</em></h3>
+<ul>
+<li class="is-on"><span class="dot on"></span>Runs on its own server in the store — receipts read only our own parser, no license fees</li>
+<li class="is-on"><span class="dot on"></span>Works on the store network even if the Internet fails</li>
+<li class="is-on"><span class="dot on"></span>Automatic backups; workflow tests check all main processes with every change</li>
+<li><span class="dot off"></span>Server Volketswil productive, secured connection (VPN) to the branches</li>
+<li><span class="dot off"></span>Additional off-site backups</li>
+</ul>
+</article>
+<article class="cap">
+<h3>POS<em>the final objective;</em></h3>
+<ul>
+<li><span class="dot off"></span>Scan at the cash register delivers category, RRP and the current reduction level</li>
+<li><span class="dot off"></span>A sale automatically removes the corresponding stock</li>
+<li><span class="dot off"></span>No manual type-in of category, price and percentage more</li>
+<li><span class="dot off"></span>Hangs on the clarification with Intersport — access and interface are open</li>
+</ul>
+</article>
+</div>
+</section>
+<section>
+<h2>Timetable</h2>
+<p class="sub">The order is not arbitrary: without foundation no goods incoming, without goods incoming no stock, without stock no reduction.</p>
+<ol class="road">
+<li class="done"><em>A · finished</em><b>Foundation</b><span>Branch, roles, languages, data model</span></li>
+<li class="done"><em>B · finished</em><b>Goods Receipt</b><span>Document Types, Recognition, Scanners, EAN</span></li>
+<li class="done"><em>C · finished</em><b>Stock</b><span>Transfers, stock removal, corrections</span></li>
+<li class="done"><em>D · finished</em><b>Reduction</b><span>Price history, 18-/36-monthly indications, confirmation, recommendation</span></li>
+<li><em>E</em><b>Suppliers</b><span>Further layouts and scans</span></li>
+<li class="run"><em>F · Next</em><b>Operation</b><span>Servers, VPN, Backups, Moving — HTTPS already built</span></li>
+<li><em>G</em><b>POS</b><span>Connection with Intersport</span></li>
+</ol>
+</section>
+<section>
+<h2>What we consciously do without</h2>
+<ul class="notes">
+<li><b>No AI for Documents</b>Each receipt is read by our own parser on our own server. No bill, no delivery note leaves the house. An unknown layout is reported, not guessed.</li>
+<li><b>No standard software</b>It would never accurately map our checkout categories, the 30/50/70 logic and the external locations GEWA, VEBO and Dietikon – and costs continuously.</li>
+<li><b>No Assumed Stock</b>It is only booked when the goods have actually arrived. An order confirmation is just an announcement.</li>
+</ul>
+</section>
+<section id="rechte-2026-09-24"><h2>Permissions · 24.09.2026</h2><p>Employees may manually receive stock, correct stock levels, and book out sales (only sales, since 28.09.2026), all only in their assigned branches. Other stock removals, cancellations, and stock transfers are reserved for branch managers and headquarters. Markdowns are changed only in one's own branches; headquarters may change all. Their existing rights to record transactions across branches remain in place; read permissions are unchanged.</p><p>Implemented in local code; not yet deployed on the server.</p></section>
+<section id="inbox-2026-09-24"><h2>New requirements · 24.09.2026</h2><p class="sub">Operating requests implemented on the 24.09.2026 (checked in the browser against a test database).</p><ul><li>Clicking on an entry under “Pending” opens the filtered list with exactly the counted entries (without EAN, without category, negative stock, reduction due or soon). The list says “Filtered: ...” and has a button “Show all”. The number is now counted per variant, as the lists show.</li><li>The quick-search field on the stock page is focused as soon as the page opens.</li><li>On the article page, “Show Columns” is under “Other Filters”.</li><li>The displayed branch appears prominently in the stock-page title; the small branch switcher remains.</li><li>The overview’s quick-access buttons are the same size, including when they wrap onto another row.</li></ul><h3>Mobile use · Implemented 28.09.2026</h3><p><strong>Built earlier than planned, not at the end of the project.</strong> Web app on personal phones, opened via a link and installable as a home-screen icon, with server-side allowlisting per phone session.</p><ul><li>Home screen, article search, and camera scan (native barcode reader or bundled ZXing) all implemented; view prices, sizes, colors and store inventory.</li><li>Count/correct, confirm goods receipts (everyone), transfer and write off stock (branch manager/head office only, per existing rights), manual goods entry, and mark-downs — all implemented.</li><li>Existing roles and rights are enforced server-side unchanged; tablets keep the desktop version.</li><li>Still open: the VPN/Wi-Fi solution for branch-manager/headquarters access from outside the store.</li></ul><h3>Documented status of development</h3><p>Label 47 mm wide × 83 mm high for pre-printed rolls: 30 % yellow, 50 % red, 70 % green. FEDAS assignment complements; Kids is chosen by hand. Parsers for Alpina, Chris Sports and CMP are available according to the local project context. Check productive release and open layouts separately.</p><p>This overview and the flow of goods document are updated together when changes to context, progress or decisions are made.</p></section>
+<section id="sicherheit-2026-09-24"><h2>Security testing · 24.09.2026</h2><p class="sub">Current status checked: no critical or high findings. Open measures before use in the store; the login lock has been implemented. Details: docs/sicherheit.md in the project.</p><ul><li><b>S1 · partly done:</b> HTTPS via a local proxy is built (28.09.2026, checked locally). Still open: end sessions when a password changes.</li><li><b>S2 · implemented:</b> After 5 incorrect passwords, an account is blocked for 20 minutes (24.09.2026). Decided 28.09.2026: passwords with 6 characters are enough — but only if the server is reachable only from the store Wi-Fi or the VPN (still to set up).</li><li><b>S3 · medium:</b> Pillow 12.2.0 with known gaps – Update to 12.3.0.</li><li><b>S4 · medium:</b> Backups on the external data carrier unencrypted – encrypt before copying.</li><li><b>S5–S9 · low:</b> turn off API documentation and /db-test in operation, security headers, hash pins for packages. S9 done 28.09.2026: these overview pages no longer load Google Fonts.</li></ul><p>Good: no secrets in the code or history, all data accesses with login, secure password storage, no infiltration, frontend without Internet, Docker without root.</p></section>
+<section id="phase-d-2026-09-24"><h2>Phase D · Prices &amp; Reduction</h2><p class="sub">Part 1 implemented at 24.09.2026; the four open questions D-F1–D-F4 answered at 25.09.2026 and implemented directly.</p><ul><li><b>Implemented (24.09.2026):</b> Page “Markdowns” per store – Items that have reached −70 % or −50 % or will reach in the next 30 days, with roll note and button “print labels” (one label per item in stock).</li><li><b>D-F1 Confirm — implemented:</b> A list that needs to be confirmed. A confirmed model disappears until the next stage is due.</li><li><b>D-F2 Restocking — Implemented:</b> Only the new pieces restart the watch, plus a note to the store on the overview (no batch tracking in the stock – deliberate simplification, see below).</li><li><b>D-F3 Central recommendation — implemented:</b> Head office sets one level per model and branch from a date, branch takes over or rejects with reason, head office sees deviations.</li><li><b>D-F4 Thresholds 18/36 months — decided:</b> remain fixed and the same for all branches, no adjustment option necessary.</li><li><b>Unresolved contradiction:</b> D-F2 assumes “freshly arrived = 0 % reduction” (rule 6) — the clarification of the 25.09.2026 below (“freshly arrived articles start with 30 %, no articles without reduction”) has not yet been compared.</li></ul></section>
+<section id="artikeldetails-auswertungen-20260924"><h2>Item Details and Reports · New Requirements</h2><p>All 17 points implemented (status 25.09.2026), checked locally in the browser against a test database, not yet in the store, no PostgreSQL test run. Marked with ✅ = implemented.</p><ul><li><b>Article details:</b> ✅ Checkout category only open next to the article name via "Edit"; do not display box by default.</li><li><b>Article details:</b> ✅ EAN and label open in detail only via a small button; do not display box by default.</li><li><b>Article details:</b> ✅ Show RRP history at the top and more compactly; associated small list foldable, initially closed.</li><li><b>Article details:</b> ✅ Remove article notes from the surface. Nothing is decided about a deletion of existing note data.</li><li><b>Article details:</b> ✅ Show the bottom list as the current stock of this article with all sizes and colors.</li><li><b>Article details:</b> ✅ Arrange “Delete Items” with red text at the bottom; maintain existing deletion rights and restrictions.</li><li><b>Reduction:</b> ✅ Show current reduction recommendations in the article details, enable manual adjustment and display them immediately in the inventory.</li><li><b>Current:</b> ✅ Combine delivery arrivals as a whole delivery; stock transfers and departures with a reason other than sale do not show each individual incoming/outgoing.</li><li><b>Statistics:</b> ✅ New page <code>/statistiken</code>, only store manager/head office: sold by cash category, estimated revenue (explicitly marked as an estimate), order recommendation; periods day/week/month/year/total.</li><li><b>Stock:</b> ✅ Link article names to the respective article detail page.</li><li><b>Stock:</b> ✅ Show reduction level in the inventory list; not required in the item search list.</li><li><b>Markdowns:</b> ✅ Enable manual selection of items by EAN as well as by inventory list.</li><li><b>User management:</b> ✅ New page <code>/konten</code>, only head office: create and delete employee and branch manager accounts. Old bookings remain in the database, the name remains, only the link to the account is omitted.</li><li><b>Overview:</b> ✅ Five quick accesses freely selectable and sortable by drag-and-drop; buttons the same height.</li><li><b>Article search:</b> ✅ List visually align to inventory; category first, merge brand and designation, merge supplier item number and EAN.</li><li><b>Stock Removal:</b> ✅ In addition to EAN input, offer an inventory list to browse and select; maintain existing stock removal rights.</li><li><b>Goods Entry:</b> ✅ Limit supplier selection to five groups: 111 Intersport, 333 dealer, 444 Intern, 555 ECOM, 999 third-party dealer. No individual brand suppliers in this selection field.</li></ul></section>
+<p>Project knowledge: current entry into <code>docs/start.md</code>; targeted search via code and document sections. Graphify may process selected project documentation; no automatic documents analysis. State of the art: 28.09.2026.</p>
+<section id="inbox-20260925"><h2>Specifications of 25.09.2026</h2><p>New requirements from the inbox.</p><p><b>Code check 28.09.2026 (evening):</b> all points done — removals in the statistics, "this week" as start period, 30 % start markdown, "Automatic" instead of "recommendation", markdown changes only in one's own branches (branch managers too), and employees may book out sales (only sales).</p><ul><li>Add statistics showing the number of items removed from stock, the reasons, the most recent removals, and the users who performed them.</li><li>Show statistics when opening directly with "this week"; other time periods can be selected afterwards.</li><li>Statistics continue to be visible exclusively for branch managers and headquarters.</li><li>Newly arrived items start at a 30 % discount; there are no items without a discount. Remove the word “recommendation” from the relevant display.</li><li>Change reduction only for your own assigned branch; view other branches only. Headquarters may change all branches.</li><li>Edit quick accesses via drag-and-drop; already existing desire, not a double new task.</li><li>Only branch managers and headquarters may remove stock for reasons other than sales. The sales exception clarifies the earlier blanket restriction; do not expand other branch permissions.</li></ul></section>
+<section id="inbox-20260928"><h2>New requirements · 28.09.2026</h2><p class="sub">From the inbox; decided and implemented the same evening, except the markdown at goods entry.</p><ul><li>✅ All items have a minimum markdown of 30 %, also new goods — no item without a markdown.</li><li>When entering goods, choose the item's markdown directly — open: save it as the markdown of the branch?</li><li>✅ "Pending" on the overview separately per branch; only the head-office account sees everything.</li><li>✅ Transfer like a delivery: choose the dispatch date and destination; the destination confirms the arrival like a new delivery.</li></ul></section><section id="project-notes"><h2>Project notes</h2><p>The project notes are organized into six files. Original dated requests and ideas have been combined; their implementation status is unchanged.</p><ul><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory">Overview</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20Requirements">Requirements</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20Decisions">Decisions</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20Progress">Progress</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20on%20Mobile">Mobile planning</a></li><li><a href="obsidian://open?vault=Main&amp;file=01%20Projects%2FSportfabrik%20Inventory%2FSportfabrik%20Inventory%20%E2%80%93%20Security%20Review%20from%202026-09-24">Security review</a></li></ul></section>
+<footer>Sportfabrik Inventory Management · Content according to<code>docs/projekt-kontext.md</code> (Rev.) 6) · Status 25.09.2026 · Phase D (D-F1–D-F4) and article details/evaluations (17/17) implemented</footer>
+</main>
+</body></html>

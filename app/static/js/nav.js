@@ -16,7 +16,7 @@
         { href: '/erfassen', key: 'nav.erfassen', info: 'nav.info.erfassen' },
         { href: '/wareneingaenge', key: 'nav.wareneingaenge', info: 'nav.info.wareneingaenge' },
         { href: '/umlagern', key: 'nav.umlagern', info: 'nav.info.umlagern', nur: ['chef', 'admin'] },
-        { href: '/ausbuchen', key: 'nav.ausbuchen', info: 'nav.info.ausbuchen', nur: ['chef', 'admin'] },
+        { href: '/ausbuchen', key: 'nav.ausbuchen', info: 'nav.info.ausbuchen' },
         { href: '/runterschreiben', key: 'nav.runterschreiben', info: 'nav.info.runterschreiben' }
       ]
     },

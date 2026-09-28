@@ -1,0 +1,281 @@
+/* Phone pages (/m, decision 28.09.2026). Same tokens as app.css; this file only
+   adds the phone layout: one column, large targets, safe areas of notched
+   phones and the home-screen app (standalone, no browser bar). */
+
+body.phone {
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+body.phone header {
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: calc(var(--space-2) + env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right))
+    var(--space-2) max(var(--space-4), env(safe-area-inset-left));
+}
+
+body.phone .brand img { width: 112px; }
+body.phone .store-pill .store-select { max-width: 150px; }
+
+body.phone main {
+  max-width: 560px;
+  padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right)) var(--space-10)
+    max(var(--space-4), env(safe-area-inset-left));
+}
+
+body.phone h1 { font-size: var(--fs-h1); margin: 0 0 var(--space-1); }
+
+/* Home tiles: one per function, full width, thumb-sized. */
+.m-tiles {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.m-tile {
+  display: grid;
+  grid-template-columns: 28px 1fr 20px;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  min-height: 72px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--fast), border-color var(--fast), transform var(--fast);
+}
+
+.m-tile:active { transform: scale(.98); background: var(--surface-alt); }
+.m-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.m-tile .icon { width: 28px; height: 28px; grid-row: span 2; color: var(--accent-text); }
+.m-tile .chevron { width: 20px; height: 20px; grid-column: 3; grid-row: 1 / span 2; color: var(--text-faint); }
+.m-tile strong { font-size: var(--fs-h3); font-weight: 600; line-height: 1.25; }
+.m-tile span { grid-column: 2; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.35; }
+
+/* The one primary action on the home screen. */
+.m-tile.primary { background: var(--accent); border-color: var(--accent); }
+.m-tile.primary:active { background: var(--accent-pressed); }
+.m-tile.primary .icon,
+.m-tile.primary .chevron,
+.m-tile.primary strong,
+.m-tile.primary span { color: var(--accent-on); }
+
+/* Sub-page top bar: back to the home screen + page title. */
+.m-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin: 0 0 var(--space-2) calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.m-back .icon { width: 20px; height: 20px; }
+
+.m-eyebrow {
+  margin: 0;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+body.phone h2 { font-size: var(--fs-h3); margin: var(--space-8) 0 var(--space-3); }
+
+/* Scan / search field (DESIGN.md §10.3): large, full width. */
+.m-scan { margin-top: var(--space-4); }
+.m-scan label { display: block; margin-bottom: var(--space-2); font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+.m-scan-row { display: flex; gap: var(--space-2); }
+.m-scan-row input { flex: 1; min-width: 0; height: 52px; font-size: var(--fs-h3); }
+.m-scan-row button { flex: none; }
+
+/* Result list: each row is one tap target. */
+.m-list { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+.m-list button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--space-3);
+  width: 100%;
+  height: auto;
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+  font: inherit;
+  box-shadow: none;
+}
+.m-list button:active { background: var(--surface-alt); }
+.m-list strong { font-size: var(--fs-body); font-weight: 600; line-height: 1.3; }
+.m-list .m-sub { grid-column: 1; font-size: var(--fs-sm); color: var(--text-muted); }
+.m-list .m-num { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.m-meta { font-size: var(--fs-sm); color: var(--text-muted); margin: var(--space-1) 0 0; }
+.m-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+.m-price {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.m-price span { font-size: var(--fs-sm); font-weight: 500; color: var(--text-muted); }
+.m-price strong { font-size: var(--fs-metric); font-weight: 600; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.m-price strong.is-missing { font-size: var(--fs-h3); letter-spacing: 0; line-height: 1.3; color: var(--text-muted); }
+.m-price small { font-size: var(--fs-sm); color: var(--text-muted); }
+
+/* Stock per location: a card per location, a row per size/colour. */
+.m-store {
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.m-store.is-active { border-color: var(--accent-soft-border); }
+.m-store-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-alt);
+  font-weight: 600;
+}
+.m-store-head .m-num { margin-left: auto; font-variant-numeric: tabular-nums; }
+.m-store ul { list-style: none; margin: 0; padding: 0; }
+.m-store li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+.m-store li.is-selected { background: var(--accent-soft-bg); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+.m-store li .m-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.m-store li .m-num.negative { color: var(--danger-text); }
+
+.m-wide { width: 100%; margin-top: var(--space-4); }
+
+/* Camera scanner: full screen, dark in both themes, frame in the middle. */
+body.m-scanning { overflow: hidden; }
+.m-scanner {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+  background: #000;
+}
+.m-scanner video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.m-scanner-frame {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 50%;
+  height: 28%;
+  transform: translateY(-50%);
+  border: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .45);
+  pointer-events: none;
+}
+.m-scanner.has-error .m-scanner-frame { display: none; }
+.m-scanner-hint {
+  position: relative;
+  max-width: 34ch;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, .6);
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+}
+.m-scanner-cancel { position: relative; width: 100%; max-width: 420px; }
+
+/* Booking pages: which store, which article, one big form. */
+.m-store-line { margin: 0 0 var(--space-3); font-weight: 600; color: var(--accent-text); }
+.m-store-line.error { color: var(--danger-text); }
+.m-article-card {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.m-article-card strong { font-size: var(--fs-h3); line-height: 1.3; }
+.m-article-card span { font-size: var(--fs-sm); color: var(--text-muted); }
+.m-current { margin: var(--space-4) 0; font-size: var(--fs-body); font-weight: 600; color: var(--text); }
+/* Compound selector so this always wins over .m-current's own color,
+   regardless of stylesheet order (DESIGN.md §3: colour must mean something). */
+.m-current.warning-text { color: var(--danger-text); }
+body.phone label { margin-top: var(--space-4); }
+body.phone select,
+body.phone form input { height: 52px; font-size: var(--fs-h3); }
+.m-stepper { display: grid; grid-template-columns: 52px 1fr 52px; gap: var(--space-2); }
+.m-stepper button.icon-only { width: 52px; height: 52px; }
+.m-stepper input { text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+body.phone .notice { margin: 0 0 var(--space-4); }
+
+/* Deliveries: list rows may wrap to two lines (document + supplier/date). */
+.m-list-wrap button { min-height: 72px; }
+
+.m-hint { margin: var(--space-2) 0 0; font-size: var(--fs-xs); color: var(--text-faint); }
+
+.m-positions {
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.m-position {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.m-position-head { display: grid; gap: 2px; margin-bottom: var(--space-2); }
+.m-position-head strong { font-size: var(--fs-body); line-height: 1.3; }
+.m-position-head .m-sub { font-size: var(--fs-sm); color: var(--text-muted); }
+.m-position-counts { display: flex; gap: var(--space-4); margin-bottom: var(--space-3); font-size: var(--fs-xs); color: var(--text-muted); }
+.m-position-field { display: flex; align-items: center; gap: var(--space-3); }
+.m-position-field span { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+.m-position-field input { flex: 1; min-width: 0; height: 48px; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* Transfer list: a compact quantity stepper plus a remove button per row. */
+.m-stepper-inline { grid-template-columns: 40px 60px 40px; gap: var(--space-2); flex: none; }
+.m-stepper-inline button.icon-only { width: 40px; height: 40px; }
+.m-stepper-inline input { height: 40px; font-size: var(--fs-sm); }
+.m-position-field .ghost { margin-left: auto; flex: none; }
+
+/* Two fields sharing a row (manual entry: colour + size, quantity + unit, UVP + EK). */
+.m-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-3); margin-top: var(--space-4); }

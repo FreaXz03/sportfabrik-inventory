@@ -25,8 +25,8 @@ services:
       DB_USER: inventory
       DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.server}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env.server}
-    ports:
-      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-8080}:8000"
+      SESSION_HTTPS_ONLY: "true"
+    # No published port: the app is reachable only through the HTTPS proxy.
     depends_on:
       db:
         condition: service_healthy
@@ -37,7 +37,27 @@ services:
       retries: 3
       start_period: 30s
     networks: [backend]
+  proxy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      APP_HOST: ${APP_HOST:?Set APP_HOST in .env.server}
+    ports:
+      - "${APP_BIND_IP:-127.0.0.1}:443:443"
+      - "${APP_BIND_IP:-127.0.0.1}:80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Holds the local certificate authority. Losing it means every device
+      # has to trust a new root certificate: include it in backups.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [backend]
 networks:
   backend:
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

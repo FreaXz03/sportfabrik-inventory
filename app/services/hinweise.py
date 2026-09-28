@@ -9,13 +9,13 @@ wieder auf seine bisherige Stufe setzt.
 
 `pruefe_und_merke` wird einmal je Artikel **vor** dem Buchen einer neuen
 Lieferung aufgerufen (import oder Ankunftsbestätigung) und hält die vorher
-geltende Stufe in `cache` fest, wenn sie über 0 lag. `erstelle_hinweise`
+geltende Stufe in `cache` fest, wenn sie über der Startstufe (30 %) lag. `erstelle_hinweise`
 schreibt danach je betroffenem Artikel eine Zeile."""
 
 from sqlalchemy import desc, select
 
 from ..core.models import Artikel, Hinweis, Lagerort
-from .reduktion import letzter_wareneingang, stufe
+from .reduktion import STARTSTUFE, letzter_wareneingang, stufe
 
 NACHLIEFERUNG_REDUZIERT = "nachlieferung_reduziert"
 STANDARD_ANZAHL = 20
@@ -25,7 +25,9 @@ def pruefe_und_merke(session, artikel_id: int, lagerort_id: int, cache: dict) ->
     if artikel_id in cache:
         return
     vorher = stufe(letzter_wareneingang(session, artikel_id, lagerort_id))
-    cache[artikel_id] = vorher if vorher > 0 else None
+    # Neue Ware startet selbst auf 30 % - erwähnenswert ist nur Altbestand,
+    # der schon tiefer reduziert ist (Entscheid 28.09.2026).
+    cache[artikel_id] = vorher if vorher > STARTSTUFE else None
 
 
 def erstelle_hinweise(session, lagerort_id: int, cache: dict) -> None:

@@ -66,6 +66,13 @@ def test_nachlieferung_erzeugt_hinweis(welt):
         rows=[_zeile("Z9", "1", "4006632049999", "Neuware", "5")],
     )
     assert importieren(client, neu, lagerort_id=str(codes["SF1"])).status_code == 200
+    # Nachlieferung eines Modells, das erst auf der Startstufe 30 % steht:
+    # nichts ist tiefer reduziert als die neue Ware - kein Hinweis (28.09.2026).
+    nochmal = rechnung_pdf(
+        header_lines=kopf(nummer="9300000005", datum=heute.strftime("%d.%m.%Y")),
+        rows=[_zeile("Z9", "1", "4006632049982", "Neuware", "5")],
+    )
+    assert importieren(client, nochmal, lagerort_id=str(codes["SF1"])).status_code == 200
     assert client.post("/api/active-lagerort", json={"lagerort_id": codes["SF1"]}).status_code == 200
     hinweise = client.get("/api/dashboard").json()["hinweise"]
     assert [h["lieferanten_artikelnr"] for h in hinweise] == ["A1"]

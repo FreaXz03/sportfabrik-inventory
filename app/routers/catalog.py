@@ -12,13 +12,14 @@ from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import (
     Artikel,
-    Dokument,
     Kategorie,
+    Preis,
     Variante,
     Wareneingang,
     WareneingangPosition,
 )
 from ..services.kategorien import kategorie_daten
+from ..services.uebersicht import varianten_mit_bestand
 
 router = APIRouter()
 
@@ -84,6 +85,7 @@ def articles(
     kategorie_fehlt: bool = Query(False),
     nur_manuell: bool = Query(False),
     ohne_ean: bool = Query(False),
+    lagerort_id: int | None = Query(None, ge=1),
     last_delivery_from: str | None = Query(None),
     last_delivery_to: str | None = Query(None),
     page: int = Query(1, ge=1),
@@ -150,6 +152,10 @@ def articles(
     # Varianten ohne EAN (Link aus „Anstehend" in der Übersicht, 24.09.2026).
     if ohne_ean:
         conditions.append(Variante.ean.is_(None))
+    # Nur Varianten mit Bestand in diesem Lagerort („Anstehend" je Filiale,
+    # 28.09.2026).
+    if lagerort_id is not None:
+        conditions.append(Variante.id.in_(varianten_mit_bestand(lagerort_id)))
     # Nur von Hand erfasste Artikel (24.09.2026): an keiner Variante hängt eine
     # Position aus einem Beleg - genau die, die sich wieder löschen lassen.
     if nur_manuell:
@@ -203,30 +209,22 @@ def articles(
                         ),
                     }
                 )
+            # Preis (Regel 10) ist die gemeinsame Quelle für Beleg- und
+            # Handeinträge (Preis.dokument_id ist bei Handeinträgen leer) -
+            # der WareneingangPosition/Dokument-Weg sah nur Belege.
             ranked = (
                 select(
-                    WareneingangPosition.varianten_id,
-                    WareneingangPosition.uvp,
-                    Dokument.dokumentdatum,
+                    Preis.varianten_id,
+                    Preis.uvp,
+                    Preis.datum,
                     func.row_number()
                     .over(
-                        partition_by=WareneingangPosition.varianten_id,
-                        order_by=(
-                            Dokument.dokumentdatum.desc().nulls_last(),
-                            Dokument.hochgeladen_am.desc(),
-                            Dokument.id.desc(),
-                            WareneingangPosition.id.desc(),
-                        ),
+                        partition_by=Preis.varianten_id,
+                        order_by=(Preis.datum.desc().nulls_last(), Preis.id.desc()),
                     )
                     .label("rank"),
                 )
-                .select_from(WareneingangPosition)
-                .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
-                .join(Dokument, Dokument.id == Wareneingang.dokument_id)
-                .where(
-                    WareneingangPosition.varianten_id.in_(ids),
-                    WareneingangPosition.uvp.is_not(None),
-                )
+                .where(Preis.varianten_id.in_(ids))
                 .subquery()
             )
             for row in session.execute(
@@ -251,7 +249,7 @@ def articles(
             item.update(
                 delivered=totals.get(v.id, []),
                 latest_uvp=format(price["uvp"], "f") if price else None,
-                uvp_date=price["dokumentdatum"] if price else None,
+                uvp_date=price["datum"] if price else None,
             )
             items.append(item)
         if exporting:

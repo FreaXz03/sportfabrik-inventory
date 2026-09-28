@@ -64,6 +64,7 @@ def buche_bewegung(
     zeitpunkt: datetime,
     eingangsdatum: date | None = None,
     aeltestes: date | None = None,
+    position_id: int | None = None,
 ) -> tuple[Lagerbewegung, Decimal, Decimal]:
     """Eine Bewegung ausser dem Zugang schreiben und den Bestand nachführen
     (Regel 2). `menge` ist vorzeichenbehaftet: negativ für einen Abgang.
@@ -81,6 +82,7 @@ def buche_bewegung(
         menge=menge,
         grund=grund,
         eingangsdatum=eingangsdatum,
+        wareneingang_position_id=position_id,
         benutzer_kassennummer=(benutzer or {}).get("kassennummer"),
         benutzer_name=(benutzer or {}).get("name"),
         zeitpunkt=zeitpunkt,

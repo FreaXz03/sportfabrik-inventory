@@ -190,16 +190,20 @@
     // (24.09.2026). Gut sichtbar angezeigt, mit einem Knopf zurück zu allen.
     const VORGABEN = { ohne_ean: 'articles.filter_active.no_ean', kategorie_fehlt: 'articles.filter_active.no_category' };
     let vorgabe = null;
+    const adresse = new URLSearchParams(location.search);
     for (const key of Object.keys(VORGABEN)) {
-      if (new URLSearchParams(location.search).get(key) === 'true') {
+      if (adresse.get(key) === 'true') {
         vorgabe = key;
         filters.set(key, 'true');
       }
     }
+    // „Anstehend" je Filiale (28.09.2026): nur Varianten mit Bestand dort.
+    const vorgabeFiliale = vorgabe && /^\d+$/.test(adresse.get('lagerort_id') || '') ? (adresse.get('filiale') || '') : null;
+    if (vorgabeFiliale !== null) filters.set('lagerort_id', adresse.get('lagerort_id'));
     if (vorgabe === 'kategorie_fehlt') $('kategorien').value = 'ohne';
     function vorgabeZeigen() {
       $('vorgabe').hidden = !vorgabe;
-      if (vorgabe) $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(VORGABEN[vorgabe]);
+      if (vorgabe) $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(VORGABEN[vorgabe]) + (vorgabeFiliale ? ' · ' + vorgabeFiliale : '');
     }
     function vorgabeWeg() {
       vorgabe = null;
@@ -209,6 +213,7 @@
     $('vorgabeWeg').addEventListener('click', () => {
       filters.delete('ohne_ean');
       filters.delete('kategorie_fehlt');
+      filters.delete('lagerort_id');
       $('kategorien').value = '';
       vorgabeWeg();
       page = 1;
@@ -373,7 +378,7 @@
     document.addEventListener('sportfabrik:i18n-ready', load);
   </script>
   <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-  <script src="/static/js/nav.js?v=3"></script>
+  <script src="/static/js/nav.js?v=4"></script>
      <script src="/static/js/session.js?v=header-2"></script>
   <script src="/static/js/theme.js?v=design-1"></script>
 </body>

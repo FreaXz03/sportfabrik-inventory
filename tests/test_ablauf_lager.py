@@ -9,11 +9,11 @@ die echte App mit Anmeldung ab.
 from datetime import date, timedelta
 from decimal import Decimal
 
-from conftest import ANNA, CHEF
+from conftest import ANNA, CHEF, ZENTRALE
 from sqlalchemy import func, select, update
 from testbelege import POSITIONEN, importieren, kopf, rechnung_pdf
 
-from app.core.models import Bestand, Lagerbewegung, Variante
+from app.core.models import Bestand, Lagerbewegung, Variante, WareneingangPosition
 from app.services.reduktion import letzter_wareneingang
 from app.services.uebersicht import aktuelles
 
@@ -31,6 +31,21 @@ def _uhr(sessions, varianten_id, lagerort_id):
     with sessions() as session:
         artikel_id = session.get(Variante, varianten_id).artikel_id
         return letzter_wareneingang(session, artikel_id, lagerort_id)
+
+
+def _ankommen(welt, wareneingang_id, eingangsdatum=None):
+    """Ankunft einer Umlagerung komplett bestätigen (nach dem Auspacken,
+    Entscheid 28.09.2026) - wie eine Lieferung, über dieselbe API."""
+    with welt.sessions() as session:
+        positionen = session.scalars(
+            select(WareneingangPosition).where(WareneingangPosition.wareneingang_id == wareneingang_id)
+        ).all()
+        mengen = {str(p.id): str(p.menge) for p in positionen}
+    daten = {"mengen": mengen, **({"eingangsdatum": eingangsdatum} if eingangsdatum else {})}
+    antwort = welt.client.post(f"/api/wareneingaenge/{wareneingang_id}/ankunft", json=daten)
+    assert antwort.status_code == 200, antwort.text
+    assert antwort.json()["status"] == "eingetroffen"
+    return antwort.json()
 
 
 def _bestand_ist_summe_der_bewegungen(sessions):
@@ -62,37 +77,54 @@ def test_gewa_filiale_umlagern_ausbuchen_zaehlen(welt):
     assert _menge(sessions, polo, gewa) == Decimal("5")
     assert _uhr(sessions, polo, gewa) is None
 
-    # GEWA → SF1: die empfangende Filiale bucht (F5), der Filialleiter bucht.
-    # Das Eingangsdatum wird erst jetzt gesetzt, auch rückwirkend (D13).
+    # GEWA → SF1 wie eine Lieferung (Entscheid 28.09.2026): der Filialleiter
+    # versendet mit Versanddatum, die Ware ist unterwegs, die SF1 bestätigt
+    # die Ankunft. Das Eingangsdatum wird erst dann gesetzt, auch rückwirkend (D13).
     welt.anmelden(CHEF)
     stamm = client.get("/api/umlagerung/stammdaten").json()
-    assert stamm["ziel_aktiv"] == sf1
+    assert stamm["quelle_aktiv"] == sf1
     antwort = client.post(
         "/api/umlagerung",
         json={
             "quelle_id": gewa,
-            "eingangsdatum": "2026-08-10",
+            "ziel_id": sf1,
+            "versanddatum": "2026-08-08",
             "positionen": [{"varianten_id": polo, "menge": "2"}, {"varianten_id": polo, "menge": "1"}],
         },
     )
     assert antwort.status_code == 200, antwort.text
-    assert antwort.json()["ziel"]["code"] == "SF1" and antwort.json()["stueck"] == "3.00"
+    versand = antwort.json()
+    assert versand["ziel"]["code"] == "SF1" and versand["stueck"] == "3.00"
+    assert versand["versanddatum"] == "2026-08-08"
     assert _menge(sessions, polo, gewa) == Decimal("2")
+    assert _menge(sessions, polo, sf1) is None  # unterwegs: noch nirgends Bestand
+    erwartet = client.get("/api/wareneingaenge").json()["wareneingaenge"]
+    assert [(w["id"], w["dokument"], w["umlagerung"]["von"]["code"], w["umlagerung"]["versanddatum"]) for w in erwartet] == [
+        (versand["wareneingang_id"], None, "GEWA", "2026-08-08")
+    ]
+    assert [p["menge_erwartet"] for p in erwartet[0]["positionen"]] == ["3.00"]
+    assert client.get("/api/dashboard").json()["filiale"]["erwartet_total"] == 1
+    # Ankunft bestätigen darf auch die Mitarbeiterin (D21).
+    welt.anmelden(ANNA)
+    _ankommen(welt, versand["wareneingang_id"], "2026-08-10")
     assert _menge(sessions, polo, sf1) == Decimal("3")
     assert _uhr(sessions, polo, sf1) == date(2026, 8, 10)
-    # Unbekanntes Ziel wird abgelehnt.
-    assert client.post(
-        "/api/umlagerung",
-        json={"quelle_id": gewa, "ziel_id": 999999, "positionen": [{"varianten_id": polo, "menge": "1"}]},
-    ).status_code == 403
-
-    # SF1 → SF2, die SF2 hatte den Artikel nie: Uhr startet beim Empfang (F11).
     welt.anmelden(CHEF)
+    # Unbekanntes Ziel, gleiches Ziel und Versand in der Zukunft werden abgelehnt.
+    position = [{"varianten_id": polo, "menge": "1"}]
+    assert client.post("/api/umlagerung", json={"quelle_id": gewa, "ziel_id": 999999, "positionen": position}).status_code == 404
+    assert client.post("/api/umlagerung", json={"quelle_id": gewa, "ziel_id": gewa, "positionen": position}).status_code == 409
+    morgen = (date.today() + timedelta(days=1)).isoformat()
+    assert client.post("/api/umlagerung", json={"quelle_id": gewa, "ziel_id": sf1, "versanddatum": morgen, "positionen": position}).status_code == 409
+
+    # SF1 → SF2, die SF2 hatte den Artikel nie: Uhr startet bei der Ankunft (F11).
     erste = client.post(
         "/api/umlagerung",
         json={"quelle_id": sf1, "ziel_id": sf2, "positionen": [{"varianten_id": polo, "menge": "1"}]},
     )
     assert erste.status_code == 200, erste.text
+    assert _uhr(sessions, polo, sf2) is None
+    _ankommen(welt, erste.json()["wareneingang_id"])
     assert _uhr(sessions, polo, sf2) == date.today()
     # Zweite Umlagerung: jetzt kennt die SF2 den Artikel, die Uhr bleibt (F10),
     # und das ursprüngliche Eingangsdatum reist mit (D17).
@@ -108,6 +140,7 @@ def test_gewa_filiale_umlagern_ausbuchen_zaehlen(welt):
         json={"quelle_id": sf1, "ziel_id": sf2, "positionen": [{"varianten_id": polo, "menge": "1"}]},
     )
     assert zweite.status_code == 200, zweite.text
+    _ankommen(welt, zweite.json()["wareneingang_id"])
     assert _uhr(sessions, polo, sf2) == date(2026, 8, 12)
     with sessions() as session:
         assert session.get(Bestand, (polo, sf2)).aeltestes_eingangsdatum == date(2026, 8, 10)
@@ -118,6 +151,7 @@ def test_gewa_filiale_umlagern_ausbuchen_zaehlen(welt):
     )
     assert knapp.status_code == 200 and knapp.json()["fehlbestand"]
     assert _menge(sessions, polo, sf2) == Decimal("-1")
+    _ankommen(welt, knapp.json()["wareneingang_id"])
     assert _menge(sessions, polo, sf1) == Decimal("4")
 
     # Ausbuchen per Scan: ein Scan = ein Stück (F15), Gründe nach F14.
@@ -224,9 +258,22 @@ def test_anstehend_fuehrt_zur_gefilterten_liste(welt):
         assert antwort.status_code == 200, (pfad, antwort.text)
         return antwort.json()["total"]
 
-    assert treffer("/api/articles?ohne_ean=true") == stamm["ohne_ean"]
-    assert treffer("/api/articles?kategorie_fehlt=true") == stamm["ohne_kategorie"]
+    sf1 = codes["SF1"]
+    assert stamm["lagerort_id"] == sf1
+    assert treffer(f"/api/articles?ohne_ean=true&lagerort_id={sf1}") == stamm["ohne_ean"]
+    assert treffer(f"/api/articles?kategorie_fehlt=true&lagerort_id={sf1}") == stamm["ohne_kategorie"]
     assert treffer("/api/bestand?nur_negativ=true") == filiale["negativ"]
+
+    # Entscheid 28.09.2026: „Anstehend" je Filiale - dieselbe Lücke in SF2
+    # zählt in SF1 nicht mit; nur die Zentrale ohne Filialwahl sieht alles.
+    client.post("/api/erfassen", json={"lagerort_id": codes["SF2"], "positionen": [{"marke": "CMP", "bezeichnung": "Weste", "menge": "1", "uvp": "59"}]})
+    stamm = client.get("/api/dashboard").json()["stamm"]
+    assert stamm["ohne_ean"] == 1 and stamm["ohne_kategorie"] == 1
+    welt.anmelden(ZENTRALE)
+    alles = client.get("/api/dashboard").json()["stamm"]
+    assert alles["lagerort_id"] is None and alles["ohne_ean"] == 2 and alles["ohne_kategorie"] == 2
+    assert treffer("/api/articles?ohne_ean=true") == 2
+    welt.anmelden(CHEF)
     for stufe in ("50", "70"):
         for stand in ("faellig", "bald"):
             pfad = f"/api/bestand?reduktion={stufe}&reduktion_status={stand}"
@@ -246,11 +293,12 @@ def test_aktuelles_fasst_lieferungen_und_umlagerungen_zusammen(welt):
     assert importieren(client, rechnung_pdf(), lagerort_id=str(sf1)).status_code == 200
     polo_m = client.get(f"/api/erfassen/variante?ean={POLO_M}").json()["variante"]["varianten_id"]
     polo_l = client.get("/api/erfassen/variante?ean=4006632041241").json()["variante"]["varianten_id"]
-    assert client.post(
+    versand = client.post(
         "/api/umlagerung",
         json={"quelle_id": sf1, "ziel_id": sf2, "positionen": [
             {"varianten_id": polo_m, "menge": "1"}, {"varianten_id": polo_l, "menge": "2"}]},
-    ).status_code == 200
+    )
+    assert versand.status_code == 200
     assert client.post("/api/ausbuchen", json={"ean": POLO_M, "grund": "verkauf"}).status_code == 200
     assert client.post("/api/ausbuchen", json={"ean": POLO_M, "grund": "defekt"}).status_code == 200
     assert client.post(
@@ -266,8 +314,11 @@ def test_aktuelles_fasst_lieferungen_und_umlagerungen_zusammen(welt):
     assert lieferung["positionen"] == 3 and lieferung["stueck"] == "10.00"
     assert lieferung["dokumentnummer"] == "9001759392" and lieferung["lagerort"] == "SF1"
 
-    # Die Zielfiliale sieht dieselbe Umlagerung als eigenen Eintrag, ohne
-    # Filiale erscheint sie einmal (nicht je Seite).
+    # Die Zielfiliale sieht die Umlagerung erst, wenn sie angekommen ist -
+    # dann als eigenen Eintrag; ohne Filiale erscheint sie einmal (nicht je Seite).
+    with welt.sessions() as session:
+        assert aktuelles(session, sf2) == []
+    _ankommen(welt, versand.json()["wareneingang_id"])
     with welt.sessions() as session:
         in_sf2 = aktuelles(session, sf2)
         ueberall = aktuelles(session, None)

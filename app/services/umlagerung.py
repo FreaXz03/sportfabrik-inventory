@@ -1,34 +1,38 @@
-"""Ware zwischen Lagerorten umlagern (Phase C, Teilaufgabe C4).
+"""Ware zwischen Lagerorten umlagern (Phase C, Teilaufgabe C4; seit
+28.09.2026 wie eine Lieferung).
 
 Die Regeln dazu (docs/projekt-kontext.md Abschnitte 4 und 10):
 
-* **Gebucht wird beim Empfang, von der empfangenden Filiale** (F5): eine
-  Buchung erledigt beides - Abgang am Quell-Lagerort, Zugang am Ziel. Einen
-  Zwischenstand „unterwegs" gibt es nicht.
+* **Versand und Ankunft getrennt** (Entscheid 28.09.2026, ersetzt F5): die
+  Quelle versendet mit einem Versanddatum - der Abgang wird sofort gebucht.
+  Das Ziel bekommt einen erwarteten Wareneingang (`herkunft_lagerort_id`,
+  `versanddatum`) und bestätigt die Ankunft wie bei einer Lieferung, nach
+  dem Auspacken (D21, D22: Teilmengen bleiben offen). Dazwischen ist die
+  Ware unterwegs und in keinem Bestand.
 * **Externer Standort → Filiale** (D13): die Ware kommt zum ersten Mal in eine
-  Filiale - das Eingangsdatum wird jetzt gesetzt, auf Wunsch rückwirkend, und
-  die Reduktionsuhr der Filiale startet.
-* **Filiale → Filiale** (D17, F10): die Ware behält ihr Datum, und die Uhr der
-  Zielfiliale läuft unverändert weiter - eine Umlagerung ist dort kein
-  Wareneingang. Hatte die Zielfiliale diesen Artikel aber **noch nie**, startet
-  ihre Uhr ab Eintreffen (F11, 23.09.2026).
+  Filiale - das Eingangsdatum ist das Ankunftsdatum, auf Wunsch rückwirkend,
+  und die Reduktionsuhr der Filiale startet.
+* **Filiale → Filiale** (D17, F10): die Ware behält ihr Datum
+  (`mitgebracht_datum`, beim Versand festgehalten), und die Uhr der
+  Zielfiliale läuft unverändert weiter. Hatte die Zielfiliale diesen Artikel
+  aber **noch nie**, startet ihre Uhr ab Ankunft (F11, 23.09.2026).
 * **Ziel ohne Verkauf** (GEWA, VEBO, Dietikon): dort läuft keine Uhr, es gibt
   kein Eingangsdatum (Regel 6).
 * **Zu wenig Bestand an der Quelle**: gewarnt und trotzdem gebucht, wie beim
-  Ausbuchen (F9) - der migrierte Bestand ist kumulierter Wareneingang ohne
-  Verkäufe, die Ware ist physisch aber da, wenn sie ankommt.
+  Ausbuchen (F9).
 
 Ob eine Umlagerung die Uhr startet, steht an ihrer Zugangsbewegung in
 `lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` zählt
 dieses Datum mit. Beide Bewegungen sind `typ = umlagerung`, der Grund nennt
-die Gegenseite (`nach:SF2` bzw. `von:GEWA`).
+die Gegenseite (`nach:SF2` bzw. `von:GEWA`). Der Wareneingang einer
+Umlagerung bekommt nie ein eigenes `eingangsdatum`.
 """
 
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
-from ..core.models import Artikel, Bestand, Lagerort, Variante
+from ..core.models import Artikel, Bestand, Lagerort, Variante, Wareneingang, WareneingangPosition
 from .ausbuchung import buche_bewegung, sperren, zahl
 from .reduktion import letzter_wareneingang
 from .wareneingang import MAX_MENGE
@@ -77,24 +81,23 @@ def umlagern(
     quelle_id: int,
     ziel_id: int,
     positionen: list[dict],
-    eingangsdatum: date | None = None,
+    versanddatum: date | None = None,
     benutzer: dict | None = None,
     language: str = DEFAULT_LANGUAGE,
 ) -> dict:
-    """Ware von `quelle_id` nach `ziel_id` umbuchen - alles in einer
+    """Ware von `quelle_id` an `ziel_id` versenden - alles in einer
     Transaktion, entweder ganz oder gar nicht.
 
-    `eingangsdatum` zählt nur dort, wo die Umlagerung die Uhr der Zielfiliale
-    startet (D13, F11); ohne Angabe gilt heute. Die Antwort nennt je Position,
-    ob die Uhr gestartet wurde (`uhr_start`), und listet in `fehlbestand` die
-    Positionen, für die die Quelle zu wenig Bestand hatte.
+    Bucht den Abgang an der Quelle und legt am Ziel einen erwarteten
+    Wareneingang an; ohne `versanddatum` gilt heute. Die Antwort listet in
+    `fehlbestand` die Positionen, für die die Quelle zu wenig Bestand hatte.
     """
     if quelle_id == ziel_id:
         raise UmlagerungRejected(translate("errors.umlagerung.same_location", language))
     heute = date.today()
-    if eingangsdatum is not None and eingangsdatum > heute:
+    if versanddatum is not None and versanddatum > heute:
         raise UmlagerungRejected(translate("errors.erfassung.date_in_future", language))
-    datum = eingangsdatum or heute
+    datum = versanddatum or heute
     mengen = _mengen(positionen, language)
 
     with session_factory() as session, session.begin():
@@ -113,39 +116,30 @@ def umlagern(
                 )
             varianten[varianten_id] = variante
 
-        # Vor dem Buchen feststellen, ob die Zielfiliale den Artikel schon
-        # kennt - sonst sähe die zweite Variante desselben Artikels die Uhr,
-        # die die erste gerade gestartet hat (F11 gilt je Artikel).
-        uhr_laeuft = {}
-        if ziel.verkauf and quelle.verkauf:
-            for variante in varianten.values():
-                if variante.artikel_id not in uhr_laeuft:
-                    uhr_laeuft[variante.artikel_id] = (
-                        letzter_wareneingang(session, variante.artikel_id, ziel.id)
-                        is not None
-                    )
+        wareneingang = Wareneingang(
+            dokument_id=None,
+            lagerort_id=ziel.id,
+            status="erwartet",
+            herkunft_lagerort_id=quelle.id,
+            versanddatum=datum,
+        )
+        session.add(wareneingang)
+        session.flush()
 
         jetzt = datetime.now(timezone.utc)
         ergebnis_positionen, fehlbestand = [], []
         for varianten_id, menge in mengen.items():
             variante = varianten[varianten_id]
             quell_bestand = session.get(Bestand, (varianten_id, quelle.id))
-            mitgebracht = quell_bestand.aeltestes_eingangsdatum if quell_bestand else None
-
-            if not ziel.verkauf:
-                # Standort ohne Verkauf: keine Uhr, kein Datum (Regel 6).
-                uhr_start, aeltestes = None, None
-            elif not quelle.verkauf:
-                # Erster Weg in eine Filiale (D13).
-                uhr_start, aeltestes = datum, datum
-            elif uhr_laeuft[variante.artikel_id]:
-                # Filiale → Filiale, Ziel kennt den Artikel: nichts verjüngen
-                # (D17), die Uhr des Ziels läuft weiter (F10).
-                uhr_start, aeltestes = None, mitgebracht
-            else:
-                # Filiale → Filiale, Ziel hatte den Artikel nie (F11).
-                uhr_start, aeltestes = datum, mitgebracht or datum
-
+            session.add(
+                WareneingangPosition(
+                    wareneingang_id=wareneingang.id,
+                    varianten_id=varianten_id,
+                    menge=menge,
+                    menge_eingetroffen=Decimal("0"),
+                    mitgebracht_datum=quell_bestand.aeltestes_eingangsdatum if quell_bestand else None,
+                )
+            )
             _, quelle_vorher, quelle_nachher = buche_bewegung(
                 session,
                 lagerort_id=quelle.id,
@@ -155,18 +149,6 @@ def umlagern(
                 grund=f"nach:{ziel.code}",
                 benutzer=benutzer,
                 zeitpunkt=jetzt,
-            )
-            _, _, ziel_nachher = buche_bewegung(
-                session,
-                lagerort_id=ziel.id,
-                varianten_id=varianten_id,
-                typ="umlagerung",
-                menge=menge,
-                grund=f"von:{quelle.code}",
-                benutzer=benutzer,
-                zeitpunkt=jetzt,
-                eingangsdatum=uhr_start,
-                aeltestes=aeltestes,
             )
             artikel = session.get(Artikel, variante.artikel_id)
             eintrag = {
@@ -178,17 +160,69 @@ def umlagern(
                 "menge": zahl(menge),
                 "bestand_quelle_vorher": zahl(quelle_vorher),
                 "bestand_quelle_nachher": zahl(quelle_nachher),
-                "bestand_ziel_nachher": zahl(ziel_nachher),
-                "uhr_start": uhr_start.isoformat() if uhr_start else None,
             }
             ergebnis_positionen.append(eintrag)
             if quelle_vorher < menge:
                 fehlbestand.append(eintrag)
 
         return {
+            "wareneingang_id": wareneingang.id,
             "quelle": {"id": quelle.id, "code": quelle.code, "name": quelle.name},
             "ziel": {"id": ziel.id, "code": ziel.code, "name": ziel.name},
+            "versanddatum": datum.isoformat(),
             "positionen": ergebnis_positionen,
             "fehlbestand": fehlbestand,
             "stueck": zahl(sum(mengen.values(), Decimal("0"))),
         }
+
+
+def buche_ankunft(session, wareneingang, gebucht: dict, positionen: dict, datum: date, benutzer, jetzt) -> None:
+    """Ankunft einer Umlagerung buchen (aufgerufen aus
+    `wareneingang.bestaetige_ankunft`): Zugang am Ziel mit den Datumsregeln
+    D13/D17/F10/F11. `gebucht` bildet Positions-Id → angekommene Menge ab,
+    `datum` ist das Ankunftsdatum."""
+    quelle = session.get(Lagerort, wareneingang.herkunft_lagerort_id)
+    ziel = session.get(Lagerort, wareneingang.lagerort_id)
+    varianten = {pid: session.get(Variante, positionen[pid].varianten_id) for pid in gebucht}
+
+    # Vor dem Buchen feststellen, ob die Zielfiliale den Artikel schon kennt -
+    # sonst sähe die zweite Variante desselben Artikels die Uhr, die die erste
+    # gerade gestartet hat (F11 gilt je Artikel).
+    uhr_laeuft = {}
+    if ziel.verkauf and quelle.verkauf:
+        for variante in varianten.values():
+            if variante.artikel_id not in uhr_laeuft:
+                uhr_laeuft[variante.artikel_id] = (
+                    letzter_wareneingang(session, variante.artikel_id, ziel.id) is not None
+                )
+
+    for position_id, menge in gebucht.items():
+        position = positionen[position_id]
+        variante = varianten[position_id]
+        mitgebracht = position.mitgebracht_datum
+        if not ziel.verkauf:
+            # Standort ohne Verkauf: keine Uhr, kein Datum (Regel 6).
+            uhr_start, aeltestes = None, None
+        elif not quelle.verkauf:
+            # Erster Weg in eine Filiale (D13).
+            uhr_start, aeltestes = datum, datum
+        elif uhr_laeuft[variante.artikel_id]:
+            # Filiale → Filiale, Ziel kennt den Artikel: nichts verjüngen
+            # (D17), die Uhr des Ziels läuft weiter (F10).
+            uhr_start, aeltestes = None, mitgebracht
+        else:
+            # Filiale → Filiale, Ziel hatte den Artikel nie (F11).
+            uhr_start, aeltestes = datum, mitgebracht or datum
+        buche_bewegung(
+            session,
+            lagerort_id=ziel.id,
+            varianten_id=position.varianten_id,
+            typ="umlagerung",
+            menge=menge,
+            grund=f"von:{quelle.code}",
+            benutzer=benutzer,
+            zeitpunkt=jetzt,
+            eingangsdatum=uhr_start,
+            aeltestes=aeltestes,
+            position_id=position.id,
+        )

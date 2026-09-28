@@ -1,29 +1,44 @@
-# Sportfabrik Inventory — Einstieg
+# Sportfabrik Inventory — Getting started
 
-Stand: 25.09.2026. Diese Übersicht ist Orientierung, keine Bestätigung eines Produktivdeployments.
+Status: 2026-09-28. This overview is orientation, not confirmation of a production deployment.
 
-## Ziel und aktueller Schwerpunkt
+## Goal and current status
 
-Warenwirtschaft für vier Sportfabrik-Filialen; GEWA, VEBO und Dietikon sind externe Lagerorte ohne Verkauf. Belege werden im Betrieb lokal geparst. Artikelstamm gemeinsam, Bestand und Buchungsrechte filialbezogen. Später Kassenanbindung und Onlineshop.
+Inventory management for four Sportfabrik branches; GEWA, VEBO, and Dietikon are external storage locations without sales. Documents are parsed locally on-site. Item master shared across branches, stock and booking rights are branch-specific. Later: POS integration and online shop.
 
-Phasen A–C sind laut Projektdokumentation abgeschlossen. Phase D ist mit dem Stand vom 25.09.2026 vollständig umgesetzt: Runterschreiben und manuelle Reduktionen, dazu die offenen Fragen D-F1 bis D-F4 (Bestätigen-Liste, Nachlieferungs-Hinweis, Empfehlung der Zentrale, fixe Schwellen — Details Abschnitt 10). Der Katalog **Artikeldetails und Auswertungen** (alle 17 Punkte) ist ebenfalls umgesetzt. Alles nur lokal geprüft (kein PostgreSQL-Durchgang, kein Ladeneinsatz). Nächster Schwerpunkt: Ladeneinsatz vorbereiten (`docs/sicherheit.md`, offene Punkte S1 und Passwort-Mindestlänge) oder Handynutzung (für Projektende geplant). Vor Umsetzung den aktuellen Code und das Ende von Abschnitt 11 im Projektkontext abgleichen.
+**Implemented:** phases A–D (Phase D incl. D-F1 to D-F4, 2026-09-25), the **Item Details and Reports** catalog (all 17 points), the **UI redesign after DESIGN.md** (2026-09-27, PRs #16/#17), **HTTPS** (security S1, locally), **phone use** under `/m`, and the **decisions of 2026-09-28**: employees book out sales only, markdown 30 % from arrival (50/70 % after 18/36 months), markdown changes only in one's own branches (head office all), "Pending" per branch, transfer as a delivery with dispatch date and arrival confirmation, statistics with removals and "this week". All docs in English. Tests: 167 passed, 12 skipped (SQLite, 2026-09-28). Checked locally only — no PostgreSQL run, no store deployment.
 
-Arbeitsbranch: `feature/warenwirtschaft-v2`; tatsächlichen Branch und offene Änderungen prüfen. Dokumentierte lokale Tests sind keine Aussage über PostgreSQL oder den laufenden Ladenserver.
+**GitHub:** `main` ends at PR #17. `feature/warenwirtschaft-v2` (working branch) is ahead of `main` with everything above.
 
-## Nur die zur Aufgabe passende Quelle öffnen
+## Next steps
 
-| Frage | Hauptquelle |
+1. Merge `feature/warenwirtschaft-v2` into `main` (PR); delete the merged/obsolete branches.
+2. **Open question for Fabian (N2):** choosing the markdown at goods entry — store it as the manual markdown of the target branch?
+3. Store deployment (Phase F): PostgreSQL run of all migrations (incl. `f3a4b5c6d7e8`), network separation/VPN (required for the 6-character password decision), S1 rest (sessions on password change), S3–S8, encrypted backups (`docs/sicherheit.md`, `docs/SERVER-SETUP.md`).
+4. Test phones in the store with real labels (iPhone + Android); remove the temporary "−1" stock button after the in-store trial.
+5. Possible follow-up: cancel a transfer that is still in transit (wrong destination).
+
+Full list with context: `docs/projekt-kontext.md`, section "Status check and next steps – 2026-09-28".
+
+Working branch: `feature/warenwirtschaft-v2`; check the actual branch and any open changes first.
+
+## Open only the source that fits the task
+
+| Question | Main source |
 |---|---|
-| Aktuelle Anforderungen, Punkte 1–17 | `docs/anforderungen-artikeldetails-auswertungen-2026-09-24.md`; Umsetzungsnachtrag am Ende von `docs/projekt-kontext.md` |
-| Fachliche Entscheidungen, Roadmap, offene Fragen | `docs/projekt-kontext.md`, Abschnitte 4, 9, 10; neuesten datierten Nachtrag beachten |
-| Umsetzung und historische Meilensteine | `docs/projekt-kontext.md`, Abschnitt 11 und Nachträge; aktuellen Code gegenprüfen |
-| Architektur und Abläufe | passender Abschnitt von `docs/architektur.md` |
-| Tabellen, Migrationen, API | `docs/datenmodell.md`, `docs/api-referenz.md` und betroffene Quelldateien |
-| Sicherheit / Ladeneinsatz | `docs/sicherheit.md`, bei Deployment `docs/SERVER-SETUP.md` |
-| Ursprüngliche Bedienungswünsche / Etiketten | `docs/anforderungen-inbox-2026-09-23.md`, `docs/anforderungen-inbox-2026-09-24.md` |
-| Graphify, Auswahl, lokale Suche | `docs/obsidian-graphify.md` |
-| Oberfläche, Farben, Schrift, Komponenten | `DESIGN.md` |
+| Newest requirements and their code status | `docs/anforderungen-inbox-2026-09-28.md` |
+| Business decisions, roadmap, open questions | `docs/projekt-kontext.md`, sections 4, 9, 10, and the latest dated section at the end |
+| Implementation history | `docs/projekt-kontext.md`, section 11 and addenda; cross-check against current code |
+| Item details and reports (points 1–17) | `docs/anforderungen-artikeldetails-auswertungen-2026-09-24.md` |
+| Architecture and workflows | matching section of `docs/architektur.md` |
+| Tables, migrations, API | `docs/datenmodell.md`, `docs/api-referenz.md`, and affected source files |
+| Phone use | `docs/handynutzung.md`; API: `docs/api-referenz.md`, "Phone pages" |
+| Security / store deployment | `docs/sicherheit.md`, for deployment `docs/SERVER-SETUP.md` |
+| Older usage requests / labels | `docs/anforderungen-inbox-2026-09-23.md`, `docs/anforderungen-inbox-2026-09-24.md` |
+| Graphify, selection, local search | `docs/obsidian-graphify.md` |
+| Interface, colors, typography, components | `DESIGN.md` |
+| Visual overviews (non-technical) | `docs/overviews/` (mirror of the vault versions) |
 
-Unbekannte Zusammenhänge: `python3 scripts/projektwissen.py query "Umlagerung"` oder `"reduktionen_manuell"`. Liefert Codebeziehungen und Dokumentfundstellen mit begrenzter Ausgabe. Danach gezielt Originalstellen lesen, nicht den gesamten Graphen.
+Unknown relationships: `python3 scripts/projektwissen.py query "Umlagerung"` or `"reduktionen_manuell"`. Returns code relationships and document hits with limited output. Then read the original sections directly, not the whole graph.
 
-Der Main-Vault bewahrt Ideen und Anforderungen; der generierte Sportfabrik-Graph ist eine optionale Ansicht. Historische Statusnotizen sind keine zusätzliche aktuelle Quelle. Cloud-Sessions ohne lokalen Graph suchen gezielt in den Originaldateien.
+The main vault holds ideas and requirements; the generated Sportfabrik graph is an optional view. Historical status notes are not an additional current source. Cloud sessions without a local graph search the original files directly.

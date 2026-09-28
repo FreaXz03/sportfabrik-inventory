@@ -39,6 +39,13 @@ def list_user_lagerorte(session: Session, user: User) -> list[Lagerort]:
     ]
 
 
+def list_reduktion_lagerorte(session: Session, user: User) -> list[Lagerort]:
+    """Filialen, in denen der Benutzer Reduktionen ändern darf (Entscheid
+    28.09.2026): Zentrale alle, alle anderen - auch Filialleiter - nur ihre
+    zugewiesenen. Ohne Verkauf gibt es keine Reduktion (D13)."""
+    return [lagerort for lagerort in list_user_lagerorte(session, user) if lagerort.verkauf]
+
+
 def get_primary_lagerort(session: Session, user: User) -> Lagerort | None:
     """Die nach dem Login vorausgewählte Filiale. None für Admin (Ansicht
     „alle Filialen") oder falls dem Benutzer keine Filiale zugewiesen ist."""

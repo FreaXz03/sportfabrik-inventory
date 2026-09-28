@@ -17,11 +17,12 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
-from ..core.models import Artikel, Bestand, Kategorie, Lagerbewegung, Preis, Variante, Wareneingang, WareneingangPosition
+from ..core.models import Artikel, Bestand, Kategorie, Lagerbewegung, Lagerort, Preis, Variante, Wareneingang, WareneingangPosition
 from .ausbuchung import STORNO_PREFIX
 from .reduktion import stufe
 
 ZEITRAEUME = ("tag", "woche", "monat", "jahr", "gesamt")
+LETZTE_ABGAENGE = 10
 
 
 class UnbekannterZeitraum(ValueError):
@@ -113,7 +114,7 @@ def _geschaetzter_preis(session, variante_id: int, artikel_id: int, lagerort_id:
 def auswertung(session, schluessel: str, lagerort_id: int | None = None, heute: date | None = None) -> dict:
     von, bis = zeitraum_grenzen(schluessel, heute)
 
-    filter_ = [Lagerbewegung.typ == "verkauf"]
+    filter_ = []
     if lagerort_id is not None:
         filter_.append(Lagerbewegung.lagerort_id == lagerort_id)
     if von is not None:
@@ -124,11 +125,12 @@ def auswertung(session, schluessel: str, lagerort_id: int | None = None, heute: 
         Lagerbewegung.zeitpunkt < datetime.combine(bis + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
     )
 
+    abgaenge = _abgaenge(session, filter_)
     zeilen = session.execute(
         select(Lagerbewegung, Variante, Artikel)
         .join(Variante, Variante.id == Lagerbewegung.varianten_id)
         .join(Artikel, Artikel.id == Variante.artikel_id)
-        .where(*filter_)
+        .where(Lagerbewegung.typ == "verkauf", *filter_)
     ).all()
 
     storniert = _storniert_ids(session, [bewegung.id for bewegung, *_ in zeilen])
@@ -205,4 +207,48 @@ def auswertung(session, schluessel: str, lagerort_id: int | None = None, heute: 
         "einnahmen_geschaetzt": format(einnahmen.quantize(Decimal("0.01")), "f"),
         "einnahmen_ist_schaetzung": True,
         "bestellempfehlung": bestellempfehlung,
+        "abgaenge": abgaenge,
+    }
+
+
+def _abgaenge(session, filter_: list) -> dict:
+    """Abgänge ausser Verkauf (Klarstellung 25.09.2026): Stück je Grund und
+    die letzten Buchungen mit Person. Stornierte zählen nicht."""
+    zeilen = session.execute(
+        select(Lagerbewegung, Artikel, Lagerort.code)
+        .join(Variante, Variante.id == Lagerbewegung.varianten_id)
+        .join(Artikel, Artikel.id == Variante.artikel_id)
+        .join(Lagerort, Lagerort.id == Lagerbewegung.lagerort_id)
+        .where(Lagerbewegung.typ == "ausbuchung", *filter_)
+        .order_by(Lagerbewegung.zeitpunkt.desc(), Lagerbewegung.id.desc())
+    ).all()
+    storniert = _storniert_ids(session, [bewegung.id for bewegung, *_ in zeilen])
+    zeilen = [z for z in zeilen if z[0].id not in storniert]
+    je_grund: dict[str, Decimal] = {}
+    letzte = []
+    for bewegung, artikel, code in zeilen:
+        # „sonstiges: <freier Text>" zählt als „sonstiges".
+        grund, _, freitext = (bewegung.grund or "").partition(": ")
+        stueck = -Decimal(bewegung.menge)
+        je_grund[grund] = je_grund.get(grund, Decimal("0")) + stueck
+        if len(letzte) < LETZTE_ABGAENGE:
+            letzte.append(
+                {
+                    "zeitpunkt": bewegung.zeitpunkt.isoformat(),
+                    "grund": grund,
+                    "freitext": freitext or None,
+                    "stueck": format(stueck.quantize(Decimal("0.01")), "f"),
+                    "marke": artikel.marke,
+                    "bezeichnung": artikel.bezeichnung,
+                    "lagerort": code,
+                    "person": bewegung.benutzer_name or bewegung.benutzer_kassennummer,
+                }
+            )
+    return {
+        "stueck": format(sum(je_grund.values(), Decimal("0")).quantize(Decimal("0.01")), "f"),
+        "je_grund": [
+            {"grund": grund, "stueck": format(stueck.quantize(Decimal("0.01")), "f")}
+            for grund, stueck in sorted(je_grund.items(), key=lambda item: (-item[1], item[0]))
+        ],
+        "letzte": letzte,
     }

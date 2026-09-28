@@ -1,95 +1,111 @@
-# Sicherheit — Prüfung und offene Massnahmen
+# Security — review and open measures
 
-Stand: Sicherheitsprüfung vom **24.09.2026** (Branch `feature/warenwirtschaft-v2`,
-Commit `229e8b6`). Geprüft wurden Geheimnisse (Code und ganzer Git-Verlauf),
-Einschleusung (SQL, XSS, Befehle, Pfade, Deserialisierung), Anmeldung und
-Rechte, Konfiguration (Docker, Header, Endpunkte), Abhängigkeiten
-(`pip-audit`), KI-Nutzung und Datenschutz.
+As of: security review from **2026-09-24** (branch `feature/warenwirtschaft-v2`,
+commit `229e8b6`). Reviewed: secrets (code and full git history),
+injection (SQL, XSS, commands, paths, deserialization), login and
+permissions, configuration (Docker, headers, endpoints), dependencies
+(`pip-audit`), AI usage, and data protection.
 
-**Ergebnis:** keine kritischen und keine hohen Befunde. Vier mittlere Punkte
-sollten **vor dem Einsatz im Laden** (Roadmap Phase F — Betrieb) erledigt
-sein, dazu fünf niedrige. Behoben: die Login-Sperre aus S2 (24.09.2026).
+**Result:** no critical and no high findings. Four medium items
+should be done **before deployment in the store** (roadmap phase F — operations),
+plus five low ones. Fixed: the login lockout from S2 (2026-09-24), HTTPS
+from S1 (2026-09-28, locally), and S9 (2026-09-28). Still open before the
+store: rest of S1 (sessions on password change), S3, S4, network
+separation (required for the 6-character password decision of
+2026-09-28), S5–S8.
 
-Diese Datei wird bei jeder Behebung nachgeführt (Status-Spalte).
+**New since the review (2026-09-28):** phone logins are limited
+server-side to the agreed phone features (`phone_gate`, allowlist in
+`app/core/handy.py`, see `api-referenz.md`, "Phone pages"). Not yet
+reviewed: VPN/remote access for branch managers — no solution chosen.
 
-## Offene Massnahmen
+This file is updated on every fix (status column).
 
-| # | Stufe | Thema | Massnahme | Status |
+## Open measures
+
+| # | Level | Topic | Measure | Status |
 |---|---|---|---|---|
-| S1 | mittel | Anmeldung über HTTP, Sitzung 5 Jahre | HTTPS über lokalen Reverse-Proxy (z. B. Caddy mit internem Zertifikat), Cookie mit `https_only=True`; Sitzungen bei Passwortwechsel serverseitig ungültig machen | offen — vor Einsatz im Laden |
-| S2 | mittel | Login ohne Begrenzung von Fehlversuchen | Sperre nach 5 falschen Passwörtern für 20 Minuten (Entscheid 24.09.2026); Server nur im Laden-Netz erreichbar. Nicht entschieden: Passwort-Mindestlänge 10 statt 6, einheitliche Fehlermeldung | **Sperre umgesetzt** (24.09.2026, Migration `b9c0d1e2f3a4`); Netztrennung beim Serverumzug |
-| S3 | mittel | Pillow 12.2.0 mit 13 bekannten Lücken | Update auf 12.3.0 (`requirements-server.txt`, `requirements.txt`) | offen |
-| S4 | mittel | Backups unverschlüsselt | Backup vor dem Kopieren auf den externen Datenträger verschlüsseln (`age` oder `gpg --symmetric`), Schlüssel getrennt aufbewahren | offen |
-| S5 | niedrig | API-Doku ohne Anmeldung | `/docs`, `/redoc`, `/openapi.json` im Betrieb abschalten | offen |
-| S6 | niedrig | `/db-test` ohne Anmeldung | nur `{"ok": true}` zurückgeben (wird vom Docker-Healthcheck gebraucht) | offen |
-| S7 | niedrig | Keine Sicherheits-Header | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'self'` | offen |
-| S8 | niedrig | Server-Pakete ohne transitive Pins/Hashes, Images ohne Digest | `pip-compile --generate-hashes`, `pip install --require-hashes`, Images mit `@sha256:` fixieren | offen |
-| S9 | niedrig | Übersichtsseiten laden Google Fonts | Links in `docs/aktualisiert/*.html` (und den Vault-Fassungen) entfernen, Systemschrift verwenden | offen |
+| S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). Still open: invalidating sessions on password change |
+| S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. **Decided 2026-09-28:** minimum password length stays 6 — on condition that only the private store Wi-Fi or the VPN can reach the server. Open: uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration is now a **hard prerequisite** for the 6-character rule |
+| S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | open |
+| S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | open |
+| S5 | low | API docs with no login | Disable `/docs`, `/redoc`, `/openapi.json` in operation | open |
+| S6 | low | `/db-test` with no login | Return only `{"ok": true}` (needed by the Docker health check) | open |
+| S7 | low | No security headers | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'self'` | open |
+| S8 | low | Server packages without transitive pins/hashes, images without digest | `pip-compile --generate-hashes`, `pip install --require-hashes`, pin images with `@sha256:` | open |
+| S9 | low | Overview pages load Google Fonts | Remove links in the overview pages (now `docs/overviews/*.html`, and the vault versions), use a system font | **done** (2026-09-28: links removed, system-font fallback; the German copies in `docs/aktualisiert/` were replaced by the English `docs/overviews/`) |
 
-### Einzelheiten
+### Details
 
-**S1 — HTTP und lange Sitzung.** Die App läuft heute unter
-`http://SERVER-IP:8080` (`docs/SERVER-SETUP.md`). Passwörter der
-Filialleiter und das Sitzungs-Cookie gehen damit unverschlüsselt durchs
-Netz. Das Cookie gilt 5 Jahre (`SESSION_MAX_AGE` in `app/routers/auth.py`,
-bewusst „bis zur Abmeldung" wie an der Kasse) und enthält nur die Benutzer-ID;
-eine abgefangene Kopie bleibt darum auch nach Abmelden oder Passwortwechsel
-gültig. Mit HTTPS im Laden-Netz ist das Abfangen praktisch ausgeschlossen.
+**S1 — HTTP and long session.** The app currently runs under
+`http://SERVER-IP:8080` (`docs/SERVER-SETUP.md`). Branch managers' passwords
+and the session cookie therefore travel unencrypted across the
+network. The cookie is valid for 5 years (`SESSION_MAX_AGE` in `app/routers/auth.py`,
+deliberately "until logout" like at the till) and contains only the user ID;
+an intercepted copy therefore remains valid even after logout or a password change.
+With HTTPS on the store network, interception is practically ruled out.
 
-**S2 — Login.** *Umgesetzt am 24.09.2026:* nach 5 falschen Passwörtern ist ein Konto 20 Minuten gesperrt (Antwort 429, auch für das richtige Passwort; gezählt je Konto in der Datenbank, `app/services/anmeldung.py`). Vorher zählte `/login` keine Fehlversuche. Jeder Passwortversuch
-kostet den Server wegen PBKDF2 (600 000 Runden) rund eine halbe Sekunde
-Rechenzeit, und es läuft nur ein Worker. Die Antworten unterscheiden
-„Kassennummer unbekannt" und „Passwort nötig". Mitarbeiter melden sich
-bewusst nur mit der Kassennummer an (Kassen-Muster, D8) — der eigentliche
-Schutz ist darum, dass nur Laden-PCs den Server erreichen (kein Gäste-WLAN,
-keine Portweiterleitung ins Internet).
+*Update 2026-09-28:* HTTPS is in place via the `proxy` service in
+`compose.yaml` (Caddy, `Caddyfile`, `tls internal`). The session cookie is
+`Secure` when `SESSION_HTTPS_ONLY=true`; plain HTTP only redirects and serves
+the root certificate. Setup and device trust: `docs/SERVER-SETUP.md`, section
+"HTTPS". The 5-year session and the missing revocation on password change are
+unchanged.
 
-**S3 — Pillow.** Heute kaum ausnutzbar: `app/services/ocr.py` gibt Pillow nur
-rohe Pixel aus PyMuPDF (`Image.frombytes`), die betroffenen Bild-Decoder
-werden nicht benutzt. Sobald z. B. JPEG-Uploads direkt mit Pillow geöffnet
-werden, wird es relevant. Das Update ist klein.
+**S2 — Login.** *Implemented on 2026-09-24:* after 5 wrong passwords, an account is locked for 20 minutes (response 429, also for the correct password; counted per account in the database, `app/services/anmeldung.py`). Before that, `/login` didn't count failed attempts. Each password attempt
+costs the server about half a second of compute time due to PBKDF2 (600,000 rounds),
+and only one worker runs. Responses distinguish between
+"till number unknown" and "password required." Employees deliberately
+log in with just the till number (till pattern, D8) — the real
+protection is therefore that only store PCs can reach the server (no guest WiFi,
+no port forwarding to the internet).
 
-**S4 — Backups.** `scripts/backup_inventory.py` legt Datenbank-Dump und
-`original-pdfs.zip` im Klartext ab, auch auf dem externen Datenträger
-(`docs/BACKUPS.md`). Ein verlorener Datenträger enthielte alle
-Lieferantenbelege, Einkaufspreise und Konten.
+**S3 — Pillow.** Barely exploitable today: `app/services/ocr.py` only feeds Pillow
+raw pixels from PyMuPDF (`Image.frombytes`); the affected image decoders
+are not used. It becomes relevant as soon as, for example, JPEG uploads are opened
+directly with Pillow. The update is small.
 
-## Hinweise ohne Handlungsbedarf
+**S4 — Backups.** `scripts/backup_inventory.py` stores the database dump and
+`original-pdfs.zip` in plaintext, including on the external medium
+(`docs/BACKUPS.md`). A lost storage medium would contain all
+supplier documents, purchase prices, and accounts.
 
-- `text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})")` setzt nur eine
-  feste Zahl ein — keine SQL-Einschleusung.
-- Bestandssuche (`app/services/bestand.py`) maskiert `%` und `_` nicht (die
-  Artikelsuche schon) — betrifft nur Treffer, nicht die Sicherheit.
-- `.gitignore` deckt `.venv-1/`, `.coverage`, `*.pem`, `*.key` und `.env.*`
-  noch nicht ab; nichts davon ist versioniert.
-- `CLAUDE.md` enthält einen lokalen Pfad mit dem Mac-Benutzernamen.
-- Buchungsrechte seit 24.09.2026: Mitarbeiter erfassen und korrigieren nur in
-  ihren zugewiesenen Filialen; Ausbuchen, Stornieren und Umlagern nur
-  Filialleiter und Zentrale (serverseitig geprüft, `tests/test_rechte_lager.py`).
-- Testpasswörter stehen nur in den Tests.
+## Notes requiring no action
 
-## Was gut ist
+- `text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})")` only inserts a
+  fixed number — no SQL injection.
+- Stock search (`app/services/bestand.py`) does not escape `%` and `_` (the
+  item search already does) — affects only match results, not security.
+- `.gitignore` does not yet cover `.venv-1/`, `.coverage`, `*.pem`, `*.key`, and `.env.*`
+  — none of these are versioned.
+- `CLAUDE.md` contains a local path with the Mac username.
+- Booking rights since 2026-09-24: employees enter and correct stock only in
+  their assigned branches; booking out, cancelling, and transferring only for
+  branch managers and head office (checked server-side, `tests/test_rechte_lager.py`).
+- Test passwords exist only in the tests.
 
-- Keine Geheimnisse im Code und im Git-Verlauf; `.env.server` ist ignoriert,
-  nur für den Besitzer lesbar, beide Geheimnisse sind 64 Zeichen lang.
-- Datenbankzugriffe nur über SQLAlchemy mit Parametern; Sortierung als feste
-  Auswahl; Artikelsuche maskiert Platzhalter.
-- Frontend ohne `innerHTML`/`eval`, Ausgabe über `textContent`, keine
-  externen Skripte (per Test erzwungen), Login-Weiterleitung geprüft (Test).
-- Alle Daten-Endpunkte verlangen eine Anmeldung; Belege nur Filialleiter und
-  Zentrale; Lagerort-Rechte serverseitig geprüft.
-- Passwörter mit PBKDF2-SHA256, 600 000 Runden, Salt und zeitkonstantem
-  Vergleich; Sitzung wird beim Login neu begonnen; `SameSite=Lax` und strenge
-  Inhaltstyp-Prüfung schützen gegen Anfragen von fremden Seiten.
-- Excel-Export lässt Formeln als Text; Upload-Grenze 20 MB und 200 Seiten;
-  passwortgeschützte PDFs werden abgewiesen.
-- Docker: App ohne root, Datenbank von aussen nicht erreichbar, Standard nur
-  `127.0.0.1`, kein `--privileged`, keine `:latest`-Images.
-- Keine ausgehenden HTTP-Aufrufe, keine KI im Betrieb (Regel 1), keine
-  unsichere Deserialisierung, Backup-Skript ohne Shell.
+## What's good
 
-## Laufend
+- No secrets in code or git history; `.env.server` is ignored,
+  readable only by the owner, both secrets are 64 characters long.
+- Database access only via SQLAlchemy with parameters; sorting as a fixed
+  allow-list; item search escapes wildcards.
+- Frontend without `innerHTML`/`eval`, output via `textContent`, no
+  external scripts (enforced by test), login redirect verified (test).
+- All data endpoints require login; documents only for branch managers and
+  head office; storage-location rights checked server-side.
+- Passwords with PBKDF2-SHA256, 600,000 rounds, salt, and constant-time
+  comparison; session is renewed on login; `SameSite=Lax` and strict
+  content-type checking protect against cross-site requests.
+- Excel export keeps formulas as text; upload limit 20 MB and 200 pages;
+  password-protected PDFs are rejected.
+- Docker: app runs without root, database not reachable from outside, default only
+  `127.0.0.1`, no `--privileged`, no `:latest` images.
+- No outgoing HTTP calls, no AI in operation (rule 1), no
+  insecure deserialization, backup script without a shell.
 
-- `pip-audit -r requirements-server.txt` vor jedem Server-Update laufen lassen.
-- HTTPS, Netztrennung und verschlüsselte Backups sind Pflichtpunkte für
-  Phase F (Betrieb).
+## Ongoing
+
+- Run `pip-audit -r requirements-server.txt` before every server update.
+- HTTPS, network separation, and encrypted backups are mandatory items for
+  phase F (operations).

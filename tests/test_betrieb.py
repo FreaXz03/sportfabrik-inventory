@@ -97,11 +97,11 @@ const origin = 'http://localhost:8080';
 for (const input of [null, '', 'https://evil.example', '//evil.example',
     '/\\evil.example', 'javascript:alert(1)', '/static/js/theme.js',
     '/login?next=https://evil.example', '/%2f%2fevil.example', '/\tevil.example',
-    ' /articles', '/api/invoices', '/unknown']) {
+    ' /articles', '/api/invoices', '/unknown', '/m/', '/m/../konten', '/m/suche/x']) {
   assert.equal(safeLoginRedirect(input, origin), '/', String(input));
 }
 for (const input of ['/', '/articles', '/invoices', '/preview',
-    '/invoices/123', '/articles/7/history', '/articles?q=Hoka#results']) {
+    '/invoices/123', '/articles/7/history', '/articles?q=Hoka#results', '/m', '/m/suche', '/m/zaehlen', '/m/lieferungen', '/m/umlagern', '/m/ausbuchen', '/m/erfassen', '/m/runterschreiben']) {
   assert.equal(safeLoginRedirect(input, origin), input);
 }
 """
@@ -152,3 +152,43 @@ def test_filialcodes_werden_im_ring_getauscht():
         migration._codes_setzen(session.connection(), migration.VORHER)
         session.expire_all()
         assert {lo.ort: lo.code for lo in session.scalars(select(Lagerort))} == vorher
+
+
+def _session_cookie_flags(**env):
+    """Import the app in a fresh interpreter and report the session cookie flags."""
+    code = (
+        "from app.main import app\n"
+        "m = next(m for m in app.user_middleware if m.cls.__name__ == 'SessionMiddleware')\n"
+        "print(m.kwargs.get('https_only', False))\n"
+    )
+    umgebung = {k: v for k, v in os.environ.items() if k != "SESSION_HTTPS_ONLY"}
+    umgebung.update(SESSION_SECRET="test", DATABASE_URL="sqlite://", **env)
+    ergebnis = subprocess.run(
+        [sys.executable, "-c", code], cwd=ROOT, env=umgebung, capture_output=True, timeout=60
+    )
+    assert ergebnis.returncode == 0, ergebnis.stderr.decode()
+    return ergebnis.stdout.decode().strip()
+
+
+def test_session_cookie_only_over_https_when_enabled():
+    """S1: behind the HTTPS proxy the session cookie must never travel over
+    plain HTTP. Local development without the proxy keeps working over HTTP."""
+    assert _session_cookie_flags(SESSION_HTTPS_ONLY="true") == "True"
+    assert _session_cookie_flags() == "False"
+
+
+def test_server_reaches_app_only_through_https_proxy():
+    """S1: on the server only the HTTPS proxy publishes ports; the app itself
+    is reachable only inside the Docker network, with HTTPS-only cookies."""
+    import yaml
+
+    dienste = yaml.safe_load((ROOT / "compose.yaml").read_text("utf-8"))["services"]
+    assert "ports" not in dienste["app"]
+    assert dienste["app"]["environment"]["SESSION_HTTPS_ONLY"] == "true"
+    proxy = dienste["proxy"]
+    image = proxy["image"]
+    assert image.startswith("caddy:") and ":latest" not in image and image.split(":")[1][0].isdigit()
+    assert sorted(p.rsplit(":", 1)[1] for p in proxy["ports"]) == ["443", "80"]
+    caddyfile = (ROOT / "Caddyfile").read_text("utf-8")
+    assert "tls internal" in caddyfile
+    assert "reverse_proxy" in caddyfile

@@ -1,35 +1,35 @@
-# Architektur
+# Architecture
 
-## Schichtenmodell
+## Layer model
 
-Der Code unter `app/` ist in drei Schichten gegliedert (siehe auch
+The code under `app/` is organized into three layers (see also
 `README.md`):
 
 ```mermaid
 flowchart TB
-    main["app/main.py<br/>FastAPI-App, Middleware, Router-Registrierung"]
-    subgraph routers["app/routers/ — HTTP-Endpunkte"]
-        auth["auth.py<br/>Anmeldung, RBAC"]
-        catalog["catalog.py<br/>Artikelsuche, Excel-Export"]
-        dashboard["dashboard.py<br/>Übersicht"]
-        history["history.py<br/>Rechnungen, Historie, Löschen"]
-        article_details["article_details.py<br/>Notizen, Preisverlauf"]
-        preview["preview.py<br/>Upload, Validierung, Import"]
+    main["app/main.py<br/>FastAPI app, middleware, router registration"]
+    subgraph routers["app/routers/ — HTTP endpoints"]
+        auth["auth.py<br/>Login, RBAC"]
+        catalog["catalog.py<br/>Article search, Excel export"]
+        dashboard["dashboard.py<br/>Overview"]
+        history["history.py<br/>Invoices, history, deletion"]
+        article_details["article_details.py<br/>Notes, price history"]
+        preview["preview.py<br/>Upload, validation, import"]
     end
-    subgraph services["app/services/ — Fachlogik"]
-        importer["importer.py<br/>Import/Löschung"]
-        lieferadresse["lieferadresse.py<br/>Lagerort aus der Lieferadresse"]
-        wareneingang["wareneingang.py<br/>Erwartet → eingetroffen, Zugang buchen"]
-        parser["parsers/<br/>Layout-Erkennung, PDF → Positionen"]
-        ocr["ocr.py<br/>OCR-Fallback für Scans ohne Textebene"]
-        corrections["corrections.py<br/>Manuelle Korrekturen validieren"]
-        article_groups["article_groups.py<br/>Varianten gruppieren"]
-        article_export["article_export.py<br/>Artikelliste als .xlsx"]
+    subgraph services["app/services/ — business logic"]
+        importer["importer.py<br/>Import/deletion"]
+        lieferadresse["lieferadresse.py<br/>Storage location from delivery address"]
+        wareneingang["wareneingang.py<br/>Expected → arrived, book receipt"]
+        parser["parsers/<br/>Layout detection, PDF → line items"]
+        ocr["ocr.py<br/>OCR fallback for scans without a text layer"]
+        corrections["corrections.py<br/>Validate manual corrections"]
+        article_groups["article_groups.py<br/>Group variants"]
+        article_export["article_export.py<br/>Article list as .xlsx"]
     end
-    subgraph core["app/core/ — Fundament"]
-        database["database.py<br/>Engine, Session"]
-        models["models.py<br/>SQLAlchemy-Modelle"]
-        security["security.py<br/>Passwort-Hashing"]
+    subgraph core["app/core/ — foundation"]
+        database["database.py<br/>Engine, session"]
+        models["models.py<br/>SQLAlchemy models"]
+        security["security.py<br/>Password hashing"]
     end
 
     main --> routers
@@ -50,76 +50,86 @@ flowchart TB
     catalog --> article_export
 ```
 
-Faustregel: HTTP-Endpunkte gehören nach `routers/`, wiederverwendbare
-Fachlogik ohne direkten HTTP-Bezug nach `services/`, alles rund um
-Datenbank/Modelle/Sicherheit nach `core/`.
+Rule of thumb: HTTP endpoints belong in `routers/`, reusable business logic
+with no direct HTTP dependency belongs in `services/`, and anything to do
+with the database/models/security belongs in `core/`.
 
-## Sicherheitsmodell (Anmeldung & Rechte)
+## Security model (login & rights)
 
-Anmeldung läuft über ein signiertes Session-Cookie (`SessionMiddleware`,
-`itsdangerous`), das bis zur manuellen Abmeldung gültig bleibt. Vier
-FastAPI-Dependencies in `app/routers/auth.py` setzen die Zugriffsregeln
-konsequent auf jedem Endpunkt durch:
+Login runs on a signed session cookie (`SessionMiddleware`,
+`itsdangerous`) that stays valid until manual logout. Four
+FastAPI dependencies in `app/routers/auth.py` consistently enforce the
+access rules on every endpoint:
 
-| Dependency | Für | Verhalten ohne gültige Anmeldung | Verhalten ohne Filialleiter-/Admin-Rolle |
+| Dependency | For | Behavior without a valid login | Behavior without branch-manager/admin role |
 |---|---|---|---|
-| `require_login_page` | Seiten (HTML) | Redirect zu `/login?next=…` | — |
-| `require_login_api` | JSON-Endpunkte | HTTP 401 | — |
-| `require_chef_page` | Seiten, Dokumente hochladen/bearbeiten/löschen | Redirect zu `/login?next=…` | Redirect zu `/` |
-| `require_chef_api` | JSON-Endpunkte, Dokumente hochladen/bearbeiten/löschen | HTTP 401 | HTTP 403 |
+| `require_login_page` | Pages (HTML) | Redirect to `/login?next=…` | — |
+| `require_login_api` | JSON endpoints | HTTP 401 | — |
+| `require_chef_page` | Pages, uploading/editing/deleting documents | Redirect to `/login?next=…` | Redirect to `/` |
+| `require_chef_api` | JSON endpoints, uploading/editing/deleting documents | HTTP 401 | HTTP 403 |
 
-(Intern heisst die Rolle weiterhin `chef` — Datenbankwert, Funktionsnamen und
-CLI-Befehl `add-chef` sind unverändert; nur die Oberfläche zeigt dafür
-„Filialleiter" an. `require_chef_page`/`require_chef_api` lassen zusätzlich
-die Rolle `admin` durch, siehe `app/routers/auth.py`.)
+(Internally the role is still called `chef` — the database value, function
+names, and the CLI command `add-chef` are unchanged; only the UI shows
+"Filialleiter"/"branch manager" for it. `require_chef_page`/`require_chef_api`
+also let the `admin` role through, see `app/routers/auth.py`.)
 
-Rollen und ihre Rechte (Regel 9):
+Roles and their rights (rule 9):
 
-| Rolle | Anmeldung | Ansehen/Suchen | Notizen | Dokumente hochladen/löschen | Filialzugriff |
+| Role | Login | View/search | Notes | Upload/delete documents | Branch access |
 |---|---|---|---|---|---|
-| Mitarbeiter | Kassennummer | ✅ | nur eigene bearbeiten/löschen | ❌ | eine oder mehrere zugewiesene Filialen |
-| Filialleiter (`chef`) | Kassennummer + Passwort | ✅ | alle bearbeiten/löschen | ✅ | eine oder mehrere zugewiesene Filialen |
-| Admin/Zentrale (`admin`) | Kassennummer + Passwort | ✅ | alle bearbeiten/löschen | ✅ | filialübergreifend (alle Filialen + „Alle Filialen") |
+| Employee | Till number | ✅ | may edit/delete only their own | ❌ | one or more assigned branches |
+| Branch manager (`chef`) | Till number + password | ✅ | may edit/delete all | ✅ | one or more assigned branches |
+| Admin/head office (`admin`) | Till number + password | ✅ | may edit/delete all | ✅ | cross-branch (all branches + "All branches") |
 
-Passwörter werden mit PBKDF2-HMAC-SHA256 (600'000 Iterationen, zufälliges
-Salt je Konto) gehasht — siehe `app/core/security.py`. Es existiert kein
-Klartext-Passwort in der Datenbank.
+Passwords are hashed with PBKDF2-HMAC-SHA256 (600,000 iterations, random
+salt per account) — see `app/core/security.py`. No plaintext password
+exists in the database.
 
-### Filialzuordnung und Filialwechsel
+Further layers added later: `require_admin_page`/`require_admin_api`
+(head office only: accounts, recommendations, 2026-09-25); login lockout
+after 5 wrong passwords (`app/services/anmeldung.py`, S2); HTTPS through
+the Caddy proxy with `SESSION_HTTPS_ONLY` making the cookie `Secure` (S1,
+2026-09-28, see `SERVER-SETUP.md`); and the app-wide `phone_gate`
+dependency limiting phone logins to an allowlist (see "Phone layer"
+below). The "Notes" column above is historical — notes are no longer
+shown in the interface since 2026-09-24 (data and API remain). Current
+booking rights: "Booking rights as of 2026-09-24" below.
 
-Welche Filiale(n) ein Benutzer sehen/bedienen darf, liegt in der m:n-Tabelle
+### Branch assignment and branch switching
+
+Which branch(es) a user may see/operate is stored in the m:n table
 `benutzer_lagerorte` (`app/core/models.py`, `app/services/lagerorte.py`) —
-nicht in der `users`-Tabelle selbst, da ein Benutzer (z. B. eine Aushilfe)
-mehreren Filialen zugeordnet sein kann. `ist_primaer` markiert die nach dem
-Login vorausgewählte Filiale. Admin-Konten haben keinen Eintrag und gelten
-als filialübergreifend.
+not in the `users` table itself, since a user (e.g. a temp worker) can be
+assigned to several branches. `ist_primaer` marks the branch preselected
+after login. Admin accounts have no entry and are considered cross-branch.
 
-Die aktuell aktive Filiale liegt in der Session (`active_lagerort_id`) und
-wird über `POST /api/active-lagerort` gewechselt — die Auswahl dafür zeigt
-`GET /api/me` (`lagerort` = aktiv, `lagerorte` = wählbar). Die Oberfläche
-rendert dafür ein `<select>` in der Filial-Pille rechts in der Kopfzeile
-(`app/static/js/session.js`), sichtbar sobald mehr als eine Filiale zur Wahl
-steht oder der Benutzer Admin ist (dann zusätzlich „Alle Filialen“, also
-kein aktiver Lagerort). Serverseitig wird bei jedem Wechsel geprüft, dass
-die Ziel-Filiale dem Benutzer tatsächlich zugewiesen ist (sonst HTTP 403).
-Wareneingänge und Bestand sind seit dem neuen Datenmodell (Phase A Punkt 3)
-an die aktive Filiale angebunden: ein Import bucht gegen die beim Upload
-aktive Filiale des hochladenden Kontos (`require_active_lagerort` in
-`app/routers/auth.py`); ohne gewählte Filiale (nur für Admin möglich, „Alle
-Filialen") schlägt der Import mit HTTP 400 fehl. Reduktionsstufen (18-/36-
-Monats-Hinweise je Filiale) folgen erst in Phase D.
+The currently active branch lives in the session (`active_lagerort_id`)
+and is switched via `POST /api/active-lagerort` — the options for that come
+from `GET /api/me` (`lagerort` = active, `lagerorte` = selectable). The UI
+renders a `<select>` for this in the branch pill on the right of the header
+(`app/static/js/session.js`), visible as soon as more than one branch is
+available or the user is an admin (in which case there's also "All
+branches", i.e. no active storage location). Server-side, every switch
+checks that the target branch is actually assigned to the user (otherwise
+HTTP 403). Since the new data model (phase A, item 3), goods receipts and
+stock are tied to the active branch: an import books against the active
+branch of the uploading account at the time of upload
+(`require_active_lagerort` in `app/routers/auth.py`); without a selected
+branch (only possible for admin, "All branches") the import fails with
+HTTP 400. Markdown levels (18-/36-month notices per branch) only arrive in
+phase D.
 
-Der `next`-Parameter beim Login (`/login?next=/artikel/...`) wird im Browser
-gegen eine feste Whitelist bekannter Routen geprüft
-(`app/static/js/login-redirect.js`), bevor er als Weiterleitungsziel genutzt
-wird — ein manipulierter Link kann so nicht auf eine externe Seite
-umleiten (offener Redirect).
+The `next` parameter on login (`/login?next=/artikel/...`) is checked in
+the browser against a fixed whitelist of known routes
+(`app/static/js/login-redirect.js`) before it is used as a redirect target
+— this prevents a manipulated link from redirecting to an external site
+(open redirect).
 
-## Ablauf: Rechnung hochladen und importieren
+## Flow: upload and import an invoice
 
 ```mermaid
 sequenceDiagram
-    actor Filialleiter
+    actor BranchManager as Branch manager
     participant UI as Browser (preview.html)
     participant Preview as POST /upload-preview
     participant Parser as parsers.parse_document()
@@ -128,692 +138,792 @@ sequenceDiagram
     participant Importer as importer.import_invoice()
     participant DB as PostgreSQL
 
-    Filialleiter->>UI: Eine oder mehrere PDFs auswählen
-    UI->>Preview: Datei hochladen
-    Preview->>Parser: PDF-Bytes parsen
-    Parser->>Parser: Layout/Lieferant erkennen
-    Parser-->>Preview: Lieferant + Dokumenttyp + Positionen<br/>+ Warnungen + SHA-256-Hash
-    Preview-->>UI: Vorschau anzeigen (nichts gespeichert)
-    opt Filialleiter korrigiert einzelne Felder
-        UI->>Validate: Datei + Korrekturen erneut prüfen
-        Validate-->>UI: Neu bewertete Positionen/Warnungen
+    BranchManager->>UI: Select one or more PDFs
+    UI->>Preview: Upload file
+    Preview->>Parser: Parse PDF bytes
+    Parser->>Parser: Detect layout/supplier
+    Parser-->>Preview: Supplier + document type + line items<br/>+ warnings + SHA-256 hash
+    Preview-->>UI: Show preview (nothing saved)
+    opt Branch manager corrects individual fields
+        UI->>Validate: Re-check file + corrections
+        Validate-->>UI: Re-evaluated line items/warnings
     end
-    Filialleiter->>UI: Vorschau kontrollieren, Import bestätigen
-    UI->>Import: Datei + erwarteter Hash + confirmed=true (+ Korrekturen)
-    Import->>Import: Hash erneut prüfen (Datei == geprüfte Vorschau?)
+    BranchManager->>UI: Review preview, confirm import
+    UI->>Import: File + expected hash + confirmed=true (+ corrections)
+    Import->>Import: Re-check hash (file == checked preview?)
     Import->>Importer: import_invoice(...)
-    Importer->>DB: Advisory Lock, Duplikatsprüfung,<br/>Artikel anlegen/zusammenführen, Positionen speichern
-    DB-->>Importer: Transaktion committet
-    Importer-->>Import: Ergebnis (neue/wiederverwendete Artikel)
-    Import-->>UI: Erfolgsmeldung
-    Note over UI: Bei mehreren Dateien: automatisch<br/>zur nächsten Datei in der Warteschlange
+    Importer->>DB: Advisory lock, duplicate check,<br/>create/merge articles, save line items
+    DB-->>Importer: Transaction committed
+    Importer-->>Import: Result (new/reused articles)
+    Import-->>UI: Success message
+    Note over UI: With several files: automatically<br/>moves to the next file in the queue
 ```
 
-Wichtige Absicherungen in diesem Ablauf: `/upload-preview` schreibt nichts
-in die Datenbank; der Import verlangt zwingend den Hash der geprüften
-Datei; eine `pg_advisory_xact_lock`-Sperre serialisiert gleichzeitige
-Importe/Löschungen über alle vier PCs hinweg, damit `first_seen`/`last_seen`
-eines Artikels nie inkonsistent werden; bei einem Datenbankfehler wird die
-gesamte Transaktion zurückgerollt (kein Teilimport); der Import bleibt
-gesperrt, solange irgendeine Warnung offen ist — das gilt serverseitig,
-nicht nur als Browser-Prüfung.
+Important safeguards in this flow: `/upload-preview` writes nothing to the
+database; the import strictly requires the hash of the checked file; a
+`pg_advisory_xact_lock` serializes concurrent imports/deletions across all
+four PCs so that an article's `first_seen`/`last_seen` never becomes
+inconsistent; on a database error, the entire transaction is rolled back
+(no partial import); the import stays blocked as long as any warning is
+open — this is enforced server-side, not just as a browser check.
 
-## Erwartet → eingetroffen
+## Expected → arrived
 
-Regel 3 / D6: Eine **Auftragsbestätigung** oder **Bestellung** kündigt Ware nur
-an. Der Import legt dafür einen Wareneingang mit Status `erwartet` an — ohne
-Lagerbewegung, ohne Bestand, ohne Eingangsdatum. Artikel, Varianten und Preise
-entstehen trotzdem, damit angekündigte Ware im Stamm auffindbar ist.
-**Rechnung** und **Lieferschein** begleiten die Ware, sie buchen wie bisher
-sofort (`TYPEN_MIT_WARE` in `app/services/importer.py`).
+Rule 3 / D6: An **order confirmation** or **purchase order** only
+announces goods. For these, the import creates a goods receipt with status
+`erwartet` ("expected") — without a stock movement, without stock, without
+a receipt date. Articles, variants, and prices are still created, so
+announced goods can be found in the master data.
 
-Gebucht wird beim Bestätigen der Ankunft (`app/services/wareneingang.py`):
+**Invoice** and **delivery note** accompany the goods; they book
+immediately as before (`TYPEN_MIT_WARE` in `app/services/importer.py`).
 
-| Eingabe | Wirkung |
+Booking happens when the arrival is confirmed (`app/services/wareneingang.py`):
+
+| Input | Effect |
 |---|---|
-| Menge je Position | Zugang als Lagerbewegung + Bestand (Regel 2), `menge_eingetroffen` wächst |
-| Eingangsdatum | wird beim ersten Zugang gesetzt, rückwirkend möglich (D13) — in einem Lager ohne Verkauf gar nicht (Regel 6) |
+| Quantity per line item | Receipt as a stock movement + stock (rule 2), `menge_eingetroffen` grows |
+| Receipt date | set on the first receipt, can be backdated (D13) — not at all in a storage location without sales (rule 6) |
 
-Kommt weniger an als erwartet, bleibt die Restmenge offen und der Wareneingang
-weiter `erwartet` (D22) — so ist fehlende Ware sichtbar; eine Nachlieferung
-wird einfach nochmals bestätigt. Erst wenn keine Position mehr offen ist,
-wechselt der Status auf `eingetroffen`.
+If less arrives than expected, the remaining quantity stays open and the
+goods receipt stays `erwartet` (D22) — this way missing goods stay
+visible; a follow-up delivery is simply confirmed again. Only once no line
+item is open any more does the status change to `eingetroffen` ("arrived").
 
-Kommt **mehr** an als erwartet, wird die tatsächliche Menge gebucht — der
-Bestand ist, was physisch im Laden steht — und die Antwort meldet die
-betroffenen Positionen in `mehrlieferungen` (Positions-Id, erwartete Menge,
-eingetroffene Menge, Differenz). Die Seite hängt daraus einen Warnsatz an die
-Erfolgsmeldung. Gemessen wird am Gesamtstand der Position, nicht an der
-einzelnen Buchung: über die erwartete Menge hinaus kommt man auch mit einer
-Nachlieferung (bestätigt 22.09.2026, Phase C, Teilaufgabe C1).
+If **more** arrives than expected, the actual quantity is booked — stock
+reflects what physically sits in the store — and the response reports the
+affected line items in `mehrlieferungen` (line item id, expected quantity,
+arrived quantity, difference). The page appends a warning note to the
+success message for this. This is measured against the total for the line
+item, not the individual booking: you can also exceed the expected
+quantity via a follow-up delivery (confirmed 2026-09-22, phase C, subtask C1).
 
-Zwei Dinge sind bewusst gleich gehalten: Import und Ankunft buchen über
-**dieselbe** Funktion (`buche_zugang`), und beide nehmen dieselbe
-`pg_advisory_xact_lock`, damit sich Zugänge zwischen Arbeitsplätzen nicht
-überholen. „Erste/letzte Lieferung" (`varianten.first_seen`/`last_seen`)
-zählen nur angekommene Ware — eine Ankündigung ist keine Lieferung.
+Two things are deliberately kept identical: import and arrival both book
+through the **same** function (`buche_zugang`), and both take the same
+`pg_advisory_xact_lock`, so receipts from different workstations can't
+overtake each other. "First/last delivery" (`varianten.first_seen`/
+`last_seen`) only count goods that have actually arrived — an announcement
+is not a delivery.
 
-Bedient wird das auf der Seite **/wareneingaenge** (Navigation „Lieferungen"):
-die offenen Lieferungen der aktiven Filiale, je Position erwartet / bereits da
-/ offen und ein Feld für die jetzt eingetroffene Menge. Das dürfen auch
-**Mitarbeiter** (D21) — Ankunft bestätigen ist Lagerarbeit, kein Dokumentrecht.
+This is handled on the **/wareneingaenge** page (navigation "Deliveries"):
+the open deliveries for the active branch, per line item expected /
+already here / open, and a field for the quantity that has now arrived.
+**Employees** are allowed to do this too (D21) — confirming arrival is
+warehouse work, not a document right.
 
-## Bestand ansehen
+## Viewing stock
 
-`app/services/bestand.py` liest, was `lagerbewegungen` gebucht hat — es
-schreibt nichts (Regel 2). Eine Zeile ist eine **Variante × Lagerort** mit
-Menge und ältestem Eingangsdatum; dieselbe Abfrage liefert Anzahl und
-Gesamtmenge der ganzen Auswahl, damit die Seite nicht rechnen muss.
+`app/services/bestand.py` reads what `lagerbewegungen` has booked — it
+writes nothing (rule 2). A row is a **variant × storage location** with
+quantity and the oldest receipt date; the same query returns the count and
+total quantity for the whole selection, so the page doesn't have to
+calculate it.
 
-Drei Dinge sind bewusst so gebaut:
+Three things are deliberately built this way:
 
-- **Alle Filialen sind lesbar** (bestätigt 22.09.2026). Vorausgewählt ist die
-  aktive Filiale, wählbar sind alle Standorte — der Filialwechsel in der
-  Sitzungsleiste bleibt davon unberührt, er entscheidet weiter darüber, wohin
-  gebucht wird.
-- **Zeilen mit Menge 0** erscheinen nicht (seit 24.09.2026 ohne Schalter;
-  die API kennt `nur_vorhanden` weiterhin), aber nichts wird gelöscht:
-  ausverkaufte Ware bleibt im Stamm. Farbe, Grösse und Hauptgruppe stehen in
-  eigenen Spalten. Ein **negativer** Bestand wird
-  dagegen immer gezeigt — er ist möglich (bestätigt 22.09.2026) und genau dann
-  interessant.
-- **Ware an einem Standort ohne Verkauf** (GEWA, VEBO, Dietikon) hat kein
-  Eingangsdatum (Regel 6/D13). Die Seite schreibt dort keinen leeren Strich
-  hin, sondern sagt, warum: das Datum kommt mit der Ankunft in einer Filiale.
+- **All branches are readable** (confirmed 2026-09-22). The active branch
+  is preselected, but all locations are selectable — the branch switcher
+  in the session bar is unaffected by this and still decides where
+  bookings go.
+- **Rows with quantity 0** don't show up (without a toggle since
+  2026-09-24; the API still knows `nur_vorhanden`), but nothing is
+  deleted: sold-out goods stay in the master data. Color, size, and main
+  group have their own columns. A **negative** stock, on the other hand,
+  is always shown — it's possible (confirmed 2026-09-22) and exactly then
+  interesting.
+- **Goods at a location without sales** (GEWA, VEBO, Dietikon) have no
+  receipt date (rule 6/D13). The page doesn't show an empty dash for
+  that; it explains why: the date is set once the goods arrive at a
+  branch.
 
-Seite: **/bestand** (Navigation „Bestand"), Filter für Filiale, Suche und
-„nur Zeilen mit Bestand", nachladen über `offset` (Phase C, Teilaufgabe C2).
-Vorübergehend hat jede Zeile einen Knopf „−1" zum Testen des Ausbuchens
-(siehe nächster Abschnitt).
+Page: **/bestand** (navigation "Stock"), filters for branch, search, and
+"only rows with stock", loads more via `offset` (phase C, subtask C2).
+For now, every row has a "−1" button for testing the write-off flow (see
+next section).
 
-## Ausbuchen
+## Writing off
 
-Verkauf oder Abgang von Hand (`app/services/ausbuchung.py`, Seite
-`/ausbuchen`, Phase C, Teilaufgabe C3). Das Gegenstück zum Zugang: dieselbe
-Sperre, dieselbe Regel 2 — jede Änderung ist eine Zeile in
-`lagerbewegungen`, der Bestand wird im selben Schritt nachgeführt.
+Manual sale or removal (`app/services/ausbuchung.py`, page `/ausbuchen`,
+phase C, subtask C3). The counterpart to a receipt: the same lock, the
+same rule 2 — every change is a row in `lagerbewegungen`, and stock is
+updated in the same step.
 
-- **Ein Scan = ein Stück** (F15, 23.09.2026). Die Seite sammelt schnelle
-  Scans und bucht sie der Reihe nach; nach jedem Scan ist das Feld sofort
-  wieder frei.
-- **Gründe** (F14): `verkauf` wird als `typ = verkauf` gebucht, alle anderen
-  (`defekt`, `diebstahl`, `eigenbedarf`, `retoure`, `sonstiges: <Text>`) als
-  `ausbuchung`. So bleiben Verkäufe von Schwund trennbar.
-- **Zu wenig Bestand** (F9): warnen, trotzdem buchen. Ein Abgang ändert das
-  Eingangsdatum nie.
-- **Rückgängig**: Gegenbuchung `korrektur` mit `grund = 'storno:<id>'`,
-  höchstens einmal je Ausbuchung — nichts wird gelöscht.
-- Varianten **ohne EAN** (Regel 5) lassen sich nicht scannen; sie werden über
-  ihre Varianten-Id ausgebucht, heute über den vorübergehenden Knopf „−1" in
-  der Bestandsansicht (`grund = 'test'`).
+- **One scan = one piece** (F15, 2026-09-23). The page collects quick
+  scans and books them in order; the field is immediately free again
+  after each scan.
+- **Reasons** (F14): `verkauf` ("sale") is booked as `typ = verkauf`, all
+  others (`defekt`/"defective", `diebstahl`/"theft",
+  `eigenbedarf`/"own use", `retoure`/"return",
+  `sonstiges: <text>`/"other: <text>") as `ausbuchung` ("write-off"). This
+  keeps sales separable from shrinkage.
+- **Insufficient stock** (F9): warn, but book anyway. A removal never
+  changes the receipt date.
+- **Undo**: an offsetting `korrektur` ("correction") booking with
+  `grund = 'storno:<id>'`, at most once per write-off — nothing is
+  deleted. Branch managers and head office only.
+- **Rights** (2026-09-28): employees book `verkauf` only, in their own
+  branches; `GET /api/ausbuchen/stammdaten` returns the reasons for the
+  role and `darf_stornieren`, and `POST /api/ausbuchen` rejects any other
+  reason with 403.
+- Variants **without an EAN** (rule 5) can't be scanned; they are written
+  off via their variant id, currently through the temporary "−1" button
+  in the stock view (`grund = 'test'`).
 
-## Umlagern
+## Transferring stock
 
-Ware von einem Lagerort an einen anderen (`app/services/umlagerung.py`,
-Seite `/umlagern`, Phase C, Teilaufgabe C4). Gebucht wird **beim Empfang von
-der empfangenden Filiale** (F5): eine Transaktion schreibt je Variante zwei
-Zeilen `typ = umlagerung` — Abgang an der Quelle, Zugang am Ziel.
+Goods from one storage location to another
+(`app/services/umlagerung.py`, page `/umlagern`, phase C, subtask C4).
+Since 2026-09-28 a transfer works **like a delivery** (replaces F5,
+"booked by the receiving branch in one step"):
 
-Welche Datumsregel gilt, entscheidet nur `lagerorte.verkauf`:
+```mermaid
+flowchart LR
+    A["Source: dispatch<br/>POST /api/umlagerung"] -->|"removal at source<br/>(typ umlagerung, nach:ZIEL)"| B["Expected goods receipt at destination<br/>status erwartet, herkunft_lagerort_id, versanddatum"]
+    B -->|"in transit: in no stock"| C["Destination: confirm arrival after unpacking<br/>POST /api/wareneingaenge/{id}/ankunft"]
+    C -->|"receipt at destination<br/>(typ umlagerung, von:QUELLE, date rules below)"| D["Stock at destination"]
+```
 
-| Von → nach | Eingangsdatum / Uhr am Ziel |
+Dispatch is for branch managers/head office (rule 9); confirming the
+arrival is for everyone (D21), partial quantities stay open (D22). The
+position keeps the receipt date the goods had at the source
+(`wareneingang_positionen.mitgebracht_datum`), used for D17 at arrival.
+The expected goods receipt of a transfer never gets its own
+`eingangsdatum`.
+
+Which date rule applies is decided solely by `lagerorte.verkauf`:
+
+| From → to | Receipt date / clock at the destination |
 |---|---|
-| extern → Filiale | wird gesetzt (auf Wunsch rückwirkend), Uhr startet (D13) |
-| Filiale → Filiale, Ziel kennt den Artikel | Ware behält ihr Datum (D17), Uhr des Ziels läuft weiter (F10) |
-| Filiale → Filiale, Ziel hatte den Artikel nie | Uhr startet ab Eintreffen (F11) |
-| beliebig → extern | kein Datum, keine Uhr (Regel 6) |
+| external → branch | is set (backdated if desired), clock starts (D13) |
+| branch → branch, destination already knows the article | goods keep their date (D17), destination's clock keeps running (F10) |
+| branch → branch, destination never had the article | clock starts on arrival (F11) |
+| anything → external | no date, no clock (rule 6) |
 
-Startet eine Umlagerung die Uhr, steht das Datum an ihrer Zielzeile in
-`lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` nimmt das
-spätere Datum aus Wareneingängen und diesen Umlagerungen. Zu wenig Bestand an
-der Quelle wird gemeldet, aber gebucht.
+The rules are applied at **arrival** (`umlagerung.buche_ankunft`, called
+from `wareneingang.bestaetige_ankunft`); "on arrival" means the arrival
+date entered when confirming. If a transfer starts the clock, the date
+sits on its destination row in `lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` takes
+the later date out of goods receipts and these transfers. Insufficient
+stock at the source is reported but still booked.
 
-## Korrigieren
+## Correcting
 
-Bestand auf die gezählte Menge bringen (`app/services/korrektur.py`, Knopf
-„Zählen" je Zeile in `/bestand`, Phase C, Teilaufgabe C5). Eingegeben wird,
-was im Regal liegt; die Differenz rechnet der Server unter derselben Sperre
-wie jeder Zugang und bucht sie als `typ = korrektur`. Stimmt der Bestand
-schon, wird nichts gebucht. Gründe: Inventur/Zählung, Falsch gebucht, Ware
-gefunden, Sonstiges (mit Text). Das Eingangsdatum ändert sich nie.
+Bring stock to the counted quantity (`app/services/korrektur.py`, "Count"
+button per row in `/bestand`, phase C, subtask C5). What's entered is
+what's actually on the shelf; the server calculates the difference under
+the same lock as any receipt and books it as `typ = korrektur`. If the
+stock already matches, nothing is booked. Reasons: stocktake/count,
+mis-booked, goods found, other (with text). The receipt date never
+changes.
 
-## Übersicht
+## Overview
 
-`app/services/uebersicht.py` liefert für `GET /api/dashboard` neben den
-Stammzahlen die Kennzahlen der **aktiven Filiale** (Stück im Bestand, heute
-verkauft/abgegangen), „Anstehend" (erwartete Lieferungen, negativer Bestand,
-Reduktionsalter je Stufe inkl. Vorschau 30 Tage, Artikel ohne Kategorie bzw.
-EAN) und „Aktuelles“ (Anforderung 8): Lieferungen als ganze Lieferung (Wareneingang je Tag), Umlagerungen als ein Eintrag, Abgänge ausser Verkauf einzeln; Verkäufe, Korrekturen und Zugänge ohne Wareneingang erscheinen nicht. Das Reduktionsalter wird in
-einer Abfrage für alle Artikel gerechnet — dieselbe Regel wie
-`reduktion.letzter_wareneingang()` (Wareneingang oder Umlagerung mit
-Eingangsdatum). Ohne aktive Filiale bleibt `filiale` leer.
+`app/services/uebersicht.py` supplies `GET /api/dashboard` with, besides
+the master figures, the metrics for the **active branch** (pieces in
+stock, sold/removed today), "Upcoming" (expected deliveries, negative
+stock, markdown age per level incl. a 30-day preview, articles without a
+category or EAN), and "Recent" (requirement 8): deliveries as a whole
+delivery (goods receipt per day), transfers as one entry, removals other
+than sales individually; sales, corrections, and receipts without a goods
+receipt don't appear. Markdown age is calculated in one query for all
+articles — the same rule as `reduktion.letzter_wareneingang()` (goods
+receipt or transfer with a receipt date). Without an active branch,
+`filiale` stays empty.
 
-## Artikel löschen
+## Deleting an article
 
-Nur für von Hand erfasste Artikel **ohne Beleg** und nur für Filialleiter
-und Zentrale (`app/services/artikel_loeschen.py`, Entscheid vom
-24.09.2026). Entfernt in einer Transaktion unter der Buchungssperre:
-Lagerbewegungen, Bestand, manuelle Wareneingangspositionen (und leer
-gewordene manuelle Wareneingänge), Preise, Notizen, Varianten und den
-Artikel; der Vorgang wird ins Server-Log geschrieben.
+Only for manually entered articles **without a document**, and only for
+branch managers and head office (`app/services/artikel_loeschen.py`,
+decision of 2026-09-24). Removes, in one transaction under the booking
+lock: stock movements, stock, manual goods-receipt line items (and manual
+goods receipts left empty by that), prices, notes, variants, and the
+article; the operation is written to the server log.
 
-## Ware von Hand erfassen
+## Entering goods manually
 
-Der zweite Weg, auf dem Ware ins System kommt: **ohne PDF, ohne Parser**
-(`app/services/manuelle_erfassung.py`, Seite `/erfassen`). Gedacht für Ware
-ohne Dokument und für Lieferanten, deren Layout noch kein Parser kennt.
+The second way goods enter the system: **without a PDF, without a parser**
+(`app/services/manuelle_erfassung.py`, page `/erfassen`). Meant for goods
+without a document and for suppliers whose layout no parser knows yet.
 
-D27: Ware ohne Dokument ist ein **direkter Wareneingang ohne Beleg** — es
-entsteht kein Eintrag in `dokumente`, `wareneingaenge.dokument_id` bleibt leer
-(Migration `a7b8c9d0e1f2`, dort auch `artikel.lieferant_id`). Gebucht wird
-sofort (Regel 3: von Hand erfasst wird nur, was man in den Händen hält), über
-**dieselbe** `buche_zugang()` und dieselbe Sperre wie Import und
-Ankunftsbestätigung.
+D27: goods without a document are a **direct goods receipt without a
+document** — no entry is created in `dokumente`,
+`wareneingaenge.dokument_id` stays empty (migration `a7b8c9d0e1f2`, which
+also adds `artikel.lieferant_id`). Booking happens immediately (rule 3:
+only what you're physically holding gets manually entered), through the
+**same** `buche_zugang()` and the same lock as import and arrival
+confirmation.
 
-| Feld | Pflicht? | Bemerkung |
+| Field | Required? | Note |
 |---|---|---|
-| Marke, Bezeichnung, Menge, UVP | ja (D23) | mehr wird nicht verlangt |
-| EAN | nein (Regel 5) | bekannte EAN füllt das Formular aus, unbekannte wird übernommen |
-| Farbe, Grösse | nein | zusammen mit Artikelnummer der Schlüssel ohne EAN |
-| Einheit, Lieferanten-Artikelnummer, EK | nein | EK nur speichern, wenn vorhanden (Regel 10) |
-| Lieferant | nein | gilt für den ganzen Wareneingang, nicht je Position |
-| Eingangsdatum | nein | heute oder rückwirkend (D13); Lager ohne Verkauf bekommt keines (Regel 6) |
+| Brand, description, quantity, RRP | yes (D23) | nothing more is required |
+| EAN | no (rule 5) | a known EAN fills in the form; an unknown one is accepted |
+| Color, size | no | together with the item number, the key when there's no EAN |
+| Unit, supplier item number, purchase price | no | purchase price only saved if present (rule 10) |
+| Supplier | no | applies to the whole goods receipt, not per line item |
+| Receipt date | no | today or backdated (D13); a storage location without sales gets none (rule 6) |
 
-Artikel und Varianten werden über `app/services/artikel.py` gefunden — nach
-genau derselben Regel wie beim Import: bekannte EAN → bekannte Variante, sonst
-Lieferant + Artikelnummer + Farbe + Grösse. Das Modul gibt es, damit die
-beiden Wege nicht auseinanderlaufen. Ohne Lieferant wird unter den Artikeln
-ohne Lieferant gesucht; ein Artikel „Nike A1" mit Lieferant und einer ohne
-bleiben also getrennt.
+Articles and variants are looked up via `app/services/artikel.py` — by
+exactly the same rule as on import: known EAN → known variant, otherwise
+supplier + item number + color + size. This module exists so the two
+paths don't drift apart. Without a supplier, the search is among articles
+without a supplier; so an article "Nike A1" with a supplier and one
+without stay separate.
 
-Ablauf in der Oberfläche (auf Scanner zugeschnitten): Barcode scannen →
-Formular ist ausgefüllt → Menge tippen → Enter legt die Position in eine Liste
-→ nächster Artikel. Erst **ein** Knopf am Ende bucht alle Positionen als einen
-Wareneingang, in einer Transaktion: entweder alles oder nichts. Geprüft wird
-serverseitig; der Browser prüft nur vorab, damit die Rückmeldung sofort kommt.
+Flow in the UI (built for a scanner): scan barcode → form is filled in →
+type quantity → Enter adds the line item to a list → next article. Only
+**one** button at the end books all line items as a single goods receipt,
+in one transaction: all or nothing. Validation happens server-side; the
+browser only pre-checks, so feedback is instant.
 
-Erfassen dürfen auch **Mitarbeiter** (Regel 9/D21) — es entsteht kein
-Dokument, also greift das Dokumentrecht nicht. Der Ziel-Lagerort läuft über
-dieselbe serverseitige Prüfung wie der Import (`resolve_wareneingang_lagerort`,
-D26), gebucht wird also auf jeden Lagerort, vorgewählt ist die aktive Filiale.
-Jede Position hinterlässt ausserdem einen unveränderten Schnappschuss der
-Eingabe in `wareneingang_positionen_quelle` (mit Benutzer und Zeitpunkt) und
-die Lagerbewegung den Grund `manuelle-erfassung` — ein fester Schlüssel, kein
-UI-Text.
+**Employees** may also enter goods this way (rule 9/D21) — no document is
+created, so the document right doesn't apply. The destination storage
+location goes through the same server-side check as import
+(`resolve_wareneingang_lagerort`, D26), so it can be booked to any storage
+location, with the active branch preselected. Each line item also leaves
+an unmodified snapshot of the input in
+`wareneingang_positionen_quelle` (with user and timestamp), and the stock
+movement gets the reason `manuelle-erfassung` — a fixed key, not UI text.
 
-## Interne EAN und Etikett
+## Internal EAN and label
 
-Regel 5/D10: Die EAN ist optional, viele Lieferanten liefern keine. Damit ein
-solcher Artikel an der Kasse trotzdem scannbar wird, erzeugt das System auf
-Knopfdruck (D24) eine **interne EAN-13 im GS1-Bereich 20-29**
-(`app/services/ean.py`). Aufbau: `20` + zehnstellige Varianten-Id +
-Prüfziffer. Das braucht keinen Zähler, ist für dieselbe Variante immer
-dieselbe Nummer und trägt ihre Herkunft in sich; `varianten.ean_intern`
-markiert sie.
+Rule 5/D10: the EAN is optional; many suppliers don't provide one. So
+such an article can still be scanned at the till, the system generates,
+on request (D24), an **internal EAN-13 in the GS1 range 20-29**
+(`app/services/ean.py`). Structure: `20` + a ten-digit variant id +
+check digit. This needs no counter, is always the same number for the
+same variant, and carries its origin within it; `varianten.ean_intern`
+flags it.
 
-Zwei Regeln dazu:
+Two rules for this:
 
-* Eine **bestehende EAN wird nie überschrieben** — der Artikelstamm bleibt
-  (Regel 4), und eine gedruckte Nummer klebt bereits auf der Ware.
-* Eine **von Hand nachgetragene** EAN wird streng geprüft, Format *und*
-  Prüfziffer. Beim Import bleibt es bewusst beim Formatcheck (Teilaufgabe
-  B3): dort steht die Nummer so im Lieferantendokument, hier tippt sie
-  jemand, und ein Zahlendreher bliebe für immer im Stamm.
+* An **existing EAN is never overwritten** — the item master stays intact
+  (rule 4), and a printed number is already stuck on the goods.
+* A **manually added-later** EAN is strictly checked, both format *and*
+  check digit. On import, this is deliberately just a format check
+  (subtask B3): there the number is exactly as printed in the supplier's
+  document, whereas here someone types it, and a transposed digit would
+  stay in the master data forever.
 
-Das **Etikett** (D25) kommt als PDF in Etikettengrösse, damit der Sato CL4NX
-Plus (D14) es 1:1 druckt — eine Seite je Etikett, `anzahl` wiederholt sie.
-Darauf stehen Jahrgang, Lieferant, UVP und Reduktionsstufe, dazu Marke,
-Bezeichnung, Farbe/Grösse und der **EAN-Strichcode**: ohne ihn bliebe genau
-der Artikel unscannbar, für den die interne EAN gedacht ist.
+The **label** (D25) comes as a PDF sized to the label, so the Sato CL4NX
+Plus (D14) prints it 1:1 — one page per label, `anzahl` repeats it. It
+shows year, supplier, RRP, and markdown level, plus brand, description,
+color/size, and the **EAN barcode**: without it, exactly the article the
+internal EAN was made for would stay unscannable.
 
-| Angabe | Woher |
+| Field | Source |
 |---|---|
-| Jahrgang | Jahr des letzten Wareneingangs dieses Artikels **in dieser Filiale** (Regel 6) |
-| Lieferant | `artikel.lieferant_id`, leer bei von Hand erfasster Ware (D23) |
-| UVP | neuester Eintrag im Preisverlauf der Variante |
-| Reduktion | Vorschlag nach Regel 6 (18 Monate → 50 %, 36 → 70 %), überschreibbar — die 30 % aus D25 sind eine Entscheidung des Ladens, keine Zeitregel |
-| Strichcode | EAN-13/EAN-8, UPC-12 als EAN-13 mit führender Null |
+| Year | year of the last goods receipt of this article **at this branch** (rule 6) |
+| Supplier | `artikel.lieferant_id`, empty for manually entered goods (D23) |
+| RRP | most recent entry in the variant's price history |
+| Markdown | automatic level per rule 6 (since 2026-09-28: 30% from arrival, 18 months → 50%, 36 → 70%), overridable |
+| Barcode | EAN-13/EAN-8, UPC-12 as EAN-13 with a leading zero |
 
-Gezeichnet wird mit PyMuPDF (ohnehin für das Lesen der Rechnungen im
-Einsatz) und den im PDF eingebauten Schriften — keine zusätzliche
-Abhängigkeit, kein Internet, keine Schriftinstallation auf dem Drucker
-(Regel 1). Das Strichmuster rechnet `app/services/barcode.py` selbst aus;
-eine EAN-14 (Umkarton) ist ITF-14 und wird deshalb nur als Zahl gedruckt,
-ebenso eine Nummer mit falscher Prüfziffer — lieber kein Strichcode als
-einer, den die Kasse nicht annimmt.
+Drawn with PyMuPDF (already in use for reading invoices anyway) and the
+fonts embedded in the PDF — no extra dependency, no internet, no font
+installation on the printer (rule 1). The barcode pattern is calculated
+by `app/services/barcode.py` itself; an EAN-14 (outer carton) is ITF-14
+and is therefore only printed as a number, as is a number with an
+incorrect check digit — better no barcode than one the till won't accept.
 
-**Etikett (neu am 24.09.2026):** vorgedruckte Rollen im Sato CL4NX Plus,
-47 × 83 mm hoch, mit Logo, Prozent-Punkt und Bergen — je Reduktion eine Rolle
-(30 % gelb, 50 % rot, 70 % grün, `ROLLEN`). Gedruckt werden nur UVP
-(durchgestrichen), links der Code der Lieferantengruppe (111/555/333/999/444,
-aus `lieferanten.typ`), rechts der Jahrgang zweistellig und unter den Bergen
-der Strichcode. Alle Positionen stehen in `LAYOUT` (Millimeter), weil die
-Rolle gerade neu gestaltet wird; `muster=True` zeichnet den Vordruck zur
-Vorschau mit. Die Modulbreite
-des Strichcodes ist nach oben begrenzt, damit er auf grossen Etiketten nicht
-masslos in die Breite gezogen wird.
+**Label (new as of 2026-09-24):** pre-printed rolls in the Sato CL4NX
+Plus, 47 × 83 mm tall, with logo, percent dot, and mountains — one roll
+per markdown level (30% yellow, 50% red, 70% green, `ROLLEN`). Only the
+RRP is printed (struck through), on the left the supplier-group code
+(111/555/333/999/444, from `lieferanten.typ`), on the right the two-digit
+year, and under the mountains the barcode. All positions are in `LAYOUT`
+(millimeters), since the roll is currently being redesigned; `muster=True`
+also draws the pre-print for the preview. The barcode's module width is
+capped so it isn't stretched excessively wide on large labels.
 
-Bedient wird das an zwei Stellen: auf der **Artikelseite** (EAN ansehen,
-erzeugen, nachtragen, Etikett drucken) und direkt nach der **manuellen
-Erfassung** — dort druckt ein Knopf die Etiketten des ganzen Wareneingangs,
-ein Etikett je Stück. Beides dürfen auch **Mitarbeiter** (Regel 9): es ist
-Lagerarbeit, kein Dokument.
+This is handled in two places: on the **article page** (view, generate,
+add-later EAN, print label) and directly after **manual entry** — there,
+one button prints the labels for the whole goods receipt, one label per
+piece. Both are also allowed for **employees** (rule 9): it's warehouse
+work, not a document.
 
-## Kassenkategorie: Vorschlag und Wahl von Hand
+## POS category: suggestion and manual choice
 
-Jeder Artikel trägt eine Kassenkategorie: Hauptgruppe × Sportbereich, exakt
-wie in der Kasse (Regel 8). Sie kommt auf zwei Wegen an den Artikel, und die
-Reihenfolge ist wichtig.
+Every article carries a POS category: main group × sport area, exactly as
+in the till (rule 8). It reaches the article in two ways, and the order
+matters.
 
-**Vorschlag aus dem FEDAS-Code.** INTERSPORT-Rechnungen führen je Position
-einen 6-stelligen FEDAS-Code mit; `app/core/fedas.py` übersetzt die erste
-Ziffer in die Hauptgruppe und die Ziffern 2–3 (Erlebnisbereich) in den
-Sportbereich; ganze Fahrräder (Warengruppen 16001–16008) werden Velo,
-Sportnahrung (10020) Food. Die Zuordnung aller 54 Erlebnisbereiche aus der
-FEDAS-Liste hat Fabian am 24.09.2026 bestätigt; die Liste selbst liegt nicht
-im Repo. Kids lässt sich aus FEDAS nicht ableiten.
+**Suggestion from the FEDAS code.** INTERSPORT invoices carry a 6-digit
+FEDAS code per line item; `app/core/fedas.py` translates the first digit
+into the main group and digits 2–3 (activity area) into the sport area;
+whole bicycles (product groups 16001–16008) become "bike", sports
+nutrition (10020) becomes "food". Fabian confirmed the mapping of all 54
+FEDAS activity areas on 2026-09-24; the list itself is not in the repo.
+"Kids" cannot be derived from FEDAS.
 
-**Wahl von Hand** (`app/services/kategorien.py`) für alles andere, und das ist
-der Normalfall: die meisten Lieferanten liefern keinen FEDAS-Code, von Hand
-erfasste Ware hat gar keinen Beleg (D27), und Kids ist aus FEDAS nicht
-ableitbar. Gewählt wird auf der Artikelseite oder gleich beim Erfassen;
-gefunden werden die offenen Artikel über den Filter „Ohne Kategorie" in der
-Artikelsuche.
+**Manual choice** (`app/services/kategorien.py`) for everything else,
+which is the normal case: most suppliers don't provide a FEDAS code,
+manually entered goods have no document at all (D27), and "Kids" can't be
+derived from FEDAS. Chosen on the article page or right when entering
+goods; open articles are found via the "No category" filter in article
+search.
 
-Zwischen beiden Wegen gilt eine einzige Regel: **überschrieben wird nie.** Der
-Import füllt nur eine leere Kategorie („einmal pro Artikel, danach gemerkt"),
-eine Wahl von Hand darf umgekehrt einen falschen Vorschlag korrigieren und
-bleibt danach stehen - auch wenn später eine Rechnung mit bekanntem Code
-kommt. `artikel.kategorie_manuell` hält fest, woher der Wert stammt, und die
-Oberfläche sagt es dazu: der zwischen „vorgeschlagen" und „von jemandem bestätigt" eine
-Information wert. Wird die Kategorie geleert, ist der Artikel wieder offen und
-ein späterer Beleg darf erneut vorschlagen.
+One single rule applies between the two paths: **never overwritten.** The
+import only fills an empty category ("once per article, remembered after
+that"); a manual choice may, conversely, correct a wrong suggestion and
+then stays in place — even if an invoice with a known code arrives later.
+`artikel.kategorie_manuell` records where the value came from, and the UI
+states it too: a piece of information worth knowing between "suggested"
+and "confirmed by someone." If the category is cleared, the article is
+open again and a later document may suggest one again.
 
-Die Kategorie hängt am **Artikel**, nicht an der Variante: sie gilt
-filialübergreifend für alle Farben und Grössen desselben Modells (Regel 4).
-Angesprochen wird sie trotzdem über die Varianten-Id, wie Notizen und Preise -
-das ist die Id, die in der Artikelliste angeklickt wird. Pflegen dürfen sie
-auch **Mitarbeiter** (Regel 9/D21): Artikelstamm ist kein Dokument.
+The category belongs to the **article**, not the variant: it applies
+across all branches for all colors and sizes of the same model (rule 4).
+It's still addressed via the variant id, like notes and prices — that's
+the id clicked in the article list. **Employees** may also maintain it
+(rule 9/D21): the item master isn't a document.
 
-## Lagerort aus der Lieferadresse
+## Storage location from the delivery address
 
-Wohin ein Wareneingang gebucht wird, steht auf dem Beleg: der externe Händler
-schickt die Rechnung nach Volketswil und die Ware nach Conthey, CMP liefert an
-die GEWA. `app/services/lieferadresse.py` liest das aus dem Dokumenttext —
-reine Textlogik, ohne Datenbank und ohne Layout-Wissen, damit sie bei jedem
-Lieferanten gleich funktioniert. Die Adressen kommen als Werte herein
-(`lagerorte.lade_adressen()`), nicht als ORM-Objekte.
+Where a goods receipt gets booked is on the document: the external
+distributor sends the invoice to Volketswil and the goods to Conthey, CMP
+delivers to GEWA. `app/services/lieferadresse.py` reads this from the
+document text — pure text logic, without a database and without layout
+knowledge, so it works the same for every supplier. The addresses come in
+as values (`lagerorte.lade_adressen()`), not as ORM objects.
 
-| Merkmal | Punkte | Warum |
+| Feature | Points | Why |
 |---|---|---|
-| Postleitzahl | 3 | eindeutig je Ort, kurz, überlebt OCR am besten |
-| Ortsname | 2 | bestätigt die PLZ, steht auch ohne sie oft da |
-| Name des Lagerorts (z. B. „GEWA“, „VEBO“) | 2 | auf der CMP-Auftragsbestätigung steht als Ziel nur „GEWA“. Nur *unterscheidende* Wörter zählen: „Lager Dietikon“ liefert kein Kennwort, sonst schlüge jeder Beleg mit dem Wort „Lager“ an — dort trägt der Ortsname |
-| Strassenname | 1 | allein zu schwach — „Industriestrasse“ passt auf SF1 *und* SF4 |
+| Postal code | 3 | unique per place, short, survives OCR best |
+| Place name | 2 | confirms the postal code, often appears even without it |
+| Storage-location name (e.g. "GEWA", "VEBO") | 2 | on the CMP order confirmation only "GEWA" appears as the destination. Only *distinguishing* words count: "Lager Dietikon" ("Warehouse Dietikon") doesn't score a keyword hit, otherwise any document with the word "Lager" ("warehouse") would match — there the place name carries it |
+| Street name | 1 | too weak alone — "Industriestrasse" matches both SF1 *and* SF4 |
 
-Gesucht wird in zwei Durchgängen: zuerst im Umfeld eines Lieferadress-Ankers
-(„Lieferadresse“, „Lieferanschrift“, „Lieferung an“, „Warenempfänger“,
-„Adresse de livraison“, „Ship to“ …), sonst im ganzen Text. Zwei Sicherungen
-gegen falsche Vorschläge: eine **Mindestpunktzahl** (eine Strasse allein
-genügt nie) und **kein Vorschlag bei Gleichstand** — stehen Rechnungs- und
-Lieferadresse gleichberechtigt im Text, wäre jede Wahl geraten. Umlaute werden
-in beiden Schreibweisen gefunden („Hägendorf“ und „Haegendorf“).
+The search runs in two passes: first around a delivery-address anchor
+("Lieferadresse", "Lieferanschrift", "Lieferung an", "Warenempfänger",
+"Adresse de livraison", "Ship to" …), otherwise across the whole text. Two
+safeguards against wrong suggestions: a **minimum score** (a street alone
+is never enough) and **no suggestion on a tie** — if the invoice address
+and delivery address are equally represented in the text, any choice
+would be a guess. Umlauts are matched in both spellings ("Hägendorf" and
+"Haegendorf").
 
-**Der Vorschlag entscheidet nichts** (D19). `/upload-preview` liefert ihn
-zusammen mit der Auswahlliste und der aktiven Filiale; die Vorschau zeigt
-„Wareneingang buchen auf“ mit Begründung; `/import-invoice` nimmt den
-gewählten Lagerort als Formularfeld und prüft ihn serverseitig
-(`resolve_wareneingang_lagerort` in `app/routers/auth.py`). Schickt die
-Oberfläche nichts, bleibt es bei der aktiven Filiale — wie vorher.
+**The suggestion decides nothing** (D19). `/upload-preview` returns it
+along with the selection list and the active branch; the preview shows
+"Book goods receipt to" with a reason; `/import-invoice` takes the chosen
+storage location as a form field and validates it server-side
+(`resolve_wareneingang_lagerort` in `app/routers/auth.py`). If the UI
+sends nothing, it stays with the active branch — as before.
 
-Buchbar sind **alle** Lagerorte, die eigene Filiale zuerst
-(`list_wareneingang_lagerorte`). Sonst liesse sich eine Lieferung an eine
-andere Filiale oder an einen externen Standort gar nicht erfassen, und D19 wäre genau für die
-Fälle wirkungslos, für die es gedacht ist. Der Filialwechsel bleibt
-unverändert bei den zugewiesenen Filialen; lesen dürfen Mitarbeiter und
-Filialleiter alle Filialen (bestätigt am 22.09.2026, `docs/projekt-kontext.md`
-Abschnitt 10). Ein Beleg hat dabei genau einen Lagerort (D20); verteilt wird
-die Ware danach über eine Umlagerung.
+**All** storage locations can be booked to, with the user's own branch
+first (`list_wareneingang_lagerorte`). Otherwise a delivery to another
+branch or to an external location couldn't be recorded at all, and D19
+would be pointless for exactly the cases it's meant for. Branch switching
+is unaffected and stays limited to assigned branches; employees and
+branch managers may read all branches (confirmed 2026-09-22,
+`docs/projekt-kontext.md` section 10). A document has exactly one storage
+location (D20); goods are distributed afterward via a transfer.
 
-## Doppelimporte erkennen
+## Detecting duplicate imports
 
-Zwei Regeln, beide serverseitig durchgesetzt:
+Two rules, both enforced server-side:
 
-| Merkmal | Geltungsbereich | Warum |
+| Feature | Scope | Why |
 |---|---|---|
-| `dokumente.datei_hash` (SHA-256) | **global** eindeutig | Dieselbe Datei ist dasselbe Dokument, egal von wem |
-| `dokumente.dokumentnummer` | eindeutig **je Lieferant** (`UNIQUE (lieferant_id, dokumentnummer)`) | Belegnummern sind Lieferantensache und überschneiden sich zwangslos |
+| `dokumente.datei_hash` (SHA-256) | **globally** unique | the same file is the same document, no matter who uploaded it |
+| `dokumente.dokumentnummer` | unique **per supplier** (`UNIQUE (lieferant_id, dokumentnummer)`) | document numbers are a supplier matter and can freely overlap |
 
-Der Importer prüft beides selbst (verständliche Meldung „Rechnung … wurde
-bereits importiert") und schlägt dafür den Lieferanten **vor** der
-Duplikatsprüfung nach; die Datenbank-Constraints sind der Rückfall, falls zwei
-Importe gleichzeitig laufen. Entsprechend braucht
-`GET /invoice-import-status` neben der Belegnummer auch den `parser_key` aus
-der Vorschau-Antwort — ohne Lieferant zählt nur der Datei-Hash (Migration
-`e5f6a7b8c9d0`, Phase B Teilaufgabe B2).
+The importer checks both itself (with an understandable message "Invoice
+… was already imported") and, for this, looks up the supplier **before**
+the duplicate check; the database constraints are the fallback in case
+two imports run at the same time. Accordingly, `GET
+/invoice-import-status` needs the `parser_key` from the preview response
+in addition to the document number — without a supplier, only the file
+hash counts (migration `e5f6a7b8c9d0`, phase B subtask B2).
 
-## Korrekturen in der Vorschau
+## Corrections in the preview
 
-Erkennt der Parser eine Position falsch oder unvollständig (z. B. Farbe und
-Grösse nicht eindeutig getrennt, EAN fehlt), kann der Filialleiter das
-betroffene Feld direkt in der Vorschau-Tabelle korrigieren, statt die ganze
-Rechnung abzulehnen. `app/services/corrections.py` wendet diese Korrekturen
-serverseitig auf die frisch geparsten Daten an (nie auf clientseitig
-mitgeschickte Rohdaten) und validiert jede Position komplett neu:
-Pflichtfelder, EAN-Format (8/12/13/14 Ziffern **wenn eine EAN eingetragen
-ist** — Farbe, Grösse und EAN sind optional, Regel 5), Zahlenformat für
-Menge/UVP. Eine EAN zu löschen ist also erlaubt und ergibt einen Hinweis;
-Unsinn einzutragen bleibt ein Fehler.
-Jede tatsächliche Änderung wird als `correction_audit`
-(Ausgangswert, neuer Wert, wer, wann) in `wareneingang_positionen_quelle`
-gespeichert — nachvollziehbar, auch nachdem die Rechnung importiert wurde. `/validate-preview`
-lässt eine Korrektur vor dem eigentlichen Import gegenprüfen;
-`/import-invoice` wendet dieselbe Validierung noch einmal serverseitig an,
-bevor irgendetwas gespeichert wird.
+If the parser reads a line item incorrectly or incompletely (e.g. color
+and size not cleanly separated, EAN missing), the branch manager can
+correct the affected field directly in the preview table instead of
+rejecting the whole invoice. `app/services/corrections.py` applies these
+corrections server-side to the freshly parsed data (never to raw data
+sent from the client) and fully re-validates every line item: required
+fields, EAN format (8/12/13/14 digits **if an EAN is entered** — color,
+size, and EAN are optional, rule 5), numeric format for quantity/RRP.
+So deleting an EAN is allowed and produces a hint; entering nonsense
+remains an error. Every actual change is stored as a `correction_audit`
+(original value, new value, who, when) in
+`wareneingang_positionen_quelle` — traceable even after the invoice has
+been imported. `/validate-preview` lets a correction be re-checked before
+the actual import; `/import-invoice` applies the same validation again
+server-side before anything is saved.
 
-## Stapel-Import (mehrere Rechnungen nacheinander)
+## Batch import (several invoices in sequence)
 
-Die Upload-Seite akzeptiert mehrere PDFs gleichzeitig. Jede Datei bekommt
-einen eigenen Warteschlangen-Eintrag mit Status (wartend, bereit, Duplikat,
-Fehler, importiert); der Browser prüft neue Dateien automatisch per
-`/invoice-import-status` auf bereits importierte Duplikate, bevor sie in die
-Warteschlange aufgenommen werden, und springt nach jedem erfolgreichen
-Import selbstständig zur nächsten offenen Datei. „Duplikat" heisst dabei:
-dieselbe Datei (SHA-256) oder dieselbe Belegnummer **beim selben Lieferanten**
-— zwei Lieferanten dürfen dieselbe Nummer verwenden (siehe „Doppelimporte
-erkennen" unten). Korrekturen an einer Datei
-sind vollständig von den anderen Dateien in der Warteschlange isoliert.
-Serverseitig gibt es keinen eigenen „Batch"-Endpunkt: jede Datei durchläuft
-einzeln denselben Vorschau-/Validierungs-/Import-Ablauf wie ein Einzel-Upload
-— die Warteschlange ist reine Frontend-Logik (`app/static/js/preview.js`).
+The upload page accepts several PDFs at once. Each file gets its own
+queue entry with a status (waiting, ready, duplicate, error, imported);
+the browser automatically checks new files via
+`/invoice-import-status` for already-imported duplicates before adding
+them to the queue, and automatically jumps to the next open file after
+each successful import. "Duplicate" here means: the same file (SHA-256)
+or the same document number **for the same supplier** — two suppliers may
+use the same number (see "Detecting duplicate imports" below).
+Corrections on one file are completely isolated from the other files in
+the queue. There's no separate "batch" endpoint server-side: each file
+goes individually through the same preview/validation/import flow as a
+single upload — the queue is pure frontend logic
+(`app/static/js/preview.js`).
 
-## Artikelgruppierung, Notizen und Preisverlauf
+## Article grouping, notes, and price history
 
-Verschiedene Farben/Grössen eines Artikels haben unterschiedliche EANs und
-damit unterschiedliche `varianten`-Datensätze. Seit dem neuen Datenmodell
-(Phase A Punkt 3, siehe `datenmodell.md`) ist die Gruppierung eine echte
-Fremdschlüsselbeziehung: alle Varianten eines Modells teilen sich dieselbe
-`artikel_id`. `app/services/article_groups.py` liest diese Beziehung nur noch
-aus, statt sie zur Laufzeit über Marke + Lieferanten-Artikelnummer
-nachzubilden — die Gruppierungsregel selbst (gleiche Marke **und** gleiche,
-nicht-leere Lieferanten-Artikelnummer; fehlt sie, bleibt der Artikel allein)
-gilt unverändert und wird jetzt beim Import (`app/services/importer.py`)
-angewendet. So zeigt die Artikeldetailseite (`/articles/{id}/history`)
-automatisch die Lieferhistorie, den Preisverlauf und die Notizen aller
-Varianten eines Artikels an einem Ort, ohne dass jemand die Gruppierung
-manuell pflegen muss.
+Different colors/sizes of an article have different EANs and therefore
+different `varianten` records. Since the new data model (phase A, item 3,
+see `datenmodell.md`), grouping is a real foreign-key relationship: all
+variants of a model share the same `artikel_id`.
+`app/services/article_groups.py` now only reads this relationship instead
+of reconstructing it at runtime from brand + supplier item number — the
+grouping rule itself (same brand **and** the same, non-empty supplier
+item number; if missing, the article stays on its own) is unchanged and
+is now applied at import time (`app/services/importer.py`). This way the
+article detail page (`/articles/{id}/history`) automatically shows the
+delivery history, price history, and notes of all variants of an article
+in one place, without anyone having to maintain the grouping manually.
 
-Notizen (`article_notes`, siehe `datenmodell.md`) sind Freitext zu einer
-Artikelgruppe, z. B. Beobachtungen zum Verkauf oder Hinweise für die nächste
-Bestellung. Bearbeiten/Löschen verlangt die zuletzt gelesene `version`
-(optimistisches Sperren): Hat eine andere Person die Notiz inzwischen
-geändert, schlägt die Anfrage mit HTTP 409 fehl, statt die fremde Änderung
-stillschweigend zu überschreiben. Mitarbeiter dürfen nur eigene Notizen
-bearbeiten/löschen, Filialleiter und Admin/Zentrale alle
-(`_may_edit_any_note()` in `app/routers/article_details.py`).
+Notes (`article_notes`, see `datenmodell.md`) are free text on an article
+group, e.g. observations about sales or hints for the next order.
+Editing/deleting requires the last-read `version` (optimistic locking): if
+someone else has changed the note in the meantime, the request fails with
+HTTP 409 instead of silently overwriting the other person's change.
+Employees may only edit/delete their own notes; branch managers and
+admin/head office may edit/delete all (`_may_edit_any_note()` in
+`app/routers/article_details.py`).
 
-## Artikelliste als Excel-Export
+## Article list as an Excel export
 
-`/api/articles/export` liefert dieselbe gefilterte/sortierte Artikelliste wie
-`/api/articles`, aber ohne Paginierung und als fertig formatierte `.xlsx`-Datei
-(`app/services/article_export.py`, via `openpyxl`): fette Kopfzeile,
-sinnvolle Spaltenbreiten, Zahlen-/Datumsformate, eingefrorene Kopfzeile und
-Auto-Filter. Gedacht zum Weitergeben/Ausdrucken ausserhalb der App, z. B. für
-eine Bestellliste.
+`/api/articles/export` returns the same filtered/sorted article list as
+`/api/articles`, but without pagination and as a fully formatted `.xlsx`
+file (`app/services/article_export.py`, via `openpyxl`): bold header row,
+sensible column widths, number/date formats, frozen header row, and
+auto-filter. Meant for sharing/printing outside the app, e.g. for an
+order list.
 
-## Ablauf: Rechnung löschen
+## Flow: deleting an invoice
 
-Nur Filialleiter und Admin/Zentrale (`require_chef_api`). `delete_invoice()` läuft unter
-derselben Advisory Lock wie der Import, entfernt die Rechnung samt
-Positionen und Original-Snapshots und berechnet `first_seen`/`last_seen` der
-betroffenen Artikel anschliessend aus den verbleibenden Lieferungen neu,
-statt veraltete Werte stehen zu lassen.
+Only branch managers and admin/head office (`require_chef_api`).
+`delete_invoice()` runs under the same advisory lock as the import,
+removes the invoice along with its line items and original snapshots, and
+afterward recalculates `first_seen`/`last_seen` of the affected articles
+from the remaining deliveries, instead of leaving stale values in place.
 
-## PDF-Parsing: ein Modul je Lieferanten-Layout
+## PDF parsing: one module per supplier layout
 
-Jedes Lieferanten-Layout liegt als eigenes Modul in `app/services/parsers/`
-und erfüllt dieselbe Schnittstelle. `__init__.py` ist die **Registry**, die
-entscheidet, wer zuständig ist:
+Every supplier layout lives as its own module in
+`app/services/parsers/` and implements the same interface. `__init__.py`
+is the **registry** that decides who's responsible:
 
-| Baustein | Aufgabe |
+| Component | Role |
 |---|---|
-| `base.py` | `read_document()` liest die PDF **einmal** komplett ein (Wörter samt Koordinaten je Seite, bei Seiten ohne Textebene per OCR), dazu die wiederkehrenden Bausteine `lines()`, `joined()`, `decimal_value()` |
-| `<lieferant>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
-| `__init__.py` | `PARSERS`-Liste, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
+| `base.py` | `read_document()` reads the whole PDF **once** (words with coordinates per page, via OCR for pages without a text layer), plus the recurring building blocks `lines()`, `joined()`, `decimal_value()` |
+| `<supplier>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
+| `__init__.py` | `PARSERS` list, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
 
-**Registrierte Layouts (24.09.2026):**
+**Registered layouts (2026-09-24):**
 
-| Modul | Lieferant | Belege | Besonderheiten |
+| Module | Supplier | Documents | Special cases |
 |---|---|---|---|
-| `intersport.py` | INTERSPORT Schweiz AG | Rechnung | FEDAS-Code; Referenz „ret.Ecom" → Lieferant ECOM (Code 555); Spalte „Preis" = EK |
-| `alpina.py` | ALPINA SPORTS Schweiz AG | Auftragsbestätigung | keine EAN; Artikel = Modell (erste 5 Zeichen der Produktnummer), Farbe und Grösse aus der Beschreibung; Menge × Einzelpreis = Positionswert geprüft |
-| `chrissports.py` | CHRIS sports AG | Auftragsbestätigung | „Preis" = UVP (D12), EK = Betrag/Menge; Marke ohne Sparte („Giro"); „Total Menge" geprüft |
-| `cmp.py` | CMP (F.lli Campagnolo S.p.A.) | Auftragsbestätigung | Grössenraster, Werte über den rechten Rand der Grösse zugeordnet; stornierte Blöcke übersprungen; jede Blocksumme geprüft |
+| `intersport.py` | INTERSPORT Schweiz AG | Invoice | FEDAS code; reference "ret.Ecom" → supplier ECOM (code 555); "Preis" column = purchase price |
+| `alpina.py` | ALPINA SPORTS Schweiz AG | Order confirmation | no EAN; article = model (first 5 characters of the product number), color and size from the description; quantity × unit price = line total checked |
+| `chrissports.py` | CHRIS sports AG | Order confirmation | "Preis" = RRP (D12), purchase price = amount/quantity; brand without a segment ("Giro"); "Total Menge" checked |
+| `cmp.py` | CMP (F.lli Campagnolo S.p.A.) | Order confirmation | size grid, values assigned by the right edge of the size column; cancelled blocks skipped; each block total checked |
 
-Die neueren Module lassen ihre Positionen einheitlich von
-`base.pruefe_position()` prüfen (Pflichtfelder, EAN, Zahlen) und bauen das
-Ergebnis mit `base.ergebnis()`. Tests: `tests/test_parser.py` mit den
-Beispielbelegen aus `BELEGE_DIR` (nur lokal, nie im Repo). Bewusst **kein**
-Parser: die Bollé-Rechnung (FaGu) nennt nur den Einkaufspreis, keinen UVP.
+The newer modules have their line items validated uniformly by
+`base.pruefe_position()` (required fields, EAN, numbers) and build the
+result with `base.ergebnis()`. Tests: `tests/test_parser.py` with sample
+documents from `BELEGE_DIR` (local only, never in the repo). Deliberately
+**no** parser: the Bollé invoice (FaGu) only states the purchase price,
+no RRP.
 
-**Erkennung** (`detect()`): Jedes Modul bewertet das Dokument mit einer
-Punktzahl oder lehnt es ab (`None`); die höchste Punktzahl gewinnt. Bei
-Gleichstand bricht die Erkennung mit einer klaren Meldung ab, statt einen
-Lieferanten zu raten. Für das INTERSPORT-Layout ist die Positionstabelle mit
-ihrer Kopfzeile das Pflichtmerkmal (auf einem Scan ist das Firmenlogo nicht
-immer als Text lesbar, die Tabelle aber schon); Firmenname und
-Rechnungsnummer erhöhen die Punktzahl nur. Passt **kein** Modul, meldet der
-Upload „Dokumentlayout noch nicht bekannt" — ohne KI (Regel 1) lässt sich
-ein nie gesehenes Layout nicht automatisch lesen, das Dokument muss als
-Beispiel weitergegeben werden (projekt-kontext.md Abschnitt 6, Punkt 1).
+**Detection** (`detect()`): every module scores the document or rejects
+it (`None`); the highest score wins. On a tie, detection aborts with a
+clear message instead of guessing a supplier. For the INTERSPORT layout,
+the line-item table with its header row is the required feature (on a
+scan, the company logo isn't always readable as text, but the table is);
+company name and invoice number only add to the score. If **no** module
+matches, the upload reports "document layout not yet known" — without AI
+(rule 1) a never-seen layout can't be read automatically; the document
+has to be handed over as a sample (projekt-kontext.md section 6, item 1).
 
-**Auslesen** (`parse()`, hier `intersport.py`): liest die Rechnungstabelle
-über Wortkoordinaten aus PyMuPDF (kein Layout-Template, keine feste
-Spaltenbreite): Kopfzeile wird anhand bekannter Spaltentitel gesucht, Zeilen
-werden anhand ihrer vertikalen Position gruppiert, Fortsetzungszeilen einer
-Position (z. B. mehrzeilige Bezeichnung, Farbe/Grösse in Klammern) werden
-der vorherigen Position zugeordnet. Der Parser selbst schreibt nichts in die
-Datenbank und trifft keine automatischen Annahmen bei Unklarheiten. Weicht
-eine einzelne Seite eines erkannten Layouts ab (z. B. Kopfzeile auf einem
-Scan unlesbar), führt das zu einem expliziten Fehler statt zu stillem
-Fehlverhalten.
+**Reading** (`parse()`, here `intersport.py`): reads the invoice table via
+word coordinates from PyMuPDF (no layout template, no fixed column
+widths): the header row is found via known column titles, rows are
+grouped by their vertical position, continuation lines of a line item
+(e.g. a multi-line description, color/size in parentheses) are attached
+to the previous line item. The parser itself writes nothing to the
+database and makes no automatic assumptions when things are unclear. If a
+single page of a recognized layout deviates (e.g. header row unreadable
+on a scan), that leads to an explicit error instead of silent
+misbehavior.
 
-**Warnung oder Hinweis?** Jede Position trägt zwei getrennte Listen:
+**Warning or hint?** Every line item carries two separate lists:
 
-| Liste | Bedeutung | Import |
+| List | Meaning | Import |
 |---|---|---|
-| `warnings` | etwas ist unsicher oder unplausibel gelesen (Pflichtfeld leer, Farbe/Grösse nicht eindeutig, unleserliche EAN, nicht zuordenbare Zeile) | **gesperrt**, bis geprüft oder korrigiert |
-| `hints` | alles in Ordnung, soll aber auffallen — aktuell: Position **ohne** EAN (Regel 5) | läuft durch |
+| `warnings` | something was read uncertainly or implausibly (required field empty, color/size not clearly separated, unreadable EAN, unassignable line) | **blocked** until checked or corrected |
+| `hints` | everything is fine but should stand out — currently: a line item **without** an EAN (rule 5) | goes through |
 
-Die Vorschau zeigt Hinweise gedämpft unter den Warnungen derselben Position
-und zählt sie als eigene Kennzahl (`rows_with_hints`). Eine EAN, die im
-Dokument steht, aber kein gültiges Format hat, bleibt bewusst eine Warnung:
-das ist ein Lesefehler-Verdacht und keine bewusst fehlende Nummer
-(Teilaufgabe B3).
+The preview shows hints, muted, under the warnings for the same line item
+and counts them as their own metric (`rows_with_hints`). An EAN that's on
+the document but doesn't have a valid format stays deliberately a
+warning: that's a suspected reading error, not a deliberately missing
+number (subtask B3).
 
-**Dokumenttyp** (D6): `parse()` liefert ihn mit (`rechnung`,
-`lieferschein`, `auftragsbestaetigung`, `bestellung`) — er landet in
-`dokumente.typ` und entscheidet später, ob ein Wareneingang nur *erwartet*
-ist oder Bestand bucht (Regel 3). Das INTERSPORT-Layout kommt bisher nur als
-Rechnung vor und erkennt den Typ am Anker „Rechnung Nr."; ohne diesen Anker
-bleibt der Typ offen und der Import weist das Dokument ab.
+**Document type** (D6): `parse()` returns it too (`rechnung`/"invoice",
+`lieferschein`/"delivery note", `auftragsbestaetigung`/"order
+confirmation", `bestellung`/"purchase order") — it ends up in
+`dokumente.typ` and later decides whether a goods receipt is only
+*expected* or books stock (rule 3). So far the INTERSPORT layout only
+appears as an invoice and detects the type via the anchor "Rechnung Nr.";
+without this anchor, the type stays open and the import rejects the
+document.
 
-**Einmal lesen:** Erkennung, Positionen und Rechnungs-/Belegdatum arbeiten
-auf demselben eingelesenen `Document` (siehe `importer.import_invoice()`).
-Vorher öffnete der Import die Datei ein zweites Mal für die Datumsfelder und
-schickte einen Scan damit zweimal durch die Texterkennung.
+**Read once:** detection, line items, and the invoice/document date all
+work on the same parsed `Document` (see `importer.import_invoice()`).
+Previously, the import opened the file a second time for the date
+fields and ran a scan through text recognition twice.
 
-Ein neues Layout (Roadmap Phase E) braucht damit genau zwei Schritte: Modul
-mit der Schnittstelle anlegen und in `PARSERS` eintragen. Der passende
-Lieferant muss denselben `parser_key` in den Seed-Daten haben
-(`app/core/lieferanten.py`) — `tests/test_parser.py` prüft das.
+A new layout (roadmap phase E) therefore needs exactly two steps: create
+a module with the interface and register it in `PARSERS`. The matching
+supplier must have the same `parser_key` in the seed data
+(`app/core/lieferanten.py`) — `tests/test_parser.py` checks that.
 
-## OCR-Fallback für gescannte Papierrechnungen
+## OCR fallback for scanned paper invoices
 
-Ganz selten kommt eine Rechnung nicht digital per Mail, sondern nur als
-Papier im Paket. Ein Scan davon ist eine PDF ohne Textebene (reines
-Rasterbild je Seite) und würde beim normalen Parsing sofort mit
-„Layout nicht erkannt" scheitern. `parsers/base.py` (`read_page()`) prüft
-deshalb je Seite zuerst `page.get_text("words")`; liefert das nichts,
-übernimmt `app/services/ocr.py` die Seite:
+Very rarely, an invoice doesn't arrive digitally by mail but only on
+paper in a package. A scan of that is a PDF without a text layer (a pure
+raster image per page) and would immediately fail normal parsing with
+"layout not recognized". `parsers/base.py` (`read_page()`) therefore
+first checks `page.get_text("words")` per page; if that returns nothing,
+`app/services/ocr.py` takes over the page:
 
-1. Seite mit PyMuPDF als Bild rendern (300 DPI); Tesseracts
-   Ausrichtungserkennung (OSD) korrigiert eine noch falsche Drehung, falls
-   der Scan sie nicht schon selbst im PDF vermerkt hat.
-2. Tesseract liest Wörter samt Positionen aus dem Bild.
-3. Die Pixel-Koordinaten werden in PDF-Punkte umgerechnet und je
-   erkannter Textzeile auf eine gemeinsame Höhe normalisiert, sodass das
-   Ergebnis exakt wie PyMuPDFs eigene `words`-Liste aussieht — sowohl die
-   Layout-Erkennung als auch die Tabellenerkennung der Parser-Module
-   (Kopfzeilensuche, Spaltengrenzen, Zeilengruppierung) laufen danach
-   unverändert weiter, ganz gleich ob die Wörter aus der Textebene oder per
-   OCR stammen.
+1. Render the page with PyMuPDF as an image (300 DPI); Tesseract's
+   orientation detection (OSD) corrects any remaining wrong rotation, if
+   the scan hasn't already recorded it in the PDF itself.
+2. Tesseract reads words with positions from the image.
+3. The pixel coordinates are converted to PDF points and normalized to a
+   common height per detected line of text, so the result looks exactly
+   like PyMuPDF's own `words` list — both the layout detection and the
+   table detection in the parser modules (header search, column
+   boundaries, row grouping) then run unchanged afterward, regardless of
+   whether the words came from the text layer or from OCR.
 
-OCR-Seiten und die daraus gelesenen Positionen werden mit `ocr_used`
-markiert (bis in die Datenbank, `Dokument.ocr_verwendet`); die Vorschau zeigt
-dafür einen eigenen Hinweis, der zu besonders sorgfältiger Kontrolle rät,
-blockiert den Import über diese Markierung allein aber nicht — nur
-echte Datenprobleme (fehlende Pflichtfelder, uneindeutige Farbe/Grösse
-usw.) tun das, genau wie bei digital erhaltenen Rechnungen. Ist
-Tesseract auf dem Rechner nicht installiert, meldet der Upload einen
-klaren Fehler statt eines stillen Fehlschlags (siehe `README.md` fürs
-lokale Setup; im Docker-Image ist Tesseract bereits enthalten).
+OCR pages and the line items read from them are flagged with `ocr_used`
+(all the way into the database, `Dokument.ocr_verwendet`); the preview
+shows a dedicated hint for this recommending extra-careful review, but
+this flag alone doesn't block the import — only genuine data problems
+(missing required fields, ambiguous color/size, etc.) do, exactly as with
+digitally received invoices. If Tesseract isn't installed on the machine,
+the upload reports a clear error instead of a silent failure (see
+`README.md` for local setup; Tesseract is already included in the Docker
+image).
 
-## Frontend: kein Framework, aber ein gemeinsames Theme
+## Frontend: no framework, but a shared theme
 
-`app/static/js/` bleibt bewusst ohne Build-Pipeline (siehe Entscheidung E8),
-zwei Skripte werden aber seitenübergreifend eingebunden:
+`app/static/js/` deliberately stays without a build pipeline (see
+decision E8), but two scripts are included across all pages:
 
-- `theme.js` verwaltet Hell-/Dunkelmodus über CSS-Custom-Properties in
-  `app.css` (folgt standardmässig der Systemeinstellung, manuell
-  umschaltbar, per `localStorage` gemerkt) und liefert den Umschalt-Knopf
-  als Factory-Funktion.
-- `nav.js` baut die Hauptnavigation an **einer** Stelle (die Templates
-  enthalten nur ein leeres `<nav>`): Übersicht, Bestand, Gruppe „Ware"
-  (Erfassen, Lieferungen, Umlagern, Ausbuchen), Artikel, Gruppe „Belege"
-  (Alle Belege, Beleg hochladen). Die Gruppen klappen mit je einer kurzen
-  Erklärung pro Eintrag auf; die aktive Seite trägt `aria-current="page"`.
-  „Beleg hochladen" sehen nur Filialleiter und Zentrale (Regel 9). Unter
-  900 px Breite steckt alles hinter dem Knopf „Menü".
-- `session.js` baut die rechte Seite der Kopfzeile: die **Filial-Pille**
-  (aktive Filiale, bei mehreren wählbaren als Auswahl) und das
-  **Konto-Menü** hinter dem Initialen-Knopf (Name, Kassennummer, Rolle,
-  Sprache, Hell/Dunkel, auf der Artikelseite der Excel-Export, Abmelden).
-  Es meldet die Anmeldung als Ereignis `sportfabrik:me`, damit `nav.js`
-  nach Rolle filtern kann, und blendet für Mitarbeiter die Upload-Kachel
-  auf der Übersicht aus.
+- `theme.js` manages light/dark mode via CSS custom properties in
+  `app.css` (follows the system setting by default, can be switched
+  manually, remembered via `localStorage`) and provides the toggle
+  button as a factory function.
+- `nav.js` builds the main navigation in **one** place (the templates
+  only contain an empty `<nav>`): Overview, Stock, "Goods" group (Enter,
+  Deliveries, Transfer, Write off), Articles, "Documents" group (All
+  documents, Upload document). The groups expand with a short
+  explanation per entry; the active page carries `aria-current="page"`.
+  "Upload document" is only visible to branch managers and head office
+  (rule 9). Below 900 px width, everything sits behind the "Menu"
+  button.
+- `session.js` builds the right side of the header: the **branch pill**
+  (active branch, a select if several are available) and the **account
+  menu** behind the initials button (name, till number, role, language,
+  light/dark, Excel export on the article page, log out). It fires the
+  login as a `sportfabrik:me` event so `nav.js` can filter by role, and
+  hides the upload tile on the overview for employees.
 
-Für ältere oder sehbeeinträchtigte Mitarbeitende bietet die Artikelsuche
-zusätzlich eine Spalten-Auswahl (einzelne Spalten ausblenden) und grössere
-Schrift in der Ergebnistabelle, ebenfalls per `localStorage` gemerkt.
+For older or visually impaired staff, article search additionally offers
+a column picker (hide individual columns) and larger text in the results
+table, also remembered via `localStorage`.
 
-### Gestaltung: ein Token-Satz für alle Seiten
+### Design: one token set for all pages
 
-`app/static/css/app.css` ist die einzige Stilquelle (keine Inline-Styles in
-den Templates, keine externen CDNs — Regel 1). Der Aufbau ist in nummerierte
-Abschnitte gegliedert; Farben, Abstände, Radien, Schatten und Übergänge
-stehen ausschliesslich als Custom Properties in `:root`:
+`app/static/css/app.css` is the single source of styling (no inline
+styles in the templates, no external CDNs — rule 1). It's organized into
+numbered sections; colors, spacing, radii, shadows, and transitions exist
+exclusively as custom properties on `:root`. The full design system
+(mission, rules, component specs, migration plan) lives in
+[DESIGN.md](../DESIGN.md), implemented across all pages 2026-09-27
+(see the "UI redesign after DESIGN.md" addendum in `docs/projekt-kontext.md`
+for what changed and how it was verified); this section gives the
+current token/component shape, not the history.
 
-- **Farben/Flächen**: `--bg`, `--surface`, `--surface-soft`, `--surface-alt`,
-  `--text`, `--text-muted`, `--text-faint`, `--border`, `--border-strong`,
-  `--accent` (Sport-Fabrik-Orange) und die Statusfarben `--danger-*`.
-- **Form**: `--radius-xs` … `--radius-xl` plus `--radius-pill` für Knöpfe,
-  `--shadow-sm/md/lg` für die Abstufung Karte → Panel → Overlay.
-- **Bewegung**: `--ease`, `--fast`, `--slow`; ein Block unter
-  `@media (prefers-reduced-motion: reduce)` schaltet alle Übergänge ab.
-- **Raster**: `--page-pad` und `--content-max` (1280 px, auf breiten Seiten
-  1680 px). Kopf- und Fusszeile rechnen ihren Innenabstand aus
-  `--content-max`, damit Navigation, Inhalt und Fusszeile auf derselben
-  Kante sitzen.
+- **Colors/surfaces**: `--bg`, `--surface`, `--surface-soft`,
+  `--surface-alt`, `--text`, `--text-muted`, `--text-faint`, `--border`,
+  `--border-strong`, `--accent` (Sportfabrik orange), status colors
+  `--danger-*`/`--warning-*`/`--info-*`/`--success-*`, and
+  reduction-stage tokens (30/50/70%, coupled to the roles in
+  `etikett.py`).
+- **Shape**: 3 radius steps (`--radius-sm/md/lg`) plus `--radius-pill`
+  for buttons, `--shadow-sm/md/lg` for elevation steps (panels sit at
+  elevation 0, no shadow).
+- **Spacing/type**: a 4px spacing scale and a 9-step type scale
+  (`--fs-*`); every raw font size in the CSS is mapped to one of these
+  tokens.
+- **Motion**: `--ease`, `--fast`, `--slow`; a block under
+  `@media (prefers-reduced-motion: reduce)` turns off all transitions.
+- **Grid**: `--page-pad` and `--content-max` (1280 px, 1680 px on wide
+  pages). Header and footer calculate their inner padding from
+  `--content-max`, so navigation, content, and footer sit on the same
+  edge.
+- **Icons**: a single sprite (`app/static/img/icons.svg`, 27 icons)
+  replaces all Unicode symbols previously used in CSS/JS.
+- **Reusable components**: button variants (primary/secondary/ghost/
+  danger/loading), form fields (44px, 16px font against iOS zoom,
+  helper/error pattern), `.chip-stage` (yellow/red/green markdown-stage
+  chip), `.empty-state` (icon + sentence, centered), `.is-loading`
+  (spinner before the label, `currentColor`, label stays visible), and
+  a scan-field variant (`--icon-scan`, 52px, barcode icon left) for the
+  three real scanner inputs (write off/enter/transfer `#ean`).
 
-Der Dunkelmodus definiert **nur** diese Tokens neu (zweimal: einmal für
-`prefers-color-scheme: dark`, einmal für die manuelle Wahl
-`:root[data-theme="dark"]`) — kein einziger Baustein hat eigene
-Dunkelmodus-Regeln. Wer eine Farbe ändern will, ändert sie an genau einer
-Stelle. `color-scheme` ist mitgesetzt, damit auch native Bedienelemente
-(Datumsfelder, Bildlaufleisten) zum Modus passen.
+Dark mode redefines **only** these tokens (twice: once for
+`prefers-color-scheme: dark`, once for the manual choice
+`:root[data-theme="dark"]`) — not a single component has its own dark-mode
+rules. Anyone who wants to change a color changes it in exactly one
+place. `color-scheme` is set as well, so native controls (date fields,
+scrollbars) match the mode too.
 
-Die Kopfzeile ist seit dem 23.09.2026 **einzeilig** und bleibt beim Scrollen
-stehen (`sticky` mit `backdrop-filter`): links die Marke, daneben die
-Navigation aus `nav.js`, rechts Filial-Pille und Konto-Menü aus `session.js`.
-Aufklapp-Menüs werden über die Klasse `is-open` gesteuert, nicht über
-`hidden` — die globale Regel `[hidden] { display: none !important }` liesse
-sich sonst auf schmalen Bildschirmen nicht übersteuern. Ändert sich die Datei, muss der Cache-Parameter
-(`?v=…`) in den Templates mitgezogen werden — sonst sehen Filialrechner noch
-die alte Fassung.
+Since 2026-09-23 the header has been **single-line** and stays fixed
+while scrolling (`sticky` with `backdrop-filter`): the brand on the left,
+next to it the navigation from `nav.js`, and on the right the branch pill
+and account menu from `session.js`. Expandable menus are controlled via
+the `is-open` class, not `hidden` — the global rule
+`[hidden] { display: none !important }` couldn't otherwise be overridden
+on narrow screens. If the file changes, the cache parameter (`?v=…`) in
+the templates has to be bumped along with it — otherwise branch
+computers still see the old version.
 
-## Fehlerbehandlung
+## Error handling
 
-Durchgängiges Prinzip: lieber explizit fehlschlagen mit einer klaren, in der
-Kontosprache übersetzten Meldung (siehe „Mehrsprachigkeit (i18n)" unten) als
-eine Annahme treffen, die sich später als falsch herausstellt. Beispiele:
-unbekanntes Rechnungslayout, passwortgeschützte PDFs, zu grosse Dateien
-(> 20 MB), uneindeutige Farbe/Grösse-Angaben, nicht eindeutig erkanntes
-Rechnungs-/Belegdatum, widersprüchliche Korrekturwerte, gleichzeitig
-bearbeitete Notizen (HTTP 409). Datenbankfehler während eines Imports oder
-einer Löschung führen zum vollständigen Rollback der Transaktion (nie ein
-Teilimport).
+Consistent principle: fail explicitly with a clear message translated
+into the account's language (see "Multilingualism (i18n)" below) rather
+than make an assumption that later turns out wrong. Examples: unknown
+invoice layout, password-protected PDFs, files that are too large
+(> 20 MB), ambiguous color/size information, an invoice/document date
+that can't be uniquely detected, conflicting correction values,
+simultaneously edited notes (HTTP 409). Database errors during an import
+or a deletion lead to a full rollback of the transaction (never a partial
+import).
 
-## Mehrsprachigkeit (i18n)
+## Multilingualism (i18n)
 
-Regel 7: Deutsch ist Standard, DE/FR/EN sind vollständig unterstützt, keine
-hartcodierten UI-Texte oder Fehlermeldungen (Templates, JS **und** Backend).
+Rule 7: German is the default, DE/FR/EN are fully supported, no
+hardcoded UI text or error messages (templates, JS **and** backend).
 
-**Katalog.** Einzige Quelle sind drei flache JSON-Dateien
-`app/static/i18n/{de,fr,en}.json` (Key → übersetzter Text, `{platzhalter}`
-per `str.format`). Sie sind direkt unter `/static/i18n/<sprache>.json`
-abrufbar (fürs Frontend) und werden vom Backend über `app/core/i18n.py`
-gelesen (`translate(key, language, **params)`, `template()` für den
-unformatierten Text, `normalize_language()`). Ein fehlender Key fällt auf
-Deutsch, dann auf den Key selbst zurück (macht einen vergessenen
-Katalog-Eintrag sofort sichtbar statt einen kryptischen Fehler zu werfen).
+**Catalog.** The single source is three flat JSON files
+`app/static/i18n/{de,fr,en}.json` (key → translated text, `{placeholder}`
+via `str.format`). They're directly available at
+`/static/i18n/<language>.json` (for the frontend) and are read by the
+backend via `app/core/i18n.py` (`translate(key, language, **params)`,
+`template()` for the unformatted text, `normalize_language()`). A
+missing key falls back to German, then to the key itself (this makes a
+forgotten catalog entry immediately visible instead of throwing a cryptic
+error).
 
-**Spracherkennung pro Request** (`app/routers/auth.py`): eingeloggt die
-Kontosprache (`users.language`, per `Depends(get_language)` — nutzt den von
-`require_login_api` bereits geladenen Benutzer, keine zusätzliche
-DB-Abfrage); anonym (z. B. `/login`) der `Accept-Language`-Header
-(`get_language_optional`), sonst Deutsch. Alle Router, die Fehler werfen,
-hängen `language: str = Depends(get_language)` an und übersetzen jede
-`HTTPException`-Meldung mit `translate(key, language, ...)`. Das gilt auch
-für die Service-Schicht (`parsers/`, `ocr.py`, `corrections.py`,
-`importer.py`): `language` wird von den Routern bis zu `parse_document()`,
-`apply_corrections()`, `import_invoice()`, `delete_invoice()` durchgereicht,
-damit auch Parser-Warnungen (in der Vorschau angezeigt) und
-Korrektur-Fehlermeldungen übersetzt sind. Eine Besonderheit:
-`corrections.py` muss beim erneuten Validieren alte Parser-Warnungen
-sprachunabhängig wiedererkennen (z. B. „Pflichtfeld fehlt: …" vs. „Required
-field missing: …") — dafür liefert `template()` die unformatierte
-Vorlage, deren fester Teil vor dem ersten `{` als Präfix dient.
+**Per-request language detection** (`app/routers/auth.py`): when logged
+in, the account's language (`users.language`, via
+`Depends(get_language)` — reuses the user already loaded by
+`require_login_api`, no extra DB query); anonymous (e.g. `/login`) the
+`Accept-Language` header (`get_language_optional`), otherwise German. All
+routers that raise errors attach `language: str = Depends(get_language)`
+and translate every `HTTPException` message with
+`translate(key, language, ...)`. This also applies to the service layer
+(`parsers/`, `ocr.py`, `corrections.py`, `importer.py`): `language` is
+passed through from the routers all the way to `parse_document()`,
+`apply_corrections()`, `import_invoice()`, `delete_invoice()`, so that
+parser warnings (shown in the preview) and correction error messages are
+translated too. One special case: when re-validating,
+`corrections.py` has to recognize old parser warnings
+language-independently (e.g. "Pflichtfeld fehlt: …" vs. "Required field
+missing: …") — for this, `template()` returns the unformatted template,
+whose fixed part before the first `{` serves as a prefix.
 
-**Frontend** (`app/static/js/i18n.js`, IIFE, exponiert `window.SportfabrikI18n`):
-lädt beim Start den Katalog der zuletzt gewählten Sprache (`localStorage`
-`sportfabrikLanguage`, vor dem Login gesetzt) und wendet ihn auf alle
-Elemente mit `data-i18n`/`data-i18n-placeholder`/`data-i18n-aria-label`/
-`data-i18n-title` an (`textContent` bzw. das jeweilige Attribut). Der
-deutsche Text steht weiterhin direkt im HTML (Fallback vor dem ersten
-Katalog-Fetch, matcht Deutsch als Standard). Dynamisch von JavaScript
-erzeugter Text nutzt `window.SportfabrikI18n.t(key, vars)`; nach einem
-Sprachwechsel feuert ein `sportfabrik:i18n-ready`-Event, auf das jede Seite
-mit dynamischem Inhalt lauscht, um neu zu rendern (z. B. `load()` in
-`history.html`/`articles.html`, `renderQueue()`/`render()` in `preview.js`).
-`session.js` gleicht nach dem Login die Konto-Sprache aus `/api/me` mit
-`localStorage` ab (`syncFromAccount`, kein erneutes `POST`); der
-Sprach-Umschalter im Einstellungen-Menü bzw. auf der Login-Seite ruft
-`setLanguage()` auf, was den Katalog neu lädt **und** (eingeloggt)
-`POST /api/language` aufruft.
+**Frontend** (`app/static/js/i18n.js`, IIFE, exposes
+`window.SportfabrikI18n`): loads the catalog of the last chosen language
+at startup (`localStorage` key `sportfabrikLanguage`, set before login)
+and applies it to all elements with `data-i18n`/`data-i18n-placeholder`/
+`data-i18n-aria-label`/`data-i18n-title` (`textContent` or the respective
+attribute). The German text still sits directly in the HTML (a fallback
+before the first catalog fetch, matching German as the default).
+Text created dynamically by JavaScript uses
+`window.SportfabrikI18n.t(key, vars)`; after a language switch, a
+`sportfabrik:i18n-ready` event fires, which every page with dynamic
+content listens for in order to re-render (e.g. `load()` in
+`history.html`/`articles.html`, `renderQueue()`/`render()` in
+`preview.js`). `session.js` reconciles the account language from
+`/api/me` with `localStorage` after login (`syncFromAccount`, no repeat
+`POST`); the language switcher in the settings menu or on the login page
+calls `setLanguage()`, which reloads the catalog **and** (when logged in)
+calls `POST /api/language`.
 
-**Was (bewusst) nicht übersetzt wird:** Artikeldaten aus Lieferantendokumenten
-(Regel 7), feste Textanker im INTERSPORT-Layout, mit denen der Parser das
-PDF durchsucht (z. B. „Rechnungsdatum"/„Belegdatum" — das PDF ist immer
-deutsch, unabhängig von der UI-Sprache), Pydantic-Feldvalidierungsfehler
-(z. B. leere Notiz) — deren JSON-Form (`detail` als Liste statt String)
-wird vom Frontend ohnehin nie direkt anzeigt, sondern durch eine generische
-übersetzte Meldung ersetzt —, sowie die Spaltenüberschriften im
-Excel-Export (`article_export.py`, eigenes Dokumentformat, noch offen).
+**What is (deliberately) not translated:** article data from supplier
+documents (rule 7), fixed text anchors in the INTERSPORT layout that the
+parser uses to search the PDF (e.g. "Rechnungsdatum"/"Belegdatum" — the
+PDF is always German, regardless of the UI language), Pydantic field
+validation errors (e.g. an empty note) — whose JSON form (`detail` as a
+list instead of a string) the frontend never displays directly anyway,
+replacing it with a generic translated message —, and the column headers
+in the Excel export (`article_export.py`, its own document format, still
+open).
 
 
-## Buchungsrechte ab 24.09.2026
+## Booking rights as of 2026-09-24, refined 2026-09-28
 
-Mitarbeiter dürfen manuell einbuchen und Bestände korrigieren, jedoch nur in ihren zugewiesenen Filialen. Verkauf/Abgang ausbuchen, Stornieren und Umlagern sind Filialleitern und Zentrale vorbehalten. Deren bisherige filialübergreifende Buchungsrechte bleiben erhalten; Leserechte bleiben unverändert.
+Employees may manually book in goods, correct stock, and book out sales
+(only sales), all only in their assigned branches. Writing off for any
+other reason, cancelling, and transferring are reserved for branch
+managers and head office. Their existing cross-branch booking rights
+remain in place; read rights are unchanged. Markdowns may be changed only
+in one's own branches — also by branch managers
+(`services/lagerorte.list_reduktion_lagerorte`); head office may change
+all.
 
-`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`, `POST /api/ausbuchen/{id}/storno` sowie `/umlagern` und alle `/api/umlagerung`-Endpunkte verlangen Filialleiter/Zentrale. Die Ausbuchungsliste (`GET /api/ausbuchungen`) bleibt für alle lesbar. `GET /api/erfassen/stammdaten` bietet Mitarbeitern nur zugewiesene Filialen an; Erfassung/Korrektur prüfen diese Grenze auch serverseitig. `GET /api/bestand` liefert zusätzlich `rechte.ausbuchen` und `rechte.korrektur_lagerorte`, anhand derer die Aktionen angezeigt werden.
+`POST /api/ausbuchen/{id}/storno`, `/umlagern`, and all
+`/api/umlagerung` endpoints require branch manager/head office; the
+write-off page and `POST /api/ausbuchen` are open to all roles and check
+the reason per role. The
+write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
+`GET /api/erfassen/stammdaten` offers employees only their assigned
+branches; entry/correction also check this boundary server-side.
+`GET /api/bestand` additionally returns `rechte.ausbuchen` and
+`rechte.korrektur_lagerorte`, which determine which actions are shown.
+
+## Phone layer (implemented 2026-09-28)
+
+A login from a phone is flagged in the session. `app/core/handy.py` holds
+the allowlist and the server-side check; every route (page and API) is
+checked against it. A blocked API call returns a translated 403, a
+blocked page redirects to `/m`. The flag survives "Request desktop
+site"; roles and branch limits from the sections above apply unchanged,
+and tablets keep the desktop version.
+
+`app/routers/handy.py` serves the phone-only pages under `/m/*`:
+- `/m`, `/m/suche` — home screen and article search/detail
+- `/m/zaehlen` — count and correct stock
+- `/m/lieferungen` — confirm goods arrival
+- `/m/umlagern` — dispatch a transfer (branch manager/head office only)
+- `/m/ausbuchen` — write off a sale/removal (employees: sales only)
+- `/m/erfassen` — manual goods entry
+- `/m/runterschreiben` — mark-downs and manual reduction
+
+These pages call the existing desktop APIs (`bestand`, `wareneingaenge`,
+`umlagerung`, `ausbuchen`, `erfassen`, `reduktion`) rather than adding a
+parallel API surface; only the phone layer and templates are new.
+Camera scanning uses the browser's native barcode reader where available
+and a bundled ZXing library otherwise (no CDN, per rule 1); a code counts
+only after two identical reads with a valid check digit. Full feature
+list and decisions: `docs/projekt-kontext.md`, "Mobile phone use –
+implemented 2026-09-28"; original requirements: `docs/handynutzung.md`.

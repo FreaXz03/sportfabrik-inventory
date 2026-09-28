@@ -9,7 +9,8 @@ FUNKTIONEN: dict[str, tuple[str, ...] | None] = {
     "erfassen": None,
     "wareneingaenge": None,
     "umlagern": ("chef", "admin"),
-    "ausbuchen": ("chef", "admin"),
+    # Mitarbeiter nur Verkauf (28.09.2026) - die Seite selbst prüft den Grund.
+    "ausbuchen": None,
     "runterschreiben": None,
     "articles": None,
     "invoices": None,

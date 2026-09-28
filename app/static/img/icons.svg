@@ -91,6 +91,15 @@
       <polyline points="12 19 5 12 12 5"/>
     </symbol>
 
+    <!-- Eigene, einfache Zeichnung: zwei gegenlaeufige Pfeile fuer Umlagern
+         zwischen zwei Lagerorten (ersetzt ⇄). -->
+    <symbol id="icon-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="7" x2="17" y2="7"/>
+      <polyline points="13 3 17 7 13 11"/>
+      <line x1="21" y1="17" x2="7" y2="17"/>
+      <polyline points="11 13 7 17 11 21"/>
+    </symbol>
+
     <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
       <line x1="3" y1="12" x2="21" y2="12"/>
       <line x1="3" y1="6" x2="21" y2="6"/>

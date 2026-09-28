@@ -1,10 +1,10 @@
 """Lagerdauer und Reduktionsstufe (Regel 6).
 
-Die Runterschreib-Regel der Sportfabrik: **18 Monate → 50 %, 36 Monate →
-70 %**, gerechnet ab dem letzten Wareneingang derselben Lieferanten-
+Die Runterschreib-Regel der Sportfabrik: **ab Eingang 30 %, nach 18 Monaten
+50 %, nach 36 Monaten 70 %** (Entscheid 28.09.2026: es gibt keinen Artikel
+ohne Reduktion), gerechnet ab dem letzten Wareneingang derselben Lieferanten-
 Artikelnummer **in dieser Filiale** (eine Nachlieferung startet die Uhr neu).
-Die 30 % aus D25 sind eine Entscheidung des Ladens, keine Zeitregel - sie
-lassen sich am Etikett von Hand mitgeben.
+Ohne Eingangsdatum (Lager ohne Verkauf, D13) läuft keine Uhr - Stufe 0.
 
 Hier steht vorerst nur, was das Etikett (Teilaufgabe B7) braucht: das
 massgebende Datum und die daraus folgende Stufe. Die Hinweise für die
@@ -19,6 +19,8 @@ from ..core.models import Lagerbewegung, Variante, Wareneingang, WareneingangPos
 
 # Absteigend, damit die erste zutreffende Stufe gewinnt.
 STUFEN = ((36, 70), (18, 50))
+# Ab dem ersten Tag in der Filiale (Entscheid 28.09.2026).
+STARTSTUFE = 30
 
 ERLAUBTE_STUFEN = (0, 30, 50, 70)
 
@@ -68,7 +70,8 @@ def monate_seit(eingang: date, heute: date) -> int:
 
 
 def stufe(eingang: date | None, heute: date | None = None) -> int:
-    """Fällige Reduktion in Prozent (0, 50 oder 70) nach Regel 6."""
+    """Fällige Reduktion in Prozent nach Regel 6: 30, 50 oder 70 - 0 nur
+    ohne Eingangsdatum."""
     if eingang is None:
         return 0
     heute = heute or date.today()
@@ -76,4 +79,4 @@ def stufe(eingang: date | None, heute: date | None = None) -> int:
     for monate, prozent in STUFEN:
         if alter >= monate:
             return prozent
-    return 0
+    return STARTSTUFE

@@ -52,6 +52,42 @@
     }
   }
 
+  // Klarstellung 25.09.2026: Abgänge ausser Verkauf je Grund, mit Person.
+  function grundText(grund, freitext) {
+    const text = t('ausbuchen.reason.' + grund);
+    return freitext ? text + ': ' + freitext : text;
+  }
+
+  function zeitText(wert) {
+    const ort = { de: 'de-CH', fr: 'fr-CH', en: 'en-GB' }[window.SportfabrikI18n.lang] || 'de-CH';
+    const datum = new Date(wert);
+    return datum.toLocaleDateString(ort) + ' ' + datum.toLocaleTimeString(ort, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function drawAbgaenge(abgaenge) {
+    const leer = !abgaenge.je_grund.length;
+    $('abgaengeTotal').textContent = t('statistik.abgaenge_total', { anzahl: menge(abgaenge.stueck) });
+    $('abgaengeLeer').hidden = !leer;
+    for (const id of ['abgaengeTotal', 'abgaengeGruende', 'abgaengeLetzte']) $(id).hidden = leer;
+    $('abgaengeLetzte').previousElementSibling.hidden = leer;
+    $('abgaengeGrundRows').replaceChildren(...abgaenge.je_grund.map((zeile) => {
+      const tr = document.createElement('tr');
+      tr.append(node('td', grundText(zeile.grund)), node('td', menge(zeile.stueck)));
+      return tr;
+    }));
+    $('abgaengeLetzteRows').replaceChildren(...abgaenge.letzte.map((zeile) => {
+      const tr = document.createElement('tr');
+      tr.append(
+        node('td', zeitText(zeile.zeitpunkt)),
+        node('td', [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') || '—'),
+        node('td', grundText(zeile.grund, zeile.freitext)),
+        node('td', zeile.lagerort),
+        node('td', zeile.person || '—')
+      );
+      return tr;
+    }));
+  }
+
   function lagerorteFuellen(lagerorte) {
     if (lagerorteGesetzt) return;
     const auswahl = $('lagerort');
@@ -67,7 +103,7 @@
     $('status').textContent = t('statistik.loading');
     $('status').hidden = false;
     $('retry').hidden = true;
-    for (const id of ['einnahmenPanel', 'kategorienPanel', 'empfehlungPanel']) $(id).hidden = true;
+    for (const id of ['einnahmenPanel', 'kategorienPanel', 'empfehlungPanel', 'abgaengePanel']) $(id).hidden = true;
     try {
       const parameter = new URLSearchParams({ zeitraum: $('zeitraum').value });
       if ($('lagerort').value) parameter.set('lagerort_id', $('lagerort').value);
@@ -82,6 +118,8 @@
       $('kategorienPanel').hidden = false;
       drawEmpfehlung(daten.bestellempfehlung);
       $('empfehlungPanel').hidden = false;
+      drawAbgaenge(daten.abgaenge);
+      $('abgaengePanel').hidden = false;
     } catch (e) {
       $('status').textContent = e.message;
       $('retry').hidden = false;

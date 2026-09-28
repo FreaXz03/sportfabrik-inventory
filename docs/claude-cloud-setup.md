@@ -1,111 +1,110 @@
-# Claude Code in Cloud-Sessions einrichten
+# Setting up Claude Code in cloud sessions
 
-Lokal installierte Claude-Code-Plugins gelten nur auf dem eigenen Rechner.
-Cloud-Sessions (claude.ai/code, `claude --cloud`, GitHub-Trigger) starten in
-einem frischen Container und bringen nichts davon mit. Diese Anleitung richtet
-sie dort ein.
+Locally installed Claude Code plugins only apply on your own machine.
+Cloud sessions (claude.ai/code, `claude --cloud`, GitHub triggers) start in
+a fresh container and bring none of that with them. This guide sets
+them up there.
 
-## Warum das Repo-Setting allein nicht reicht
+## Why the repo setting alone isn't enough
 
-Naheliegend wäre, `enabledPlugins` und `extraKnownMarketplaces` in
-`.claude/settings.json` zu schreiben. Das greift für Cloud-Sessions **nicht** —
-die Claude-Code-Dokumentation führt „Plugins and marketplaces declared in your
-repo's `.claude/settings.json`" ausdrücklich als *nicht* verfügbar auf
+The obvious move would be to write `enabledPlugins` and `extraKnownMarketplaces` into
+`.claude/settings.json`. That does **not** work for cloud sessions —
+the Claude Code documentation explicitly lists "Plugins and marketplaces declared in your
+repo's `.claude/settings.json`" as *not* carried over
 ([Cloud environments → What carries over from your setup](https://code.claude.com/docs/en/cloud-environments#what-carries-over-from-your-setup)).
 
-Entscheidend ist der Zeitpunkt: Plugins werden beim Start von Claude Code
-geladen. Was erst *während* des Starts installiert wird — durch einen
-SessionStart-Hook etwa — ist in derselben Session noch nicht da. Nur das
-**Setup-Skript** der Umgebung läuft davor.
+Timing is what matters: plugins are loaded when Claude Code starts. Anything
+installed only *during* startup — by a SessionStart hook, for instance — isn't
+there yet in that same session. Only the environment's **setup script**
+runs before that.
 
-| | Setup-Skript | SessionStart-Hook |
+| | Setup script | SessionStart hook |
 | --- | --- | --- |
-| Konfiguriert in | claude.ai/code → Umgebungs-Wähler → Zahnrad | `.claude/settings.json` im Repo |
-| Läuft | vor dem Start von Claude Code | nach dem Start |
-| Gilt für | nur Cloud-Sessions | lokal und Cloud |
-| Hier zuständig für | Systempakete, Datenbank, Plugins | Dienst starten, Python-Abhängigkeiten |
+| Configured in | claude.ai/code → environment selector → gear icon | `.claude/settings.json` in the repo |
+| Runs | before Claude Code starts | after it starts |
+| Applies to | cloud sessions only | local and cloud |
+| Responsible here for | system packages, database, plugins | starting the service, Python dependencies |
 
-Nach dem Setup-Skript wird das Dateisystem gespeichert; spätere Sessions starten
-direkt aus diesem Abbild und überspringen das Skript. Es läuft erneut, wenn du
-das Skript oder die Netzwerkfreigaben änderst, und nach etwa sieben Tagen.
+After the setup script runs, the filesystem is snapshotted; later sessions start
+directly from that image and skip the script. It runs again if you
+change the script or the network permissions, and after about seven days.
 
-Das Abbild hält **Dateien, keine Prozesse**. Installierte Pakete und die
-angelegte Datenbank sind in jeder späteren Session da; ein im Setup-Skript
-gestarteter Dienst dagegen nicht — der gehört in den Hook.
+The snapshot holds **files, not processes**. Installed packages and the
+created database are present in every later session; a service
+started in the setup script, however, is not — that belongs in the hook.
 
-## 1. Setup-Skript eintragen
+## 1. Register the setup script
 
-Auf [claude.ai/code](https://claude.ai/code) in der Zeile über dem
-Nachrichtenfeld auf das Wolken-Symbol mit dem Umgebungsnamen klicken, im
-Abschnitt **Cloud** über die Umgebung fahren, das **Zahnrad** anklicken und den
-Inhalt von [`scripts/claude-cloud-setup.sh`](../scripts/claude-cloud-setup.sh)
-in das Feld **Setup script** kopieren. Eine Einstellungsseite oder direkte URL
-dafür gibt es nicht.
+On [claude.ai/code](https://claude.ai/code), in the row above the
+message field, click the cloud icon with the environment name, hover over the
+environment in the **Cloud** section, click the **gear icon**, and copy the
+contents of [`scripts/claude-cloud-setup.sh`](../scripts/claude-cloud-setup.sh)
+into the **Setup script** field. There is no settings page or direct URL
+for this.
 
-Das Skript ist bewusst eigenständig — es greift auf nichts aus dem Repo zu, weil
-zu diesem Zeitpunkt nicht garantiert ist, dass der Klon schon vorliegt. Es
-erledigt drei Dinge: Systempakete (PostgreSQL, Tesseract mit DE/FR für OCR),
-die Test-Datenbank `sportfabrik_dev` samt Benutzer, und die Plugins.
+The script is deliberately self-contained — it doesn't touch anything from the repo, because
+at that point there's no guarantee the clone already exists. It
+does three things: system packages (PostgreSQL, Tesseract with DE/FR for OCR),
+the test database `sportfabrik_dev` plus its user, and the plugins.
 
-Alles kommt aus einem einzigen Marktplatz:
+Everything comes from a single marketplace:
 [`FreaXz03/claude-plugin-marketplace`](https://github.com/FreaXz03/claude-plugin-marketplace).
-Der bündelt die offiziellen Anthropic-Plugins und die aus fremden Repos an einer
-Stelle; bis auf `markitdown` verweist er per `git-subdir` auf die
-Original-Repos, die Plugins bleiben also von selbst aktuell.
+It bundles the official Anthropic plugins and the ones from third-party repos in one
+place; except for `markitdown`, it points to the
+original repos via `git-subdir`, so the plugins stay up to date on their own.
 
-**Der Marktplatz und die dort verlinkten Quell-Repos müssen öffentlich sein.**
-Der Container hat keinen Git-Credential-Helper und kein `gh`; ein privates Repo
-scheitert mit `could not read Username`. Weil im Skript hinter jedem Aufruf ein
-`|| true` steht, fällt das sonst nicht auf — das Plugin fehlt einfach.
+**The marketplace and the source repos it links to must be public.**
+The container has no git credential helper and no `gh`; a private repo
+fails with `could not read Username`. Because every call in the script is followed by
+`|| true`, that otherwise goes unnoticed — the plugin is simply missing.
 
-Installiert werden:
+Installed:
 
-| Plugin | Wofür |
+| Plugin | What for |
 | --- | --- |
-| `pyright-lsp` | Typprüfung live, passend zu `pyrightconfig.json` |
-| `code-review` | `/code-review` mit spezialisierten Agenten |
+| `pyright-lsp` | live type checking, matching `pyrightconfig.json` |
+| `code-review` | `/code-review` with specialized agents |
 | `commit-commands` | `/commit`, `/commit-push-pr`, `/clean_gone` |
-| `claude-md-management` | `CLAUDE.md` pflegen |
-| `security-guidance` | Sicherheitshinweise beim Bearbeiten |
-| `frontend-design` | Oberfläche, passend zu Vanilla JS/CSS |
-| `playwright` | Browsersteuerung; Chromium ist vorinstalliert |
-| `markitdown` | Dokumente nach Markdown wandeln |
-| `caveman` | knappe Antworten |
-| `context-mode` | Kontextfenster schonen |
-| `context7` | Bibliotheks-Dokumentation zur Hand |
-| `claude-mem` | Gedächtnis über Sessions hinweg |
+| `claude-md-management` | maintain `CLAUDE.md` |
+| `security-guidance` | security hints while editing |
+| `frontend-design` | UI, matching vanilla JS/CSS |
+| `playwright` | browser control; Chromium is preinstalled |
+| `markitdown` | convert documents to Markdown |
+| `caveman` | terse answers |
+| `context-mode` | conserve the context window |
+| `context7` | library documentation on hand |
+| `claude-mem` | memory across sessions |
 
-Die ersten zehn laufen vollständig im Container. Die letzten beiden nicht:
-`context7` holt Dokumentation von einem externen Dienst, `claude-mem` überträgt
-Sitzungsdaten an cmem.ai und liest von dort zurück. Regel 1 in `CLAUDE.md`
-erlaubt das: sie verlangt lokale Verarbeitung für **Belegdaten**, nicht für die
-Entwicklungswerkzeuge.
+The first ten run entirely inside the container. The last two do not:
+`context7` fetches documentation from an external service, `claude-mem` sends
+session data to cmem.ai and reads it back from there. Rule 1 in `CLAUDE.md`
+allows this: it requires local processing for **document data**, not for the
+development tools.
 
-Eine Einschränkung bleibt aber bestehen: `claude-mem` überträgt, was die Session
-anfasst. Wer in einer Session mit echten Belegen aus `uploads/` oder
-`Rechnungen/` arbeitet — etwa beim Bau eines neuen Parsers —, schickt deren
-Inhalte mit. Auch bei Graphify ist die Auswahl der tatsächlich verarbeiteten Inhalte entscheidend; `--code-only` ist optional, automatische Beleganalyse bleibt ausgeschlossen (siehe `docs/obsidian-graphify.md`). Für
-solche Sessions `claude-mem` deaktivieren (`/plugin`) oder die beiden Zeilen aus
-der Plugin-Liste streichen.
+One restriction still applies, though: `claude-mem` transmits whatever the session
+touches. Anyone working in a session with real documents from `uploads/` or
+`Rechnungen/` — for example while building a new parser — sends their
+contents along too. With Graphify as well, the selection of the content actually processed is decisive; `--code-only` is optional, and automatic document analysis remains excluded (see `docs/obsidian-graphify.md`). For
+such sessions, disable `claude-mem` (`/plugin`) or remove those two lines from
+the plugin list.
 
-**Im Marktplatz gelistet, aber bewusst nicht installiert:**
+**Listed in the marketplace, but deliberately not installed:**
 
-- `obsidian` — der Vault liegt auf dem Arbeitsrechner, im Container nutzlos.
-- `security-sweep` — das im Manifest hinterlegte Quell-Repo
-  `onomeaj/security-sweep-plugin` ist nicht anonym klonbar (`git ls-remote`
-  fragt nach einem Benutzernamen). Soll es mit in die Cloud, muss das Plugin wie
-  `markitdown` direkt im eigenen Marktplatz-Repo liegen statt per `git-subdir`
-  verlinkt.
+- `obsidian` — the vault lives on the work machine, useless in the container.
+- `security-sweep` — the source repo listed in the manifest,
+  `onomeaj/security-sweep-plugin`, cannot be cloned anonymously (`git ls-remote`
+  asks for a username). If it needs to go into the cloud, the plugin would have to live
+  directly in our own marketplace repo, like `markitdown`, instead of being linked via `git-subdir`.
 
-**Gar nicht verfügbar:** desktop-gebundene Plugins (Desktop Commander,
-pdf-viewer, cowork-plugin-management) haben im Container keine Grundlage.
+**Not available at all:** desktop-bound plugins (Desktop Commander,
+pdf-viewer, cowork-plugin-management) have no basis in the container.
 
-## 2. SessionStart-Hook registrieren
+## 2. Register the SessionStart hook
 
-Ohne diesen Schritt läuft in einer Cloud-Session weder die Testsuite noch die
-App: die Python-Pakete fehlen, und PostgreSQL ist zwar installiert, aber nicht
-gestartet. `.claude/settings.json` anlegen (oder den `hooks`-Block in eine
-bestehende Datei einfügen):
+Without this step, neither the test suite nor the app runs in a cloud session:
+the Python packages are missing, and PostgreSQL, while installed, is
+not started. Create `.claude/settings.json` (or add the `hooks` block to an
+existing file):
 
 ```json
 {
@@ -125,60 +124,60 @@ bestehende Datei einfügen):
 }
 ```
 
-[`scripts/claude-session-deps.sh`](../scripts/claude-session-deps.sh) startet
-PostgreSQL, legt ein `.venv` an, installiert `requirements.txt` plus pytest und
-setzt den Pfad für die Session. Lokal beendet es sich sofort
-(`CLAUDE_CODE_REMOTE`), das vorhandene `.venv` bleibt unangetastet.
+[`scripts/claude-session-deps.sh`](../scripts/claude-session-deps.sh) starts
+PostgreSQL, creates a `.venv`, installs `requirements.txt` plus pytest, and
+sets the path for the session. Locally it exits immediately
+(`CLAUDE_CODE_REMOTE`), leaving the existing `.venv` untouched.
 
-**Warum ein `.venv` und nicht der Systempython:** dort scheitert
-`pip install -r requirements.txt` reproduzierbar mit
+**Why a `.venv` and not the system Python:** there,
+`pip install -r requirements.txt` reproducibly fails with
 `Cannot uninstall PyYAML 6.0.1, RECORD file not found. Hint: The package was
-installed by debian` — auch mit `--break-system-packages`. `pyrightconfig.json`
-zeigt ohnehin auf `.venv`.
+installed by debian` — even with `--break-system-packages`. `pyrightconfig.json`
+points to `.venv` anyway.
 
-Der Hook läuft synchron: die Session startet erst, wenn er fertig ist. Gemessen
-sind rund 22 Sekunden beim ersten Mal, danach etwa 4, weil `.venv` steht und nur
-noch der Dienst hochkommt. Wer den schnelleren Start bevorzugt, kann den Hook
-asynchron ausführen und nimmt dafür in Kauf, dass ein früher `pytest`-Aufruf ins
-Leere läuft.
+The hook runs synchronously: the session doesn't start until it finishes. Measured
+at around 22 seconds the first time, then about 4 afterwards, because `.venv` already
+exists and only the service still needs to come up. Anyone who prefers a faster start
+can run the hook asynchronously, at the cost of an early `pytest` call
+running against nothing.
 
-## Geprüft
+## Verified
 
-In einem frischen HOME, also so wie ein neuer Container startet:
+In a fresh HOME, i.e. the way a new container starts:
 
-- `claude plugin validate .` gegen den Marktplatz → „Validation passed".
-- Marktplatz hinzugefügt und die zehn rein lokalen Plugins daraus installiert:
-  alle zehn erfolgreich, `security-sweep` als einziges gescheitert (Quell-Repo
-  nicht anonym klonbar, siehe oben).
-- Eine so vorbereitete Session lädt die Plugins auch im Projektverzeichnis —
-  mit der Vorversion des Skripts geprüft: `code-review:`, `commit-commands:`
-  (drei), `claude-md-management:` (zwei), `frontend-design:`. `pyright-lsp`,
-  `security-guidance` und `playwright` bringen keine Skills mit, sondern LSP,
-  Hooks bzw. einen MCP-Server.
-- `context7` und `claude-mem` wurden **nicht** probeweise installiert — der
-  Auto-Modus der Entwicklungs-Session hat das unterbunden, weil `claude-mem`
-  Sitzungsdaten nach aussen überträgt. Geprüft ist stattdessen, dass beide im
-  Marktplatz-Manifest stehen und dass das Skript die richtigen Befehle absetzt.
-  Der erste echte Lauf ist der in deiner Umgebung.
-- Hook: Exit-Code 0, 22 Sekunden beim ersten Lauf, 4 Sekunden bei stehendem
-  `.venv`. Gegenprobe mit vorher gestopptem Dienst — danach meldet `pg_isready`
-  „accepting connections", und `CLAUDE_ENV_FILE` enthält den `.venv`-Pfad.
-- Datenbank erreichbar: `create_engine(DATABASE_URL)` verbindet sich als
-  `sportfabrik` auf `sportfabrik_dev`.
-- Danach `pytest -q` → 369 bestanden, 19 übersprungen;
-  `pyright app/services/corrections.py` → 0 Fehler.
+- `claude plugin validate .` against the marketplace → "Validation passed."
+- Marketplace added and the ten purely local plugins from it installed:
+  all ten succeeded, `security-sweep` was the only failure (source repo
+  not clonable anonymously, see above).
+- A session prepared this way also loads the plugins in the project directory —
+  verified with an earlier version of the script: `code-review:`, `commit-commands:`
+  (three), `claude-md-management:` (two), `frontend-design:`. `pyright-lsp`,
+  `security-guidance`, and `playwright` don't bring skills, but rather an LSP,
+  hooks, or an MCP server respectively.
+- `context7` and `claude-mem` were **not** trial-installed — the
+  development session's auto mode prevented it, because `claude-mem`
+  transmits session data externally. Instead, it's verified that both are
+  listed in the marketplace manifest and that the script issues the right commands.
+  The first real run is the one in your environment.
+- Hook: exit code 0, 22 seconds on the first run, 4 seconds with an existing
+  `.venv`. Cross-checked with the service stopped beforehand — afterwards `pg_isready`
+  reports "accepting connections," and `CLAUDE_ENV_FILE` contains the `.venv` path.
+- Database reachable: `create_engine(DATABASE_URL)` connects as
+  `sportfabrik` to `sportfabrik_dev`.
+- Afterwards `pytest -q` → 369 passed, 19 skipped;
+  `pyright app/services/corrections.py` → 0 errors.
 
-Im laufenden Container ebenfalls bestätigt: `psql` und `tesseract` (mit `deu`,
-`fra`) sind vorhanden und die Datenbank besteht weiter — die Systempakete und
-die Daten überleben also im Abbild. Der PostgreSQL-Dienst dagegen war unten,
-und die Python-Pakete fehlten: der `pip`-Aufruf im Setup-Skript scheitert am
-Debian-PyYAML und wird dort von `|| true` verschluckt. Genau diese beiden
-Lücken schliesst der Hook.
+Also confirmed in the running container: `psql` and `tesseract` (with `deu`,
+`fra`) are present and the database still exists — so the system packages and
+the data do survive in the snapshot. The PostgreSQL service, however, was
+down, and the Python packages were missing: the `pip` call in the setup script fails on
+Debian's PyYAML and is swallowed there by `|| true`. The hook closes exactly
+these two gaps.
 
-## Wenn etwas fehlt
+## If something is missing
 
-- `claude plugin list` zeigt, was geladen ist, `/plugin` die Oberfläche dazu.
-- Das Setup-Skript muss mit 0 enden, sonst startet die Session nicht — deshalb
-  steht hinter jedem Aufruf ein `|| true`.
-- Nach einer Änderung am Skript läuft es beim nächsten Sessionstart erneut, das
-  gespeicherte Abbild wird neu gebaut.
+- `claude plugin list` shows what's loaded; `/plugin` is the UI for that.
+- The setup script must exit with 0, otherwise the session won't start — that's
+  why every call is followed by `|| true`.
+- After a change to the script, it runs again on the next session start, and the
+  saved image is rebuilt.

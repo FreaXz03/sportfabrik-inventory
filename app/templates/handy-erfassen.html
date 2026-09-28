@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+     <meta name="theme-color" content="#F5F4F2" media="(prefers-color-scheme: light)">
+     <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+     <meta name="apple-mobile-web-app-capable" content="yes">
+     <meta name="mobile-web-app-capable" content="yes">
+     <meta name="apple-mobile-web-app-title" content="SF Inventory">
+     <link rel="manifest" href="/static/manifest.webmanifest">
+     <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/i18n.js?v=1"></script>
+     <title data-i18n="erfassen.page_title">Ware erfassen · Sport-Fabrik</title>
+     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
+     <link rel="stylesheet" href="/static/css/handy.css?v=3">
+</head>
+
+<body class="phone">
+     <header><a class="brand" href="/m" data-i18n-aria-label="phone.home_aria" aria-label="Startseite"><img
+                    src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"></a></header>
+     <main>
+          <a class="m-back" href="/m" id="back"><svg class="icon" aria-hidden="true"><use href="/static/img/icons.svg#icon-arrow-left"></use></svg><span data-i18n="phone.back">Zurück</span></a>
+          <h1 data-i18n="erfassen.heading">Ware erfassen</h1>
+
+          <label for="lagerort" data-i18n="erfassen.lagerort_label">Wareneingang buchen auf</label>
+          <select id="lagerort"></select>
+          <div id="dateField" hidden>
+               <label for="eingangsdatum" data-i18n="wareneingaenge.arrival_date">Eingangsdatum</label>
+               <input id="eingangsdatum" type="date">
+          </div>
+          <label for="lieferant" data-i18n="erfassen.supplier_label">Lieferant</label>
+          <select id="lieferant"></select>
+
+          <h2 data-i18n="erfassen.article_heading">Artikel erfassen</h2>
+          <label for="ean" data-i18n="erfassen.scan_label">EAN scannen oder eingeben</label>
+          <div class="m-scan-row">
+               <input id="ean" type="text" inputmode="numeric" autocomplete="off" maxlength="30">
+               <button type="button" class="secondary" id="lookup" data-i18n="common.search">Suchen</button>
+          </div>
+          <button type="button" class="m-wide" id="cameraButton"><svg class="icon" aria-hidden="true"><use href="/static/img/icons.svg#icon-scan"></use></svg><span data-i18n="phone.scan_button">Mit Kamera scannen</span></button>
+          <p id="scanStatus" class="muted" role="status" aria-live="polite"></p>
+
+          <label for="marke"><span data-i18n="fields.brand">Marke</span><span aria-hidden="true"> *</span></label>
+          <input id="marke" type="text" autocomplete="off" maxlength="100">
+          <label for="bezeichnung"><span data-i18n="fields.description">Bezeichnung</span><span aria-hidden="true"> *</span></label>
+          <input id="bezeichnung" type="text" autocomplete="off" maxlength="500">
+
+          <div class="m-row-2">
+               <div>
+                    <label for="farbe" data-i18n="fields.color">Farbe</label>
+                    <input id="farbe" type="text" autocomplete="off" maxlength="250">
+               </div>
+               <div>
+                    <label for="groesse" data-i18n="fields.size">Grösse</label>
+                    <input id="groesse" type="text" autocomplete="off" maxlength="100">
+               </div>
+          </div>
+          <div class="m-row-2">
+               <div>
+                    <label for="menge"><span data-i18n="fields.quantity">Menge</span><span aria-hidden="true"> *</span></label>
+                    <input id="menge" type="text" inputmode="decimal" autocomplete="off" value="1">
+               </div>
+               <div>
+                    <label for="einheit" data-i18n="fields.unit">Einheit</label>
+                    <input id="einheit" type="text" autocomplete="off" maxlength="30">
+               </div>
+          </div>
+          <div class="m-row-2">
+               <div>
+                    <label for="uvp"><span data-i18n="fields.uvp">UVP</span><span aria-hidden="true"> *</span></label>
+                    <input id="uvp" type="text" inputmode="decimal" autocomplete="off">
+               </div>
+               <div>
+                    <label for="ek" data-i18n="fields.ek">EK</label>
+                    <input id="ek" type="text" inputmode="decimal" autocomplete="off">
+               </div>
+          </div>
+          <label for="lieferanten_artikelnr" data-i18n="fields.supplier_article_no">Lief. Art. Nr.</label>
+          <input id="lieferanten_artikelnr" type="text" autocomplete="off" maxlength="100">
+          <label for="kategorie" data-i18n="fields.kategorie">Kategorie</label>
+          <select id="kategorie"></select>
+          <p class="m-hint" data-i18n="erfassen.required_hint">* Pflichtfeld</p>
+
+          <p id="addError" class="error" role="alert" hidden></p>
+          <button type="button" class="large m-wide" id="add" data-i18n="erfassen.add">Zur Liste hinzufügen</button>
+
+          <h2 data-i18n="erfassen.list_heading">Erfasste Positionen</h2>
+          <p id="listEmpty" class="muted" data-i18n="erfassen.list_empty">Noch keine Position erfasst.</p>
+          <ul id="liste" class="m-positions" hidden></ul>
+
+          <p id="bookError" class="error" role="alert" hidden></p>
+          <div id="notice" class="notice success" role="status" aria-live="polite" hidden></div>
+          <button type="button" class="large m-wide" id="book" disabled data-i18n="erfassen.book">Wareneingang buchen</button>
+     </main>
+     <script src="/static/js/kategorien.js?v=1"></script>
+     <script src="/static/js/handy-core.js?v=1"></script>
+     <script src="/static/js/handy-scan.js?v=1"></script>
+     <script src="/static/js/handy-erfassen.js?v=1"></script>
+     <script src="/static/js/session.js?v=header-2"></script>
+     <script src="/static/js/theme.js?v=design-1"></script>
+</body>
+
+</html>

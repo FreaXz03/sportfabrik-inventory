@@ -1,43 +1,43 @@
-# Automatische Sicherungen
+# Automatic Backups
 
-Die tägliche Ausführung ist in Codex für 20:00 Uhr (Europe/Zurich) eingerichtet.
-Sie ist an diesen lokalen Codex-Task gebunden, kein Windows- oder Linux-Systemdienst.
-Der PC, Codex und Docker müssen für die Ausführung verfügbar sein. Beim Umzug auf
-Linux muss ein eigener Serverzeitplan eingerichtet und getestet werden.
+The daily run is set up in Codex for 20:00 (Europe/Zurich).
+It is bound to this local Codex task, not a Windows or Linux system service.
+The PC, Codex, and Docker must be available for the run. When moving to
+Linux, a dedicated server schedule must be set up and tested.
 
-Manuell im Projektordner:
+Manually, from the project folder:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/backup_inventory.py
 ```
 
-Ziel: `backups/automatic/inventory-ZEITSTEMPEL/` (Zeitstempel in UTC).
-Jeder vollständige Ordner enthält `database.dump`, `original-pdfs.zip`,
-`archive-contents.txt` und `manifest.json` mit SHA-256-Prüfsummen.
+Target: `backups/automatic/inventory-TIMESTAMP/` (timestamp in UTC).
+Each complete folder contains `database.dump`, `original-pdfs.zip`,
+`archive-contents.txt`, and `manifest.json` with SHA-256 checksums.
 
-Die Datenbanksicherung umfasst auch Benutzer und Passwort-Hashes. Die PDF-Sicherung
-nimmt Dateien aus `Recchnungen/` und `uploads/` auf; nur hochgeladene, dort nicht
-abgelegte PDF-Dateien können nicht mitgesichert werden. Konfigurationsgeheimnisse
-wie `.env.server` werden nicht ins Backup kopiert und müssen separat sicher
-aufbewahrt werden.
+The database backup also includes users and password hashes. The PDF backup
+picks up files from `Recchnungen/` and `uploads/`; only uploaded PDF files
+not stored there cannot be included in the backup. Configuration secrets
+such as `.env.server` are not copied into the backup and must be kept
+safe separately.
 
-Prüfungen: erfolgreicher pg_dump, lesbares Inhaltsverzeichnis mit pg_restore --list,
-ZIP-CRC. Diese Prüfungen ersetzen keinen regelmässigen vollständigen Restore-Test.
-Bei Fehlern wird kein unvollständiger Ordner als fertiges Backup veröffentlicht.
+Checks: successful pg_dump, readable table of contents via pg_restore --list,
+ZIP CRC. These checks do not replace a regular full restore test.
+On error, no incomplete folder is published as a finished backup.
 
-Es gibt vorerst keine automatische Löschung. Speicherbelegung kontrollieren.
-Eine Kopie ausserhalb des PCs ist noch nicht eingerichtet (Benutzer: später).
-Wenn ein Ziel bereitsteht:
+There is currently no automatic deletion. Monitor storage usage.
+A copy outside the PC is not yet set up (owner: later).
+Once a target is ready:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/backup_inventory.py --external "E:\InventoryBackups"
 ```
 
-**Offen (Sicherheitsprüfung 24.09.2026, S4):** Das Backup liegt auch auf dem
-externen Datenträger unverschlüsselt (Datenbank-Dump und alle Original-PDFs).
-Vor dem ersten externen Backup Verschlüsselung ergänzen, siehe
+**Open (security review 2026-09-24, S4):** The backup on the
+external drive is also unencrypted (database dump and all original PDFs).
+Add encryption before the first external backup, see
 [`sicherheit.md`](sicherheit.md).
 
-Der externe Ordner muss existieren. Nach dem Kopieren werden die Prüfsummen
-verglichen. Ein Kopierfehler lässt das lokale Backup erhalten und meldet einen
-Fehler. Bei Einrichtung des Ziels auch die Codex-Automation aktualisieren.
+The external folder must exist. After copying, the checksums are
+compared. A copy error leaves the local backup intact and reports an
+error. When the target is set up, also update the Codex automation.
