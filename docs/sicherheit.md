@@ -16,7 +16,7 @@ This file is updated on every fix (status column).
 
 | # | Level | Topic | Measure | Status |
 |---|---|---|---|---|
-| S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | open — before store deployment |
+| S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). Still open: invalidating sessions on password change |
 | S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. Not yet decided: minimum password length 10 instead of 6, uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration |
 | S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | open |
 | S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | open |
@@ -35,6 +35,13 @@ network. The cookie is valid for 5 years (`SESSION_MAX_AGE` in `app/routers/auth
 deliberately "until logout" like at the till) and contains only the user ID;
 an intercepted copy therefore remains valid even after logout or a password change.
 With HTTPS on the store network, interception is practically ruled out.
+
+*Update 2026-09-28:* HTTPS is in place via the `proxy` service in
+`compose.yaml` (Caddy, `Caddyfile`, `tls internal`). The session cookie is
+`Secure` when `SESSION_HTTPS_ONLY=true`; plain HTTP only redirects and serves
+the root certificate. Setup and device trust: `docs/SERVER-SETUP.md`, section
+"HTTPS". The 5-year session and the missing revocation on password change are
+unchanged.
 
 **S2 — Login.** *Implemented on 2026-09-24:* after 5 wrong passwords, an account is locked for 20 minutes (response 429, also for the correct password; counted per account in the database, `app/services/anmeldung.py`). Before that, `/login` didn't count failed attempts. Each password attempt
 costs the server about half a second of compute time due to PBKDF2 (600,000 rounds),

@@ -7,7 +7,12 @@ from .routers.dashboard import router as dashboard_router
 from fastapi import Depends, FastAPI
 from sqlalchemy import text
 
-from .routers.auth import SESSION_MAX_AGE, SESSION_SECRET, require_login_page
+from .routers.auth import (
+    SESSION_HTTPS_ONLY,
+    SESSION_MAX_AGE,
+    SESSION_SECRET,
+    require_login_page,
+)
 from .routers.auth import router as auth_router
 from .core.database import engine
 from .routers.preview import router as preview_router
@@ -33,6 +38,7 @@ app.add_middleware(
     secret_key=SESSION_SECRET,
     max_age=SESSION_MAX_AGE,
     same_site="lax",
+    https_only=SESSION_HTTPS_ONLY,
 )
 app.include_router(auth_router)
 app.include_router(preview_router)

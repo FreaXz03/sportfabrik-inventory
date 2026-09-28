@@ -1,0 +1,35 @@
+# HTTPS in front of the app (security S1). Caddy runs its own local
+# certificate authority; every device trusts its root certificate once.
+# APP_HOST: the address staff type in, e.g. 192.168.1.20 or inventory.sportfabrik.lan
+{
+	default_sni {$APP_HOST}
+	skip_install_trust
+	pki {
+		ca local {
+			name "Sportfabrik Inventory"
+		}
+	}
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$APP_HOST} {
+	tls internal
+	encode gzip
+	reverse_proxy {$APP_UPSTREAM:app:8000}
+}
+
+# Plain HTTP only hands out the root certificate for installing on devices
+# and otherwise redirects to HTTPS.
+http://{$APP_HOST} {
+	handle /sportfabrik-ca.crt {
+		root * {$CADDY_CA_DIR:/data/caddy/pki/authorities/local}
+		rewrite * /root.crt
+		header Content-Type application/x-x509-ca-cert
+		file_server
+	}
+	handle {
+		redir https://{host}{uri} permanent
+	}
+}

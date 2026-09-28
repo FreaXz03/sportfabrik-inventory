@@ -37,6 +37,9 @@ if not SESSION_SECRET:
 # "Bis manuell abgemeldet": Cookie lebt praktisch unbegrenzt (5 Jahre).
 SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 5
 
+# Security S1: behind the HTTPS proxy the cookie must never be sent over plain HTTP.
+SESSION_HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "").strip().lower() in ("1", "true", "yes")
+
 router = APIRouter()
 
 

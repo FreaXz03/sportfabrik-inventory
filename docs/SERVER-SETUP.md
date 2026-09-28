@@ -33,7 +33,8 @@ docker compose --env-file .env.server up -d --build
 docker compose --env-file .env.server ps
 ```
 
-Test address: http://127.0.0.1:8080. The containers use a new, separate
+Test address: https://localhost (the browser warns until the root certificate
+is trusted, see "HTTPS" below). The containers use a new, separate
 database. Initially there are no invoices. The Windows app on port
 8000 and its existing data stay separate.
 
@@ -70,9 +71,10 @@ restore test are still outstanding. A Docker volume is not a backup.
 
 ## Access from the four PCs
 
-Only after a successful test, set `APP_BIND_IP` to the internal server IP
-and run `docker compose --env-file .env.server up -d` again.
-Access is then via `http://SERVER-IP:8080`. PostgreSQL does not publish a port.
+Only after a successful test, set `APP_BIND_IP` and `APP_HOST` to the internal
+server IP and run `docker compose --env-file .env.server up -d` again. Access
+is then `https://SERVER-IP` (see "HTTPS" below). Neither the app nor
+PostgreSQL publishes a port; only the HTTPS proxy does (80 and 443).
 
 Login follows the POS-system pattern: employees log in with just their
 till number; managers additionally with a password. Only manager accounts may
@@ -85,6 +87,60 @@ of 2026-09-24, HTTPS is **mandatory before deployment in the store**
 failed login attempts and network separation from the guest WiFi — see
 [`sicherheit.md`](sicherheit.md), S1/S2/S5–S7. Original note: add HTTPS as needed before
 go-live.
+
+## HTTPS (security S1, 28.09.2026)
+
+The `proxy` service (Caddy, `Caddyfile`) terminates HTTPS and forwards to the
+app inside the Docker network. Caddy runs its own local certificate authority
+("Sportfabrik Inventory - 2026 ECC Root", valid 10 years); the server
+certificate is issued for `APP_HOST` and renewed automatically. The app sets
+the session cookie `Secure` (`SESSION_HTTPS_ONLY=true` in `compose.yaml`), so
+logging in over plain HTTP is no longer possible. Plain HTTP on port 80 only
+redirects to HTTPS and hands out the root certificate.
+
+- `APP_HOST` must be exactly what people type in (IP or internal host name).
+  Changing it issues a new server certificate; devices keep trusting the root.
+- The root certificate and its key live in the Docker volume `caddy_data`.
+  **Back it up.** If it is lost, every PC and phone must trust a new root.
+- Camera scanning in the browser only works over trusted HTTPS.
+
+### Trust the root certificate once per device
+
+Download: `http://APP_HOST/sportfabrik-ca.crt`. Before trusting it, compare its
+SHA-256 fingerprint with the one on the server:
+
+```sh
+docker compose --env-file .env.server exec proxy cat /data/caddy/pki/authorities/local/root.crt \
+  | openssl x509 -noout -fingerprint -sha256
+```
+
+- **iPhone/iPad:** open the link in Safari, allow the download. Settings →
+  "Profile Downloaded" → Install. Then Settings → General → About →
+  Certificate Trust Settings → switch on "Sportfabrik Inventory - 2026 ECC Root".
+- **Android:** download the file, then Settings → Security (and privacy) →
+  More security settings → Encryption & credentials → Install a certificate →
+  CA certificate → select the file. Menu names vary by manufacturer. Chrome
+  uses it; Firefox for Android needs "Use third party CA certificates" in its
+  secret settings.
+- **Windows PC:** double-click the file → Install Certificate → Local Machine →
+  "Trusted Root Certification Authorities". Chrome and Edge use it.
+- **Mac:** double-click, then in Keychain Access set the certificate to "Always Trust".
+
+### Local test without Docker (e.g. the current Windows setup)
+
+Run the app as before (`fastapi dev app/main.py`, listens only on
+`127.0.0.1:8000`) with `SESSION_HTTPS_ONLY=true` in `.env`, and start Caddy
+(single binary from caddyserver.com) in the project folder:
+
+```powershell
+$env:APP_HOST = "192.168.1.20"          # this PC's LAN IP
+$env:APP_UPSTREAM = "127.0.0.1:8000"
+$env:CADDY_CA_DIR = "$env:AppData\Caddy\pki\authorities\local"
+caddy run --config Caddyfile
+```
+
+Allow Caddy through the Windows firewall for the private network only. Phones
+in the same WLAN then open `https://192.168.1.20` after trusting the root.
 
 ### Create the first accounts
 
