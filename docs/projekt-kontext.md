@@ -232,6 +232,7 @@ Core principles: **Never overwrite stock — book it as a movement instead.** Fo
 - A **branch-to-branch transfer** is not a goods receipt and does **not** restart the target branch's clock (confirmed 2026-09-22, see section 10). Only the path from an external location into a branch sets the date for the first time (D13).
 - Head office (admin) sees the recommendations for all branches and can set a **uniform recommendation**; each branch adopts it or deliberately deviates (deviations visible).
 - Notices as a "due for markdown" list + counter on the dashboard; thresholds (18/36 months) configurable.
+- *Implemented state (2026-09-28):* −30 % applies automatically from arrival ("no item without a markdown"); thresholds are fixed (D-F4); changes only in one's own branches, head office all — see "Decisions and implementation – 2026-09-28, evening".
 
 ### 8.4 Document recognition without AI (D9)
 - **Text PDFs** (5 of 6 examples): read word coordinates (PyMuPDF, as today) → layout parser.
@@ -282,7 +283,7 @@ All questions from Rev. 2 and Rev. 3 are answered (D1–D27). Still open:
 2. ~~**Barcode on the label?**~~ — confirmed on 2026-09-24: **yes**, below the mountains (the roll is currently being redesigned for it).
 3. **Till:** result of the clarification with Intersport (access/interface).
 4. ~~**Manual booking-out outside the till:** the rule for negative stock still needs clarifying here.~~ — answered on 2026-09-22 (see below): warn, allow the booking anyway, same as at the till.
-5. **New open decisions as of 2026-09-28** — see "Status check and next steps – 2026-09-28" at the end: sale booking by employees (contradicts rule 9), minimum 30 % markdown vs. rule 6 and D-F2, transfer as a delivery with dispatch date, timing of the arrival confirmation, minimum password length.
+5. ~~**Open decisions of 2026-09-28**~~ — decided the same evening, see "Decisions and implementation – 2026-09-28, evening" at the end. Still open: where a markdown chosen at goods entry is stored (N2).
 
 ### Confirmed answers from 2026-09-22
 
@@ -1202,8 +1203,8 @@ Originally planned for the end of the project (see below), then built early on 2
 - Camera scanning — browser barcode reader where available (Android Chrome), bundled ZXing otherwise (iPhone), no CDN. A code counts only after two identical reads with a valid check digit; camera stops at the first accepted code. Login returns phones to the `/m` page they opened.
 - `/m/zaehlen` — scan or search an article, see stock in the active store, enter the shelf count with large -/+ buttons and a reason; server books only the difference and checks store rights. Introduced a shared article-picker (`handy-pick.js`) reused by search and count.
 - `/m/lieferungen` — lists expected deliveries for the active store; confirms partial or full arrival with an arrival-date field for stores with sales. Open to everyone, including employees (rule 9, D21).
-- `/m/umlagern` — reserved for branch managers/head office (rule 9); choose source and destination, scan/search items into a list, book removal and receipt in one step, matching the desktop flow.
-- `/m/ausbuchen` — reserved for branch managers/head office (rule 9); cancelling a booking stays desktop-only. Pick store and reason, then scan/search and tap "1 piece" repeatably. Negative-stock warning (F9) works as on desktop.
+- `/m/umlagern` — reserved for branch managers/head office (rule 9); choose source and destination, scan/search items into a list, book removal and receipt in one step, matching the desktop flow. *(Since the evening of 2026-09-28: dispatch with a dispatch date; the destination confirms on `/m/lieferungen`.)*
+- `/m/ausbuchen` — reserved for branch managers/head office (rule 9; *since the evening of 2026-09-28 employees may book sales only*); cancelling a booking stays desktop-only. Pick store and reason, then scan/search and tap "1 piece" repeatably. Negative-stock warning (F9) works as on desktop.
 - `/m/erfassen` — manual goods entry without a document; known EAN pre-fills brand/description/colour/size/last price/category. Employees book only to their own stores, branch managers/head office to any location (rule 9). Label printing stays desktop-only.
 - `/m/runterschreiben` — shows models reaching -50%/-70% (rule 6) in the chosen store or within 30 days, each with a "Done" button; scan/search to set 30/50/70% by hand or reset to the recommendation. Head-office recommendations stay desktop-only.
 
@@ -1287,7 +1288,8 @@ statistics, accounts, quick access, phone, HTTPS, and the design system;
 the two HTML overviews in `docs/overviews/` replace the German copies from
 2026-09-24 (without Google Fonts, security S9).
 
-**Open business decisions** (details and code status:
+**Open business decisions at the time of the review** — all seven
+decided the same evening, see the next section (details and code status:
 [`anforderungen-inbox-2026-09-28.md`](anforderungen-inbox-2026-09-28.md)):
 
 1. **Sale booking by employees** (K8) — the 2026-09-25 clarification
@@ -1329,3 +1331,58 @@ the two HTML overviews in `docs/overviews/` replace the German copies from
 8. Ongoing: collect more supplier documents (delivery notes, scans),
    wireless scanner test device, label test on the Sato with the new roll,
    Intersport till interface (Phase G).
+
+## Decisions and implementation – 2026-09-28, evening
+
+Fabian's answers to the seven open decisions, implemented test-first on
+`feature/warenwirtschaft-v2` (commits `c50166d`…`7e4415c`), checked in the
+browser against a separate SQLite test instance (desktop and phone
+emulation). Suite: 167 passed, 12 skipped. No PostgreSQL run, no store
+deployment.
+
+1. **Employees book out sales — only sales** (K8). All other reasons and
+   cancelling stay with branch managers/head office; employees only in
+   their branches. Write-off page, phone page, quick access, and navigation
+   are open to employees; the reason list and the undo button follow the
+   role (`c50166d`).
+2. **Markdown levels: 30 % from arrival, 50 % after 18 months, 70 % after
+   36 months** (K4/N1). Without a receipt date (external location, no
+   clock) the level stays 0. D-F2 adjusted: a new delivery only raises a
+   notice when the old stock was reduced by more than 30 %. The UI calls
+   the time-based level "Automatic" instead of "Recommendation" (K5). The
+   statistics revenue estimate uses the new levels (`145b81b`).
+3. **Markdowns only in one's own branches — also for branch managers;
+   head office all** (K6). Covers manual level, "done", and answering
+   head-office recommendations; `/api/reduktionen` returns `darf_aendern`
+   and the pages hide the buttons elsewhere (`42d7a7c`).
+4. **"Pending" per branch** (N3). Missing EAN/category count only variants
+   with stock in the active branch; head office without a branch sees the
+   whole item master; the linked list filters by the same branch
+   (`6a79a46`).
+5. **Transfer as a delivery** (N4). The source dispatches with a dispatch
+   date (removal booked at once), the destination gets an expected goods
+   receipt and confirms the arrival like a delivery; date rules D13/D17/
+   F10/F11 apply at arrival. Migration `f3a4b5c6d7e8`. Replaces F5
+   ("booked by the receiving branch in one step") (`7e4415c`).
+6. **Confirm arrival after unpacking and checking** — a working rule, no
+   code change; the delivery pages say so in their intro text. The arrival
+   date entered then starts the markdown clock.
+7. **Minimum password length stays 6**, on condition that only the private
+   store Wi-Fi or the VPN can reach the server (network separation
+   becomes a hard prerequisite, `sicherheit.md` S2).
+
+Also implemented from the 2026-09-25 clarifications: statistics show
+removals other than sales per reason, the latest removals with the person
+who booked them (K1), and open on "this week" (K2) (`fd33e9a`).
+
+**Still open:** N2 — choosing the markdown at goods entry: should the
+choice be stored as a manual markdown of the target branch (then the
+label and stock use it)? Not implemented until answered. A cancelled or
+wrongly addressed transfer in transit cannot be withdrawn yet (would need
+a "cancel dispatch" action).
+
+**Next steps:** merge into `main` (PR); answer N2; store deployment
+(Phase F: PostgreSQL run incl. migration `f3a4b5c6d7e8`, network
+separation/VPN as the condition for decision 7, S1 rest, S3–S8); test
+phones in the store; remove the temporary "−1" button after the in-store
+trial.

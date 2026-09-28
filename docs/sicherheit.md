@@ -11,7 +11,8 @@ should be done **before deployment in the store** (roadmap phase F — operation
 plus five low ones. Fixed: the login lockout from S2 (2026-09-24), HTTPS
 from S1 (2026-09-28, locally), and S9 (2026-09-28). Still open before the
 store: rest of S1 (sessions on password change), S3, S4, network
-separation, S5–S8, decision on the minimum password length.
+separation (required for the 6-character password decision of
+2026-09-28), S5–S8.
 
 **New since the review (2026-09-28):** phone logins are limited
 server-side to the agreed phone features (`phone_gate`, allowlist in
@@ -25,7 +26,7 @@ This file is updated on every fix (status column).
 | # | Level | Topic | Measure | Status |
 |---|---|---|---|---|
 | S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). Still open: invalidating sessions on password change |
-| S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. Not yet decided: minimum password length 10 instead of 6, uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration |
+| S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. **Decided 2026-09-28:** minimum password length stays 6 — on condition that only the private store Wi-Fi or the VPN can reach the server. Open: uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration is now a **hard prerequisite** for the 6-character rule |
 | S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | open |
 | S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | open |
 | S5 | low | API docs with no login | Disable `/docs`, `/redoc`, `/openapi.json` in operation | open |

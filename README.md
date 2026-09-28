@@ -16,9 +16,10 @@ locations without sale — the processing sites GEWA and VEBO and the
 Dietikon warehouse — access it over the internal network via the browser.
 Login follows the POS-system pattern: employees with just a cash-register
 number, branch managers and admin/head office additionally with a
-password. Employees may manually book in and correct stock, but only in
-their assigned branches. Booking out a sale/removal, cancelling, and
-transferring are reserved for branch managers and head office. Their
+password. Employees may manually book in and correct stock and book out
+sales (only sales), all only in their assigned branches. Booking out any
+other reason, cancelling, and transferring are reserved for branch
+managers and head office. Their
 existing cross-branch booking rights remain in place; read rights are
 unchanged. Uploading/editing/deleting documents remains reserved for
 branch managers and head office. Admin/head-office accounts are
@@ -43,8 +44,9 @@ switch between their branches in the interface.
   less arrives than expected, the remaining quantity stays visibly open.
 - **Overview** as the home page: up to five quick-access shortcuts chosen
   per user (order by drag-and-drop or arrows), branch metrics, what's
-  coming up (deliveries, stock to count, items at markdown age, notices
-  about new deliveries of marked-down items), and recent activity
+  coming up in the active branch (deliveries and incoming transfers,
+  stock to count, items at markdown age, items without EAN or category,
+  notices about new deliveries of marked-down items), and recent activity
   summarized (a delivery as a whole, a transfer as one entry, removals
   other than sales).
 - **Stock per branch** (the "Stock" page): current stock per variant and
@@ -58,12 +60,14 @@ switch between their branches in the interface.
   return, or other. If stock isn't sufficient, the page warns but still
   books it; a mis-scan can be undone with a counter-booking. Items can
   also be picked from a stock list. Below that, the list of all
-  write-offs with time, person, and reason. Branch managers and head
-  office only.
-- **Transfer** (the "Transfer" page): the receiving branch books goods out
-  of another storage location in one step — by scan or from the source's
-  stock. Goods from GEWA, VEBO, or Dietikon get their receipt date set in
-  the process; between branches, the date is kept.
+  write-offs with time, person, and reason. Employees book sales only;
+  other reasons and undo are for branch managers and head office.
+- **Transfer** (the "Transfer" page, like a delivery since 2026-09-28):
+  the source sends goods with a dispatch date — by scan or from its stock;
+  the removal is booked at once. The destination confirms the arrival
+  under "Deliveries" after unpacking, only then the goods are in its
+  stock. Goods from GEWA, VEBO, or Dietikon get their receipt date on
+  arrival; between branches, the date is kept.
 - **Correct stock** ("Count" button in the stock view): enter the counted
   quantity, the system books the difference with a reason.
 - **Manually record goods** (the "Record" page): scan or type in, without a
@@ -78,11 +82,14 @@ switch between their branches in the interface.
 - **Internal EAN at the push of a button**: items without a manufacturer
   barcode get an in-house EAN-13 (GS1 range 20–29, with check digit) and
   thereby become scannable at the till.
-- **Markdowns** (Phase D): a page with the items of a branch that have
-  reached −50% or −70% or will reach it within 30 days, each with "Print
+- **Markdowns** (Phase D): every item in a branch starts at −30% on
+  arrival (−50% after 18 months, −70% after 36 months). A page lists the
+  items of a branch that have reached −50% or −70% or will reach it
+  within 30 days, each with "Print
   labels" (one label per unit, with a roll hint) and "Done" (the model
-  disappears until the next level). Any staff member can set 30/50/70 % by
-  hand for their branches (by EAN or from the stock list); head office can
+  disappears until the next level). Any staff member — branch managers
+  too — can set 30/50/70 % by hand only in their own branches (head office
+  everywhere; by EAN or from the stock list); head office can
   send markdown recommendations per branch, which the branch accepts or
   declines with a reason.
 - **Price label as PDF** for the pre-printed rolls (47 × 83 mm, portrait;
@@ -109,8 +116,9 @@ switch between their branches in the interface.
 - **Invoice list** with a detail view, irrevocable deletion (including
   correct recalculation of item metrics) by branch managers.
 - **Statistics** (branch managers and head office): pieces sold per POS
-  category, estimated revenue (marked as an estimate), and an order
-  recommendation, for today/week/month/year/overall.
+  category, estimated revenue (marked as an estimate), an order
+  recommendation, and removals other than sales per reason with the
+  person who booked them; opens on "this week".
 - **Account management** (head office): create and delete employee and
   branch-manager accounts in the browser; past bookings keep the name.
 - **Phone use** (`/m`, 2026-09-28): installable web app for phones —
@@ -157,7 +165,7 @@ switch between their branches in the interface.
 - **i18n**: its own lightweight catalog (JSON files + `translate()`/
   `i18n.js`, see `docs/architektur.md` section "Multilingual"), no
   additional dependency
-- **Tests**: pytest (165 passed, 12 skipped without optional extra
+- **Tests**: pytest (167 passed, 12 skipped without optional extra
   prerequisites such as Node.js or a real sample invoice — as of
   2026-09-28)
 - **Deployment**: Docker / docker compose (see

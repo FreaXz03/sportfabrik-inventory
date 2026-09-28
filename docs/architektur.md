@@ -260,7 +260,11 @@ updated in the same step.
   changes the receipt date.
 - **Undo**: an offsetting `korrektur` ("correction") booking with
   `grund = 'storno:<id>'`, at most once per write-off — nothing is
-  deleted.
+  deleted. Branch managers and head office only.
+- **Rights** (2026-09-28): employees book `verkauf` only, in their own
+  branches; `GET /api/ausbuchen/stammdaten` returns the reasons for the
+  role and `darf_stornieren`, and `POST /api/ausbuchen` rejects any other
+  reason with 403.
 - Variants **without an EAN** (rule 5) can't be scanned; they are written
   off via their variant id, currently through the temporary "−1" button
   in the stock view (`grund = 'test'`).
@@ -269,9 +273,22 @@ updated in the same step.
 
 Goods from one storage location to another
 (`app/services/umlagerung.py`, page `/umlagern`, phase C, subtask C4).
-Booking happens **on receipt by the receiving branch** (F5): one
-transaction writes two rows per variant with `typ = umlagerung` — a
-removal at the source, a receipt at the destination.
+Since 2026-09-28 a transfer works **like a delivery** (replaces F5,
+"booked by the receiving branch in one step"):
+
+```mermaid
+flowchart LR
+    A["Source: dispatch<br/>POST /api/umlagerung"] -->|"removal at source<br/>(typ umlagerung, nach:ZIEL)"| B["Expected goods receipt at destination<br/>status erwartet, herkunft_lagerort_id, versanddatum"]
+    B -->|"in transit: in no stock"| C["Destination: confirm arrival after unpacking<br/>POST /api/wareneingaenge/{id}/ankunft"]
+    C -->|"receipt at destination<br/>(typ umlagerung, von:QUELLE, date rules below)"| D["Stock at destination"]
+```
+
+Dispatch is for branch managers/head office (rule 9); confirming the
+arrival is for everyone (D21), partial quantities stay open (D22). The
+position keeps the receipt date the goods had at the source
+(`wareneingang_positionen.mitgebracht_datum`), used for D17 at arrival.
+The expected goods receipt of a transfer never gets its own
+`eingangsdatum`.
 
 Which date rule applies is decided solely by `lagerorte.verkauf`:
 
@@ -282,8 +299,10 @@ Which date rule applies is decided solely by `lagerorte.verkauf`:
 | branch → branch, destination never had the article | clock starts on arrival (F11) |
 | anything → external | no date, no clock (rule 6) |
 
-If a transfer starts the clock, the date sits on its destination row in
-`lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` takes
+The rules are applied at **arrival** (`umlagerung.buche_ankunft`, called
+from `wareneingang.bestaetige_ankunft`); "on arrival" means the arrival
+date entered when confirming. If a transfer starts the clock, the date
+sits on its destination row in `lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` takes
 the later date out of goods receipts and these transfers. Insufficient
 stock at the source is reported but still booked.
 
@@ -396,7 +415,7 @@ internal EAN was made for would stay unscannable.
 | Year | year of the last goods receipt of this article **at this branch** (rule 6) |
 | Supplier | `artikel.lieferant_id`, empty for manually entered goods (D23) |
 | RRP | most recent entry in the variant's price history |
-| Markdown | suggestion per rule 6 (18 months → 50%, 36 → 70%), overridable — the 30% from D25 is a store decision, not a time-based rule |
+| Markdown | automatic level per rule 6 (since 2026-09-28: 30% from arrival, 18 months → 50%, 36 → 70%), overridable |
 | Barcode | EAN-13/EAN-8, UPC-12 as EAN-13 with a leading zero |
 
 Drawn with PyMuPDF (already in use for reading invoices anyway) and the
@@ -861,17 +880,21 @@ in the Excel export (`article_export.py`, its own document format, still
 open).
 
 
-## Booking rights as of 2026-09-24
+## Booking rights as of 2026-09-24, refined 2026-09-28
 
-Employees may manually book in goods and correct stock, but only in their
-assigned branches. Writing off a sale/removal, cancelling, and
-transferring are reserved for branch managers and head office. Their
-existing cross-branch booking rights remain in place; read rights are
-unchanged.
+Employees may manually book in goods, correct stock, and book out sales
+(only sales), all only in their assigned branches. Writing off for any
+other reason, cancelling, and transferring are reserved for branch
+managers and head office. Their existing cross-branch booking rights
+remain in place; read rights are unchanged. Markdowns may be changed only
+in one's own branches — also by branch managers
+(`services/lagerorte.list_reduktion_lagerorte`); head office may change
+all.
 
-`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`,
-`POST /api/ausbuchen/{id}/storno` as well as `/umlagern` and all
-`/api/umlagerung` endpoints require branch manager/head office. The
+`POST /api/ausbuchen/{id}/storno`, `/umlagern`, and all
+`/api/umlagerung` endpoints require branch manager/head office; the
+write-off page and `POST /api/ausbuchen` are open to all roles and check
+the reason per role. The
 write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
 `GET /api/erfassen/stammdaten` offers employees only their assigned
 branches; entry/correction also check this boundary server-side.
@@ -891,8 +914,8 @@ and tablets keep the desktop version.
 - `/m`, `/m/suche` — home screen and article search/detail
 - `/m/zaehlen` — count and correct stock
 - `/m/lieferungen` — confirm goods arrival
-- `/m/umlagern` — transfer (branch manager/head office only)
-- `/m/ausbuchen` — write off a sale/removal (branch manager/head office only)
+- `/m/umlagern` — dispatch a transfer (branch manager/head office only)
+- `/m/ausbuchen` — write off a sale/removal (employees: sales only)
 - `/m/erfassen` — manual goods entry
 - `/m/runterschreiben` — mark-downs and manual reduction
 

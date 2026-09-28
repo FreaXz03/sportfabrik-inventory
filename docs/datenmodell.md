@@ -275,7 +275,20 @@ never the individual code — this means a further external location is
 picked up automatically. The same applies to
 `bestand.aeltestes_eingangsdatum`.
 
+**Transfers** (migration `f3a4b5c6d7e8`, 2026-09-28): a dispatched
+transfer creates a goods receipt without a document, status `erwartet`,
+with `herkunft_lagerort_id` (source location, FK `lagerorte`) and
+`versanddatum` (dispatch date). Its `eingangsdatum` always stays empty —
+whether the arrival starts the markdown clock is recorded on the arrival
+movement (`lagerbewegungen.eingangsdatum`, see there). Both columns are
+empty for documents and manual entries.
+
 ### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
+`mitgebracht_datum` (2026-09-28, transfers only): the receipt date the
+goods had at the source when dispatched (`bestand.aeltestes_eingangsdatum`
+there); at arrival branch → branch it becomes the destination's oldest
+receipt date (D17).
+
 One row per line of a goods receipt — generalizes the former
 `invoice_items` table. `wareneingang_positionen_quelle` is the optional
 1:1 original snapshot (raw text, page/line number, parser warnings,
@@ -297,7 +310,9 @@ in `grund`, e.g. `defekt` or `sonstiges: …`), plus `korrektur` as a
 counter-booking when reversing (`grund = 'storno:<id>'`); since C4
 `umlagerung` (two rows per variant: `−menge` at the source with
 `grund = 'nach:<target>'`, `+menge` at the target with
-`grund = 'von:<source>'`). Since C5 also general `korrektur` rows: the
+`grund = 'von:<source>'`; since 2026-09-28 the source row is written at
+dispatch and the target row only when the arrival is confirmed, linked to
+the expected goods receipt via `wareneingang_position_id`). Since C5 also general `korrektur` rows: the
 difference to the counted quantity is booked, reason `inventur`
 (stock-take), `falsch_gebucht` (booked wrong), `gefunden` (found), or
 `sonstiges: …`.
@@ -435,6 +450,7 @@ above):
 | `c0d1e2f3a4b5` | Manual markdown (2026-09-24): new table `reduktionen_manuell` |
 | `d1e2f3a4b5c6` | Quick access (requirement 14, 2026-09-25): `users.schnellzugriffe` (JSON, chosen functions and order) |
 | `e2f3a4b5c6d7` | Phase D, open questions (2026-09-25): new tables `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
+| `f3a4b5c6d7e8` | Transfer as a delivery (2026-09-28): `wareneingaenge.herkunft_lagerort_id`, `wareneingaenge.versanddatum`, `wareneingang_positionen.mitgebracht_datum`; new empty columns only |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

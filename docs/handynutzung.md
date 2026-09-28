@@ -2,7 +2,7 @@
 
 ## Status: implemented 2026-09-28
 
-Built earlier than planned, as commits `7a9c7eb`…`2b655ea` on `feature/warenwirtschaft-v2`: home screen, article search, camera scanning, counting/correcting, goods-receipt confirmation, transfer, write-off, manual entry, and markdowns — see the "Mobile phone use – implemented 2026-09-28" section in `docs/projekt-kontext.md` for the page-by-page detail and what was deferred (cancelling, label printing, head-office markdown recommendations stay desktop-only). VPN/protected remote access for branch managers off the store WiFi is still open. The original plan below is kept for reference; it no longer reflects current status.
+Built earlier than planned, as commits `7a9c7eb`…`2b655ea` on `feature/warenwirtschaft-v2`: home screen, article search, camera scanning, counting/correcting, goods-receipt confirmation, transfer, write-off, manual entry, and markdowns — see the "Mobile phone use – implemented 2026-09-28" section in `docs/projekt-kontext.md` for the page-by-page detail and what was deferred (cancelling, label printing, head-office markdown recommendations stay desktop-only). VPN/protected remote access for branch managers off the store WiFi is still open. Later the same day (decisions 2026-09-28): employees may book out sales on the phone too (sales only); a transfer is dispatched on `/m/umlagern` and confirmed at the destination on `/m/lieferungen`, like a delivery. The original plan below is kept for reference; it no longer reflects current status.
 
 ## Agreed plan for mobile usage – 2026-09-24 (superseded, see status above)
 

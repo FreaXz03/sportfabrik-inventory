@@ -6,6 +6,27 @@ point states the **code status checked on 2026-09-28** and any conflict with
 existing rules. Nothing here is implemented yet unless marked so; this file
 does not decide open business questions.
 
+## Status 2026-09-28, evening
+
+Fabian decided all open points the same evening; implemented test-first
+(details: `projekt-kontext.md`, "Decisions and implementation –
+2026-09-28, evening"):
+
+| # | Decision | Status |
+|---|---|---|
+| K1, K2 | — | **done**: removals per reason/person in statistics; opens on "this week" |
+| K4, N1 | 30 % from arrival, 50 % after 18 months, 70 % after 36 months | **done** |
+| K5 | "Automatic" instead of "Recommendation" | **done** |
+| K6 | Own branches only, also branch managers; head office all | **done** |
+| K8 | Employees book out sales — only sales | **done** |
+| N2 | — | **open**: where to store a markdown chosen at goods entry |
+| N3 | "Pending" per branch; head office sees all | **done** |
+| N4 | Transfer as a delivery with dispatch date | **done** |
+| Arrival timing | Confirm after unpacking and checking | working rule, texts updated |
+| Password length | 6 is enough while only store Wi-Fi/VPN reach the server | decided |
+
+The tables below keep the state found in the morning review.
+
 ## Clarifications from 2026-09-25
 
 | # | Requirement | Code status 2026-09-28 | Conflict / open point |

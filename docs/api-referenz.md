@@ -34,7 +34,7 @@ redirecting to a foreign site after login (open redirect).
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/` | Overview page (dashboard) |
-| GET | `/api/dashboard` | Key figures (number of variants/documents/lines, total quantity delivered) + the last 5 imported documents; plus `lagerort` and `filiale` (pieces, sold/removed today, negative stock, expected deliveries, `reduktionen` per level with `faellig`/`bald`) for the active branch, `aktuelles` (up to 8 combined entries: `art` = `lieferung` per goods receipt and day, `umlagerung` per transfer with `von`/`nach`, `abgang` per write-off without a sale; delivery/transfer with `positionen` and `stueck`), and `stamm` (`ohne_kategorie`, `ohne_ean`) |
+| GET | `/api/dashboard` | Key figures (number of variants/documents/lines, total quantity delivered) + the last 5 imported documents; plus `lagerort` and `filiale` (pieces, sold/removed today, negative stock, expected deliveries, `reduktionen` per level with `faellig`/`bald`) for the active branch, `aktuelles` (up to 8 combined entries: `art` = `lieferung` per goods receipt and day, `umlagerung` per transfer with `von`/`nach`, `abgang` per write-off without a sale; delivery/transfer with `positionen` and `stueck`), and `stamm` (`lagerort_id`, `ohne_kategorie`, `ohne_ean`; since 2026-09-28 counted only for variants with stock in the active branch, across the whole item master only without an active branch) |
 
 ## Items
 
@@ -42,7 +42,7 @@ redirecting to a foreign site after login (open redirect).
 |---|---|---|
 | GET | `/articles` | Item search page |
 | GET | `/api/brands` | List of all brands that occur |
-| GET | `/api/articles` | Item search; filters: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `kategorie_id`/`kategorie_fehlt` (POS category, or "none yet"; `kategorie_fehlt=true` overrides `kategorie_id`), `last_delivery_from`/`last_delivery_to` (date range on the last delivery), `ohne_ean=true` (variants without an EAN only); sorting `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); pagination `page`/`page_size` (max. 100) |
+| GET | `/api/articles` | Item search; filters: `q`, `brand`, `ean`, `supplier_article_no`, `description`, `kategorie_id`/`kategorie_fehlt` (POS category, or "none yet"; `kategorie_fehlt=true` overrides `kategorie_id`), `last_delivery_from`/`last_delivery_to` (date range on the last delivery), `ohne_ean=true` (variants without an EAN only), `lagerort_id` (only variants with non-zero stock at that location — used by the per-branch "Pending" links, 2026-09-28); sorting `sort_by` (`brand`, `description`, `supplier_article_no`, `ean`, `color`, `size`, `first_seen`, `last_seen`) + `sort_dir` (`asc`/`desc`); pagination `page`/`page_size` (max. 100) |
 | GET | `/api/articles/export` | Same filters as `/api/articles`, but **without** pagination: returns a ready-formatted Excel file (`.xlsx`) with all matches for download |
 | GET | `/api/articles/{product_id}/history` | Full delivery history of an item **including all color/size variants with the same brand + supplier item number**, newest invoice first; sortable (`sort_by`/`sort_dir`, see below) |
 | GET | `/api/articles/{product_id}/prices` | Price history (UVP/RRP per invoice/unit) for the item group |
@@ -152,8 +152,14 @@ upload/validation/import flow as a single upload.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/wareneingaenge` | "Expected deliveries" page (any login) |
-| GET | `/api/wareneingaenge` | Open (expected) deliveries of the active branch including lines; without an active branch (admin) all of them |
+| GET | `/api/wareneingaenge` | Open (expected) deliveries of the active branch including lines; without an active branch (admin) all of them. Since 2026-09-28 this includes transfers on their way: `dokument` is then `null` and `umlagerung` holds `von` (`{id, code, name}`) and `versanddatum`; for deliveries from documents `umlagerung` is `null` |
 | POST | `/api/wareneingaenge/{id}/ankunft` | Confirm arrival: `{"mengen": {"<line id>": "<quantity>"}, "eingangsdatum": "YYYY-MM-DD"}`. Books the receipt, sets the receipt date (retroactively if needed), and closes the delivery once no line is open anymore. The response includes `mehrlieferungen`: for each line where more arrived than expected, the line id plus expected, arrived, and surplus quantity — it is booked regardless |
+
+For a transfer, the confirmation books the receipt at the destination
+with the transfer date rules instead (`typ = umlagerung`, D13/D17/F10/F11,
+see "Transfer"); `eingangsdatum` is the arrival date and only matters
+where the arrival starts the markdown clock. Confirm only after the goods
+are unpacked and checked (decision 2026-09-28).
 
 **Employees** may confirm too (D21) — this is warehouse work, not a
 document privilege. Implausible quantities, foreign lines, or an already
@@ -176,11 +182,11 @@ negative stock is shown, not hidden.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/ausbuchen` | "Write off" page (branch manager/head office) |
-| GET | `/api/ausbuchen/stammdaten` | Storage locations that can be booked (`lagerorte`, own first), `lagerort_aktiv`, `gruende` (`verkauf` sale, `defekt` defective, `diebstahl` theft, `eigenbedarf` own use, `retoure` return, `sonstiges` other) |
-| POST | `/api/ausbuchen` | Write off one piece. JSON: `grund`, exactly one of `ean` or `varianten_id`, `freitext` (required for `sonstiges`), `lagerort_id` (the active branch if not given). Response: `bewegung_id`, `typ`, `grund`, item data, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 409 for an unknown EAN/variant or unknown reason — nothing is booked then |
+| GET | `/ausbuchen` | "Write off" page (any login; employees book sales only) |
+| GET | `/api/ausbuchen/stammdaten` | Storage locations that can be booked (`lagerorte`, own first; employees only their branches), `lagerort_aktiv`, `gruende` for the role (branch manager/head office: `verkauf` sale, `defekt` defective, `diebstahl` theft, `eigenbedarf` own use, `retoure` return, `sonstiges` other; employees: `verkauf` only), `darf_stornieren` |
+| POST | `/api/ausbuchen` | Write off one piece. JSON: `grund`, exactly one of `ean` or `varianten_id`, `freitext` (required for `sonstiges`), `lagerort_id` (the active branch if not given). Response: `bewegung_id`, `typ`, `grund`, item data, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 403 for an employee with any reason other than `verkauf` or a foreign branch; 409 for an unknown EAN/variant or unknown reason — nothing is booked then |
 | GET | `/api/ausbuchungen` | Sales and removals, newest first. Parameters: `lagerort_id` (the active branch if not given), `alle=true`, `limit` (max. 200), `offset`. Per row: timestamp, item, storage location, reason, person (`benutzer_name`), `storniert` |
-| POST | `/api/ausbuchen/{bewegung_id}/storno` | Reverse a write-off via a counter-booking (`korrektur`, `storno:<id>`); 409 if already reversed or not a write-off |
+| POST | `/api/ausbuchen/{bewegung_id}/storno` | 🔒 Reverse a write-off via a counter-booking (`korrektur`, `storno:<id>`); 409 if already reversed or not a write-off |
 
 The reason `test` belongs to the temporary "−1" button on the stock
 view and isn't listed in `gruende`.
@@ -206,8 +212,16 @@ without a document only).
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/umlagern` | "Transfer" page (branch manager/head office) |
-| GET | `/api/umlagerung/stammdaten` | `quellen` (all storage locations), `ziele` (bookable targets, own first), `ziel_aktiv`, `heute`; per storage location `verkauf` |
-| POST | `/api/umlagerung` | Book a transfer on receipt. JSON: `quelle_id`, `ziel_id` (the active branch if not given), `eingangsdatum` (optional, `YYYY-MM-DD`, not in the future; only determines where the clock starts), `positionen` (`varianten_id`, `menge` as text; identical variants are summed). Response: `quelle`, `ziel`, `positionen` (per variant, stock before/after and `uhr_start`), `fehlbestand`, `stueck`. 409 for the same source and target storage location, an invalid quantity, or an unknown variant — nothing is booked then |
+| GET | `/api/umlagerung/stammdaten` | `quellen` (bookable sources, own first), `ziele` (all storage locations), `quelle_aktiv`, `heute`; per storage location `verkauf` |
+| POST | `/api/umlagerung` | Dispatch a transfer (since 2026-09-28 like a delivery). JSON: `quelle_id` (the active branch if not given), `ziel_id`, `versanddatum` (optional, `YYYY-MM-DD`, not in the future, default today), `positionen` (`varianten_id`, `menge` as text; identical variants are summed). Books the removal at the source right away and creates an expected goods receipt at the destination (`herkunft_lagerort_id`, `versanddatum`); the destination confirms the arrival via `POST /api/wareneingaenge/{id}/ankunft`. Response: `wareneingang_id`, `quelle`, `ziel`, `versanddatum`, `positionen` (per variant, stock at the source before/after), `fehlbestand`, `stueck`. 404 for an unknown destination; 409 for the same source and destination, a future date, an invalid quantity, or an unknown variant — nothing is booked then |
+
+Between dispatch and arrival the goods are in no stock ("in transit").
+At arrival: to a location without sales no receipt date; from an
+external location into a branch the arrival date starts the clock (D13);
+branch to branch the goods keep the date they had at the source
+(`mitgebracht_datum`, D17) and the destination's clock continues (F10),
+unless the destination never had the item — then the clock starts with
+the arrival (F11).
 
 ## Manually entering goods (without a document)
 
@@ -262,10 +276,10 @@ format HTTP 422.
 | GET | `/api/wareneingaenge/{id}/etiketten.pdf` | All labels of a goods receipt — `je_stueck=true` (default) prints one per piece, otherwise one per line |
 | GET | `/api/artikel/{artikel_id}/etiketten.pdf` | Markdown printing (Phase D): one label per piece in the branch's stock, for all colors and sizes of the item. Parameters `reduktion` (determines the roll), `lagerort_id` (the active branch if not given). 404 without stock |
 | GET | `/runterschreiben` | Markdowns page (Phase D): due list, confirmation, manual level, label printing |
-| GET | `/api/reduktionen` | Markdown printing (Phase D): items of a branch (`lagerort_id`, otherwise the active one) that have reached −70%/−50% (`stand: faellig`) or will in 30 days (`bald`), each with `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; plus the selectable branches and `manuell` (the branch's manually chosen levels with `prozent`, `gesetzt_von`, `gesetzt_am`) |
-| GET | `/api/articles/{varianten_id}/reduktion` | Per branch with sale: `empfehlung` (rule 6), `manuell` (30/50/70 or `null`), `wirksam`, `darf_aendern` (own branch, as for entry/correction) |
-| PUT | `/api/reduktion/manuell` | Set the level manually: `varianten_id`, `lagerort_id`, `prozent` (30/50/70, otherwise 422). All roles; employees only in assigned branches (403); external storage locations 409. Response: `empfehlung`, `manuell`, `wirksam` |
-| DELETE | `/api/reduktion/manuell?varianten_id=&lagerort_id=` | Revert to the recommendation; same rights |
+| GET | `/api/reduktionen` | Markdown printing (Phase D): items of a branch (`lagerort_id`, otherwise the active one) that have reached −70%/−50% (`stand: faellig`) or will in 30 days (`bald`), each with `stufe`, `rolle`, `stueck`, `varianten`, `eingang`; plus the selectable branches, `manuell` (the branch's manually chosen levels with `prozent`, `gesetzt_von`, `gesetzt_am`), and `darf_aendern` (whether this user may change markdowns in this branch) |
+| GET | `/api/articles/{varianten_id}/reduktion` | Per branch with sale: `empfehlung` (automatic level by rule 6: 30 % from arrival, 50/70 % after 18/36 months, 0 without a receipt date there), `manuell` (30/50/70 or `null`), `wirksam`, `darf_aendern` (own branches; head office all) |
+| PUT | `/api/reduktion/manuell` | Set the level manually: `varianten_id`, `lagerort_id`, `prozent` (30/50/70, otherwise 422). All roles, but only in their assigned branches — also branch managers (decision 2026-09-28); head office everywhere (403 otherwise); external storage locations 409. Response: `empfehlung`, `manuell`, `wirksam` |
+| DELETE | `/api/reduktion/manuell?varianten_id=&lagerort_id=` | Revert to the automatic level ("Automatic" in the UI); same rights |
 
 Both PDF responses come as `application/pdf` with `Content-Disposition:
 inline`, one page per label; the page size is the label size, so the
@@ -286,9 +300,13 @@ Branch manager/head office only. `GET /statistiken` (page),
 (optional; all branches if none given). Response: `zeitraum` (start/end),
 `kategorien` (pieces sold per POS category), `einnahmen_geschaetzt` +
 `einnahmen_ist_schaetzung: true`, `bestellempfehlung` (top-10 best-selling
-items with current stock), `lagerorte` (branch selection). The revenue
+items with current stock), `abgaenge` (removals other than sales, 2026-09-25
+clarification: `stueck`, `je_grund` with `grund`/`stueck`, `letzte` — the 10
+newest with `zeitpunkt`, `grund`, `freitext`, `stueck`, item, `lagerort`,
+`person`; cancelled ones excluded), `lagerorte` (branch selection). The page
+opens on `woche`. The revenue
 estimate uses the UVP and the markdown automatically due at the
-respective time of sale (`app/services/statistik.py`); a manually chosen
+respective time of sale (minimum 30 % since 2026-09-28, `app/services/statistik.py`); a manually chosen
 markdown has no history and isn't included.
 
 ## Account management (2026-09-25)
@@ -335,9 +353,9 @@ limits apply on top, unchanged.
 | GET | `/m` | Phone home screen: large tiles per role, installable as home-screen app |
 | GET | `/m/suche` | Article search and scan: price, sizes/colours, stock per location, reduction level |
 | GET | `/m/zaehlen` | Count and correct stock in the active branch (books only the difference) |
-| GET | `/m/lieferungen` | Confirm arrival of expected deliveries, partial or full (everyone, D21) |
-| GET | `/m/umlagern` | 🔒 Transfer between locations |
-| GET | `/m/ausbuchen` | 🔒 Write off a sale or removal (cancelling stays desktop-only) |
+| GET | `/m/lieferungen` | Confirm arrival of expected deliveries and incoming transfers, partial or full (everyone, D21) |
+| GET | `/m/umlagern` | 🔒 Dispatch a transfer to another location (the destination confirms under `/m/lieferungen`) |
+| GET | `/m/ausbuchen` | Write off a sale or removal — employees sales only (cancelling stays desktop-only) |
 | GET | `/m/erfassen` | Manual goods entry without a document (label printing stays desktop-only) |
 | GET | `/m/runterschreiben` | Due markdowns, "done" confirmation, manual 30/50/70 % |
 
@@ -372,17 +390,19 @@ read/parsed, or invalid data), `429` (login locked, S2), `503` (database
 unreachable).
 
 
-## Booking rights as of 2026-09-24
+## Booking rights as of 2026-09-24, refined 2026-09-28
 
-Employees may manually book in and correct stock, but only in their
-assigned branches. Booking out a sale/removal, cancelling, and
-transferring are reserved for branch managers and head office. Their
-existing cross-branch booking rights remain in place; read rights are
-unchanged.
+Employees may manually book in and correct stock, and book out sales —
+only sales — all only in their assigned branches. Booking out any other
+reason, cancelling, and transferring are reserved for branch managers
+and head office. Their existing cross-branch booking rights remain in
+place; read rights are unchanged. Markdowns (manual level, "done",
+answering recommendations) may be changed only in one's own branches,
+also by branch managers; head office may change all.
 
-`/ausbuchen`, `/api/ausbuchen/stammdaten`, `POST /api/ausbuchen`,
-`POST /api/ausbuchen/{id}/storno`, as well as `/umlagern` and all
-`/api/umlagerung` endpoints require branch manager/head office. The
+`POST /api/ausbuchen/{id}/storno`, `/umlagern`, and all
+`/api/umlagerung` endpoints require branch manager/head office;
+`/ausbuchen` and `POST /api/ausbuchen` check the reason per role. The
 write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
 `GET /api/erfassen/stammdaten` offers employees only their assigned
 branches; entry/correction also enforce this boundary server-side.
