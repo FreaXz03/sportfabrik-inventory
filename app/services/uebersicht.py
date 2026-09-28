@@ -305,9 +305,23 @@ def aktuelles(session, lagerort_id: int | None, anzahl: int = AKTUELLES_ANZAHL) 
     return ergebnis
 
 
-def stamm(session) -> dict:
-    """Filialübergreifende Zahlen zum Artikelstamm."""
+def varianten_mit_bestand(lagerort_id: int):
+    """Bedingung: die Variante hat in diesem Lagerort Bestand (auch negativen)
+    - so gehört eine Lücke im Artikelstamm zu dieser Filiale."""
+    return (
+        select(Bestand.varianten_id)
+        .where(Bestand.lagerort_id == lagerort_id, Bestand.menge != 0)
+        .scalar_subquery()
+    )
+
+
+def stamm(session, lagerort_id: int | None = None) -> dict:
+    """Lücken im Artikelstamm für „Anstehend". Mit Filiale nur Varianten mit
+    Bestand dort (Entscheid 28.09.2026: je Filiale), ohne Filiale - nur die
+    Zentrale kann „alle Filialen" wählen - der ganze Stamm."""
+    bedingungen = [] if lagerort_id is None else [Variante.id.in_(varianten_mit_bestand(lagerort_id))]
     return {
+        "lagerort_id": lagerort_id,
         # Varianten, nicht Artikel: die Artikelliste zeigt eine Zeile je
         # Variante, und ein Klick soll genau so viele Zeilen zeigen.
         "ohne_kategorie": int(
@@ -315,11 +329,14 @@ def stamm(session) -> dict:
                 select(func.count())
                 .select_from(Variante)
                 .join(Artikel, Artikel.id == Variante.artikel_id)
-                .where(Artikel.kategorie_id.is_(None))
+                .where(Artikel.kategorie_id.is_(None), *bedingungen)
             )
             or 0
         ),
         "ohne_ean": int(
-            session.scalar(select(func.count()).select_from(Variante).where(Variante.ean.is_(None))) or 0
+            session.scalar(
+                select(func.count()).select_from(Variante).where(Variante.ean.is_(None), *bedingungen)
+            )
+            or 0
         ),
     }
