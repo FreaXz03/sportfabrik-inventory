@@ -237,7 +237,7 @@ body.m-scanning { overflow: hidden; }
 /* Compound selector so this always wins over .m-current's own color,
    regardless of stylesheet order (DESIGN.md §3: colour must mean something). */
 .m-current.warning-text { color: var(--danger-text); }
-body.phone form label { margin-top: var(--space-4); }
+body.phone label { margin-top: var(--space-4); }
 body.phone select,
 body.phone form input { height: 52px; font-size: var(--fs-h3); }
 .m-stepper { display: grid; grid-template-columns: 52px 1fr 52px; gap: var(--space-2); }
@@ -276,3 +276,6 @@ body.phone .notice { margin: 0 0 var(--space-4); }
 .m-stepper-inline button.icon-only { width: 40px; height: 40px; }
 .m-stepper-inline input { height: 40px; font-size: var(--fs-sm); }
 .m-position-field .ghost { margin-left: auto; flex: none; }
+
+/* Two fields sharing a row (manual entry: colour + size, quantity + unit, UVP + EK). */
+.m-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-3); margin-top: var(--space-4); }

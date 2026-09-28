@@ -937,5 +937,7 @@
   "phone.tile_transfer": "Umlagern",
   "phone.tile_transfer_hint": "Ware zwischen Lagerorten umbuchen",
   "phone.tile_writeoff": "Ausbuchen",
-  "phone.tile_writeoff_hint": "Verkauf oder Abgang buchen"
+  "phone.tile_writeoff_hint": "Verkauf oder Abgang buchen",
+  "phone.tile_manual_entry": "Ware erfassen",
+  "phone.tile_manual_entry_hint": "Ware ohne Beleg einbuchen"
 }

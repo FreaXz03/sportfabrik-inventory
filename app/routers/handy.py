@@ -41,3 +41,8 @@ def phone_transfer(user=Depends(require_chef_page)):
 @router.get("/m/ausbuchen", include_in_schema=False)
 def phone_write_off(user=Depends(require_chef_page)):
     return FileResponse(TEMPLATES / "handy-ausbuchen.html")
+
+
+@router.get("/m/erfassen", include_in_schema=False)
+def phone_manual_entry(user=Depends(require_login_page)):
+    return FileResponse(TEMPLATES / "handy-erfassen.html")

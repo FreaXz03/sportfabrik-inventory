@@ -937,5 +937,7 @@
   "phone.tile_transfer": "Transfer",
   "phone.tile_transfer_hint": "Move goods between locations",
   "phone.tile_writeoff": "Book out",
-  "phone.tile_writeoff_hint": "Record a sale or removal"
+  "phone.tile_writeoff_hint": "Record a sale or removal",
+  "phone.tile_manual_entry": "Record goods",
+  "phone.tile_manual_entry_hint": "Book in goods without a document"
 }

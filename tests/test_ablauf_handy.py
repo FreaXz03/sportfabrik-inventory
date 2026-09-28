@@ -290,3 +290,43 @@ def test_write_off_on_the_phone_is_reserved_for_managers(welt):
     assert c.get("/m/ausbuchen", headers=h, follow_redirects=False).status_code == 303
     assert c.get("/api/ausbuchen/stammdaten", headers=h).status_code == 403
     assert c.post("/api/ausbuchen", headers=h, json={"grund": "verkauf", "varianten_id": variante}).status_code == 403
+
+
+def test_manual_goods_entry_on_the_phone(welt):
+    """Rule 9: employees may book in by hand, but only in their own stores
+    (D21); branch managers and head office may book to any location."""
+    _login(welt, ANNA, IPHONE)
+    c = welt.client
+    h = {"User-Agent": IPHONE}
+
+    assert c.get("/m/erfassen", headers=h, follow_redirects=False).status_code == 200
+    stamm = c.get("/api/erfassen/stammdaten", headers=h).json()
+    assert stamm["lagerort_aktiv"] == welt.codes["SF1"]
+    assert {lo["id"] for lo in stamm["lagerorte"]} == {welt.codes["SF1"]}
+
+    antwort = c.post("/api/erfassen", headers=h, json={
+        "lagerort_id": welt.codes["SF1"],
+        "positionen": [{"marke": "Nike", "bezeichnung": "Poloshirt", "menge": "3", "uvp": "39.90",
+                         "farbe": "Weiss", "groesse": "M", "ean": "4006632041233"}],
+    })
+    assert antwort.status_code == 200, antwort.text
+    assert antwort.json()["positionen"] == 1
+
+    # A known EAN is looked up and pre-fills the suggestion.
+    treffer = c.get("/api/erfassen/variante?ean=4006632041233", headers=h).json()
+    assert treffer["gefunden"] and treffer["variante"]["marke"] == "Nike"
+
+    # An employee cannot book to a store they are not assigned to.
+    abgelehnt = c.post("/api/erfassen", headers=h, json={
+        "lagerort_id": welt.codes["SF3"],
+        "positionen": [{"marke": "Nike", "bezeichnung": "Poloshirt", "menge": "1", "uvp": "39.90"}],
+    })
+    assert abgelehnt.status_code == 403
+
+    # A branch manager may book to any location.
+    _login(welt, CHEF, IPHONE)
+    manager = c.post("/api/erfassen", headers=h, json={
+        "lagerort_id": welt.codes["GEWA"],
+        "positionen": [{"marke": "Nike", "bezeichnung": "Poloshirt", "menge": "1", "uvp": "39.90"}],
+    })
+    assert manager.status_code == 200, manager.text

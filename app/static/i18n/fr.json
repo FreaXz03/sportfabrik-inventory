@@ -937,5 +937,7 @@
   "phone.tile_transfer": "Transfert",
   "phone.tile_transfer_hint": "Transférer des marchandises entre sites",
   "phone.tile_writeoff": "Sortie de stock",
-  "phone.tile_writeoff_hint": "Enregistrer une vente ou une sortie"
+  "phone.tile_writeoff_hint": "Enregistrer une vente ou une sortie",
+  "phone.tile_manual_entry": "Saisir des marchandises",
+  "phone.tile_manual_entry_hint": "Enregistrer des marchandises sans justificatif"
 }
