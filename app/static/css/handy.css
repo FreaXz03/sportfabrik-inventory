@@ -241,3 +241,29 @@ body.phone form input { height: 52px; font-size: var(--fs-h3); }
 .m-stepper button.icon-only { width: 52px; height: 52px; }
 .m-stepper input { text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
 body.phone .notice { margin: 0 0 var(--space-4); }
+
+/* Deliveries: list rows may wrap to two lines (document + supplier/date). */
+.m-list-wrap button { min-height: 72px; }
+
+.m-hint { margin: var(--space-2) 0 0; font-size: var(--fs-xs); color: var(--text-faint); }
+
+.m-positions {
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.m-position {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.m-position-head { display: grid; gap: 2px; margin-bottom: var(--space-2); }
+.m-position-head strong { font-size: var(--fs-body); line-height: 1.3; }
+.m-position-head .m-sub { font-size: var(--fs-sm); color: var(--text-muted); }
+.m-position-counts { display: flex; gap: var(--space-4); margin-bottom: var(--space-3); font-size: var(--fs-xs); color: var(--text-muted); }
+.m-position-field { display: flex; align-items: center; gap: var(--space-3); }
+.m-position-field span { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+.m-position-field input { flex: 1; min-width: 0; height: 48px; font-variant-numeric: tabular-nums; font-weight: 600; }

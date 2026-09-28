@@ -930,5 +930,8 @@
   "phone.count_plus": "Eins mehr",
   "phone.count_book": "Bestand korrigieren",
   "phone.count_text_required": "Bitte den Grund in eigenen Worten angeben.",
-  "phone.pick_other": "Anderen Artikel wählen"
+  "phone.pick_other": "Anderen Artikel wählen",
+  "phone.tile_deliveries": "Lieferungen",
+  "phone.tile_deliveries_hint": "Ankunft von erwarteter Ware bestätigen",
+  "phone.deliveries_title": "Lieferungen"
 }

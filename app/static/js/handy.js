@@ -7,6 +7,7 @@
   var TILES = [
     { href: '/m/suche', icon: 'scan', key: 'search', primary: true },
     { href: '/m/zaehlen', icon: 'package', key: 'count' },
+    { href: '/m/lieferungen', icon: 'download', key: 'deliveries' },
   ];
   var me = null;
 

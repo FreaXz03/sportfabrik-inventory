@@ -160,3 +160,56 @@ def test_count_and_correct_on_the_phone(welt):
         "varianten_id": variante, "lagerort_id": welt.codes["SF2"], "gezaehlt": "5", "grund": "inventur",
     })
     assert antwort.status_code == 403
+
+
+def _erwartete_lieferung(welt, lagerort_code="SF1"):
+    """Creates an expected delivery (order confirmation, not yet arrived) directly
+    in the test database - manual entry (used elsewhere in this file) always
+    books immediately and never leaves anything `erwartet` (D27)."""
+    from datetime import date
+
+    from app.core.models import Artikel, Dokument, Variante, Wareneingang, WareneingangPosition
+
+    with welt.sessions.begin() as session:
+        dokument = Dokument(typ="auftragsbestaetigung", dokumentnummer="AB-1001", dokumentdatum=date(2026, 9, 1))
+        session.add(dokument)
+        session.flush()
+        artikel = Artikel(marke="Nike", lieferanten_artikelnr="DH0857-100", bezeichnung="Poloshirt Court")
+        session.add(artikel)
+        session.flush()
+        variante = Variante(artikel_id=artikel.id, farbe="Weiss", groesse="M", ean="4006632041233")
+        session.add(variante)
+        session.flush()
+        wareneingang = Wareneingang(dokument_id=dokument.id, lagerort_id=welt.codes[lagerort_code], status="erwartet")
+        session.add(wareneingang)
+        session.flush()
+        position = WareneingangPosition(wareneingang_id=wareneingang.id, varianten_id=variante.id, menge="5")
+        session.add(position)
+        session.flush()
+        return wareneingang.id, position.id
+
+
+def test_confirm_goods_arrival_on_the_phone(welt):
+    wareneingang_id, position_id = _erwartete_lieferung(welt)
+    _login(welt, ANNA, IPHONE)
+    c = welt.client
+    h = {"User-Agent": IPHONE}
+    assert c.get("/m/lieferungen", headers=h).status_code == 200
+
+    liste = c.get("/api/wareneingaenge", headers=h).json()["wareneingaenge"]
+    assert len(liste) == 1 and liste[0]["id"] == wareneingang_id
+
+    # Partial arrival: 3 of 5 pieces.
+    antwort = c.post(f"/api/wareneingaenge/{wareneingang_id}/ankunft", headers=h,
+                      json={"mengen": {str(position_id): "3"}, "eingangsdatum": "2026-09-15"})
+    assert antwort.status_code == 200, antwort.text
+    assert antwort.json()["status"] == "erwartet"
+
+    rest = c.get("/api/wareneingaenge", headers=h).json()["wareneingaenge"][0]["positionen"][0]
+    assert rest["menge_offen"] == "2.00"
+
+    # The rest: fully booked, no longer listed.
+    antwort = c.post(f"/api/wareneingaenge/{wareneingang_id}/ankunft", headers=h,
+                      json={"mengen": {str(position_id): "2"}})
+    assert antwort.status_code == 200 and antwort.json()["status"] == "eingetroffen"
+    assert c.get("/api/wareneingaenge", headers=h).json()["wareneingaenge"] == []
