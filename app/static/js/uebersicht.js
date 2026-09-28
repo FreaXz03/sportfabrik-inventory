@@ -63,17 +63,20 @@
     begruessung.className = 'title-mixed';
     if (name) {
       // Mixed-Weight-Titel (DESIGN.md §5.3): der Name traegt die Bedeutung,
-      // darum fett - der Rest der Begruessung bleibt leise (300).
-      const satz = t('dashboard.greeting_' + tageszeit, { name: name });
-      const index = satz.indexOf(name);
+      // darum fett - der Rest der Begruessung bleibt leise (300). Ohne
+      // Werte abgerufen, damit der Platzhalter "{name}" literal bleibt -
+      // ein Name, der zufaellig im festen Satzteil vorkommt (z. B. "Tag"
+      // in "Guten Tag, {name}"), soll nicht faelschlich fett werden.
+      const vorlage = t('dashboard.greeting_' + tageszeit);
+      const index = vorlage.indexOf('{name}');
       begruessung.replaceChildren();
       if (index === -1) {
-        begruessung.textContent = satz;
+        begruessung.textContent = vorlage.split('{name}').join(name);
       } else {
-        begruessung.append(satz.slice(0, index));
+        begruessung.append(vorlage.slice(0, index));
         const stark = document.createElement('strong');
         stark.textContent = name;
-        begruessung.append(stark, satz.slice(index + name.length));
+        begruessung.append(stark, vorlage.slice(index + '{name}'.length));
       }
     } else {
       begruessung.textContent = t('dashboard.greeting_plain');
