@@ -1458,3 +1458,11 @@ Source: Fabian’s direct request on 2026-09-29.
 ### Dashboard redesign (2026-09-29)
 
 Decision (Fabian): small charts are allowed on the dashboard; `DESIGN.md` §9.3 amended. `/api/dashboard` → `filiale` now also returns `stufen` (pieces per markdown stage by age of last receipt, no manual overrides), `verlauf` (sold pieces per day, last 14 days) and `bestseller` (top 5 models, last 7 days), all for the active branch only. The page shows them as three panels (`uebersicht.js`, `.insights` in `app.css`); "Aktuelles" is grouped by day. Test: `tests/test_ablauf_dashboard.py`. Docker image must be rebuilt (`docker compose --env-file .env.server up -d --build`) to see UI changes.
+
+## Next-work decision — structural redesign, 2026-09-29
+
+Fabian selected **Sportfabrik Inventory Redesign as the next work item**, ahead of previously queued features and deployment preparation. [Full requirements](redesign-2026-09-29.md) preserve the three local references, exact menu order, sidebar, stacked logo, function search, dashboard charts and Settings modal. Existing colors/design language and role/branch permissions remain. This is a new request beyond the earlier completed redesign; no implementation performed in this update.
+
+### Redesign phases 1–3 implemented (2026-09-29)
+
+Fabian confirmed the Phase 0 points (route `/anstehend`, Settings modal contents, chart metrics, reference images). Implemented: left sidebar from 901 px (stacked logo, groups Bestand / Wareneingang / Warenausgang / Belege / Verwaltung, order per [specification](redesign-2026-09-29.md)); below 901 px the top bar with "Menü" stays. The pages are static HTML, so the shell is `nav.js` + `app.css` §5b, not a template base. Role filters unchanged; `/anstehend` and Settings are prepared in `nav.js` but hidden until phases 4 and 6. Labels: `nav.articles` = Produkte/Produits/Products, new group keys in de/fr/en. Test `tests/test_navigation.py`. Open: phases 4–8.

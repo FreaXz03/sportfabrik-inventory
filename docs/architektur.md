@@ -730,14 +730,17 @@ decision E8), but two scripts are included across all pages:
   `app.css` (follows the system setting by default, can be switched
   manually, remembered via `localStorage`) and provides the toggle
   button as a factory function.
-- `nav.js` builds the main navigation in **one** place (the templates
-  only contain an empty `<nav>`): Overview, Stock, "Goods" group (Enter,
-  Deliveries, Transfer, Write off), Articles, "Documents" group (All
-  documents, Upload document). The groups expand with a short
-  explanation per entry; the active page carries `aria-current="page"`.
-  "Upload document" is only visible to branch managers and head office
-  (rule 9). Below 900 px width, everything sits behind the "Menu"
-  button.
+- `nav.js` builds the sidebar navigation in **one** place (the templates
+  only contain an empty `<nav>`), order per `docs/redesign-2026-09-29.md`:
+  Overview, Products, Stock (Stock, Mark down), Goods in (Deliveries,
+  Record), Goods out (Book out), Transfer, Documents (All documents,
+  Upload document), Statistics, Pending (hidden until the page exists),
+  Administration (Accounts, Recommendations). Groups open on click and
+  stay open when they contain the active page (`aria-current="page"`).
+  Entries with `nur` are role-filtered (rule 9); the server still checks
+  every page. Below 901 px the sidebar becomes the top bar and everything
+  sits behind the "Menu" button, with groups shown as headings.
+  `tests/test_navigation.py` reads the entry list from the file.
 - `session.js` builds the right side of the header: the **branch pill**
   (active branch, a select if several are available) and the **account
   menu** behind the initials button (name, till number, role, language,
@@ -796,7 +799,10 @@ rules. Anyone who wants to change a color changes it in exactly one
 place. `color-scheme` is set as well, so native controls (date fields,
 scrollbars) match the mode too.
 
-Since 2026-09-23 the header has been **single-line** and stays fixed
+Since 2026-09-29 the header is a **fixed sidebar** from 901 px
+(`app.css` §5b: logo, navigation, branch pill and account menu at the
+bottom; scoped to `body:has(> header > nav)`, so login and phone pages
+are unaffected). Older note: since 2026-09-23 the header had been **single-line** and stays fixed
 while scrolling (`sticky` with `backdrop-filter`): the brand on the left,
 next to it the navigation from `nav.js`, and on the right the branch pill
 and account menu from `session.js`. Expandable menus are controlled via
