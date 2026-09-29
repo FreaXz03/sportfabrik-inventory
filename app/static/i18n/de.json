@@ -144,6 +144,7 @@
   "fields.uvp": "UVP",
   "fields.ek": "EK",
   "fields.kategorie": "Kategorie",
+  "fields.reduktion": "Reduktion",
 
   "preview.page_title": "Belegprüfung · Sport-Fabrik",
   "preview.heading": "Beleg prüfen",
@@ -554,6 +555,8 @@
   "erfassen.supplier_hint": "Freiwillig – hilft, den Artikel später wiederzufinden.",
   "erfassen.kategorie_none": "keine Kategorie",
   "erfassen.kategorie_hint": "Freiwillig – nötig nur für neue Artikel; eine bereits gesetzte Kategorie bleibt unverändert.",
+  "erfassen.reduktion_auto": "Automatisch",
+  "erfassen.reduktion_hint": "Reduktion freiwillig – gilt als Wahl von Hand für diese Filiale. Automatisch: ab Eingang −30 %, nach 18 Monaten −50 %, nach 36 Monaten −70 %.",
   "erfassen.article_heading": "Artikel erfassen",
   "erfassen.scan_label": "EAN scannen oder eingeben",
   "erfassen.scan_placeholder": "Barcode scannen …",

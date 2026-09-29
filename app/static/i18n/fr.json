@@ -144,6 +144,7 @@
   "fields.uvp": "PPR",
   "fields.ek": "PA",
   "fields.kategorie": "Catégorie",
+  "fields.reduktion": "Réduction",
 
   "preview.page_title": "Contrôle de justificatif · Sport-Fabrik",
   "preview.heading": "Contrôler le justificatif",
@@ -554,6 +555,8 @@
   "erfassen.supplier_hint": "Facultatif – aide à retrouver l'article plus tard.",
   "erfassen.kategorie_none": "aucune catégorie",
   "erfassen.kategorie_hint": "Facultatif – nécessaire uniquement pour les nouveaux articles ; une catégorie déjà définie reste inchangée.",
+  "erfassen.reduktion_auto": "Automatique",
+  "erfassen.reduktion_hint": "Réduction facultative – enregistrée comme choix manuel pour cette filiale. Automatique : −30 % dès l’arrivée, −50 % après 18 mois, −70 % après 36 mois.",
   "erfassen.article_heading": "Saisir l'article",
   "erfassen.scan_label": "Scanner ou saisir l'EAN",
   "erfassen.scan_placeholder": "Scanner le code-barres …",

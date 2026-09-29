@@ -144,6 +144,7 @@
   "fields.uvp": "RRP",
   "fields.ek": "Cost price",
   "fields.kategorie": "Category",
+  "fields.reduktion": "Markdown",
 
   "preview.page_title": "Document review · Sport-Fabrik",
   "preview.heading": "Review document",
@@ -554,6 +555,8 @@
   "erfassen.supplier_hint": "Optional – helps to find the item again later.",
   "erfassen.kategorie_none": "no category",
   "erfassen.kategorie_hint": "Optional – only needed for new articles; a category already set stays unchanged.",
+  "erfassen.reduktion_auto": "Automatic",
+  "erfassen.reduktion_hint": "Markdown optional – saved as the manual choice for this branch. Automatic: −30 % from arrival, −50 % after 18 months, −70 % after 36 months.",
   "erfassen.article_heading": "Enter the item",
   "erfassen.scan_label": "Scan or type the EAN",
   "erfassen.scan_placeholder": "Scan the barcode …",

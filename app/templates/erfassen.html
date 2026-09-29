@@ -68,9 +68,17 @@
                          <label><span data-i18n="fields.supplier_article_no">Lief. Art. Nr.</span><input id="lieferanten_artikelnr"
                                         type="text" autocomplete="off" maxlength="100"></label>
                          <label><span data-i18n="fields.kategorie">Kategorie</span><select id="kategorie"></select></label>
+                         <label id="reduktionFeld"><span data-i18n="fields.reduktion">Reduktion</span><select id="reduktion">
+                                        <option value="" data-i18n="erfassen.reduktion_auto">Automatisch</option>
+                                        <option value="30">−30 %</option>
+                                        <option value="50">−50 %</option>
+                                        <option value="70">−70 %</option>
+                                   </select></label>
                     </div>
                     <p class="muted" data-i18n="erfassen.kategorie_hint">Freiwillig – nötig nur für neue Artikel; eine bereits
                          gesetzte Kategorie bleibt unverändert.</p>
+                    <p id="reduktionHinweis" class="muted" data-i18n="erfassen.reduktion_hint">Reduktion freiwillig – gilt als Wahl von Hand
+                         für diese Filiale. Automatisch: ab Eingang −30 %, nach 18 Monaten −50 %, nach 36 Monaten −70 %.</p>
                     <p class="muted" data-i18n="erfassen.required_hint">* Pflichtfeld</p>
                     <div class="filters">
                          <button id="add" type="submit" data-i18n="erfassen.add">Zur Liste hinzufügen</button>
@@ -92,6 +100,7 @@
                                    <th data-i18n="erfassen.table_quantity">Menge</th>
                                    <th data-i18n="erfassen.table_price">UVP</th>
                                    <th data-i18n="fields.kategorie">Kategorie</th>
+                                   <th data-i18n="fields.reduktion">Reduktion</th>
                                    <th data-i18n="erfassen.table_actions">Aktion</th>
                               </tr>
                          </thead>
@@ -112,7 +121,7 @@
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
      <script src="/static/js/kategorien.js?v=1"></script>
-     <script src="/static/js/erfassen.js?v=2"></script>
+     <script src="/static/js/erfassen.js?v=3"></script>
      <script src="/static/js/nav.js?v=4"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>

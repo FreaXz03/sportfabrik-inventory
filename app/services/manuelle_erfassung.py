@@ -60,6 +60,7 @@ from .artikel import (
     finde_variante_per_ean,
 )
 from .kategorien import kategorie_daten, merke_kategorie
+from .reduktion_manuell import MANUELLE_STUFEN, merke
 from .wareneingang import ADVISORY_LOCK_ID, buche_zugang
 
 # Grund der Lagerbewegung: ein fester Schlüssel, kein UI-Text - übersetzt wird
@@ -93,6 +94,7 @@ FELD_KEYS = {
     "uvp": "uvp",
     "ek": "ek",
     "kategorie_id": "kategorie",
+    "reduktion": "reduktion",
 }
 
 
@@ -188,6 +190,7 @@ def pruefe_positionen(positionen, language: str = DEFAULT_LANGUAGE) -> list[dict
             "uvp",
             "ek",
             "kategorie_id",
+            "reduktion",
         }
         if unbekannt:
             raise _fehler("invalid_position", language, index)
@@ -211,9 +214,16 @@ def pruefe_positionen(positionen, language: str = DEFAULT_LANGUAGE) -> list[dict
             ek = _betrag(position.get("ek"), "ek", index, language)
             if ek < 0:
                 raise _fehler("price_negative", language, index, field=_feld("ek", language))
+        # N2 (29.09.2026): Reduktion freiwillig, nur die Stufen von Hand.
+        reduktion = position.get("reduktion")
+        if reduktion is not None and (
+            isinstance(reduktion, bool) or reduktion not in MANUELLE_STUFEN
+        ):
+            raise _fehler("invalid_field", language, index, field=_feld("reduktion", language))
         geprueft.append(
             {
                 **werte,
+                "reduktion": reduktion,
                 "menge": menge,
                 "uvp": uvp,
                 "ek": ek,
@@ -336,6 +346,12 @@ def erfasse_wareneingang(
                         translate("errors.erfassung.kategorie_unknown", language)
                     )
 
+            # Extern (GEWA, VEBO, Dietikon) gibt es keine Reduktion (Regel 6).
+            if not lagerort.verkauf and any(e["reduktion"] for e in geprueft):
+                raise ErfassungRejected(
+                    translate("errors.reduktion.no_sales_location", language)
+                )
+
             gesehen = eingangsdatum or heute
             # Regel 6/D13: An einem Standort ohne Verkauf (GEWA, VEBO,
             # Dietikon) startet die Reduktionsuhr nicht - also kein
@@ -407,6 +423,17 @@ def erfasse_wareneingang(
                 merke_kategorie(
                     session.get(Artikel, variante.artikel_id), eintrag["kategorie_id"]
                 )
+                # N2: gewählte Reduktion = Wahl von Hand der Zielfiliale; ohne
+                # Wahl bleibt eine bestehende stehen.
+                if eintrag["reduktion"] is not None:
+                    merke(
+                        session,
+                        variante.artikel_id,
+                        lagerort.id,
+                        eintrag["reduktion"],
+                        (benutzer or {}).get("kassennummer"),
+                        (benutzer or {}).get("name"),
+                    )
 
                 # Von Hand erfasste Ware ist da - sie zählt wie eine Lieferung.
                 variante.first_seen = (

@@ -82,6 +82,16 @@
           <input id="lieferanten_artikelnr" type="text" autocomplete="off" maxlength="100">
           <label for="kategorie" data-i18n="fields.kategorie">Kategorie</label>
           <select id="kategorie"></select>
+          <div id="reduktionFeld">
+               <label for="reduktion" data-i18n="fields.reduktion">Reduktion</label>
+               <select id="reduktion">
+                    <option value="" data-i18n="erfassen.reduktion_auto">Automatisch</option>
+                    <option value="30">−30 %</option>
+                    <option value="50">−50 %</option>
+                    <option value="70">−70 %</option>
+               </select>
+               <p class="m-hint" data-i18n="erfassen.reduktion_hint">Reduktion freiwillig – gilt als Wahl von Hand für diese Filiale.</p>
+          </div>
           <p class="m-hint" data-i18n="erfassen.required_hint">* Pflichtfeld</p>
 
           <p id="addError" class="error" role="alert" hidden></p>
@@ -98,7 +108,7 @@
      <script src="/static/js/kategorien.js?v=1"></script>
      <script src="/static/js/handy-core.js?v=1"></script>
      <script src="/static/js/handy-scan.js?v=1"></script>
-     <script src="/static/js/handy-erfassen.js?v=1"></script>
+     <script src="/static/js/handy-erfassen.js?v=2"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>

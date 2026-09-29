@@ -47,6 +47,11 @@
     $('datumHinweis').textContent = verkauf
       ? t('wareneingaenge.arrival_date_hint')
       : t('wareneingaenge.no_date_for_warehouse');
+    // N2: Reduktion nur in eigenen Filialen mit Verkauf wählbar.
+    const reduktion = !lagerort || lagerort.reduktion;
+    $('reduktionFeld').hidden = !reduktion;
+    $('reduktionHinweis').hidden = !reduktion;
+    if (!reduktion) $('reduktion').value = '';
   }
 
   function kategorieAuswahlFuellen(wert) {
@@ -93,6 +98,7 @@
     for (const id of ['uvp', 'ek']) $(id).value = '';
     $('menge').value = '1';
     $('kategorie').value = '';
+    $('reduktion').value = '';
   }
 
   function vorschlagUebernehmen(variante) {
@@ -164,6 +170,7 @@
     if (wert('ek')) position.ek = wert('ek').replace(',', '.');
     for (const id of TEXTFELDER) if (wert(id)) position[id] = wert(id);
     if (wert('kategorie')) position.kategorie_id = Number(wert('kategorie'));
+    if (wert('reduktion')) position.reduktion = Number(wert('reduktion'));
     return { position: position };
   }
 
@@ -178,6 +185,7 @@
       zeile.append(node('td', position.uvp));
       const kategorie = kategorien.find((eintrag) => eintrag.id === position.kategorie_id);
       zeile.append(node('td', window.SportfabrikKategorien.name(kategorie) || '—'));
+      zeile.append(node('td', position.reduktion ? '−' + position.reduktion + ' %' : t('erfassen.reduktion_auto')));
       const knopf = node('button', t('erfassen.remove'), 'secondary');
       knopf.type = 'button';
       knopf.setAttribute('aria-label', t('erfassen.remove_label', { artikel: artikelName(position) }));
