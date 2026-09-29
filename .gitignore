@@ -12,3 +12,6 @@ Sportfabrik-Inventory-Dokumentation.docx
 tmp/
 .playwright-mcp/
 graphify-out/
+
+# S4: public age key for encrypted external backups (store-specific)
+backup-age-recipient.txt

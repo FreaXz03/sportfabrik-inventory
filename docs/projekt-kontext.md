@@ -1421,3 +1421,11 @@ PostgreSQL 18 in a throwaway Docker container (upgrade, downgrade of
 transfer, cancel, headers). Pages checked in headless Chromium (Brave):
 16 pages without JS errors or CSP violations. Still open for the store:
 S4, S8, network separation, deployment itself.
+
+**S4, same day:** external backups are always encrypted with `age`
+(decision 2026-09-29). The server keeps only the public key
+(`backup-age-recipient.txt`, not in git); the private key stays on a USB
+stick and on paper. `scripts/backup_inventory.py --external` writes one
+`inventory-TIMESTAMP.tar.age` plus a `.sha256` file and refuses to copy
+without a valid key. Checked with a real age round trip (encrypt, checksum,
+decrypt). Setup and restore: `docs/BACKUPS.md`.

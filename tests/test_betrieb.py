@@ -220,3 +220,52 @@ def test_seiten_ohne_inline_skripte():
         assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), datei.name
         assert not re.search(r"\son[a-z]+=\"", html), datei.name
         assert "style=\"" not in html and "<style" not in html, datei.name
+
+
+def _backup_skript():
+    spec = importlib.util.spec_from_file_location("backup_inventory", ROOT / "scripts" / "backup_inventory.py")
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def test_externe_sicherung_nur_verschluesselt(tmp_path):
+    """S4: die Kopie auf den externen Datenträger ist immer mit age
+    verschlüsselt (nur der öffentliche Schlüssel liegt auf dem Server);
+    ohne Schlüssel oder ohne age gibt es keine unverschlüsselte Kopie."""
+    skript = _backup_skript()
+    lokal = tmp_path / "inventory-20260929T200000Z"
+    lokal.mkdir()
+    (lokal / "database.dump").write_bytes(b"dump")
+    (lokal / "manifest.json").write_text("{}")
+    extern = tmp_path / "usb"
+    extern.mkdir()
+    empfaenger = "age1" + "q" * 58
+
+    with pytest.raises(RuntimeError):
+        skript.externe_kopie(lokal, extern, None, "age")
+    with pytest.raises(RuntimeError):
+        skript.externe_kopie(lokal, extern, "kein-schluessel", "age")
+    assert list(extern.iterdir()) == []
+
+    # Ein Ersatz-age, das den Aufruf prüft und eine age-Datei schreibt.
+    falsches_age = tmp_path / "age"
+    falsches_age.write_text(
+        "#!" + sys.executable + "\n"
+        "import sys\n"
+        "args = sys.argv[1:]\n"
+        f"assert args[:2] == ['-r', '{empfaenger}'] and args[2] == '-o', args\n"
+        "daten = open(args[4], 'rb').read()\n"
+        "open(args[3], 'wb').write(b'age-encryption.org/v1\\n' + daten[:0] + b'x' * 10)\n"
+    )
+    falsches_age.chmod(0o755)
+    datei = skript.externe_kopie(lokal, extern, empfaenger, str(falsches_age))
+    assert datei == extern / "inventory-20260929T200000Z.tar.age"
+    assert datei.read_bytes().startswith(b"age-encryption.org/v1")
+    pruefsumme = (extern / "inventory-20260929T200000Z.tar.age.sha256").read_text()
+    assert pruefsumme.split()[0] == skript.sha256(datei)
+    # Nichts Unverschlüsseltes auf dem Datenträger.
+    assert sorted(p.name for p in extern.iterdir()) == [
+        "inventory-20260929T200000Z.tar.age",
+        "inventory-20260929T200000Z.tar.age.sha256",
+    ]

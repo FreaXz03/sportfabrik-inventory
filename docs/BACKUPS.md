@@ -33,11 +33,52 @@ Once a target is ready:
 .\.venv\Scripts\python.exe scripts/backup_inventory.py --external "E:\InventoryBackups"
 ```
 
-**Open (security review 2026-09-24, S4):** The backup on the
-external drive is also unencrypted (database dump and all original PDFs).
-Add encryption before the first external backup, see
-[`sicherheit.md`](sicherheit.md).
+The external folder must exist. When the target is set up, also update the
+Codex automation.
 
-The external folder must exist. After copying, the checksums are
-compared. A copy error leaves the local backup intact and reports an
-error. When the target is set up, also update the Codex automation.
+## Encrypted external copy (S4, 2026-09-29)
+
+The copy on the external drive is **always encrypted with
+[age](https://age-encryption.org)** — there is no unencrypted external copy.
+The script packs the finished backup folder into one file,
+`inventory-TIMESTAMP.tar.age`, encrypts it with the **public** key, copies it,
+compares checksums, and writes `inventory-TIMESTAMP.tar.age.sha256` next to
+it. Local backups under `backups/automatic/` stay unencrypted for a quick
+restore on the server itself.
+
+Two keys:
+
+- **Public key** (`age1…`): only encrypts. Lives on the server in
+  `backup-age-recipient.txt` (project folder, not in git) or is passed with
+  `--recipient age1…`.
+- **Private key** (`AGE-SECRET-KEY-1…`): the only way to open the backups.
+  **Never on the server.** Keep it on a USB stick in the head office and as
+  a paper printout in a second place. Losing it means the external backups
+  can never be opened.
+
+### Set up once
+
+1. Install age on the server (Linux: `sudo apt install age`, Mac:
+   `brew install age`, Windows: `winget install FiloSottile.age`).
+2. On a **different** PC create the key pair:
+   `age-keygen -o sportfabrik-backup-key.txt`. It prints the public key
+   (`Public key: age1…`).
+3. Copy `sportfabrik-backup-key.txt` to the USB stick, print it, then delete
+   it from that PC.
+4. On the server put only the public key into `backup-age-recipient.txt`
+   (one line `age1…`).
+
+### Restore from the external drive
+
+```bash
+shasum -a 256 -c inventory-TIMESTAMP.tar.age.sha256      # file intact?
+age -d -i /path/to/sportfabrik-backup-key.txt -o backup.tar inventory-TIMESTAMP.tar.age
+tar -xf backup.tar                                          # gives inventory-TIMESTAMP/
+```
+
+Then restore `database.dump` with `pg_restore` and unpack
+`original-pdfs.zip` as usual. Test a full restore at least once after
+setup.
+
+Without a valid public key or without age installed, `--external` stops
+with an error; the local backup is kept.
