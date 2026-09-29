@@ -309,12 +309,15 @@ class Wareneingang(Base):
     (`app/services/wareneingang.py`). Kommt nur ein Teil an, bleibt der
     Wareneingang `erwartet`, bis keine Position mehr offen ist (D22); der
     bereits gebuchte Teil steht in `wareneingang_positionen.menge_eingetroffen`.
+    `storniert` gibt es nur bei einer Umlagerung unterwegs (29.09.2026): der
+    offene Rest ist an die Quelle zurückgebucht.
     """
 
     __tablename__ = "wareneingaenge"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('erwartet', 'eingetroffen')", name="ck_wareneingaenge_status"
+            "status IN ('erwartet', 'eingetroffen', 'storniert')",
+            name="ck_wareneingaenge_status",
         ),
     )
 

@@ -5,12 +5,15 @@ Rechte (24.09.2026): Umlagern dürfen nur Filialleiter/Zentrale. Seit
 aktive Filiale; ob von dort gebucht werden darf, prüft der Server mit
 `resolve_wareneingang_lagerort`), das Ziel bestätigt die Ankunft unter
 „Lieferungen" (`/api/wareneingaenge/{id}/ankunft`, alle Rollen, D21).
+
+Stornieren unterwegs (29.09.2026): Filialleiter nur für Umlagerungen aus
+ihren eigenen Filialen, die Zentrale für alle.
 """
 
 from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,8 +22,18 @@ from starlette.concurrency import run_in_threadpool
 from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import Lagerort
-from ..services.lagerorte import list_all_lagerorte, list_wareneingang_lagerorte
-from ..services.umlagerung import UmlagerungRejected, umlagern
+from ..services.lagerorte import (
+    list_all_lagerorte,
+    list_user_lagerorte,
+    list_wareneingang_lagerorte,
+)
+from ..services.umlagerung import (
+    UmlagerungForbidden,
+    UmlagerungRejected,
+    stornieren,
+    umlagern,
+)
+from ..services.wareneingang import liste_erwartete
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -117,6 +130,63 @@ async def api_umlagern(
                 language=language,
             )
         )
+    except UmlagerungRejected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, translate("errors.preview.import_db_error", language)
+        ) from exc
+
+
+def _eigene_quellen(session, user) -> set[int] | None:
+    """Quellen, deren Umlagerungen der Benutzer stornieren darf - None heisst
+    alle (Zentrale)."""
+    if user.role == "admin":
+        return None
+    return {lagerort.id for lagerort in list_user_lagerorte(session, user)}
+
+
+@router.get("/api/umlagerung/unterwegs")
+def api_unterwegs(
+    quelle_id: int | None = Query(default=None),
+    user=Depends(require_chef_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Umlagerungen unterwegs aus den eigenen Filialen (Zentrale: alle),
+    auf Wunsch nur aus einer Quelle."""
+    erlaubt = _eigene_quellen(session, user)
+    if quelle_id is not None:
+        if erlaubt is not None and quelle_id not in erlaubt:
+            raise HTTPException(403, translate("errors.auth.no_lagerort_access", language))
+        erlaubt = {quelle_id}
+    elif erlaubt is None:
+        erlaubt = {lagerort.id for lagerort in list_all_lagerorte(session)}
+    return {"umlagerungen": liste_erwartete(session, herkunft_ids=erlaubt)}
+
+
+@router.post("/api/umlagerung/{wareneingang_id}/stornieren")
+async def api_stornieren(
+    wareneingang_id: int,
+    user=Depends(require_chef_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    from ..core.database import SessionLocal
+
+    erlaubt = _eigene_quellen(session, user)
+    try:
+        return await run_in_threadpool(
+            lambda: stornieren(
+                SessionLocal,
+                wareneingang_id,
+                erlaubte_quellen=erlaubt,
+                benutzer={"kassennummer": user.kassennummer, "name": user.name},
+                language=language,
+            )
+        )
+    except UmlagerungForbidden as exc:
+        raise HTTPException(403, str(exc)) from exc
     except UmlagerungRejected as exc:
         raise HTTPException(409, str(exc)) from exc
     except SQLAlchemyError as exc:

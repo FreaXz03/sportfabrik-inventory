@@ -75,9 +75,30 @@
                </div>
                <p id="bookStatus" role="status" aria-live="polite"></p>
           </section>
+
+          <section class="panel">
+               <h2 data-i18n="umlagern.transit_heading">Unterwegs</h2>
+               <p class="muted" data-i18n="umlagern.transit_intro">Versendet, aber am Ziel noch nicht angekommen.</p>
+               <p id="unterwegsLeer" class="muted empty-state" data-i18n="umlagern.transit_empty">Nichts unterwegs.</p>
+               <div class="tablewrap" id="unterwegs" hidden>
+                    <table>
+                         <thead>
+                              <tr>
+                                   <th data-i18n="umlagern.table_dispatched">Versendet am</th>
+                                   <th data-i18n="umlagern.table_route">Von → Nach</th>
+                                   <th data-i18n="bestand.table_article">Artikel</th>
+                                   <th data-i18n="umlagern.table_open">Noch unterwegs</th>
+                                   <th data-i18n="ausbuchen.table_actions">Aktion</th>
+                              </tr>
+                         </thead>
+                         <tbody id="unterwegsRows"></tbody>
+                    </table>
+               </div>
+               <p id="unterwegsStatus" role="status" aria-live="polite"></p>
+          </section>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/umlagern.js?v=2"></script>
+     <script src="/static/js/umlagern.js?v=3"></script>
      <script src="/static/js/nav.js?v=4"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>

@@ -19,7 +19,7 @@ Fabian decided all open points the same evening; implemented test-first
 | K5 | "Automatic" instead of "Recommendation" | **done** |
 | K6 | Own branches only, also branch managers; head office all | **done** |
 | K8 | Employees book out sales — only sales | **done** |
-| N2 | — | **open**: where to store a markdown chosen at goods entry |
+| N2 | Markdown at goods entry = manual markdown of the target branch (decision 2026-09-29) | **done** |
 | N3 | "Pending" per branch; head office sees all | **done** |
 | N4 | Transfer as a delivery with dispatch date | **done** |
 | Arrival timing | Confirm after unpacking and checking | working rule, texts updated |
@@ -47,7 +47,7 @@ Original note in German, translated here; wording kept as close as possible.
 | # | Requirement | Code status 2026-09-28 | Conflict / open point |
 |---|---|---|---|
 | N1 | "All items have a minimum markdown of 30 % — also new goods. There is no item without a markdown." | **open** | Same as K4 (confirms it) |
-| N2 | "When entering goods, I want to choose directly which markdown the item has." | **open** — manual entry has no markdown field; the level can be set afterwards in item details or on "Markdowns" | Should the choice be stored as a manual markdown (`reduktionen_manuell`) for the target branch? Label printing would then use it |
+| N2 | "When entering goods, I want to choose directly which markdown the item has." | **done 2026-09-29** — optional field per line in manual entry (desktop + phone), stored in `reduktionen_manuell` of the target branch | Decided 2026-09-29: yes, store it as the manual markdown |
 | N3 | "Make 'Pending' on the overview separate per branch. Only the head-office account sees everything." | **partly** — deliveries, negative stock, and due markdowns already follow the active branch; "without EAN" and "without category" are item-master counts across all branches (rule 4: master shared) | Should item-master counts be restricted per branch (items with stock there) or hidden for non-head-office accounts? |
 | N4 | "Treat a transfer like a delivery: when I transfer something, I choose the dispatch date, when I sent it where; the branch then gets it like a new delivery and confirms its arrival from there." | **open** — transfers are booked in one step (removal at source + receipt at destination, `app/services/umlagerung.py`) | Large change: goods "in transit" between dispatch and arrival, a new expected-receipt type, phone + desktop pages. Touches rule 6 (branch-to-branch transfer keeps the original date) and F11. Needs a short design decision first |
 

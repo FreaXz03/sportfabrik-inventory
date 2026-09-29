@@ -21,6 +21,11 @@ Die Regeln dazu (docs/projekt-kontext.md Abschnitte 4 und 10):
 * **Zu wenig Bestand an der Quelle**: gewarnt und trotzdem gebucht, wie beim
   Ausbuchen (F9).
 
+* **Stornieren unterwegs** (Entscheid 29.09.2026): Filialleiter der Quelle
+  oder Zentrale. Der offene Rest geht mit seinem alten Datum an die Quelle
+  zurück (Grund `zurueck:SF3`), schon Angekommenes bleibt am Ziel; der
+  Wareneingang wird `storniert`.
+
 Ob eine Umlagerung die Uhr startet, steht an ihrer Zugangsbewegung in
 `lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` zählt
 dieses Datum mit. Beide Bewegungen sind `typ = umlagerung`, der Grund nennt
@@ -30,6 +35,8 @@ Umlagerung bekommt nie ein eigenes `eingangsdatum`.
 
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
+
+from sqlalchemy import select
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Artikel, Bestand, Lagerort, Variante, Wareneingang, WareneingangPosition
@@ -42,6 +49,10 @@ MAX_POSITIONEN = 500
 
 class UmlagerungRejected(ValueError):
     """Die Umlagerung ist nicht plausibel - nichts wurde gebucht."""
+
+
+class UmlagerungForbidden(PermissionError):
+    """Keine Berechtigung für diese Quelle - nichts wurde gebucht."""
 
 
 def _mengen(positionen, language: str) -> dict[int, Decimal]:
@@ -226,3 +237,59 @@ def buche_ankunft(session, wareneingang, gebucht: dict, positionen: dict, datum:
             aeltestes=aeltestes,
             position_id=position.id,
         )
+
+
+def stornieren(
+    session_factory,
+    wareneingang_id: int,
+    *,
+    erlaubte_quellen: set[int] | None,
+    benutzer: dict | None = None,
+    language: str = DEFAULT_LANGUAGE,
+) -> dict:
+    """Umlagerung unterwegs stornieren (Entscheid 29.09.2026), z. B. bei
+    falschem Ziel. Der noch offene Rest jeder Position geht an die Quelle
+    zurück - mit dem Datum, das er beim Versand hatte (`mitgebracht_datum`),
+    ohne die Reduktionsuhr neu zu starten. Schon Angekommenes bleibt am Ziel.
+    `erlaubte_quellen` = None heisst: jede Quelle (Zentrale)."""
+    with session_factory() as session, session.begin():
+        sperren(session)
+        wareneingang = session.get(Wareneingang, wareneingang_id)
+        if wareneingang is None or wareneingang.herkunft_lagerort_id is None:
+            raise UmlagerungRejected(translate("errors.umlagerung.not_a_transfer", language))
+        if erlaubte_quellen is not None and wareneingang.herkunft_lagerort_id not in erlaubte_quellen:
+            raise UmlagerungForbidden(translate("errors.auth.no_lagerort_access", language))
+        if wareneingang.status != "erwartet":
+            raise UmlagerungRejected(translate("errors.umlagerung.not_in_transit", language))
+        quelle = session.get(Lagerort, wareneingang.herkunft_lagerort_id)
+        ziel = session.get(Lagerort, wareneingang.lagerort_id)
+        jetzt = datetime.now(timezone.utc)
+        zurueck = Decimal("0")
+        for position in session.scalars(
+            select(WareneingangPosition)
+            .where(WareneingangPosition.wareneingang_id == wareneingang.id)
+            .order_by(WareneingangPosition.id)
+        ):
+            offen = (position.menge or 0) - (position.menge_eingetroffen or 0)
+            if offen <= 0:
+                continue
+            buche_bewegung(
+                session,
+                lagerort_id=quelle.id,
+                varianten_id=position.varianten_id,
+                typ="umlagerung",
+                menge=offen,
+                grund=f"zurueck:{ziel.code}",
+                benutzer=benutzer,
+                zeitpunkt=jetzt,
+                aeltestes=position.mitgebracht_datum,
+                position_id=position.id,
+            )
+            zurueck += offen
+        wareneingang.status = "storniert"
+        return {
+            "wareneingang_id": wareneingang.id,
+            "quelle": {"id": quelle.id, "code": quelle.code, "name": quelle.name},
+            "ziel": {"id": ziel.id, "code": ziel.code, "name": ziel.name},
+            "stueck": zahl(zurueck),
+        }

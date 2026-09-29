@@ -213,6 +213,8 @@ without a document only).
 |---|---|---|
 | GET | `/umlagern` | "Transfer" page (branch manager/head office) |
 | GET | `/api/umlagerung/stammdaten` | `quellen` (bookable sources, own first), `ziele` (all storage locations), `quelle_aktiv`, `heute`; per storage location `verkauf` |
+| GET | `/api/umlagerung/unterwegs` | Transfers in transit (status `erwartet`) from the user's own branches; head office all. Optional `quelle_id` (403 if not own). Response `umlagerungen` in the same shape as `/api/wareneingaenge` (2026-09-29) |
+| POST | `/api/umlagerung/{id}/stornieren` | Cancel a transfer in transit (2026-09-29): branch manager of the source branch or head office (403 otherwise). Books the open rest back to the source (`umlagerung`, reason `zurueck:<destination>`, original date kept), status `storniert`. Response: `wareneingang_id`, `quelle`, `ziel`, `stueck`. 409 if not a transfer or no longer in transit |
 | POST | `/api/umlagerung` | Dispatch a transfer (since 2026-09-28 like a delivery). JSON: `quelle_id` (the active branch if not given), `ziel_id`, `versanddatum` (optional, `YYYY-MM-DD`, not in the future, default today), `positionen` (`varianten_id`, `menge` as text; identical variants are summed). Books the removal at the source right away and creates an expected goods receipt at the destination (`herkunft_lagerort_id`, `versanddatum`); the destination confirms the arrival via `POST /api/wareneingaenge/{id}/ankunft`. Response: `wareneingang_id`, `quelle`, `ziel`, `versanddatum`, `positionen` (per variant, stock at the source before/after), `fehlbestand`, `stueck`. 404 for an unknown destination; 409 for the same source and destination, a future date, an invalid quantity, or an unknown variant — nothing is booked then |
 
 Between dispatch and arrival the goods are in no stock ("in transit").
@@ -230,7 +232,7 @@ the arrival (F11).
 | GET | `/erfassen` | "Enter goods" page (any login) |
 | GET | `/api/erfassen/stammdaten` | Selection lists: bookable storage locations (own first, D26), suppliers only as five groups (`id`, `gruppe`, `code` 111/333/444/555/999; 2026-09-24), POS categories (rule 8), today's date from the server |
 | GET | `/api/erfassen/variante?ean=<ean>` | Lookup for the scanner: `{"gefunden": true, "variante": {…}}` with brand, description, color, size, unit, last UVP/EK, and the existing category as a suggestion; an unknown EAN gives `{"gefunden": false, "variante": null}` |
-| POST | `/api/erfassen` | Book all lines as **one** goods receipt without a document (D27) |
+| POST | `/api/erfassen` | Book all lines as **one** goods receipt without a document (D27). Per line optional `reduktion` (30/50/70, N2 2026-09-29): stored as manual markdown of the target branch; 403 outside own branches, 409 at external locations, 422 for other values |
 
 Body of `POST /api/erfassen`:
 

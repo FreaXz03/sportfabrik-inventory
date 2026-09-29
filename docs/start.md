@@ -6,19 +6,18 @@ Status: 2026-09-29. This overview is orientation, not confirmation of a producti
 
 Inventory management for four Sportfabrik branches; GEWA, VEBO, and Dietikon are external storage locations without sales. Documents are parsed locally on-site. Item master shared across branches, stock and booking rights are branch-specific. Later: POS integration and online shop.
 
-**Implemented:** phases A–D (Phase D incl. D-F1 to D-F4, 2026-09-25), the **Item Details and Reports** catalog (all 17 points), the **UI redesign after DESIGN.md** (2026-09-27, PRs #16/#17), **HTTPS** (security S1, locally), **phone use** under `/m`, and the **decisions of 2026-09-28**: employees book out sales only, markdown 30 % from arrival (50/70 % after 18/36 months), markdown changes only in one's own branches (head office all), "Pending" per branch, transfer as a delivery with dispatch date and arrival confirmation, statistics with removals and "this week". All docs in English. Tests: 167 passed, 12 skipped (SQLite, 2026-09-28). Checked locally only — no PostgreSQL run, no store deployment.
+**Implemented:** phases A–D (Phase D incl. D-F1 to D-F4, 2026-09-25), the **Item Details and Reports** catalog (all 17 points), the **UI redesign after DESIGN.md** (2026-09-27, PRs #16/#17), **HTTPS** (security S1, locally), **phone use** under `/m`, and the **decisions of 2026-09-28**: employees book out sales only, markdown 30 % from arrival (50/70 % after 18/36 months), markdown changes only in one's own branches (head office all), "Pending" per branch, transfer as a delivery with dispatch date and arrival confirmation, statistics with removals and "this week". **2026-09-29:** markdown choice at goods entry (N2) and cancelling a transfer in transit. All docs in English. Tests: 169 passed, 12 skipped (SQLite, 2026-09-29). Checked locally only — no PostgreSQL run, no store deployment.
 
 **GitHub:** PR #18 merged into `main` (2026-09-29); `feature/warenwirtschaft-v2` (working branch) equals `main`.
 
 ## Next steps
 
-1. Delete the obsolete remote branches (`claude/sportfabrik-inventory-init-06df66`, `feature/schnellzugriffe`, `fix/ultrareview-warning-danger`).
-2. **Open question for Fabian (N2):** choosing the markdown at goods entry — store it as the manual markdown of the target branch?
-3. Store deployment (Phase F): PostgreSQL run of all migrations (incl. `f3a4b5c6d7e8`), network separation/VPN (required for the 6-character password decision), S1 rest (sessions on password change), S3–S8, encrypted backups (`docs/sicherheit.md`, `docs/SERVER-SETUP.md`).
-4. Test phones in the store with real labels (iPhone + Android); remove the temporary "−1" stock button after the in-store trial.
-5. Possible follow-up: cancel a transfer that is still in transit (wrong destination).
+1. PR for the 2026-09-29 work (N2, transfer cancel) into `main`.
+2. Store deployment (Phase F): PostgreSQL run of all migrations (incl. `f3a4b5c6d7e8`, `a4b5c6d7e8f9`), network separation/VPN (required for the 6-character password decision), S1 rest (sessions on password change), S3–S8, encrypted backups (`docs/sicherheit.md`, `docs/SERVER-SETUP.md`).
+3. Test phones in the store with real labels (iPhone + Android); remove the temporary "−1" stock button after the in-store trial.
+4. Open: cancelling a transfer dispatched from an external location is head office only; no cancel on the phone.
 
-Full list with context: `docs/projekt-kontext.md`, section "Status check and next steps – 2026-09-28".
+Full list with context: `docs/projekt-kontext.md`, sections "Status check and next steps – 2026-09-28" and "Decisions and implementation – 2026-09-29".
 
 Working branch: `feature/warenwirtschaft-v2`; check the actual branch and any open changes first.
 

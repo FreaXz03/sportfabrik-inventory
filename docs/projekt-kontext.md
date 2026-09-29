@@ -283,7 +283,7 @@ All questions from Rev. 2 and Rev. 3 are answered (D1–D27). Still open:
 2. ~~**Barcode on the label?**~~ — confirmed on 2026-09-24: **yes**, below the mountains (the roll is currently being redesigned for it).
 3. **Till:** result of the clarification with Intersport (access/interface).
 4. ~~**Manual booking-out outside the till:** the rule for negative stock still needs clarifying here.~~ — answered on 2026-09-22 (see below): warn, allow the booking anyway, same as at the till.
-5. ~~**Open decisions of 2026-09-28**~~ — decided the same evening, see "Decisions and implementation – 2026-09-28, evening" at the end. Still open: where a markdown chosen at goods entry is stored (N2).
+5. ~~**Open decisions of 2026-09-28**~~ — decided the same evening, see "Decisions and implementation – 2026-09-28, evening" at the end. N2 decided and implemented 2026-09-29 (see the section of that date at the end).
 
 ### Confirmed answers from 2026-09-22
 
@@ -1378,8 +1378,34 @@ label and stock use it)? Not implemented until answered. A cancelled or
 wrongly addressed transfer in transit cannot be withdrawn yet (would need
 a "cancel dispatch" action).
 
-**Next steps:** merge into `main` (PR); answer N2; store deployment
+**Next steps:** ~~merge into `main` (PR); answer N2~~ (done 2026-09-29); store deployment
 (Phase F: PostgreSQL run incl. migration `f3a4b5c6d7e8`, network
 separation/VPN as the condition for decision 7, S1 rest, S3–S8); test
 phones in the store; remove the temporary "−1" button after the in-store
 trial.
+
+## Decisions and implementation – 2026-09-29
+
+PR #18 merged into `main`; obsolete remote branches deleted.
+
+1. **N2 — markdown at goods entry** (decision 2026-09-29): manual entry
+   (`/erfassen`, `/m/erfassen`) has an optional field per line
+   (automatic / −30 / −50 / −70 %). The choice is stored as the manual
+   markdown (`reduktionen_manuell`) of the target branch, in the same
+   transaction as the goods receipt. Empty keeps an existing choice.
+   Rights as on "Markdowns": own sales branches only, head office all;
+   external locations reject it (409). `/api/erfassen/stammdaten` reports
+   per location whether a markdown can be chosen (`reduktion`).
+2. **Cancel a transfer in transit** (decision 2026-09-29): branch manager
+   of the **source** branch or head office. The open (not yet arrived)
+   rest of each line goes back to the source as a new `umlagerung`
+   movement (reason `zurueck:<destination>`), with the date it had at
+   dispatch (`mitgebracht_datum`); no new markdown clock. Already arrived
+   parts stay at the destination. The goods receipt gets status
+   `storniert` (migration `a4b5c6d7e8f9`). Desktop only: section
+   "In transit" on `/umlagern` with a two-click cancel.
+
+**Open points:** a branch manager who dispatched from an external
+location (GEWA, VEBO, Dietikon) cannot cancel it — only head office,
+because external locations are nobody's own branch. Cancelling on the
+phone is not built (like other cancels, desktop only).

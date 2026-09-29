@@ -119,7 +119,9 @@ def _zahl(wert) -> str:
     return str(Decimal(wert or 0).quantize(Decimal("0.01")))
 
 
-def liste_erwartete(session, lagerort_id: int | None = None) -> list[dict]:
+def liste_erwartete(
+    session, lagerort_id: int | None = None, *, herkunft_ids: set[int] | None = None
+) -> list[dict]:
     """Offene (erwartete) Wareneingänge samt Positionen - für die Filiale, die
     die Ware erwartet. Ohne `lagerort_id` filialübergreifend (Admin).
     Dazu gehören seit 28.09.2026 auch Umlagerungen unterwegs: ohne Dokument,
@@ -136,6 +138,9 @@ def liste_erwartete(session, lagerort_id: int | None = None) -> list[dict]:
     )
     if lagerort_id is not None:
         abfrage = abfrage.where(Wareneingang.lagerort_id == lagerort_id)
+    if herkunft_ids is not None:
+        # Umlagerungen unterwegs aus diesen Quellen (Stornieren, 29.09.2026).
+        abfrage = abfrage.where(Wareneingang.herkunft_lagerort_id.in_(herkunft_ids))
 
     ergebnis = []
     for wareneingang, dokument, lagerort, lieferant, quelle in session.execute(abfrage).all():
@@ -225,6 +230,8 @@ def bestaetige_ankunft(
             raise AnkunftRejected(
                 translate("errors.wareneingang.not_found", language, id=wareneingang_id)
             )
+        if wareneingang.status == "storniert":
+            raise AnkunftRejected(translate("errors.wareneingang.cancelled", language))
         if wareneingang.status != "erwartet":
             raise AnkunftRejected(
                 translate("errors.wareneingang.already_arrived", language)

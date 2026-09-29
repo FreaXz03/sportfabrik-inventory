@@ -11,6 +11,7 @@
   const liste = new Map();
   let suchTimer = null;
   let bucht = false;
+  let unterwegs = [];
 
   function node(tag, text, cls) {
     const el = document.createElement(tag);
@@ -213,12 +214,75 @@
       liste.clear();
       zeichnen();
       suchen();
+      unterwegsLaden();
     } catch (fehler) {
       $('bookStatus').className = 'warning-text';
       $('bookStatus').textContent = fehlertext(fehler);
     } finally {
       bucht = false;
       knopfSchalten();
+    }
+  }
+
+  // Umlagerungen unterwegs aus den eigenen Filialen (29.09.2026): stornieren
+  // bucht den offenen Rest an die Quelle zurück. Zweimal klicken statt
+  // Dialog - der erste Klick fragt nach.
+  function unterwegsZeichnen() {
+    const koerper = document.createDocumentFragment();
+    for (const eintrag of unterwegs) {
+      const tr = document.createElement('tr');
+      tr.append(node('td', eintrag.umlagerung.versanddatum || '—'));
+      tr.append(node('td', eintrag.umlagerung.von.code + ' → ' + eintrag.lagerort.code));
+      tr.append(node('td', eintrag.positionen.map((p) => artikelName(p)).join(', ')));
+      const offen = eintrag.positionen.reduce((summe, p) => summe + Number(p.menge_offen), 0);
+      tr.append(node('td', menge(offen)));
+      const knopf = node('button', t('umlagern.cancel'), 'secondary');
+      knopf.type = 'button';
+      knopf.addEventListener('click', () => stornieren(eintrag, knopf));
+      const aktion = node('td');
+      aktion.append(knopf);
+      tr.append(aktion);
+      koerper.append(tr);
+    }
+    $('unterwegsRows').replaceChildren(koerper);
+    $('unterwegs').hidden = unterwegs.length === 0;
+    $('unterwegsLeer').hidden = unterwegs.length > 0;
+  }
+
+  async function unterwegsLaden() {
+    try {
+      unterwegs = (await holen('/api/umlagerung/unterwegs')).umlagerungen || [];
+      unterwegsZeichnen();
+    } catch (fehler) {
+      $('unterwegsStatus').className = 'warning-text';
+      $('unterwegsStatus').textContent = fehlertext(fehler);
+    }
+  }
+
+  async function stornieren(eintrag, knopf) {
+    if (!knopf.dataset.nachgefragt) {
+      knopf.dataset.nachgefragt = '1';
+      knopf.textContent = t('umlagern.cancel_confirm');
+      knopf.className = 'danger';
+      return;
+    }
+    knopf.disabled = true;
+    knopf.classList.add('is-loading');
+    try {
+      const antwort = await fetch('/api/umlagerung/' + eintrag.id + '/stornieren', { method: 'POST' });
+      const ergebnis = await antwort.json().catch(() => ({}));
+      if (!antwort.ok) {
+        throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('common.errors.request_failed'));
+      }
+      $('unterwegsStatus').className = '';
+      $('unterwegsStatus').textContent = t('umlagern.cancelled', { stueck: menge(ergebnis.stueck), quelle: ergebnis.quelle.code });
+      unterwegsLaden();
+      suchen();
+    } catch (fehler) {
+      knopf.disabled = false;
+      knopf.classList.remove('is-loading');
+      $('unterwegsStatus').className = 'warning-text';
+      $('unterwegsStatus').textContent = fehlertext(fehler);
     }
   }
 
@@ -271,11 +335,13 @@
 
   window.SportfabrikI18n.ready.then(() => {
     stammdatenLaden();
+    unterwegsLaden();
     document.addEventListener('sportfabrik:i18n-ready', () => {
       lagerorteFuellen('quelle', quellen, null);
       lagerorteFuellen('ziel', ziele, null);
       regelZeigen();
       zeichnen();
+      unterwegsZeichnen();
     });
   });
 })();

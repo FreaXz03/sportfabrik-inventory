@@ -13,6 +13,7 @@ from conftest import ANNA, CHEF, ZENTRALE
 from sqlalchemy import func, select, update
 from testbelege import POSITIONEN, importieren, kopf, rechnung_pdf
 
+from app.core.i18n import translate
 from app.core.models import Bestand, Lagerbewegung, Variante, WareneingangPosition
 from app.services.reduktion import letzter_wareneingang
 from app.services.uebersicht import aktuelles
@@ -324,3 +325,75 @@ def test_aktuelles_fasst_lieferungen_und_umlagerungen_zusammen(welt):
         ueberall = aktuelles(session, None)
     assert [(e["art"], e["von"], e["nach"], e["stueck"]) for e in in_sf2] == [("umlagerung", "SF1", "SF2", "3.00")]
     assert [e["art"] for e in ueberall] == ["abgang", "umlagerung", "lieferung"]
+
+
+def test_umlagerung_unterwegs_stornieren(welt):
+    """Umlagerung unterwegs stornieren (Entscheid 29.09.2026): Filialleiter
+    der Quelle oder Zentrale. Der noch offene Rest geht an die Quelle zurück,
+    mit seinem alten Datum; schon Angekommenes bleibt am Ziel."""
+    client, sessions, codes = welt.client, welt.sessions, welt.codes
+    sf1, sf3 = codes["SF1"], codes["SF3"]
+    welt.anmelden(CHEF)
+    assert importieren(client, rechnung_pdf(), lagerort_id=str(sf1)).status_code == 200
+    polo = client.get(f"/api/erfassen/variante?ean={POLO_M}").json()["variante"]["varianten_id"]
+    uhr_vorher = _uhr(sessions, polo, sf1)
+    versand = client.post(
+        "/api/umlagerung",
+        json={"quelle_id": sf1, "ziel_id": sf3, "positionen": [{"varianten_id": polo, "menge": "3"}]},
+    ).json()
+    umlagerung_id = versand["wareneingang_id"]
+    assert _menge(sessions, polo, sf1) == Decimal("2")
+
+    # Unterwegs-Liste der Quelle zeigt die Umlagerung.
+    unterwegs = client.get(f"/api/umlagerung/unterwegs?quelle_id={sf1}").json()["umlagerungen"]
+    assert [u["id"] for u in unterwegs] == [umlagerung_id]
+
+    # 1 Stück kommt an der SF3 an, der Rest ist noch unterwegs.
+    with sessions() as session:
+        position_id = session.scalar(
+            select(WareneingangPosition.id).where(WareneingangPosition.wareneingang_id == umlagerung_id)
+        )
+    teil = client.post(f"/api/wareneingaenge/{umlagerung_id}/ankunft", json={"mengen": {str(position_id): "1"}})
+    assert teil.status_code == 200, teil.text
+
+    # Mitarbeiterin darf nicht stornieren (Regel 9).
+    welt.anmelden(ANNA)
+    assert client.post(f"/api/umlagerung/{umlagerung_id}/stornieren").status_code == 403
+
+    # Filialleiter ohne die Quelle als eigene Filiale darf nicht.
+    welt.anmelden(ZENTRALE)
+    fremd = client.post(
+        "/api/umlagerung",
+        json={"quelle_id": sf3, "ziel_id": sf1, "positionen": [{"varianten_id": polo, "menge": "1"}]},
+    ).json()["wareneingang_id"]
+    welt.anmelden(CHEF)
+    assert client.post(f"/api/umlagerung/{fremd}/stornieren").status_code == 403
+
+    storno = client.post(f"/api/umlagerung/{umlagerung_id}/stornieren")
+    assert storno.status_code == 200, storno.text
+    assert storno.json()["stueck"] == "2.00"
+    assert _menge(sessions, polo, sf1) == Decimal("4")
+    # Das angekommene Stück ging nicht zurück; die Zentrale hat es oben
+    # schon wieder Richtung SF1 verschickt.
+    assert _menge(sessions, polo, sf3) == Decimal("0")
+    assert _uhr(sessions, polo, sf1) == uhr_vorher  # keine neue Uhr an der Quelle
+    assert client.get(f"/api/umlagerung/unterwegs?quelle_id={sf1}").json()["umlagerungen"] == []
+    welt.anmelden(ZENTRALE)
+    offen = [w["id"] for w in client.get("/api/wareneingaenge").json()["wareneingaenge"]]
+    assert umlagerung_id not in offen and fremd in offen
+
+    # Zweimal stornieren, danach ankommen oder eine Lieferung stornieren: abgelehnt.
+    assert client.post(f"/api/umlagerung/{umlagerung_id}/stornieren").status_code == 409
+    ankunft = client.post(
+        f"/api/wareneingaenge/{umlagerung_id}/ankunft", json={"mengen": {str(position_id): "1"}}
+    )
+    assert ankunft.status_code == 409
+    assert ankunft.json()["detail"] == translate("errors.wareneingang.cancelled", "de")
+    with sessions() as session:
+        lieferung = session.scalar(
+            select(WareneingangPosition.wareneingang_id).where(WareneingangPosition.id != position_id).limit(1)
+        )
+    assert client.post(f"/api/umlagerung/{lieferung}/stornieren").status_code == 409
+    # Zentrale darf jede Quelle.
+    assert client.post(f"/api/umlagerung/{fremd}/stornieren").status_code == 200
+    _bestand_ist_summe_der_bewegungen(sessions)
