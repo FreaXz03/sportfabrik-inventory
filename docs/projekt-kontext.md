@@ -1409,3 +1409,14 @@ PR #18 merged into `main`; obsolete remote branches deleted.
 location (GEWA, VEBO, Dietikon) cannot cancel it — only head office,
 because external locations are nobody's own branch. Cancelling on the
 phone is not built (like other cancels, desktop only).
+
+**Security and PostgreSQL, same day:** S1 rest (a new password ends all
+sessions of the account: HMAC of the password hash in the session), S3
+(Pillow 12.3.0), S5 (API docs off), S6 (`/db-test` only `{"ok": true}`),
+S7 (security headers, strict CSP on HTML pages; all inline scripts and
+`onsubmit` attributes moved into `/static/js`). All migrations ran on
+PostgreSQL 18 in a throwaway Docker container (upgrade, downgrade of
+`a4b5c6d7e8f9`, upgrade), plus an app smoke test (entry with markdown,
+transfer, cancel, headers). Pages checked in headless Chromium (Brave):
+16 pages without JS errors or CSP violations. Still open for the store:
+S4, S8, network separation, deployment itself.
