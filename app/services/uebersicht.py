@@ -22,13 +22,16 @@ from ..core.models import (
     Wareneingang,
     WareneingangPosition,
 )
-from .reduktion import STUFEN
+from .reduktion import STUFEN, stufe as reduktionsstufe
 from .reduktion_bestaetigung import bestaetigte_stufen
 
 VORSCHAU_TAGE = 30
 AKTUELLES_ANZAHL = 8
 # So viele Bewegungen werden höchstens gelesen, um daraus die Einträge zu bilden.
 AKTUELLES_ZEILEN = 2000
+VERLAUF_TAGE = 14
+BESTSELLER_TAGE = 7
+BESTSELLER_ANZAHL = 5
 
 
 def _zahl(wert) -> str:
@@ -179,6 +182,71 @@ def _reduktionen(session, lagerort_id: int, heute: date) -> dict:
     }
 
 
+def _tagesbeginn(tag: date) -> datetime:
+    return datetime.combine(tag, time.min).astimezone(timezone.utc)
+
+
+def stufen_verteilung(session, lagerort_id: int, heute: date) -> dict:
+    """Stück im Bestand je Reduktionsstufe (Alter des letzten Eingangs, Regel
+    6). Bestand ohne Eingangsdatum zählt nicht - dort läuft keine Uhr."""
+    eingaenge = _letzte_eingaenge(lagerort_id)
+    zeilen = session.execute(
+        select(eingaenge.c.datum, func.sum(Bestand.menge))
+        .select_from(Bestand)
+        .join(Variante, Variante.id == Bestand.varianten_id)
+        .join(eingaenge, eingaenge.c.artikel_id == Variante.artikel_id)
+        .where(Bestand.lagerort_id == lagerort_id, Bestand.menge > 0)
+        .group_by(eingaenge.c.datum)
+    ).all()
+    summen = {"30": Decimal(0), "50": Decimal(0), "70": Decimal(0)}
+    for datum, stueck in zeilen:
+        summen[str(reduktionsstufe(datum, heute))] += stueck
+    return {stufe: _zahl(menge) for stufe, menge in summen.items()}
+
+
+def verkaufsverlauf(session, lagerort_id: int, heute: date) -> list[dict]:
+    """Verkaufte Stück je Tag der letzten `VERLAUF_TAGE` Tage, ältester
+    zuerst, heute zuletzt (Tage ohne Verkauf mit 0)."""
+    tage = [heute - timedelta(days=i) for i in range(VERLAUF_TAGE - 1, -1, -1)]
+    summen = {tag: Decimal(0) for tag in tage}
+    for zeitpunkt, menge in session.execute(
+        select(Lagerbewegung.zeitpunkt, Lagerbewegung.menge).where(
+            Lagerbewegung.lagerort_id == lagerort_id,
+            Lagerbewegung.typ == "verkauf",
+            Lagerbewegung.zeitpunkt >= _tagesbeginn(tage[0]),
+        )
+    ):
+        if zeitpunkt.tzinfo is None:  # SQLite liefert UTC ohne Zeitzone
+            zeitpunkt = zeitpunkt.replace(tzinfo=timezone.utc)
+        tag = zeitpunkt.astimezone().date()
+        if tag in summen:
+            summen[tag] -= menge
+    return [{"tag": tag.isoformat(), "verkauft": _zahl(summen[tag])} for tag in tage]
+
+
+def bestseller(session, lagerort_id: int, heute: date) -> list[dict]:
+    """Meistverkaufte Artikel (Modelle) der letzten `BESTSELLER_TAGE` Tage."""
+    stueck = func.sum(-Lagerbewegung.menge)
+    zeilen = session.execute(
+        select(Artikel.id, Artikel.marke, Artikel.bezeichnung, stueck)
+        .select_from(Lagerbewegung)
+        .join(Variante, Variante.id == Lagerbewegung.varianten_id)
+        .join(Artikel, Artikel.id == Variante.artikel_id)
+        .where(
+            Lagerbewegung.lagerort_id == lagerort_id,
+            Lagerbewegung.typ == "verkauf",
+            Lagerbewegung.zeitpunkt >= _tagesbeginn(heute - timedelta(days=BESTSELLER_TAGE - 1)),
+        )
+        .group_by(Artikel.id, Artikel.marke, Artikel.bezeichnung)
+        .order_by(stueck.desc(), Artikel.marke, Artikel.bezeichnung, Artikel.id)
+        .limit(BESTSELLER_ANZAHL)
+    ).all()
+    return [
+        {"artikel_id": artikel_id, "marke": marke, "bezeichnung": bezeichnung, "stueck": _zahl(menge)}
+        for artikel_id, marke, bezeichnung, menge in zeilen
+    ]
+
+
 def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
     """Kennzahlen und anstehende Vorgänge der aktiven Filiale."""
     heute = heute or date.today()
@@ -230,6 +298,9 @@ def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
         ],
         "erwartet_total": len(erwartet),
         "reduktionen": _reduktionen(session, lagerort_id, heute),
+        "stufen": stufen_verteilung(session, lagerort_id, heute),
+        "verlauf": verkaufsverlauf(session, lagerort_id, heute),
+        "bestseller": bestseller(session, lagerort_id, heute),
     }
 
 

@@ -295,9 +295,15 @@ expensive mistake in the app.
 
 ### 9.3 Dashboard
 
-Greeting (mixed-weight title) → shortcuts (max 5, equal size) → 4 metrics → two columns
-"Anstehend" and "Aktuelles". Metrics show one number, one label, one link. No charts on the
-dashboard; charts live in Statistiken.
+Greeting (mixed-weight title) → shortcuts (max 5, equal size) → 4 metrics → three small insight
+panels (sales of the last 14 days as bars, stock by reduction stage as a stacked bar, best sellers
+of the week) → two columns "Anstehend" and "Aktuelles" (grouped by day). Metrics show one number,
+one label, one link.
+
+Charts on the dashboard are allowed since 29.09.2026 (decision: user), under three limits: only
+plain bars from tokens (no axes, no legends that need reading, no chart library); every value is
+also written as text next to or in the bar (`title`, legend numbers); reduction stages use the
+roll colours of §4.4 and nothing else does. Detailed charts and periods stay in Statistiken.
 
 ### 9.4 Grid
 

@@ -2279,6 +2279,128 @@ body:has(main.login-page) {
 
 .news-person { grid-column: 2 / 4; font-size: var(--fs-xs); }
 
+/* Uebersicht: kleine Diagramme (Redesign 29.09.2026, DESIGN.md 9.3).
+   Nur Rechtecke aus Tokens; Farbe ist nie allein - Zahlen stehen daneben. */
+.insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.insights[hidden] { display: none; }
+
+.insight { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.insight h2 { margin-bottom: 0; }
+.insight p { margin: 0; }
+
+.insight-figure strong {
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.insight-delta { font-size: var(--fs-sm); }
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 96px;
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.bar {
+  flex: 1;
+  height: calc(var(--h, 0) * 100%);
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--border-strong);
+  transform-origin: bottom;
+  animation: bar-grow .28s var(--ease) both;
+}
+
+.bar.is-today { background: var(--accent); }
+
+@keyframes bar-grow { from { transform: scaleY(0); } }
+
+.stagebar {
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  margin: var(--space-3) 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.stagebar[hidden],
+.stage-legend[hidden] { display: none; }
+
+.stage-seg { flex: var(--w, 0) 1 0; min-width: 4px; }
+.stage-seg[data-stage="30"] { background: var(--roll-30); }
+.stage-seg[data-stage="50"] { background: var(--roll-50); }
+.stage-seg[data-stage="70"] { background: var(--roll-70); }
+
+.stage-legend { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+
+.stage-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.stage-qty,
+.stage-share { font-variant-numeric: tabular-nums; }
+.stage-qty { font-weight: 600; }
+
+.rank-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-3); }
+
+.rank {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.rank-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-qty { font-variant-numeric: tabular-nums; }
+
+.rank-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  overflow: hidden;
+}
+
+.rank-bar::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: calc(var(--w, 0) * 100%);
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.news-day {
+  padding: var(--space-4) 2px var(--space-1);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.news-day:first-child { padding-top: 0; }
+
+@media (prefers-reduced-motion: reduce) { .bar { animation: none; } }
+
 /* 12 · Responsive --------------------------------------------------------- */
 @media (max-width: 1100px) {
   .nav-links > a,

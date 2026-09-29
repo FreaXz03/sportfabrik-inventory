@@ -123,14 +123,99 @@
     $('nichtsAnstehend').hidden = liste.children.length > 0;
   }
 
+  // Redesign 29.09.2026 (DESIGN.md 9.3): kleine Diagramme - Verkaufsverlauf,
+  // Stufenverteilung, Bestseller. Farbe nie allein: jede Zahl steht auch als Text.
+  function summe(werte) {
+    return werte.reduce((a, b) => a + b, 0);
+  }
+
+  function verlauf(f) {
+    const tage = f.verlauf || [];
+    const werte = tage.map((tag) => Number(tag.verkauft));
+    const woche = summe(werte.slice(-7));
+    const davor = summe(werte.slice(-14, -7));
+    $('trendWoche').textContent = t('dashboard.trend_week', { anzahl: zahl(woche) });
+    const unterschied = woche - davor;
+    $('trendDelta').textContent = unterschied === 0
+      ? t('dashboard.trend_same')
+      : t(unterschied > 0 ? 'dashboard.trend_up' : 'dashboard.trend_down', { anzahl: zahl(Math.abs(unterschied)) });
+    const hoechster = Math.max(1, ...werte);
+    const balken = $('trendBalken');
+    balken.replaceChildren();
+    tage.forEach((tag, index) => {
+      const eintrag = node('span', null, index === tage.length - 1 ? 'bar is-today' : 'bar');
+      eintrag.style.setProperty('--h', String(werte[index] / hoechster));
+      eintrag.title = t('dashboard.trend_bar', { datum: datum(tag.tag).slice(0, 6), anzahl: zahl(werte[index]) });
+      balken.append(eintrag);
+    });
+  }
+
+  function stufen(f) {
+    const je = f.stufen || {};
+    const gesamt = summe(['30', '50', '70'].map((stufe) => Number(je[stufe] || 0)));
+    const balken = $('stufenBalken');
+    const liste = $('stufenListe');
+    balken.replaceChildren();
+    liste.replaceChildren();
+    balken.hidden = liste.hidden = gesamt === 0;
+    $('stufenLeer').hidden = gesamt !== 0;
+    if (gesamt === 0) return;
+    for (const stufe of ['30', '50', '70']) {
+      const menge = Number(je[stufe] || 0);
+      const segment = node('span', null, 'stage-seg');
+      segment.dataset.stage = stufe;
+      segment.style.setProperty('--w', String(menge / gesamt));
+      balken.append(segment);
+      const li = node('li', null, 'stage-row');
+      const chip = node('span', null, 'chip chip-stage');
+      chip.dataset.stage = stufe;
+      const punkt = node('span', null, 'chip-dot');
+      punkt.setAttribute('aria-hidden', 'true');
+      chip.append(punkt, '−' + stufe + ' %');
+      li.append(chip, node('span', t('dashboard.stages_pieces', { anzahl: zahl(menge) }), 'stage-qty'),
+        node('span', Math.round(menge / gesamt * 100) + ' %', 'stage-share muted'));
+      liste.append(li);
+    }
+  }
+
+  function bestseller(f) {
+    const liste = $('bestsellerListe');
+    liste.replaceChildren();
+    const eintraege = f.bestseller || [];
+    const hoechster = Math.max(1, ...eintraege.map((e) => Number(e.stueck)));
+    for (const e of eintraege) {
+      const li = node('li', null, 'rank');
+      li.append(node('span', [e.marke, e.bezeichnung].filter(Boolean).join(' '), 'rank-name'),
+        node('strong', zahl(e.stueck), 'rank-qty'));
+      const spur = node('span', null, 'rank-bar');
+      spur.style.setProperty('--w', String(Number(e.stueck) / hoechster));
+      li.append(spur);
+      liste.append(li);
+    }
+    $('bestsellerLeer').hidden = eintraege.length > 0;
+  }
+
+  // Tageskopf für „Aktuelles": Heute / Gestern / Datum.
+  function tagesname(zeit) {
+    const heute = new Date();
+    const gestern = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate() - 1);
+    if (zeit.toDateString() === heute.toDateString()) return t('dashboard.day_today');
+    if (zeit.toDateString() === gestern.toDateString()) return t('dashboard.day_yesterday');
+    return zeit.toLocaleDateString(sprache(), { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
   function aktuelles() {
     const liste = $('aktuelles');
     liste.replaceChildren();
+    let letzterTag = null;
     for (const e of daten.aktuelles || []) {
-      const li = node('li', null, 'news');
       const zeit = new Date(e.zeitpunkt);
-      li.append(node('time', zeit.toLocaleDateString(sprache(), { day: '2-digit', month: '2-digit' }) + ' ' +
-        zeit.toLocaleTimeString(sprache(), { hour: '2-digit', minute: '2-digit' }), 'news-time'));
+      if (zeit.toDateString() !== letzterTag) {
+        letzterTag = zeit.toDateString();
+        liste.append(node('li', tagesname(zeit), 'news-day'));
+      }
+      const li = node('li', null, 'news');
+      li.append(node('time', zeit.toLocaleTimeString(sprache(), { hour: '2-digit', minute: '2-digit' }), 'news-time'));
       const text = node('span', null, 'news-text');
       let menge;
       if (e.art === 'abgang') {
@@ -309,6 +394,9 @@
       $('variantenText').textContent = t('dashboard.metric_stock_variants', { anzahl: zahl(f.varianten) });
       $('verkauftHeute').textContent = zahl(f.verkauft_heute);
       $('abgaengeText').textContent = t('dashboard.metric_removed_today', { anzahl: zahl(f.abgaenge_heute) });
+      verlauf(f);
+      stufen(f);
+      bestseller(f);
     }
     $('products').textContent = zahl(daten.products);
     $('invoices').textContent = zahl(daten.invoices);
