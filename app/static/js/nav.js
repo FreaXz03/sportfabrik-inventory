@@ -1,6 +1,12 @@
 // Hauptnavigation - an einer Stelle statt in jeder Seite (23.09.2026).
 // Gruppiert, markiert die aktive Seite und klappt auf schmalen Bildschirmen
 // in ein Menü zusammen. Alle Texte über window.SportfabrikI18n.t() (Regel 7).
+// Filterformulare ohne Absenden (Enter lädt sonst die Seite neu) - hier
+// statt als onsubmit-Attribut, das die CSP nicht erlaubt (S7).
+document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
+  form.addEventListener('submit', function (event) { event.preventDefault(); });
+});
+
 (function () {
   var nav = document.querySelector('header nav');
   if (!nav || !window.SportfabrikI18n) return;

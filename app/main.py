@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 from .routers.dashboard import router as dashboard_router
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from sqlalchemy import text
 
 from .routers.auth import (
@@ -34,7 +34,33 @@ from .routers.konten import router as konten_router
 from .routers.empfehlung import router as empfehlung_router
 from .routers.handy import router as handy_router
 
-app = FastAPI(title="Sport-Fabrik Inventory", dependencies=[Depends(phone_gate)])
+# S5 (docs/sicherheit.md): keine API-Doku ohne Login im Betrieb.
+app = FastAPI(
+    title="Sport-Fabrik Inventory",
+    dependencies=[Depends(phone_gate)],
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+# S7: Schutz-Header auf jeder Antwort. Die CSP gilt für HTML-Seiten: nur
+# eigene Skripte und Stile (keine Inline-Skripte, Regel 1 ohnehin ohne CDN),
+# `data:` nur für die kleinen SVG-Pfeile im CSS, nie in einem Rahmen.
+CSP = (
+    "default-src 'self'; img-src 'self' data:; object-src 'none'; "
+    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+)
+
+
+@app.middleware("http")
+async def schutz_header(request: Request, call_next):
+    antwort = await call_next(request)
+    antwort.headers["X-Frame-Options"] = "DENY"
+    antwort.headers["X-Content-Type-Options"] = "nosniff"
+    if antwort.headers.get("content-type", "").startswith("text/html"):
+        antwort.headers["Content-Security-Policy"] = CSP
+    return antwort
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,
@@ -73,7 +99,7 @@ def home(user=Depends(require_login_page)):
 
 @app.get("/db-test")
 def database_test():
+    """Health-Check für Docker - ohne Login, deshalb ohne Details (S6)."""
     with engine.connect() as connection:
-        result = connection.execute(text("SELECT 1")).scalar_one()
-
-    return {"database": "connected", "result": result}
+        connection.execute(text("SELECT 1")).scalar_one()
+    return {"ok": True}

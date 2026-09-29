@@ -9,10 +9,10 @@ permissions, configuration (Docker, headers, endpoints), dependencies
 **Result:** no critical and no high findings. Four medium items
 should be done **before deployment in the store** (roadmap phase F — operations),
 plus five low ones. Fixed: the login lockout from S2 (2026-09-24), HTTPS
-from S1 (2026-09-28, locally), and S9 (2026-09-28). Still open before the
+from S1 (2026-09-28, locally), S9 (2026-09-28), and S5–S7 (2026-09-29). Still open before the
 store: rest of S1 (sessions on password change), S3, S4, network
 separation (required for the 6-character password decision of
-2026-09-28), S5–S8.
+2026-09-28), S8.
 
 **New since the review (2026-09-28):** phone logins are limited
 server-side to the agreed phone features (`phone_gate`, allowlist in
@@ -29,9 +29,9 @@ This file is updated on every fix (status column).
 | S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. **Decided 2026-09-28:** minimum password length stays 6 — on condition that only the private store Wi-Fi or the VPN can reach the server. Open: uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration is now a **hard prerequisite** for the 6-character rule |
 | S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | open |
 | S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | open |
-| S5 | low | API docs with no login | Disable `/docs`, `/redoc`, `/openapi.json` in operation | open |
-| S6 | low | `/db-test` with no login | Return only `{"ok": true}` (needed by the Docker health check) | open |
-| S7 | low | No security headers | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'self'` | open |
+| S5 | low | API docs with no login | Disable `/docs`, `/redoc`, `/openapi.json` in operation | **done** 2026-09-29 (always off) |
+| S6 | low | `/db-test` with no login | Return only `{"ok": true}` (needed by the Docker health check) | **done** 2026-09-29 |
+| S7 | low | No security headers | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'self'` | **done** 2026-09-29: headers on every response, CSP on HTML pages (`default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`); inline scripts and `onsubmit` attributes moved into `/static/js` (test `test_seiten_ohne_inline_skripte`); checked in headless Chromium: 16 pages without CSP violations |
 | S8 | low | Server packages without transitive pins/hashes, images without digest | `pip-compile --generate-hashes`, `pip install --require-hashes`, pin images with `@sha256:` | open |
 | S9 | low | Overview pages load Google Fonts | Remove links in the overview pages (now `docs/overviews/*.html`, and the vault versions), use a system font | **done** (2026-09-28: links removed, system-font fallback; the German copies in `docs/aktualisiert/` were replaced by the English `docs/overviews/`) |
 

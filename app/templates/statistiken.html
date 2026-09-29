@@ -4,7 +4,7 @@
 <head>
      <meta charset="utf-8">
      <meta name="viewport" content="width=device-width,initial-scale=1">
-     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/theme-init.js?v=1"></script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="statistik.page_title">Statistik · Sport-Fabrik</title>
      <link rel="stylesheet" href="/static/css/app.css?v=design-2">
@@ -18,7 +18,7 @@
      <main>
           <h1 data-i18n="statistik.heading">Statistik</h1>
           <p data-i18n="statistik.intro">Verkäufe je Kassenkategorie, geschätzte Einnahmen, eine Bestellempfehlung und die Abgänge ausser Verkauf.</p>
-          <form class="filters" onsubmit="return false;">
+          <form class="filters" data-kein-absenden>
                <label><span data-i18n="statistik.filter_zeitraum">Zeitraum</span>
                     <select id="zeitraum">
                          <option value="tag" data-i18n="statistik.zeitraum.tag">Heute</option>
@@ -98,7 +98,7 @@
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
      <script src="/static/js/statistiken.js?v=2"></script>
-     <script src="/static/js/nav.js?v=4"></script>
+     <script src="/static/js/nav.js?v=5"></script>
      <script src="/static/js/session.js?v=header-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>

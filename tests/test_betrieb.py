@@ -192,3 +192,31 @@ def test_server_reaches_app_only_through_https_proxy():
     caddyfile = (ROOT / "Caddyfile").read_text("utf-8")
     assert "tls internal" in caddyfile
     assert "reverse_proxy" in caddyfile
+
+
+def test_betrieb_ohne_offene_schnittstellen_und_mit_schutz_headern(welt):
+    """S5–S7 (docs/sicherheit.md): ohne Login keine API-Doku und kein
+    Datenbank-Detail; jede Antwort mit Schutz-Headern, HTML-Seiten mit einer
+    Content-Security-Policy, die nur eigene Skripte erlaubt."""
+    client = welt.client
+    assert client.get("/db-test").json() == {"ok": True}
+    for pfad in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(pfad).status_code == 404, pfad
+    seite = client.get("/login")
+    assert seite.headers["x-frame-options"] == "DENY"
+    assert seite.headers["x-content-type-options"] == "nosniff"
+    csp = seite.headers["content-security-policy"]
+    assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp
+    assert "unsafe-inline" not in csp
+    daten = client.get("/db-test")
+    assert daten.headers["x-content-type-options"] == "nosniff"
+
+
+def test_seiten_ohne_inline_skripte():
+    """S7: die CSP erlaubt nur Skripte aus /static - also keine Inline-Skripte
+    und keine on…-Attribute in den Seiten."""
+    for datei in sorted(TEMPLATES.glob("*.html")):
+        html = datei.read_text("utf-8")
+        assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), datei.name
+        assert not re.search(r"\son[a-z]+=\"", html), datei.name
+        assert "style=\"" not in html and "<style" not in html, datei.name
