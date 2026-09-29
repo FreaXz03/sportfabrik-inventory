@@ -9,8 +9,8 @@ permissions, configuration (Docker, headers, endpoints), dependencies
 **Result:** no critical and no high findings. Four medium items
 should be done **before deployment in the store** (roadmap phase F — operations),
 plus five low ones. Fixed: the login lockout from S2 (2026-09-24), HTTPS
-from S1 (2026-09-28, locally; sessions on password change 2026-09-29), S9 (2026-09-28), and S5–S7 (2026-09-29). Still open before the
-store: S3, S4, network
+from S1 (2026-09-28, locally; sessions on password change 2026-09-29), S9 (2026-09-28), S3 and S5–S7 (2026-09-29). Still open before the
+store: S4, network
 separation (required for the 6-character password decision of
 2026-09-28), S8.
 
@@ -27,7 +27,7 @@ This file is updated on every fix (status column).
 |---|---|---|---|---|
 | S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). **Sessions end on password change** (2026-09-29): the session holds an HMAC of the password hash, checked on every request; after the update everyone logs in once more |
 | S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. **Decided 2026-09-28:** minimum password length stays 6 — on condition that only the private store Wi-Fi or the VPN can reach the server. Open: uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration is now a **hard prerequisite** for the 6-character rule |
-| S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | open |
+| S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | **done** 2026-09-29 (pins updated, tests pass; server image rebuilt at deployment) |
 | S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | open |
 | S5 | low | API docs with no login | Disable `/docs`, `/redoc`, `/openapi.json` in operation | **done** 2026-09-29 (always off) |
 | S6 | low | `/db-test` with no login | Return only `{"ok": true}` (needed by the Docker health check) | **done** 2026-09-29 |
