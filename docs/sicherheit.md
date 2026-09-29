@@ -9,8 +9,8 @@ permissions, configuration (Docker, headers, endpoints), dependencies
 **Result:** no critical and no high findings. Four medium items
 should be done **before deployment in the store** (roadmap phase F — operations),
 plus five low ones. Fixed: the login lockout from S2 (2026-09-24), HTTPS
-from S1 (2026-09-28, locally), S9 (2026-09-28), and S5–S7 (2026-09-29). Still open before the
-store: rest of S1 (sessions on password change), S3, S4, network
+from S1 (2026-09-28, locally; sessions on password change 2026-09-29), S9 (2026-09-28), and S5–S7 (2026-09-29). Still open before the
+store: S3, S4, network
 separation (required for the 6-character password decision of
 2026-09-28), S8.
 
@@ -25,7 +25,7 @@ This file is updated on every fix (status column).
 
 | # | Level | Topic | Measure | Status |
 |---|---|---|---|---|
-| S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). Still open: invalidating sessions on password change |
+| S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). **Sessions end on password change** (2026-09-29): the session holds an HMAC of the password hash, checked on every request; after the update everyone logs in once more |
 | S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. **Decided 2026-09-28:** minimum password length stays 6 — on condition that only the private store Wi-Fi or the VPN can reach the server. Open: uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration is now a **hard prerequisite** for the 6-character rule |
 | S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | open |
 | S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | open |
@@ -49,8 +49,15 @@ With HTTPS on the store network, interception is practically ruled out.
 `compose.yaml` (Caddy, `Caddyfile`, `tls internal`). The session cookie is
 `Secure` when `SESSION_HTTPS_ONLY=true`; plain HTTP only redirects and serves
 the root certificate. Setup and device trust: `docs/SERVER-SETUP.md`, section
-"HTTPS". The 5-year session and the missing revocation on password change are
-unchanged.
+"HTTPS".
+
+*Update 2026-09-29:* a new password (`scripts/manage_users.py set-password`)
+ends all existing sessions of that account: at login the session stores an
+HMAC (with `SESSION_SECRET`) of the password hash, and every request compares
+it with the current hash. Sessions from before this change have no marker,
+so everyone logs in once more after the update. Still unchanged: the 5-year
+session, and a copied cookie stays valid after a plain logout (no
+server-side session list).
 
 **S2 — Login.** *Implemented on 2026-09-24:* after 5 wrong passwords, an account is locked for 20 minutes (response 429, also for the correct password; counted per account in the database, `app/services/anmeldung.py`). Before that, `/login` didn't count failed attempts. Each password attempt
 costs the server about half a second of compute time due to PBKDF2 (600,000 rounds),

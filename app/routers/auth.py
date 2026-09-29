@@ -3,6 +3,8 @@ Chefs zusätzlich mit Passwort. Session-Cookie bleibt aktiv bis zur manuellen
 Abmeldung (kein automatisches Ablaufen), analog zum bestehenden Kassensystem.
 """
 
+import hashlib
+import hmac
 import os
 from pathlib import Path
 from urllib.parse import quote
@@ -44,11 +46,27 @@ SESSION_HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "").strip().lower() in ("1"
 router = APIRouter()
 
 
+def _passwort_marke(user: User) -> str:
+    """Kennzeichen des aktuellen Passworts für die Sitzung (Sicherheit S1):
+    ein neues Passwort ergibt eine neue Marke, und alte Sitzungen gelten
+    nicht mehr. HMAC statt Hash-Ausschnitt, weil das Session-Cookie nur
+    signiert, nicht verschlüsselt ist."""
+    return hmac.new(
+        SESSION_SECRET.encode(), (user.password_hash or "").encode(), hashlib.sha256
+    ).hexdigest()[:32]
+
+
 def _load_user(request: Request, session) -> User | None:
     user_id = request.session.get("user_id")
     if user_id is None:
         return None
-    return session.get(User, user_id)
+    user = session.get(User, user_id)
+    if user is None:
+        return None
+    marke = request.session.get("passwort")
+    if marke is None or not hmac.compare_digest(marke, _passwort_marke(user)):
+        return None
+    return user
 
 
 def _resolve_language(request: Request, user: User | None) -> str:
@@ -250,6 +268,7 @@ def login(
         session.commit()
     request.session.clear()
     request.session["user_id"] = user.id
+    request.session["passwort"] = _passwort_marke(user)
     request.session["phone"] = is_phone(request.headers.get("user-agent"))
     return {"name": user.name, "role": user.role}
 
