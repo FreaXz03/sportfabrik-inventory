@@ -524,8 +524,9 @@ header {
   color: var(--text-faint);
 }
 
-/* Navigation: wenige Hauptpunkte, zusammengehörige Seiten in Gruppen
-   (nav.js). Die aktive Seite ist leicht orange hinterlegt. */
+/* Navigation (nav.js): Hauptpunkte und Gruppen mit ihren Seiten. Ab 901px
+   steht sie als Seitenleiste links (Abschnitt 5b), darunter als Blatt hinter
+   dem Knopf „Menü". Die aktive Seite ist leicht orange hinterlegt. */
 nav {
   display: flex;
   align-items: center;
@@ -535,110 +536,76 @@ nav {
 
 .nav-links {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 2px;
+  width: 100%;
 }
 
-.nav-links > a,
+.nav-links a,
 .nav-group-toggle {
-  position: relative;
-  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  padding: 10px 14px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: transparent;
   box-shadow: none;
   font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
+  text-align: left;
   text-decoration: none;
-  white-space: nowrap;
   transition: color var(--fast), background var(--fast);
 }
 
-.nav-links > a:hover,
-.nav-group-toggle:hover,
-.nav-group-toggle[aria-expanded=true] {
-  background-color: var(--surface-alt);
+.nav-links a:hover,
+.nav-group-toggle:hover {
+  background: var(--surface-alt);
   color: var(--text);
   box-shadow: none;
   transform: none;
 }
 
-.nav-links > a[aria-current=page],
-.nav-group-toggle.is-active {
-  background-color: var(--accent-soft-bg);
+.nav-links a[aria-current=page] {
+  background: var(--accent-soft-bg);
   color: var(--accent-text);
   font-weight: 600;
 }
 
-.nav-group { position: relative; }
-
-.nav-group-toggle {
-  padding-right: 30px;
-  background-image: var(--select-arrow);
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 9px 6px;
-}
-
-/* Die globale Knopf-Regel setzt beim Überfahren einen eigenen Hintergrund -
-   Pfeil und Grösse hier ausdrücklich behalten. */
-.nav-links .nav-group-toggle:hover,
-.nav-links .nav-group-toggle[aria-expanded=true],
-.nav-links .nav-group-toggle.is-active {
-  background-image: var(--select-arrow);
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 9px 6px;
-}
-
-.nav-menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  z-index: 60;
-  display: grid;
-  gap: 2px;
-  width: 310px;
-  padding: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  animation: menu-in var(--fast) both;
-}
-
-.nav-group:not(.is-open) > .nav-menu { display: none; }
-
-.nav-item {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  transition: background var(--fast);
-}
-
-.nav-item:hover { background: var(--surface-alt); }
-
-.nav-item-title {
-  font-size: var(--fs-sm);
+/* Gruppe mit aktiver Seite: nur Schrift, die Seite darunter trägt die Fläche. */
+.nav-group-toggle.is-active {
+  color: var(--accent-text);
   font-weight: 600;
-  color: var(--text);
 }
 
-.nav-item-info {
-  font-size: var(--fs-xs);
-  line-height: 1.35;
-  color: var(--text-muted);
+/* Pfeil der Gruppe: dreht sich beim Aufklappen. */
+.nav-group-toggle::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--fast);
 }
 
-.nav-item[aria-current=page] {
-  background: var(--accent-soft-bg);
-  box-shadow: inset 3px 0 0 var(--accent);
+.nav-group.is-open > .nav-group-toggle::after { transform: rotate(225deg) translate(-2px, -2px); }
+
+/* Seiten einer Gruppe: eingerückt unter dem Gruppenkopf. */
+.nav-menu {
+  display: none;
+  gap: 2px;
+  margin: 2px 0 6px 18px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
 }
 
-.nav-item[aria-current=page] .nav-item-title { color: var(--accent-text); }
+.nav-group.is-open > .nav-menu { display: grid; }
 
 .nav-burger { display: none; }
 
@@ -2406,13 +2373,88 @@ body:has(main.login-page) {
 
 @media (prefers-reduced-motion: reduce) { .bar { animation: none; } }
 
+/* 5b · Seitenleiste (Redesign 29.09.2026) --------------------------------
+   Ab 901px steht der Seitenkopf als feste Leiste links: Logo (SPORT-FABRIK
+   über INVENTORY), Navigation, unten Filiale und Konto. Nur Seiten mit
+   Navigation im Kopf (nicht Anmeldung und Handy-Ansicht). Darunter bleibt der
+   Kopf eine Leiste oben mit „Menü". */
+@media (min-width: 901px) {
+  body:has(> header > nav) {
+    --sidebar-w: 252px;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+  }
+
+  body:has(> header > nav) > header {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    height: 100vh;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 22px;
+    padding: 24px 14px 16px;
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+
+  body:has(> header > nav) > main { grid-column: 2; grid-row: 1; }
+
+  body:has(> header > nav) > footer { grid-column: 2; grid-row: 2; }
+
+  /* Logo: SPORT-FABRIK über INVENTORY */
+  body:has(> header > nav) > header > .brand {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  body:has(> header > nav) > header > .brand img { width: 172px; }
+
+  body:has(> header > nav) > header > .brand span {
+    padding-left: 2px;
+    border-left: 0;
+    font-size: var(--fs-xs);
+    letter-spacing: .34em;
+  }
+
+  body:has(> header > nav) > header > nav {
+    align-items: flex-start;
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+
+  /* Filiale und Konto unten in der Leiste */
+  body:has(> header > nav) > header > .header-tools {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  body:has(> header > nav) .store-pill { justify-content: space-between; }
+
+  body:has(> header > nav) .store-pill .store-select { flex: 1; max-width: none; }
+
+  body:has(> header > nav) .account-panel {
+    top: auto;
+    right: auto;
+    bottom: calc(100% + 10px);
+    left: 0;
+    width: 224px;
+  }
+}
+
 /* 12 · Responsive --------------------------------------------------------- */
 @media (max-width: 1100px) {
-  .nav-links > a,
-  .nav-group-toggle { padding-left: 11px; padding-right: 11px; font-size: var(--fs-xs); }
-
-  .nav-group-toggle { padding-right: 27px; background-position: right 10px center; }
-
   .store-pill .store-select { max-width: 150px; }
 }
 
@@ -2430,9 +2472,6 @@ body:has(main.login-page) {
     left: 0;
     right: 0;
     display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 2px;
     max-height: calc(100vh - var(--header-h));
     overflow-y: auto;
     padding: 10px var(--page-pad) 16px;
@@ -2443,23 +2482,25 @@ body:has(main.login-page) {
 
   nav.is-open .nav-links { display: flex; animation: menu-in var(--fast) both; }
 
-  .nav-links > a { padding: 12px; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+  .nav-links a { padding: 12px; font-weight: 600; color: var(--text); }
 
-  .nav-group-toggle { display: none; }
+  /* Gruppenkopf: nur Überschrift, die Seiten stehen immer darunter. */
+  .nav-group-toggle {
+    padding: 14px 12px 4px;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .nav-group-toggle::after { display: none; }
 
   .nav-menu,
   .nav-group:not(.is-open) > .nav-menu {
-    position: static;
     display: grid;
-    width: auto;
-    padding: 6px 0;
-    margin: 4px 0;
-    border: 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    border-radius: 0;
-    box-shadow: none;
-    animation: none;
+    margin: 0 0 0 14px;
   }
 }
 @media (max-width: 900px) {
