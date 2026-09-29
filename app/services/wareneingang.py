@@ -24,7 +24,7 @@ Die Regeln dazu:
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import aliased
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
@@ -120,7 +120,11 @@ def _zahl(wert) -> str:
 
 
 def liste_erwartete(
-    session, lagerort_id: int | None = None, *, herkunft_ids: set[int] | None = None
+    session,
+    lagerort_id: int | None = None,
+    *,
+    herkunft_ids: set[int] | None = None,
+    versendet_von: str | None = None,
 ) -> list[dict]:
     """Offene (erwartete) Wareneingänge samt Positionen - für die Filiale, die
     die Ware erwartet. Ohne `lagerort_id` filialübergreifend (Admin).
@@ -139,8 +143,12 @@ def liste_erwartete(
     if lagerort_id is not None:
         abfrage = abfrage.where(Wareneingang.lagerort_id == lagerort_id)
     if herkunft_ids is not None:
-        # Umlagerungen unterwegs aus diesen Quellen (Stornieren, 29.09.2026).
-        abfrage = abfrage.where(Wareneingang.herkunft_lagerort_id.in_(herkunft_ids))
+        # Umlagerungen unterwegs aus diesen Quellen oder selbst versendet
+        # (Stornieren, 29.09.2026).
+        bedingung = Wareneingang.herkunft_lagerort_id.in_(herkunft_ids)
+        if versendet_von:
+            bedingung = or_(bedingung, Wareneingang.versendet_von == versendet_von)
+        abfrage = abfrage.where(Wareneingang.herkunft_lagerort_id.is_not(None), bedingung)
 
     ergebnis = []
     for wareneingang, dokument, lagerort, lieferant, quelle in session.execute(abfrage).all():

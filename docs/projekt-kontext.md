@@ -1397,7 +1397,9 @@ PR #18 merged into `main`; obsolete remote branches deleted.
    external locations reject it (409). `/api/erfassen/stammdaten` reports
    per location whether a markdown can be chosen (`reduktion`).
 2. **Cancel a transfer in transit** (decision 2026-09-29): branch manager
-   of the **source** branch or head office. The open (not yet arrived)
+   of the **source** branch, the person who **dispatched** it
+   (`wareneingaenge.versendet_von`, decided later the same day), or head
+   office. The open (not yet arrived)
    rest of each line goes back to the source as a new `umlagerung`
    movement (reason `zurueck:<destination>`), with the date it had at
    dispatch (`mitgebracht_datum`); no new markdown clock. Already arrived
@@ -1405,10 +1407,9 @@ PR #18 merged into `main`; obsolete remote branches deleted.
    `storniert` (migration `a4b5c6d7e8f9`). Desktop only: section
    "In transit" on `/umlagern` with a two-click cancel.
 
-**Open points:** a branch manager who dispatched from an external
-location (GEWA, VEBO, Dietikon) cannot cancel it — only head office,
-because external locations are nobody's own branch. Cancelling on the
-phone is not built (like other cancels, desktop only).
+**Decided later the same day:** whoever dispatched a transfer may also
+cancel it (e.g. a branch manager who sent from GEWA). Cancelling stays
+desktop only — not needed on the phone.
 
 **Security and PostgreSQL, same day:** S1 rest (a new password ends all
 sessions of the account: HMAC of the password hash in the session), S3

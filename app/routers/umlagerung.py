@@ -6,8 +6,8 @@ aktive Filiale; ob von dort gebucht werden darf, prüft der Server mit
 `resolve_wareneingang_lagerort`), das Ziel bestätigt die Ankunft unter
 „Lieferungen" (`/api/wareneingaenge/{id}/ankunft`, alle Rollen, D21).
 
-Stornieren unterwegs (29.09.2026): Filialleiter nur für Umlagerungen aus
-ihren eigenen Filialen, die Zentrale für alle.
+Stornieren unterwegs (29.09.2026): Filialleiter für Umlagerungen aus ihren
+eigenen Filialen und für selbst versendete, die Zentrale für alle.
 """
 
 from datetime import date
@@ -153,8 +153,8 @@ def api_unterwegs(
     session=Depends(get_session),
     language: str = Depends(get_language),
 ):
-    """Umlagerungen unterwegs aus den eigenen Filialen (Zentrale: alle),
-    auf Wunsch nur aus einer Quelle."""
+    """Umlagerungen unterwegs aus den eigenen Filialen und selbst versendete
+    (Zentrale: alle), auf Wunsch nur aus einer Quelle."""
     erlaubt = _eigene_quellen(session, user)
     if quelle_id is not None:
         if erlaubt is not None and quelle_id not in erlaubt:
@@ -162,7 +162,14 @@ def api_unterwegs(
         erlaubt = {quelle_id}
     elif erlaubt is None:
         erlaubt = {lagerort.id for lagerort in list_all_lagerorte(session)}
-    return {"umlagerungen": liste_erwartete(session, herkunft_ids=erlaubt)}
+    return {
+        "umlagerungen": liste_erwartete(
+            session,
+            herkunft_ids=erlaubt,
+            # Selbst versendete gehören dazu, ausser beim Filter auf eine Quelle.
+            versendet_von=None if quelle_id is not None else user.kassennummer,
+        )
+    }
 
 
 @router.post("/api/umlagerung/{wareneingang_id}/stornieren")

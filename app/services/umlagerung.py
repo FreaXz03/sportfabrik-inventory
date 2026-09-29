@@ -21,8 +21,8 @@ Die Regeln dazu (docs/projekt-kontext.md Abschnitte 4 und 10):
 * **Zu wenig Bestand an der Quelle**: gewarnt und trotzdem gebucht, wie beim
   Ausbuchen (F9).
 
-* **Stornieren unterwegs** (Entscheid 29.09.2026): Filialleiter der Quelle
-  oder Zentrale. Der offene Rest geht mit seinem alten Datum an die Quelle
+* **Stornieren unterwegs** (Entscheid 29.09.2026): Filialleiter der Quelle,
+  wer versendet hat (`versendet_von`), oder Zentrale. Der offene Rest geht mit seinem alten Datum an die Quelle
   zurück (Grund `zurueck:SF3`), schon Angekommenes bleibt am Ziel; der
   Wareneingang wird `storniert`.
 
@@ -133,6 +133,7 @@ def umlagern(
             status="erwartet",
             herkunft_lagerort_id=quelle.id,
             versanddatum=datum,
+            versendet_von=(benutzer or {}).get("kassennummer"),
         )
         session.add(wareneingang)
         session.flush()
@@ -251,13 +252,22 @@ def stornieren(
     falschem Ziel. Der noch offene Rest jeder Position geht an die Quelle
     zurück - mit dem Datum, das er beim Versand hatte (`mitgebracht_datum`),
     ohne die Reduktionsuhr neu zu starten. Schon Angekommenes bleibt am Ziel.
-    `erlaubte_quellen` = None heisst: jede Quelle (Zentrale)."""
+    `erlaubte_quellen` = None heisst: jede Quelle (Zentrale). Wer die
+    Umlagerung versendet hat, darf sie auch aus einer fremden Quelle
+    stornieren (Entscheid 29.09.2026)."""
     with session_factory() as session, session.begin():
         sperren(session)
         wareneingang = session.get(Wareneingang, wareneingang_id)
         if wareneingang is None or wareneingang.herkunft_lagerort_id is None:
             raise UmlagerungRejected(translate("errors.umlagerung.not_a_transfer", language))
-        if erlaubte_quellen is not None and wareneingang.herkunft_lagerort_id not in erlaubte_quellen:
+        selbst_versendet = bool(wareneingang.versendet_von) and wareneingang.versendet_von == (
+            benutzer or {}
+        ).get("kassennummer")
+        if (
+            erlaubte_quellen is not None
+            and wareneingang.herkunft_lagerort_id not in erlaubte_quellen
+            and not selbst_versendet
+        ):
             raise UmlagerungForbidden(translate("errors.auth.no_lagerort_access", language))
         if wareneingang.status != "erwartet":
             raise UmlagerungRejected(translate("errors.umlagerung.not_in_transit", language))

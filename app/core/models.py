@@ -336,6 +336,9 @@ class Wareneingang(Base):
     # `eingangsdatum` - ob sie die Uhr startet, steht an ihrer Lagerbewegung.
     herkunft_lagerort_id: Mapped[int | None] = mapped_column(ForeignKey("lagerorte.id"))
     versanddatum: Mapped[date | None] = mapped_column(Date)
+    # Kassennummer, wer die Umlagerung versendet hat - darf sie auch
+    # stornieren (Entscheid 29.09.2026).
+    versendet_von: Mapped[str | None] = mapped_column(String(20))
 
 
 class WareneingangPosition(Base):

@@ -15,7 +15,6 @@ Inventory management for four Sportfabrik branches; GEWA, VEBO, and Dietikon are
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3/S5–S7) into `main` — when Fabian asks.
 2. Store deployment (Phase F): migrations on the store server's database (checked locally on PostgreSQL 18), network separation/VPN (required for the 6-character password decision), S4 encrypted backups, S8 hash pins (`docs/sicherheit.md`, `docs/SERVER-SETUP.md`). After the update everyone logs in once more (S1).
 3. Test phones in the store with real labels (iPhone + Android); remove the temporary "−1" stock button after the in-store trial.
-4. Open: cancelling a transfer dispatched from an external location is head office only; no cancel on the phone.
 
 Full list with context: `docs/projekt-kontext.md`, sections "Status check and next steps – 2026-09-28" and "Decisions and implementation – 2026-09-29".
 

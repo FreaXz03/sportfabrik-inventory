@@ -329,7 +329,7 @@ def test_aktuelles_fasst_lieferungen_und_umlagerungen_zusammen(welt):
 
 def test_umlagerung_unterwegs_stornieren(welt):
     """Umlagerung unterwegs stornieren (Entscheid 29.09.2026): Filialleiter
-    der Quelle oder Zentrale. Der noch offene Rest geht an die Quelle zurück,
+    der Quelle, wer versendet hat, oder Zentrale. Der noch offene Rest geht an die Quelle zurück,
     mit seinem alten Datum; schon Angekommenes bleibt am Ziel."""
     client, sessions, codes = welt.client, welt.sessions, welt.codes
     sf1, sf3 = codes["SF1"], codes["SF3"]
@@ -396,4 +396,14 @@ def test_umlagerung_unterwegs_stornieren(welt):
     assert client.post(f"/api/umlagerung/{lieferung}/stornieren").status_code == 409
     # Zentrale darf jede Quelle.
     assert client.post(f"/api/umlagerung/{fremd}/stornieren").status_code == 200
+
+    # Wer versendet hat, darf auch stornieren - auch aus einer fremden
+    # Quelle (Entscheid 29.09.2026, z. B. Filialleiter versendet ab GEWA).
+    welt.anmelden(CHEF)
+    eigene = client.post(
+        "/api/umlagerung",
+        json={"quelle_id": codes["GEWA"], "ziel_id": sf3, "positionen": [{"varianten_id": polo, "menge": "1"}]},
+    ).json()["wareneingang_id"]
+    assert eigene in [u["id"] for u in client.get("/api/umlagerung/unterwegs").json()["umlagerungen"]]
+    assert client.post(f"/api/umlagerung/{eigene}/stornieren").status_code == 200
     _bestand_ist_summe_der_bewegungen(sessions)

@@ -749,7 +749,7 @@
   "umlagern.booked": "{stueck} pièces envoyées de {quelle} à {ziel}. {ziel} confirme l'arrivée sous « Livraisons ».",
   "umlagern.source_short": "Attention : pour {anzahl} article(s), le stock de {quelle} était insuffisant – l'écriture est quand même faite.",
   "umlagern.transit_heading": "En route",
-  "umlagern.transit_intro": "Envoyé depuis vos filiales, pas encore arrivé à destination. Annuler (p. ex. mauvaise destination) remet le reste ouvert en stock à la source ; ce qui est déjà arrivé reste à destination.",
+  "umlagern.transit_intro": "Envoyé depuis vos filiales ou par vous, pas encore arrivé à destination. Annuler (p. ex. mauvaise destination) remet le reste ouvert en stock à la source ; ce qui est déjà arrivé reste à destination.",
   "umlagern.transit_empty": "Rien en route.",
   "umlagern.table_dispatched": "Envoyé le",
   "umlagern.table_route": "De → À",

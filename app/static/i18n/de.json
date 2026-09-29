@@ -749,7 +749,7 @@
   "umlagern.booked": "{stueck} Stück von {quelle} an {ziel} versendet. {ziel} bestätigt die Ankunft unter „Lieferungen“.",
   "umlagern.source_short": "Achtung: bei {anzahl} Artikel(n) reichte der Bestand in {quelle} nicht – gebucht ist trotzdem.",
   "umlagern.transit_heading": "Unterwegs",
-  "umlagern.transit_intro": "Aus Ihren Filialen versendet, am Ziel noch nicht angekommen. Stornieren (z. B. bei falschem Ziel) bucht den offenen Rest an die Quelle zurück; schon Angekommenes bleibt am Ziel.",
+  "umlagern.transit_intro": "Aus Ihren Filialen oder von Ihnen versendet, am Ziel noch nicht angekommen. Stornieren (z. B. bei falschem Ziel) bucht den offenen Rest an die Quelle zurück; schon Angekommenes bleibt am Ziel.",
   "umlagern.transit_empty": "Nichts unterwegs.",
   "umlagern.table_dispatched": "Versendet am",
   "umlagern.table_route": "Von → Nach",

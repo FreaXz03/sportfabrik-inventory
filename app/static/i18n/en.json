@@ -749,7 +749,7 @@
   "umlagern.booked": "{stueck} pieces sent from {quelle} to {ziel}. {ziel} confirms the arrival under “Deliveries”.",
   "umlagern.source_short": "Note: for {anzahl} item(s) the stock at {quelle} was not sufficient – booked anyway.",
   "umlagern.transit_heading": "In transit",
-  "umlagern.transit_intro": "Sent from your branches, not yet arrived at the destination. Cancelling (e.g. wrong destination) books the open rest back to the source; anything already arrived stays at the destination.",
+  "umlagern.transit_intro": "Sent from your branches or by you, not yet arrived at the destination. Cancelling (e.g. wrong destination) books the open rest back to the source; anything already arrived stays at the destination.",
   "umlagern.transit_empty": "Nothing in transit.",
   "umlagern.table_dispatched": "Sent on",
   "umlagern.table_route": "From → To",

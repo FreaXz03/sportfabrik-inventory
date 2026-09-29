@@ -283,7 +283,9 @@ whether the arrival starts the markdown clock is recorded on the arrival
 movement (`lagerbewegungen.eingangsdatum`, see there). Both columns are
 empty for documents and manual entries. A transfer still in transit can
 be cancelled (migration `a4b5c6d7e8f9`, 2026-09-29): status `storniert`,
-the open rest is booked back to the source.
+the open rest is booked back to the source. `versendet_von` (till number
+of the dispatcher, empty for documents and manual entries) allows the
+dispatcher to cancel.
 
 ### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
 `mitgebracht_datum` (2026-09-28, transfers only): the receipt date the
@@ -453,7 +455,7 @@ above):
 | `d1e2f3a4b5c6` | Quick access (requirement 14, 2026-09-25): `users.schnellzugriffe` (JSON, chosen functions and order) |
 | `e2f3a4b5c6d7` | Phase D, open questions (2026-09-25): new tables `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
 | `f3a4b5c6d7e8` | Transfer as a delivery (2026-09-28): `wareneingaenge.herkunft_lagerort_id`, `wareneingaenge.versanddatum`, `wareneingang_positionen.mitgebracht_datum`; new empty columns only |
-| `a4b5c6d7e8f9` | Cancel a transfer in transit (2026-09-29): check constraint `ck_wareneingaenge_status` also allows `storniert`; no data change |
+| `a4b5c6d7e8f9` | Cancel a transfer in transit (2026-09-29): check constraint `ck_wareneingaenge_status` also allows `storniert`; new empty column `wareneingaenge.versendet_von` |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs
