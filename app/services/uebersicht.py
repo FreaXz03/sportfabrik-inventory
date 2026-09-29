@@ -250,7 +250,7 @@ def bestseller(session, lagerort_id: int, heute: date) -> list[dict]:
 def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
     """Kennzahlen und anstehende Vorgänge der aktiven Filiale."""
     heute = heute or date.today()
-    tagesbeginn = datetime.combine(heute, time.min).astimezone(timezone.utc)
+    tagesbeginn = _tagesbeginn(heute)
 
     stueck, varianten = session.execute(
         select(func.coalesce(func.sum(Bestand.menge), 0), func.count()).where(

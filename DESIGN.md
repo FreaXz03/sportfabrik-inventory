@@ -301,7 +301,7 @@ of the week) → two columns "Anstehend" and "Aktuelles" (grouped by day). Metri
 one label, one link.
 
 Charts on the dashboard are allowed since 29.09.2026 (decision: user), under three limits: only
-plain bars from tokens (no axes, no legends that need reading, no chart library); every value is
+plain bars from tokens (no axes, no chart library; the only legend is the stage list, which repeats every number as text); every value is
 also written as text next to or in the bar (`title`, legend numbers); reduction stages use the
 roll colours of §4.4 and nothing else does. Detailed charts and periods stay in Statistiken.
 
