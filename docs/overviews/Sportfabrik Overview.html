@@ -91,7 +91,7 @@ section{padding:84px 0 12px}
 /* now / status band */
 .now{margin-top:-34px;position:relative;z-index:2}
 .now .card{padding:24px;display:grid;gap:22px;grid-template-columns:1.3fr 1fr}
-.now h3{font-size:18px;margin-bottom:10px}
+.now h2{font-size:18px;letter-spacing:-.01em;margin-bottom:10px}
 .tag{display:inline-block;font:700 11px var(--mono);padding:3px 8px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle}
 .t-ok{background:var(--ok-soft);color:var(--ok)}.t-warm{background:var(--warm-soft);color:var(--warm)}.t-bad{background:var(--bad-soft);color:var(--bad)}.t-n{background:var(--surface-2);color:var(--ink-2)}
 .list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
@@ -277,7 +277,7 @@ dialog li a:hover,dialog li a.sel{background:var(--accent-soft)}
 <div class="wrap now" id="status">
   <div class="card reveal">
     <div>
-      <h3>What is done <span class="tag t-ok">Phases A–D</span></h3>
+      <h2>What is done <span class="tag t-ok">Phases A–D</span></h2>
       <ul class="list">
         <li><b>Goods in:</b>&nbsp;upload PDFs or scan by hand; local parser reads them, staff check the preview.</li>
         <li><b>Stock:</b>&nbsp;every change is a movement; transfers are sent, then confirmed on arrival.</li>
@@ -287,7 +287,7 @@ dialog li a:hover,dialog li a.sel{background:var(--accent-soft)}
       </ul>
     </div>
     <div>
-      <h3>Honest status</h3>
+      <h2>Honest status</h2>
       <p class="note" style="margin-top:0">All checked locally and on a throwaway PostgreSQL 18. <b>No store deployment yet.</b> Parsers exist for Alpina, Chris Sports and CMP.</p>
       <div style="margin:16px 0 6px;display:flex;justify-content:space-between;font-size:14px;font-weight:700"><span>Roadmap</span><span id="pct">4 of 7 phases</span></div>
       <div class="bar"><i id="barfill" data-w="57"></i></div>
