@@ -1429,3 +1429,32 @@ stick and on paper. `scripts/backup_inventory.py --external` writes one
 `inventory-TIMESTAMP.tar.age` plus a `.sha256` file and refuses to copy
 without a valid key. Checked with a real age round trip (encrypt, checksum,
 decrypt). Setup and restore: `docs/BACKUPS.md`.
+
+## Pending visibility — decision 2026-09-29
+
+**Confirmed requirement; planned, not implemented by this documentation change.** This supersedes the earlier branch restriction for these two item-master notices only.
+
+- **Without EAN** and **without checkout category**: show the shared, cross-branch totals to **all roles in every branch**, including employees and branch managers. Do not restrict these two counts to stock in the active branch. Their links must open the matching cross-branch lists so the listed variants match the counts.
+- **All other Pending notices** (expected deliveries/transfers, negative stock, due and upcoming markdowns): keep them scoped to the selected branch. Do not turn these into cross-branch totals.
+- This changes notice visibility, not editing or booking permissions. Existing permissions remain unchanged.
+- Current checked code still filters the two item-master counts by the active branch; implementation remains a task.
+
+Source: Fabian’s direct clarification on 2026-09-29.
+
+## Head-office recommendations — planned extensions 2026-09-29
+
+**Confirmed requirements; planning only, not implemented by this update.**
+
+1. Show open head-office markdown recommendations in **Pending** on the overview, scoped to the selected recipient branch. A click should open the matching recommendations on the markdown page. This is a branch-specific notice, unlike the global missing-EAN and missing-category notices.
+2. Allow **head office to withdraw recommendations**. Withdrawn recommendations should no longer be actionable or counted as open.
+3. Allow head office to send the same recommendation **directly to all sales branches (SF1–SF4) in one action**, in addition to selecting one branch. Keep each branch’s response separate so acceptance/rejection remains visible per branch. External storage locations are not sales branches.
+
+Existing response permissions and acceptance/rejection with a reason remain unchanged. No code changes or deployment requested.
+
+**Details to settle before implementation:** whether withdrawal applies only to unanswered recommendations or also to answered ones, what happens to a markdown already accepted (do not infer automatic rollback), whether all-branch sending includes branches without stock of the model, and whether future-dated open recommendations appear immediately or only from their effective date. Preserve these as open questions rather than confirmed decisions.
+
+Source: Fabian’s direct request on 2026-09-29.
+
+### Dashboard redesign (2026-09-29)
+
+Decision (Fabian): small charts are allowed on the dashboard; `DESIGN.md` §9.3 amended. `/api/dashboard` → `filiale` now also returns `stufen` (pieces per markdown stage by age of last receipt, no manual overrides), `verlauf` (sold pieces per day, last 14 days) and `bestseller` (top 5 models, last 7 days), all for the active branch only. The page shows them as three panels (`uebersicht.js`, `.insights` in `app.css`); "Aktuelles" is grouped by day. Test: `tests/test_ablauf_dashboard.py`. Docker image must be rebuilt (`docker compose --env-file .env.server up -d --build`) to see UI changes.
