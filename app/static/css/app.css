@@ -2857,3 +2857,10 @@ body:has(main.login-page) {
 /* Manuelle Reduktion (24.09.2026): grosse, gut treffbare Knöpfe. */
 .reduktion-wahl { display: flex; flex-wrap: wrap; gap: 6px; }
 .reduktion-wahl button { min-width: 72px; padding: 8px 12px; }
+
+/* Runterschreiben: Stufe vorwählen, dann scannen (30.09.2026) */
+.preset { display: grid; gap: 8px; margin: 0 0 16px; }
+
+.preset-label { font-weight: 600; }
+
+.preset p { margin: 0; }

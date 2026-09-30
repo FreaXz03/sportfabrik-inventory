@@ -173,6 +173,7 @@
       zeichnen();
       manuellZeichnen();
       empfehlungZeichnen();
+      voreinstellungZeichnen();
     } catch (fehler) {
       $('gruppen').replaceChildren();
       $('status').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
@@ -203,7 +204,48 @@
     return zelle;
   }
 
-  async function suchen() {
+  // Voreingestellte Stufe (30.09.2026): null = aus. Mit Stufe setzt ein Scan
+  // (genau ein Modell gefunden) das Modell sofort auf diese Stufe; Rechte
+  // prüft der Server wie bei den Knöpfen (Regel 9).
+  let voreinstellung = null;
+
+  function voreinstellungZeichnen() {
+    const box = $('presetBox');
+    box.hidden = !(daten && daten.darf_aendern);
+    if (box.hidden) { voreinstellung = null; return; }
+    const leiste = $('presetWahl');
+    leiste.replaceChildren();
+    for (const [prozent, beschriftung] of [[null, t('reduktion_wahl.preset_off')], [30, '−30 %'], [50, '−50 %'], [70, '−70 %']]) {
+      const knopf = node('button', beschriftung);
+      knopf.type = 'button';
+      const aktiv = voreinstellung === prozent;
+      knopf.className = aktiv ? '' : 'secondary';
+      knopf.setAttribute('aria-pressed', String(aktiv));
+      knopf.addEventListener('click', () => {
+        voreinstellung = prozent;
+        voreinstellungZeichnen();
+        $('sucheFeld').focus();
+      });
+      leiste.append(knopf);
+    }
+  }
+
+  async function voreinstellungAnwenden(modell) {
+    const antwort = await fetch('/api/reduktion/manuell', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ varianten_id: modell.varianten_id, lagerort_id: daten.lagerort.id, prozent: voreinstellung })
+    });
+    const ergebnis = await antwort.json().catch(() => ({}));
+    if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('reduktion_wahl.save_error'));
+    const artikel = [modell.marke, modell.bezeichnung].filter(Boolean).join(' ') || '—';
+    const meldung = t('reduktion_wahl.preset_applied', { artikel, stufe: voreinstellung, filiale: daten.lagerort.code });
+    await laden();
+    $('sucheListe').replaceChildren();
+    $('sucheStatus').textContent = meldung;
+  }
+
+  async function suchen(anwenden) {
     if (!daten) return;
     const q = $('sucheFeld').value.trim();
     $('sucheStatus').textContent = t('bestand.loading');
@@ -219,6 +261,14 @@
         m.stueck += Number(z.menge);
         modelle.set(z.artikel_id, m);
       }
+      if (anwenden && voreinstellung !== null && q) {
+        const treffer = [...modelle.values()];
+        if (treffer.length === 1 && treffer[0].reduktion) {
+          await voreinstellungAnwenden(treffer[0]);
+          return;
+        }
+        if (treffer.length > 1) $('sucheStatus').textContent = t('reduktion_wahl.preset_multi');
+      }
       const zeilen = [];
       for (const m of modelle.values()) {
         const tr = document.createElement('tr');
@@ -227,14 +277,16 @@
         if (m.reduktion && daten.darf_aendern) {
           wahl.append(window.SportfabrikReduktion.knoepfe(m.varianten_id, daten.lagerort.id, m.reduktion, (neu) => {
             $('sucheStatus').textContent = t('reduktion_wahl.saved', { filiale: daten.lagerort.code, stufe: window.SportfabrikReduktion.text(neu) });
-            laden().then(suchen);
+            laden().then(() => suchen());
           }, $('sucheStatus')));
         }
         tr.append(artikelZelle(m.marke, m.bezeichnung, m.lieferanten_artikelnr), node('td', stueck(m.stueck)), stand, wahl);
         zeilen.push(tr);
       }
       $('sucheListe').replaceChildren(zeilen.length ? tabelle(['reduktion.table_article', 'reduktion.table_pieces', 'reduktion_wahl.col_effective', 'reduktion_wahl.col_choice'], zeilen) : '');
-      $('sucheStatus').textContent = zeilen.length ? t('reduktion.count_line', { anzahl: zeilen.length }) : t('reduktion_wahl.pick_none');
+      if ($('sucheStatus').textContent !== t('reduktion_wahl.preset_multi')) {
+        $('sucheStatus').textContent = zeilen.length ? t('reduktion.count_line', { anzahl: zeilen.length }) : t('reduktion_wahl.pick_none');
+      }
     } catch (fehler) {
       $('sucheStatus').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
     }
@@ -252,7 +304,7 @@
 
   $('suche').addEventListener('submit', (event) => {
     event.preventDefault();
-    suchen();
+    suchen(true);
     $('sucheFeld').select();
   });
 
@@ -265,6 +317,6 @@
   $('retry').addEventListener('click', laden);
   window.SportfabrikI18n.ready.then(() => {
     laden();
-    document.addEventListener('sportfabrik:i18n-ready', () => { if (daten) { zeichnen(); manuellZeichnen(); empfehlungZeichnen(); } });
+    document.addEventListener('sportfabrik:i18n-ready', () => { if (daten) { zeichnen(); manuellZeichnen(); empfehlungZeichnen(); voreinstellungZeichnen(); } });
   });
 })();

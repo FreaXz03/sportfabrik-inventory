@@ -33,6 +33,11 @@
           <section class="panel" id="manuellPanel">
                <h2 data-i18n="reduktion_wahl.pick_heading">Artikel von Hand reduzieren</h2>
                <p class="muted" data-i18n="reduktion_wahl.pick_hint">EAN scannen oder Namen eingeben – ohne Eingabe zeigt die Liste den ganzen Bestand dieser Filiale.</p>
+               <div id="presetBox" class="preset" hidden>
+                    <span class="preset-label" data-i18n="reduktion_wahl.preset_label">Stufe vorwählen</span>
+                    <div id="presetWahl" class="reduktion-wahl" role="group" data-i18n-aria-label="reduktion_wahl.preset_group_aria" aria-label="Stufe für gescannte Artikel"></div>
+                    <p class="muted" data-i18n="reduktion_wahl.preset_hint">Stufe wählen, dann Artikel scannen: jeder gescannte Artikel wird sofort auf diese Stufe gesetzt.</p>
+               </div>
                <form id="suche" class="filters"><label><span data-i18n="reduktion_wahl.pick_label">EAN oder Suche</span><input id="sucheFeld" autocomplete="off"
                               data-i18n-placeholder="reduktion_wahl.pick_placeholder" placeholder="Barcode scannen oder Artikel suchen …"></label><button
                          data-i18n="common.search">Suchen</button></form>
@@ -45,7 +50,7 @@
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
      <script src="/static/js/reduktion-wahl.js?v=2"></script>
-     <script src="/static/js/runterschreiben.js?v=4"></script>
+     <script src="/static/js/runterschreiben.js?v=5"></script>
      <script src="/static/js/nav.js?v=11"></script>
      <script src="/static/js/session.js?v=settings-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
