@@ -1,6 +1,6 @@
 # Roadmap — operational reliability (proposal 2026-10-01)
 
-Status: **proposal; business questions Q1–Q9 answered by Fabian on 2026-10-01** (see "Decisions"). Package order and scope are not yet approved for implementation. Derived from the vault note "Sportfabrik Inventory – Capability Review and Improvement Priorities" (static review of 2026-09-30, commit cc17d0c). Nothing here is implemented.
+Status: **proposal; business questions Q1–Q9 answered by Fabian on 2026-10-01** (see "Decisions"). Package order 0–5 approved on 2026-10-01; each package still gets its own implementation plan. Derived from the vault note "Sportfabrik Inventory – Capability Review and Improvement Priorities" (static review of 2026-09-30, commit cc17d0c). Nothing here is implemented.
 
 ## Milestone
 
@@ -95,18 +95,18 @@ Acceptance: changing today's markdown never changes yesterday's sale estimate. A
 | Q5 | 2 | Approval for large count differences? | **No.** Keep today's rule: employees correct in their own branches; large differences only appear in Pending. |
 | Q6 | 3 | Pilot branch and sales capture before the till connection? | **SF1.** Staff **scan every sold item in the app** (sale booking) in addition to the till. |
 | Q7 | 3 | Acceptable data loss and downtime? | **No data loss**; **downtime of a few hours** is acceptable (paper notes meanwhile, book later). |
-| Q8 | 4 | Who decides returns and losses? | **Returns:** any employee may book a customer return in their own branch when the reason is fit or taste; any other reason (e.g. defect, complaint) needs **approval by branch manager or head office** (interpretation of "a higher-up", confirm if different). **Lost in transit:** branch manager and head office. |
+| Q8 | 4 | Who decides returns and losses? | **Returns:** any employee may book a customer return in their own branch when the reason is fit or taste; any other reason (e.g. defect, complaint) needs **approval by branch manager or head office** (confirmed). **Lost in transit:** branch manager and head office. |
 | Q9 | 5 | Reorderable items and lead times? | **Manual flag per item** set by branch manager/head office; **delivery times entered per supplier**. |
 
 ### Consequences for the packages
 
 - **Package 1:** cancel = counter-bookings, rights as Q1. Because invoices usually come later (Q2), the invoice import must offer "attach to an existing delivery" as the normal path; the delivery note stays the document that books stock on arrival.
 - **Package 2:** stale count shows a warning with the movements since the count started; no approval step.
-- **Package 3:** SF1 pilot with double entry (till + app scan); a daily reconciliation of app sales against the till report still needs an owner. **"No data loss" is more than the current nightly, age-encrypted backups** (`docs/BACKUPS.md`): it needs continuous PostgreSQL replication or WAL archiving to a second machine, plus copies of uploaded documents as they arrive. A few hours of downtime means a manual restore/switch-over is enough; no automatic standby server is needed. Scope this in `docs/SERVER-SETUP.md` before the pilot.
+- **Package 3:** SF1 pilot with double entry (till + app scan); Fabian reconciles app sales against the till report daily. **"No data loss" is more than the current nightly, age-encrypted backups** (`docs/BACKUPS.md`): it needs continuous PostgreSQL replication or WAL archiving to a second machine, plus copies of uploaded documents as they arrive. A few hours of downtime means a manual restore/switch-over is enough; no automatic standby server is needed. Scope this in `docs/SERVER-SETUP.md` before the pilot.
 - **Package 4:** return reasons split into "fit/taste" (employee books directly, goods go to held/inspection or saleable per check) and "other" (pending approval by branch manager/head office). Loss in transit: branch manager/head office.
 - **Package 5:** new item flag "reorderable" and a supplier field "delivery time", both editable by branch manager/head office.
 
-Still open: owner of the daily reconciliation in SF1; confirmation that "higher-up" in Q8 means branch manager or head office.
+Confirmed by Fabian on 2026-10-01: **Fabian owns the daily reconciliation** of app sales against the till report in SF1; "a higher-up" in Q8 means **branch manager or head office**; the **package order 0–5 is approved**.
 
 ## Deliberately postponed
 
