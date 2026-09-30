@@ -1,6 +1,6 @@
 # Sportfabrik Inventory — Getting started
 
-Status: 2026-09-30. This overview is orientation, not confirmation of a production deployment.
+Status: 2026-10-01. This overview is orientation, not confirmation of a production deployment.
 
 ## Goal and current status
 
@@ -18,6 +18,8 @@ Merged into `feature/warenwirtschaft-v2` (not pushed, not in `main`), checked lo
 
 **First: Sportfabrik Inventory Redesign**, explicitly prioritized on 2026-09-29. Follow [the redesign specification](redesign-2026-09-29.md): structural sidebar layout on all pages, stacked existing logo, exact navigation, function search, dashboard charts and Settings modal; preserve current colors and design elements. All 8 phases are done (merged into `feature/warenwirtschaft-v2`); the follow-up refinements of 2026-09-30 are listed above.
 
+**Proposed next milestone (2026-10-01, not yet approved):** "one branch can reconcile a complete working day, recover from mistakes, and restore its data." Five work packages (reliable receiving/cancellation, safe counting and retries, one-branch pilot, returns/held stock, price snapshots/planning) and nine open business questions: [roadmap-operational-reliability-2026-10-01.md](roadmap-operational-reliability-2026-10-01.md). Answer the open questions before implementation. Items 2 and 3 below become part of package 3 (pilot).
+
 The previously queued items below follow the redesign:
 
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3–S7) into `main` — at the end of this session.
@@ -32,6 +34,7 @@ Working branch: `feature/warenwirtschaft-v2`; check the actual branch and any op
 
 | Question | Main source |
 |---|---|
+| Next milestone proposal, work packages, open questions | `docs/roadmap-operational-reliability-2026-10-01.md` |
 | Newest requirements and their code status | `docs/anforderungen-inbox-2026-09-28.md` |
 | Business decisions, roadmap, open questions | `docs/projekt-kontext.md`, sections 4, 9, 10, and the latest dated section at the end |
 | Implementation history | `docs/projekt-kontext.md`, section 11 and addenda; cross-check against current code |
