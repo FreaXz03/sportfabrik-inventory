@@ -18,7 +18,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
   // Seite gibt es noch nicht, der Eintrag bleibt unsichtbar. Jeder Eintrag
   // steht in einer Zeile - tests/test_navigation.py liest die Liste.
   var EINTRAEGE = [
-    { href: '/', key: 'nav.overview', genau: true },
+    { href: '/', key: 'nav.overview', info: 'nav.info.overview', genau: true },
     { href: '/articles', key: 'nav.articles', info: 'nav.info.articles' },
     {
       gruppe: 'nav.group_bestand', eintraege: [
@@ -44,12 +44,12 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
         { href: '/preview', key: 'nav.upload', info: 'nav.info.upload', nur: ['chef', 'admin'] }
       ]
     },
-    { href: '/statistiken', key: 'nav.statistiken', nur: ['chef', 'admin'] },
-    { href: '/anstehend', key: 'nav.anstehend' },
+    { href: '/statistiken', key: 'nav.statistiken', info: 'nav.info.statistiken', nur: ['chef', 'admin'] },
+    { href: '/anstehend', key: 'nav.anstehend', info: 'nav.info.anstehend' },
     {
       gruppe: 'nav.group_verwaltung', eintraege: [
-        { href: '/konten', key: 'nav.konten', nur: ['admin'] },
-        { href: '/empfehlungen', key: 'nav.empfehlungen', nur: ['admin'] }
+        { href: '/konten', key: 'nav.konten', info: 'nav.info.konten', nur: ['admin'] },
+        { href: '/empfehlungen', key: 'nav.empfehlungen', info: 'nav.info.empfehlungen', nur: ['admin'] }
       ]
     }
   ];
@@ -107,7 +107,140 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     return huelle;
   }
 
+  // Funktionssuche (Redesign 29.09.2026, Phase 5): oben im Inhalt, findet nur
+  // Seiten, die der Nutzer laut Rolle sehen darf (sichtbar()). Sie öffnet nur
+  // Links - die Rechte prüft weiterhin der Server je Seite (Regel 9).
+  var suche = null;
+
+  function normal(text) {
+    return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function sucheEintraege() {
+    var alle = [];
+    EINTRAEGE.forEach(function (eintrag) {
+      if (eintrag.gruppe) {
+        eintrag.eintraege.filter(sichtbar).forEach(function (e) { alle.push({ e: e, gruppe: eintrag.gruppe }); });
+      } else if (sichtbar(eintrag)) {
+        alle.push({ e: eintrag, gruppe: null });
+      }
+    });
+    return alle;
+  }
+
+  function treffer(frage) {
+    var woerter = normal(frage).split(/\s+/).filter(Boolean);
+    if (!woerter.length) return [];
+    return sucheEintraege().filter(function (x) {
+      var text = normal([t(x.e.key), x.gruppe ? t(x.gruppe) : '', t(x.e.info)].join(' '));
+      return woerter.every(function (w) { return text.indexOf(w) !== -1; });
+    }).slice(0, 8);
+  }
+
+  function sucheBauen() {
+    var haupt = document.querySelector('main');
+    if (!haupt) return null;
+    var huelle = document.createElement('div');
+    huelle.className = 'topsearch';
+    huelle.setAttribute('role', 'search');
+    var label = document.createElement('label');
+    label.className = 'visually-hidden';
+    label.htmlFor = 'navSuche';
+    var feld = document.createElement('input');
+    feld.type = 'search';
+    feld.id = 'navSuche';
+    feld.autocomplete = 'off';
+    feld.setAttribute('role', 'combobox');
+    feld.setAttribute('aria-autocomplete', 'list');
+    feld.setAttribute('aria-expanded', 'false');
+    feld.setAttribute('aria-controls', 'navSucheListe');
+    var liste = document.createElement('ul');
+    liste.id = 'navSucheListe';
+    liste.className = 'topsearch-list';
+    liste.setAttribute('role', 'listbox');
+    liste.hidden = true;
+    var status = document.createElement('p');
+    status.className = 'visually-hidden';
+    status.setAttribute('role', 'status');
+    var aktuell = -1;
+
+    function optionen() { return liste.querySelectorAll('[role=option]'); }
+    function markieren(nummer) {
+      var alle = optionen();
+      aktuell = alle.length ? (nummer + alle.length) % alle.length : -1;
+      alle.forEach(function (o, i) { o.classList.toggle('is-active', i === aktuell); o.setAttribute('aria-selected', String(i === aktuell)); });
+      if (aktuell >= 0) feld.setAttribute('aria-activedescendant', alle[aktuell].id);
+      else feld.removeAttribute('aria-activedescendant');
+    }
+    function schliessen() {
+      liste.hidden = true;
+      feld.setAttribute('aria-expanded', 'false');
+      markieren(-1);
+    }
+    function zeigen() {
+      liste.replaceChildren();
+      var frage = feld.value.trim();
+      if (!frage) { status.textContent = ''; schliessen(); return; }
+      var gefunden = treffer(frage);
+      gefunden.forEach(function (x, i) {
+        var li = document.createElement('li');
+        li.id = 'navSucheTreffer' + i;
+        li.setAttribute('role', 'option');
+        var a = document.createElement('a');
+        a.href = x.e.href;
+        a.tabIndex = -1;
+        var name = document.createElement('strong');
+        name.textContent = t(x.e.key);
+        var info = document.createElement('span');
+        info.textContent = (x.gruppe ? t(x.gruppe) + ' · ' : '') + t(x.e.info);
+        a.append(name, info);
+        li.append(a);
+        liste.append(li);
+      });
+      if (!gefunden.length) {
+        var leer = document.createElement('li');
+        leer.className = 'topsearch-none';
+        leer.textContent = t('nav.search_none');
+        liste.append(leer);
+      }
+      status.textContent = gefunden.length ? window.SportfabrikI18n.t('nav.search_results', { anzahl: gefunden.length }) : t('nav.search_none');
+      liste.hidden = false;
+      feld.setAttribute('aria-expanded', 'true');
+      markieren(-1);
+    }
+    feld.addEventListener('input', zeigen);
+    feld.addEventListener('focus', zeigen);
+    feld.addEventListener('blur', schliessen);
+    // Klick auf einen Treffer darf das Feld nicht vorher verlassen (Safari).
+    liste.addEventListener('mousedown', function (ereignis) { ereignis.preventDefault(); });
+    feld.addEventListener('keydown', function (ereignis) {
+      if (ereignis.key === 'ArrowDown' || ereignis.key === 'ArrowUp') {
+        if (liste.hidden) zeigen();
+        markieren(aktuell + (ereignis.key === 'ArrowDown' ? 1 : -1));
+        ereignis.preventDefault();
+      } else if (ereignis.key === 'Enter') {
+        var ziel = optionen()[aktuell >= 0 ? aktuell : 0];
+        if (ziel) location.href = ziel.querySelector('a').href;
+        ereignis.preventDefault();
+      } else if (ereignis.key === 'Escape') {
+        if (feld.value) feld.value = '';
+        schliessen();
+      }
+    });
+    huelle.append(label, feld, liste, status);
+    haupt.prepend(huelle);
+    return { label: label, feld: feld };
+  }
+
+  function sucheBeschriften() {
+    if (!suche) suche = sucheBauen();
+    if (!suche) return;
+    suche.label.textContent = t('nav.search_label');
+    suche.feld.placeholder = t('nav.search_placeholder');
+  }
+
   function zeichnen() {
+    sucheBeschriften();
     nav.replaceChildren();
     var liste = document.createElement('div');
     liste.className = 'nav-links';

@@ -64,6 +64,20 @@ def test_texte_in_allen_sprachen():
         assert not fehlend, (sprache, fehlend)
 
 
+def test_suche_texte_und_beschreibungen_in_allen_sprachen():
+    """Phase 5: die Suche findet über Beschriftung und Beschreibung (`info`).
+    Jede Seite braucht eine Beschreibung; alle Suchtexte gibt es in DE/FR/EN."""
+    seiten = [z for z in NAV_JS.splitlines() if "href: '" in z and "key: '" in z]
+    ohne_info = [z.strip() for z in seiten if "info: '" not in z]
+    assert not ohne_info, ohne_info
+    schluessel = set(re.findall(r"info: '([^']+)'", NAV_JS))
+    schluessel |= {"nav.search_label", "nav.search_placeholder", "nav.search_none", "nav.search_results"}
+    for sprache in ("de", "fr", "en"):
+        katalog = json.loads((APP / "static" / "i18n" / f"{sprache}.json").read_text(encoding="utf-8"))
+        fehlend = sorted(k for k in schluessel if not katalog.get(k))
+        assert not fehlend, (sprache, fehlend)
+
+
 def test_anstehend_seite_fuer_alle_angemeldeten(welt):
     """Phase 4: /anstehend ist eine echte Seite, im Menü nicht mehr verborgen."""
     assert ("nav.anstehend", "/anstehend", False) in eintraege()
