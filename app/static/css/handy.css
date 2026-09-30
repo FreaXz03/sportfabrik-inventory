@@ -15,7 +15,6 @@ body.phone header {
 }
 
 body.phone .brand img { width: 112px; }
-body.phone .store-pill .store-select { max-width: 150px; }
 
 body.phone main {
   max-width: 560px;

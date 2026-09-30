@@ -16,7 +16,7 @@ Inventory management for four Sportfabrik branches; GEWA, VEBO, and Dietikon are
 
 ## Next steps
 
-**First: Sportfabrik Inventory Redesign**, explicitly prioritized on 2026-09-29. Follow [the redesign specification](redesign-2026-09-29.md): structural sidebar layout on all pages, stacked existing logo, exact navigation, function search, dashboard charts and Settings modal; preserve current colors and design elements. Phases 1–7 (sidebar layout, navigation order, labels, `/anstehend` page, top search, Settings modal, dashboard charts) are done on branch `worktree-redesign-sidebar`; open: reviews, role/language/narrow checks, doc sync (phase 8 in the specification).
+**First: Sportfabrik Inventory Redesign**, explicitly prioritized on 2026-09-29. Follow [the redesign specification](redesign-2026-09-29.md): structural sidebar layout on all pages, stacked existing logo, exact navigation, function search, dashboard charts and Settings modal; preserve current colors and design elements. All 8 phases are done in code and repo docs (branch `worktree-redesign-sidebar`; sidebar, `/anstehend`, top search, Settings dialog, dashboard charts, reviews). Open: update the vault notes and the HTML overviews (`docs/overviews/`), which still describe the redesign as planned.
 
 The previously queued items below follow the redesign:
 

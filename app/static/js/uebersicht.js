@@ -56,6 +56,11 @@
     return wert ? wert.slice(0, 10).split('-').reverse().join('.') : '—';
   }
 
+  // Kurzes Datum ohne Jahr in der Sprache der Oberfläche (Diagrammachsen).
+  function datumKurz(wert) {
+    return new Intl.DateTimeFormat(sprache(), { day: '2-digit', month: '2-digit' }).format(new Date(wert + 'T12:00:00'));
+  }
+
   function begruessen() {
     const stunde = new Date().getHours();
     const tageszeit = stunde < 11 ? 'morning' : stunde < 18 ? 'day' : 'evening';
@@ -113,7 +118,7 @@
     tage.forEach((tag, index) => {
       const eintrag = node('span', null, index === tage.length - 1 ? 'bar is-today' : 'bar');
       eintrag.style.setProperty('--h', String(werte[index] / hoechster));
-      eintrag.title = t('dashboard.trend_bar', { datum: datum(tag.tag).slice(0, 6), anzahl: zahl(werte[index]) });
+      eintrag.title = t('dashboard.trend_bar', { datum: datumKurz(tag.tag), anzahl: zahl(werte[index]) });
       balken.append(eintrag);
     });
   }
@@ -157,7 +162,7 @@
     $('stockDelta').textContent = unterschied === 0
       ? t('dashboard.stock_same')
       : t(unterschied > 0 ? 'dashboard.stock_up' : 'dashboard.stock_down', { anzahl: zahl(Math.abs(unterschied)) });
-    $('stockVon').textContent = datum(tage[0].tag).slice(0, 6);
+    $('stockVon').textContent = datumKurz(tage[0].tag);
     const tiefster = Math.min(...werte);
     const spanne = Math.max(...werte) - tiefster;
     const punkte = werte.map((wert, index) => {

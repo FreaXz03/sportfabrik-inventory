@@ -734,19 +734,26 @@ decision E8), but two scripts are included across all pages:
   only contain an empty `<nav>`), order per `docs/redesign-2026-09-29.md`:
   Overview, Products, Stock (Stock, Mark down), Goods in (Deliveries,
   Record), Goods out (Book out), Transfer, Documents (All documents,
-  Upload document), Statistics, Pending (hidden until the page exists),
-  Administration (Accounts, Recommendations). Groups open on click and
+  Upload document), Statistics, Pending (`/anstehend`),
+  Administration (Accounts, Recommendations), Settings (a button that
+  opens the settings dialog, no page). Groups open on click and
   stay open when they contain the active page (`aria-current="page"`).
   Entries with `nur` are role-filtered (rule 9); the server still checks
   every page. Below 901 px the sidebar becomes the top bar and everything
   sits behind the "Menu" button, with groups shown as headings.
+  `nav.js` also adds the **function search** at the top of every page's
+  `<main>` (matches label, group and description of the entries the role may
+  see; it only opens links).
   `tests/test_navigation.py` reads the entry list from the file.
-- `session.js` builds the right side of the header: the **branch pill**
-  (active branch, a select if several are available) and the **account
-  menu** behind the initials button (name, till number, role, language,
-  light/dark, Excel export on the article page, log out). It fires the
+- `session.js` builds the tools of the header: the **branch pill** (shows the
+  active branch) and the initials button; both, and the "Settings" menu entry
+  (event `sportfabrik:settings-open`), open the **settings dialog** (native
+  `<dialog>`): account, language, light/dark, branch switch (users with
+  several branches), Excel export on the article page, log out. It fires the
   login as a `sportfabrik:me` event so `nav.js` can filter by role, and
   hides the upload tile on the overview for employees.
+- `anstehend-liste.js` renders the "Pending" list (used by the overview and
+  the `/anstehend` page, both fed by `/api/dashboard`).
 
 For older or visually impaired staff, article search additionally offers
 a column picker (hide individual columns) and larger text in the results

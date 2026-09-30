@@ -569,6 +569,7 @@ nav {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  gap: 10px;
   width: 100%;
   height: auto;
   padding: 10px 14px;
@@ -608,6 +609,7 @@ nav {
 /* Pfeil der Gruppe: dreht sich beim Aufklappen. */
 .nav-group-toggle::after {
   content: "";
+  flex: none;
   width: 7px;
   height: 7px;
   margin-left: auto;
@@ -666,24 +668,6 @@ nav {
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
-}
-
-.store-pill .store-select {
-  width: auto;
-  max-width: 220px;
-  padding: 6px 28px 6px 0;
-  border: 0;
-  background-color: transparent;
-  background-position: right 8px center;
-  box-shadow: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.store-pill .store-select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 .store-name { padding: 6px 10px 6px 0; }
@@ -2619,10 +2603,6 @@ body:has(main.login-page) {
 .settings-dialog .settings-logout { margin-top: 4px; }
 
 /* 12 · Responsive --------------------------------------------------------- */
-@media (max-width: 1100px) {
-  .store-pill .store-select { max-width: 150px; }
-}
-
 /* Schmal: Navigation hinter dem Knopf „Menü", als Blatt unter der Kopfzeile. */
 @media (max-width: 900px) {
   header { flex-wrap: nowrap; gap: 10px; }
@@ -2708,8 +2688,6 @@ body:has(main.login-page) {
 
 @media (max-width: 560px) {
   .brand img { width: 120px; }
-
-  .store-pill .store-select { max-width: 92px; }
 
   .store-name { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
