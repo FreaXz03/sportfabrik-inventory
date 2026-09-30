@@ -797,6 +797,8 @@
   "settings.theme": "Appearance",
   "settings.branch": "Branch",
   "nav.menu": "Menu",
+  "nav.sidebar_collapse": "Collapse sidebar",
+  "nav.sidebar_expand": "Expand sidebar",
   "nav.info.erfassen": "Book in goods without a document",
   "nav.info.wareneingaenge": "Confirm announced deliveries",
   "nav.info.umlagern": "Send goods to another location",

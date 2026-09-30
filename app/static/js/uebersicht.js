@@ -294,9 +294,11 @@
       if (!eintrag) continue;
       const a = node('a', null, 'quick-action');
       a.href = eintrag.href;
-      a.append(node('strong', t(eintrag.label)), node('span', t(eintrag.info)));
+      a.append(node('strong', t(eintrag.label)));
       nav.append(a);
     }
+    // Immer die ganze Breite füllen, egal wie viele gewählt sind (30.09.2026).
+    nav.style.setProperty('--anzahl', String(Math.max(nav.children.length, 1)));
   }
 
   // --- Schnellzugriffe bearbeiten (Punkt 14): Auswahl per Klick, Reihenfolge

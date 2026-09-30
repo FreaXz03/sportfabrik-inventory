@@ -98,12 +98,20 @@
     return knopf;
   }
 
-  // Rund mit Initialen; öffnet ebenfalls die Einstellungen.
+  // Rund mit Initialen, in der ausgeklappten Seitenleiste mit Namen daneben
+  // (30.09.2026); öffnet die Einstellungen.
   function kontoKnopf(me){
     var knopf=document.createElement('button');
     knopf.type='button';
-    knopf.className='account-toggle';
-    knopf.textContent=initialen(me);
+    knopf.className='account-row';
+    var kreis=document.createElement('span');
+    kreis.className='account-toggle';
+    kreis.textContent=initialen(me);
+    kreis.setAttribute('aria-hidden','true');
+    var name=document.createElement('span');
+    name.className='account-name';
+    name.textContent=me.name||me.kassennummer;
+    knopf.append(kreis,name);
     knopf.setAttribute('aria-haspopup','dialog');
     function aria(){knopf.setAttribute('aria-label',t('session.account_aria'));knopf.title=t('session.account_aria');}
     aria();onLang(aria);

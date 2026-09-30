@@ -797,6 +797,8 @@
   "settings.theme": "Affichage",
   "settings.branch": "Succursale",
   "nav.menu": "Menu",
+  "nav.sidebar_collapse": "Réduire le menu latéral",
+  "nav.sidebar_expand": "Déplier le menu latéral",
   "nav.info.erfassen": "Entrer de la marchandise sans justificatif",
   "nav.info.wareneingaenge": "Confirmer les livraisons annoncées",
   "nav.info.umlagern": "Envoyer de la marchandise vers un autre emplacement",

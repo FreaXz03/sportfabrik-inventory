@@ -15,8 +15,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
   // Seitenleiste (Redesign 29.09.2026), Reihenfolge laut docs/redesign-2026-09-29.md.
   // `nur` = Rollen, die den Eintrag sehen (Regel 9: Belege hochladen nur
   // Filialleiter und Zentrale). Ohne `nur` sehen ihn alle. Der Eintrag mit dem
-  // Feld „einstellungen" ist kein Link, sondern der Knopf, der das Einstellungsfenster öffnet (session.js). `bald: true` =
-  // Seite gibt es noch nicht, der Eintrag bleibt unsichtbar. Jeder Eintrag
+  // `bald: true` = Seite gibt es noch nicht, der Eintrag bleibt unsichtbar. Jeder Eintrag
   // steht in einer Zeile - tests/test_navigation.py liest die Liste.
   var EINTRAEGE = [
     { href: '/', key: 'nav.overview', info: 'nav.info.overview', genau: true },
@@ -52,8 +51,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
         { href: '/konten', key: 'nav.konten', info: 'nav.info.konten', nur: ['admin'] },
         { href: '/empfehlungen', key: 'nav.empfehlungen', info: 'nav.info.empfehlungen', nur: ['admin'] }
       ]
-    },
-    { einstellungen: true, key: 'nav.settings' }
+    }
   ];
 
   var rolle = null;
@@ -78,19 +76,6 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     a.textContent = t(eintrag.key);
     if (aktiv(eintrag)) a.setAttribute('aria-current', 'page');
     return a;
-  }
-
-  function einstellungenKnopf() {
-    var knopf = document.createElement('button');
-    knopf.type = 'button';
-    knopf.className = 'nav-settings';
-    knopf.textContent = t('nav.settings');
-    knopf.setAttribute('aria-haspopup', 'dialog');
-    knopf.addEventListener('click', function () {
-      nav.classList.remove('is-open');
-      document.dispatchEvent(new CustomEvent('sportfabrik:settings-open'));
-    });
-    return knopf;
   }
 
   // Eine Gruppe steht offen, wenn ihre aktive Seite darin liegt - sonst
@@ -264,8 +249,6 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
       if (eintrag.gruppe) {
         var g = gruppe(eintrag, nummer);
         if (g) liste.append(g);
-      } else if (eintrag.einstellungen) {
-        liste.append(einstellungenKnopf());
       } else if (sichtbar(eintrag)) {
         liste.append(link(eintrag));
       }
@@ -283,6 +266,41 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
       menueKnopf.setAttribute('aria-expanded', String(auf));
     });
     nav.append(menueKnopf, liste);
+    seitenleisteKnopf();
+  }
+
+  // Seitenleiste ein-/ausklappen (30.09.2026, nur Desktop): Drei-Striche-Knopf
+  // oben in der Leiste; die Wahl bleibt im Browser (theme-init.js setzt die
+  // Klasse vor dem ersten Zeichnen, damit nichts aufblitzt).
+  var leistenKnopf = null;
+
+  function seitenleisteKnopf() {
+    var kopf = nav.parentElement;
+    if (!leistenKnopf) {
+      leistenKnopf = document.createElement('button');
+      leistenKnopf.type = 'button';
+      leistenKnopf.className = 'sidebar-toggle secondary';
+      leistenKnopf.setAttribute('aria-controls', 'navLinks');
+      var svgNs = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('class', 'icon icon-16');
+      svg.setAttribute('aria-hidden', 'true');
+      var use = document.createElementNS(svgNs, 'use');
+      use.setAttribute('href', '/static/img/icons.svg#icon-menu');
+      svg.append(use);
+      leistenKnopf.append(svg);
+      leistenKnopf.addEventListener('click', function () {
+        var zu = document.documentElement.classList.toggle('sidebar-collapsed');
+        try { localStorage.setItem('sportfabrikSidebar', zu ? 'collapsed' : 'open'); } catch (e) { }
+        seitenleisteKnopf();
+      });
+      kopf.prepend(leistenKnopf);
+    }
+    var eingeklappt = document.documentElement.classList.contains('sidebar-collapsed');
+    var text = t(eingeklappt ? 'nav.sidebar_expand' : 'nav.sidebar_collapse');
+    leistenKnopf.setAttribute('aria-label', text);
+    leistenKnopf.title = text;
+    leistenKnopf.setAttribute('aria-expanded', String(!eingeklappt));
   }
 
   // session.js meldet die Rolle, sobald /api/me geantwortet hat.

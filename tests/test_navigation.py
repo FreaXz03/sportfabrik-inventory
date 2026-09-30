@@ -78,16 +78,15 @@ def test_suche_texte_und_beschreibungen_in_allen_sprachen():
         assert not fehlend, (sprache, fehlend)
 
 
-def test_einstellungen_als_letzter_eintrag_und_texte():
-    """Phase 6: „Einstellungen" ist der letzte Menüpunkt, öffnet ein Fenster
-    statt einer Seite (kein href) und hat Texte in DE/FR/EN."""
-    zeilen = [z for z in NAV_JS.splitlines() if "einstellungen: true" in z]
-    assert len(zeilen) == 1 and "key: 'nav.settings'" in zeilen[0]
-    assert "href" not in zeilen[0]
-    assert NAV_JS.index("einstellungen: true") > NAV_JS.index("gruppe: 'nav.group_verwaltung'")
+def test_einstellungen_nicht_mehr_im_menue_aber_texte_da():
+    """2026-09-30: „Einstellungen" ist kein Menüpunkt mehr; das Fenster öffnet
+    über Konto-Symbol und Filiale (session.js). Neue Texte in DE/FR/EN."""
+    assert "einstellungen: true" not in NAV_JS
+    assert "sportfabrik:settings-open" not in NAV_JS
     schluessel = {
         "nav.settings", "settings.close", "settings.language", "settings.theme",
-        "settings.branch",
+        "settings.branch", "nav.sidebar_collapse", "nav.sidebar_expand",
+        "dashboard.shortcuts_edit",
     }
     for sprache in ("de", "fr", "en"):
         katalog = json.loads((APP / "static" / "i18n" / f"{sprache}.json").read_text(encoding="utf-8"))
