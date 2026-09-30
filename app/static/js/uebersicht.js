@@ -87,40 +87,8 @@
       : heute;
   }
 
-  // Ein Punkt „Anstehend": Zahl, Text, Ziel. Nur was etwas zu tun gibt.
-  function punkt(anzahl, text, href, dringend) {
-    const li = node('li', null, dringend ? 'todo is-urgent' : 'todo');
-    const a = node('a');
-    a.href = href;
-    a.append(node('span', zahl(anzahl), 'todo-count'), node('span', text, 'todo-text'));
-    li.append(a);
-    return li;
-  }
-
   function anstehend() {
-    const liste = $('anstehend');
-    liste.replaceChildren();
-    const f = daten.filiale;
-    if (f) {
-      if (f.erwartet_total) liste.append(punkt(f.erwartet_total, t('dashboard.todo_expected'), '/wareneingaenge', false));
-      // Jeder Punkt führt zur Liste mit genau den gezählten Einträgen (24.09.2026).
-      if (f.negativ) liste.append(punkt(f.negativ, t('dashboard.todo_negative'), '/bestand?nur_negativ=true', true));
-      const r = f.reduktionen || {};
-      for (const stufe of ['70', '50']) {
-        const eintrag = r[stufe] || {};
-        const ziel = '/bestand?reduktion=' + stufe + '&reduktion_status=';
-        if (eintrag.faellig) liste.append(punkt(eintrag.faellig, t('dashboard.todo_reduction_due', { stufe: stufe }), ziel + 'faellig', true));
-        if (eintrag.bald) liste.append(punkt(eintrag.bald, t('dashboard.todo_reduction_soon', { stufe: stufe }), ziel + 'bald', false));
-      }
-    }
-    const s = daten.stamm || {};
-    // Je Filiale (28.09.2026): die Liste zeigt dieselbe Auswahl wie die Zahl.
-    const filiale = s.lagerort_id && daten.lagerort
-      ? '&' + new URLSearchParams({ lagerort_id: String(s.lagerort_id), filiale: daten.lagerort.code })
-      : '';
-    if (s.ohne_kategorie) liste.append(punkt(s.ohne_kategorie, t('dashboard.todo_no_category'), '/articles?kategorie_fehlt=true' + filiale, false));
-    if (s.ohne_ean) liste.append(punkt(s.ohne_ean, t('dashboard.todo_no_ean'), '/articles?ohne_ean=true' + filiale, false));
-    $('nichtsAnstehend').hidden = liste.children.length > 0;
+    window.SportfabrikAnstehend.zeichnen(daten, $('anstehend'), $('nichtsAnstehend'));
   }
 
   // Redesign 29.09.2026 (DESIGN.md 9.3): kleine Diagramme - Verkaufsverlauf,

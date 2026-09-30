@@ -780,6 +780,8 @@
   "nav.group_warenausgang": "Warenausgang",
   "nav.group_verwaltung": "Verwaltung",
   "nav.anstehend": "Anstehend",
+  "anstehend.page_title": "Anstehend · Sport-Fabrik",
+  "anstehend.brand_aria": "Sport-Fabrik Inventory – Anstehend",
   "nav.menu": "Menü",
   "nav.info.erfassen": "Ware ohne Beleg einbuchen",
   "nav.info.wareneingaenge": "Angekündigte Lieferungen bestätigen",

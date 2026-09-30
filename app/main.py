@@ -97,6 +97,11 @@ def home(user=Depends(require_login_page)):
     return FileResponse(Path(__file__).parent / "templates" / "dashboard.html")
 
 
+@app.get("/anstehend", include_in_schema=False)
+def anstehend_page(user=Depends(require_login_page)):
+    return FileResponse(Path(__file__).parent / "templates" / "anstehend.html")
+
+
 @app.get("/db-test")
 def database_test():
     """Health-Check für Docker - ohne Login, deshalb ohne Details (S6)."""

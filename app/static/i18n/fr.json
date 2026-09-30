@@ -780,6 +780,8 @@
   "nav.group_warenausgang": "Sortie de marchandises",
   "nav.group_verwaltung": "Administration",
   "nav.anstehend": "À faire",
+  "anstehend.page_title": "À faire · Sport-Fabrik",
+  "anstehend.brand_aria": "Sport-Fabrik Inventory – À faire",
   "nav.menu": "Menu",
   "nav.info.erfassen": "Entrer de la marchandise sans justificatif",
   "nav.info.wareneingaenge": "Confirmer les livraisons annoncées",

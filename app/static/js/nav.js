@@ -45,7 +45,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
       ]
     },
     { href: '/statistiken', key: 'nav.statistiken', nur: ['chef', 'admin'] },
-    { href: '/anstehend', key: 'nav.anstehend', bald: true },
+    { href: '/anstehend', key: 'nav.anstehend' },
     {
       gruppe: 'nav.group_verwaltung', eintraege: [
         { href: '/konten', key: 'nav.konten', nur: ['admin'] },

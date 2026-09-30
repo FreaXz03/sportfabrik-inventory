@@ -64,6 +64,17 @@ def test_texte_in_allen_sprachen():
         assert not fehlend, (sprache, fehlend)
 
 
+def test_anstehend_seite_fuer_alle_angemeldeten(welt):
+    """Phase 4: /anstehend ist eine echte Seite, im Menü nicht mehr verborgen."""
+    assert ("nav.anstehend", "/anstehend", False) in eintraege()
+    assert welt.client.get("/anstehend", follow_redirects=False).status_code in (302, 303, 307)
+    for konto in (ZENTRALE, ANNA):
+        welt.anmelden(konto)
+        antwort = welt.client.get("/anstehend", follow_redirects=False)
+        assert antwort.status_code == 200
+        assert 'id="anstehend"' in antwort.text
+
+
 def test_ziele_sind_echte_seiten(welt):
     ziele = [ziel for _, ziel, bald in eintraege() if ziel and not bald]
     welt.anmelden(ZENTRALE)

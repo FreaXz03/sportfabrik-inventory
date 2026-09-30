@@ -780,6 +780,8 @@
   "nav.group_warenausgang": "Goods out",
   "nav.group_verwaltung": "Administration",
   "nav.anstehend": "Pending",
+  "anstehend.page_title": "Pending · Sport-Fabrik",
+  "anstehend.brand_aria": "Sport-Fabrik Inventory – Pending",
   "nav.menu": "Menu",
   "nav.info.erfassen": "Book in goods without a document",
   "nav.info.wareneingaenge": "Confirm announced deliveries",
