@@ -1469,7 +1469,7 @@ Fabian confirmed the Phase 0 points (route `/anstehend`, Settings modal contents
 
 ## Decisions and implementation — 2026-09-30 (refinements after the redesign)
 
-Branch `worktree-quickaccess-sidebar-bell`, checked locally (183 tests pass), no store deployment.
+Merged into `feature/warenwirtschaft-v2` (183 tests pass), checked locally, no store deployment.
 
 - **Sidebar and quick access (Fabian, 2026-09-30):** collapsible sidebar with a three-line icon (desktop; choice saved in the browser, set before first paint by `theme-init.js`), user name next to the user icon (expanded only), larger menu text and spacing, the separate Settings entry is removed (user icon and branch pill open the same dialog — supersedes the Settings entry of the redesign navigation). Quick-access cards moved above the greeting: title only, fixed height, stretched over the full width for any number of cards (`--anzahl`), small gear icon instead of the "Edit" text.
 - **Pending visibility (decision 2026-09-29, implemented 2026-09-30):** `stamm` counts "without EAN" / "without checkout category" across the whole item master for all roles in every branch; the links carry no branch filter, so counts and lists match. Other notices stay branch-scoped.
