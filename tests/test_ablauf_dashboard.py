@@ -10,7 +10,7 @@ from testbelege import importieren, kopf, rechnung_pdf
 from sqlalchemy import select
 
 from app.core.models import Artikel, Bestand, Kategorie, Lagerbewegung, Variante
-from app.services.uebersicht import _monate_zurueck
+from app.services.uebersicht import _monate_zurueck, anzahl_meldungen
 
 
 def _zeile(nr, art, ean, bezeichnung, menge):
@@ -108,3 +108,6 @@ def test_glocke_zaehlt_meldungen_wie_die_anstehend_liste(welt):
     # Von Hand ohne EAN und ohne Kategorie: zwei Punkte (Stamm, alle Filialen).
     client.post("/api/erfassen", json={"positionen": [{"marke": "CMP", "bezeichnung": "Jacke", "menge": "1", "uvp": "99"}]})
     assert client.get("/api/anstehend/anzahl").json() == {"anzahl": 2}
+    # Die leichte Zählung der Glocke stimmt mit der vollen Übersicht überein.
+    daten = client.get("/api/dashboard").json()
+    assert client.get("/api/anstehend/anzahl").json()["anzahl"] == anzahl_meldungen(daten["filiale"], daten["stamm"])

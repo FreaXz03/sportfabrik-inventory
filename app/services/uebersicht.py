@@ -295,6 +295,45 @@ def bestseller(session, lagerort_id: int, heute: date) -> list[dict]:
     ]
 
 
+def _empfehlungen_offen(session, lagerort_id: int) -> int:
+    return int(
+        session.scalar(
+            select(func.count())
+            .select_from(ReduktionEmpfehlungZentrale)
+            .where(
+                ReduktionEmpfehlungZentrale.lagerort_id == lagerort_id,
+                ReduktionEmpfehlungZentrale.status == "offen",
+            )
+        )
+        or 0
+    )
+
+
+def meldungen_filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
+    """Nur was die Glocke zum Zählen braucht - viel leichter als `filiale()`,
+    weil sie bei jedem Seitenaufruf läuft."""
+    return {
+        "erwartet_total": int(
+            session.scalar(
+                select(func.count())
+                .select_from(Wareneingang)
+                .where(Wareneingang.status == "erwartet", Wareneingang.lagerort_id == lagerort_id)
+            )
+            or 0
+        ),
+        "negativ": int(
+            session.scalar(
+                select(func.count()).select_from(Bestand).where(
+                    Bestand.lagerort_id == lagerort_id, Bestand.menge < 0
+                )
+            )
+            or 0
+        ),
+        "empfehlungen_offen": _empfehlungen_offen(session, lagerort_id),
+        "reduktionen": _reduktionen(session, lagerort_id, heute or date.today()),
+    }
+
+
 def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
     """Kennzahlen und anstehende Vorgänge der aktiven Filiale."""
     heute = heute or date.today()
@@ -347,17 +386,7 @@ def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
         "erwartet_total": len(erwartet),
         # Offene Empfehlungen der Zentrale für diese Filiale, sofort - auch mit
         # Datum in der Zukunft und ohne Bestand (Entscheid 30.09.2026).
-        "empfehlungen_offen": int(
-            session.scalar(
-                select(func.count())
-                .select_from(ReduktionEmpfehlungZentrale)
-                .where(
-                    ReduktionEmpfehlungZentrale.lagerort_id == lagerort_id,
-                    ReduktionEmpfehlungZentrale.status == "offen",
-                )
-            )
-            or 0
-        ),
+        "empfehlungen_offen": _empfehlungen_offen(session, lagerort_id),
         "reduktionen": _reduktionen(session, lagerort_id, heute),
         "stufen": stufen_verteilung(session, lagerort_id, heute),
         "verlauf": verkaufsverlauf(session, lagerort_id, heute),

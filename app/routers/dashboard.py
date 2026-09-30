@@ -70,7 +70,7 @@ def anstehend_anzahl(
 ):
     """Zahl der Meldungen unter „Anstehend" für die Glocke (jede Seite)."""
     try:
-        filiale = None if lagerort is None else uebersicht.filiale(session, lagerort.id)
+        filiale = None if lagerort is None else uebersicht.meldungen_filiale(session, lagerort.id)
         return {"anzahl": uebersicht.anzahl_meldungen(filiale, uebersicht.stamm(session))}
     except SQLAlchemyError as exc:
         raise HTTPException(503, translate("errors.dashboard.load_failed", language)) from exc

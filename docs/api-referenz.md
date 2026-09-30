@@ -34,7 +34,8 @@ redirecting to a foreign site after login (open redirect).
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/` | Overview page (dashboard) |
-| GET | `/api/dashboard` | Key figures (number of variants/documents/lines, total quantity delivered) + the last 5 imported documents; plus `lagerort` and `filiale` (pieces, sold/removed today, negative stock, expected deliveries, `reduktionen` per level with `faellig`/`bald`) for the active branch, `aktuelles` (up to 8 combined entries: `art` = `lieferung` per goods receipt and day, `umlagerung` per transfer with `von`/`nach`, `abgang` per write-off without a sale; delivery/transfer with `positionen` and `stueck`), and `stamm` (`lagerort_id`, `ohne_kategorie`, `ohne_ean`; since 2026-09-28 counted only for variants with stock in the active branch, across the whole item master only without an active branch) |
+| GET | `/api/dashboard` | Key figures (number of variants/documents/lines, total quantity delivered) + the last 5 imported documents; plus `lagerort` and `filiale` (pieces, sold/removed today, negative stock, expected deliveries, `reduktionen` per level with `faellig`/`bald`) for the active branch, `aktuelles` (up to 8 combined entries: `art` = `lieferung` per goods receipt and day, `umlagerung` per transfer with `von`/`nach`, `abgang` per write-off without a sale; delivery/transfer with `positionen` and `stueck`), and `stamm` (`ohne_kategorie`, `ohne_ean`; since 2026-09-29/30 always the whole item master, for all roles in every branch; `filiale` also has `empfehlungen_offen`, the open head-office recommendations of the active branch) |
+| GET | `/api/anstehend/anzahl` | Bell (2026-09-30): `{anzahl}` = number of Pending notices of the active branch plus the two item-master notices (one notice = one row of the Pending list) |
 
 ## Items
 
@@ -337,6 +338,15 @@ itself (`409`).
   (`status`: `uebernommen`/`abgelehnt`, `grund` required on rejection;
   same rights as manual markdown). `GET /api/reduktionen` additionally
   returns `empfehlungen` (open ones, for the active branch).
+  Since 2026-09-30: `POST /api/empfehlungen` takes either `lagerort_id` or
+  `alle_filialen: true` (exactly one, else 422); with `alle_filialen` it
+  creates one recommendation per sales branch (`lagerorte.verkauf`, also
+  branches without stock) and returns `{empfehlungen: [...]}`.
+  `POST /api/empfehlungen/{id}/zurueckziehen` (head office only) withdraws a
+  recommendation at any time, also after the answer (status
+  `zurueckgezogen`; a stage already set stays; again 422, unknown id 404).
+  A withdrawn recommendation can no longer be answered (422) and is not
+  counted as open.
 
 ## Phone pages (2026-09-28)
 

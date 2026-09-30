@@ -261,13 +261,14 @@
         m.stueck += Number(z.menge);
         modelle.set(z.artikel_id, m);
       }
+      let mehrfach = false;
       if (anwenden && voreinstellung !== null && q) {
         const treffer = [...modelle.values()];
         if (treffer.length === 1 && treffer[0].reduktion) {
           await voreinstellungAnwenden(treffer[0]);
           return;
         }
-        if (treffer.length > 1) $('sucheStatus').textContent = t('reduktion_wahl.preset_multi');
+        mehrfach = treffer.length > 1;
       }
       const zeilen = [];
       for (const m of modelle.values()) {
@@ -284,9 +285,8 @@
         zeilen.push(tr);
       }
       $('sucheListe').replaceChildren(zeilen.length ? tabelle(['reduktion.table_article', 'reduktion.table_pieces', 'reduktion_wahl.col_effective', 'reduktion_wahl.col_choice'], zeilen) : '');
-      if ($('sucheStatus').textContent !== t('reduktion_wahl.preset_multi')) {
-        $('sucheStatus').textContent = zeilen.length ? t('reduktion.count_line', { anzahl: zeilen.length }) : t('reduktion_wahl.pick_none');
-      }
+      if (mehrfach) $('sucheStatus').textContent = t('reduktion_wahl.preset_multi');
+      else $('sucheStatus').textContent = zeilen.length ? t('reduktion.count_line', { anzahl: zeilen.length }) : t('reduktion_wahl.pick_none');
     } catch (fehler) {
       $('sucheStatus').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
     }

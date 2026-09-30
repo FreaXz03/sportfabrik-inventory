@@ -373,8 +373,9 @@ Three tables for the open questions D-F1/D-F2/D-F3, migration
   marked down before (no batch separation in stock, hence only a hint
   instead of a real split).
 - `reduktion_empfehlung_zentrale` (D-F3): `artikel_id`, `lagerort_id`,
-  `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`),
-  `ablehnungsgrund`, head-office and response snapshot. At most one open
+  `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`/`zurueckgezogen`),
+  `ablehnungsgrund`, head-office and response snapshot, `zurueckgezogen_von_name`,
+  `zurueckgezogen_am`. At most one open
   row per model × branch — a new recommendation replaces an older one.
 
 ### `article_notes`
@@ -456,6 +457,7 @@ above):
 | `e2f3a4b5c6d7` | Phase D, open questions (2026-09-25): new tables `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
 | `f3a4b5c6d7e8` | Transfer as a delivery (2026-09-28): `wareneingaenge.herkunft_lagerort_id`, `wareneingaenge.versanddatum`, `wareneingang_positionen.mitgebracht_datum`; new empty columns only |
 | `a4b5c6d7e8f9` | Cancel a transfer in transit (2026-09-29): check constraint `ck_wareneingaenge_status` also allows `storniert`; new empty column `wareneingaenge.versendet_von` |
+| `b5c6d7e8f9a0` | Withdraw a head-office recommendation (2026-09-30): check constraint `ck_empfehlung_zentrale_status` also allows `zurueckgezogen`; new empty columns `zurueckgezogen_von_name`, `zurueckgezogen_am` |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

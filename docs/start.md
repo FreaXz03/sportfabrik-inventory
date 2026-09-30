@@ -1,6 +1,6 @@
 # Sportfabrik Inventory — Getting started
 
-Status: 2026-09-29. This overview is orientation, not confirmation of a production deployment.
+Status: 2026-09-30. This overview is orientation, not confirmation of a production deployment.
 
 ## Goal and current status
 
@@ -10,13 +10,13 @@ Inventory management for four Sportfabrik branches; GEWA, VEBO, and Dietikon are
 
 **GitHub:** PR #18 merged into `main` (2026-09-29); `feature/warenwirtschaft-v2` (working branch) equals `main`.
 
-## Newly planned — 2026-09-29
+## Done 2026-09-30 (after the redesign)
 
-“Pending”: show missing EAN and checkout-category totals across all branches to all roles; matching result lists must also be cross-branch. Other notices remain scoped to the selected branch. No permission changes. **Not implemented yet.** See the latest decision in `projekt-kontext.md`.
+Branch `worktree-quickaccess-sidebar-bell`, checked locally only: collapsible sidebar (hamburger, choice kept per browser), user name next to the user icon, larger menu text, Settings entry removed from the menu (the user icon and branch pill open the same dialog); quick-access cards above the greeting (title only, equal height, full width, gear icon); **Pending** counts "without EAN" / "without checkout category" across all branches for all roles (lists match); **bell icon** top right on every page with the number of Pending notices (`/api/anstehend/anzahl`); **preset markdown scanning** on Runterschreiben (pick a stage, every scanned item is set to it); **head-office recommendations**: open ones show in the branch's Pending immediately, head office can withdraw any recommendation at any time (status `zurueckgezogen`, no rollback of a stage already set) and send one to all sales branches in one action (also branches without stock; each branch answers separately). Migration `b5c6d7e8f9a0`. Tests: 183 passed, 12 skipped.
 
 ## Next steps
 
-**First: Sportfabrik Inventory Redesign**, explicitly prioritized on 2026-09-29. Follow [the redesign specification](redesign-2026-09-29.md): structural sidebar layout on all pages, stacked existing logo, exact navigation, function search, dashboard charts and Settings modal; preserve current colors and design elements. All 8 phases are done in code and repo docs (branch `worktree-redesign-sidebar`; sidebar, `/anstehend`, top search, Settings dialog, dashboard charts, reviews). Open: update the vault notes and the HTML overviews (`docs/overviews/`), which still describe the redesign as planned.
+**First: Sportfabrik Inventory Redesign**, explicitly prioritized on 2026-09-29. Follow [the redesign specification](redesign-2026-09-29.md): structural sidebar layout on all pages, stacked existing logo, exact navigation, function search, dashboard charts and Settings modal; preserve current colors and design elements. All 8 phases are done (merged into `feature/warenwirtschaft-v2`); the follow-up refinements of 2026-09-30 are listed above.
 
 The previously queued items below follow the redesign:
 
@@ -48,7 +48,3 @@ Working branch: `feature/warenwirtschaft-v2`; check the actual branch and any op
 Unknown relationships: `python3 scripts/projektwissen.py query "Umlagerung"` or `"reduktionen_manuell"`. Returns code relationships and document hits with limited output. Then read the original sections directly, not the whole graph.
 
 The main vault holds ideas and requirements; the generated Sportfabrik graph is an optional view. Historical status notes are not an additional current source. Cloud sessions without a local graph search the original files directly.
-
-## Newly planned: head-office recommendations (2026-09-29)
-
-Not implemented: branch-specific Pending notice linking to recommendations, withdrawal by head office, and sending to all sales branches in one action with separate branch responses. Clarify withdrawal after acceptance, branches without stock, and visibility before the effective date before implementation. See the latest planned extensions in `projekt-kontext.md`.
