@@ -11,7 +11,7 @@
     $('ohneFiliale').hidden = !!f;
     $('heuteText').textContent = daten.lagerort ? daten.lagerort.code + ' · ' + daten.lagerort.name : '';
     window.SportfabrikAnstehend.zeichnen(daten, $('anstehend'), $('nichtsAnstehend'));
-    if (!f) $('nichtsAnstehend').hidden = true;
+    $('anstehendPanel').hidden = !f;
   }
 
   async function laden() {
