@@ -14,7 +14,8 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
 
   // Seitenleiste (Redesign 29.09.2026), Reihenfolge laut docs/redesign-2026-09-29.md.
   // `nur` = Rollen, die den Eintrag sehen (Regel 9: Belege hochladen nur
-  // Filialleiter und Zentrale). Ohne `nur` sehen ihn alle. `bald: true` =
+  // Filialleiter und Zentrale). Ohne `nur` sehen ihn alle. Der Eintrag mit dem
+  // Feld „einstellungen" ist kein Link, sondern der Knopf, der das Einstellungsfenster öffnet (session.js). `bald: true` =
   // Seite gibt es noch nicht, der Eintrag bleibt unsichtbar. Jeder Eintrag
   // steht in einer Zeile - tests/test_navigation.py liest die Liste.
   var EINTRAEGE = [
@@ -51,7 +52,8 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
         { href: '/konten', key: 'nav.konten', info: 'nav.info.konten', nur: ['admin'] },
         { href: '/empfehlungen', key: 'nav.empfehlungen', info: 'nav.info.empfehlungen', nur: ['admin'] }
       ]
-    }
+    },
+    { einstellungen: true, key: 'nav.settings' }
   ];
 
   var rolle = null;
@@ -76,6 +78,19 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     a.textContent = t(eintrag.key);
     if (aktiv(eintrag)) a.setAttribute('aria-current', 'page');
     return a;
+  }
+
+  function einstellungenKnopf() {
+    var knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'nav-settings';
+    knopf.textContent = t('nav.settings');
+    knopf.setAttribute('aria-haspopup', 'dialog');
+    knopf.addEventListener('click', function () {
+      nav.classList.remove('is-open');
+      document.dispatchEvent(new CustomEvent('sportfabrik:settings-open'));
+    });
+    return knopf;
   }
 
   // Eine Gruppe steht offen, wenn ihre aktive Seite darin liegt - sonst
@@ -249,6 +264,8 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
       if (eintrag.gruppe) {
         var g = gruppe(eintrag, nummer);
         if (g) liste.append(g);
+      } else if (eintrag.einstellungen) {
+        liste.append(einstellungenKnopf());
       } else if (sichtbar(eintrag)) {
         liste.append(link(eintrag));
       }

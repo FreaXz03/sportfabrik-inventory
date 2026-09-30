@@ -543,6 +543,7 @@ nav {
 }
 
 .nav-links a,
+.nav-settings,
 .nav-group-toggle {
   display: flex;
   align-items: center;
@@ -563,6 +564,7 @@ nav {
 }
 
 .nav-links a:hover,
+.nav-settings:hover,
 .nav-group-toggle:hover {
   background: var(--surface-alt);
   color: var(--text);
@@ -665,7 +667,20 @@ nav {
 
 .store-name { padding: 6px 10px 6px 0; }
 
-.account-menu { position: relative; }
+button.store-pill {
+  height: auto;
+  min-height: 0;
+  padding: 3px 12px 3px 12px;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+button.store-pill:hover {
+  background: var(--accent-soft-bg);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  transform: none;
+}
+
 
 .account-toggle {
   display: grid;
@@ -683,31 +698,13 @@ nav {
   box-shadow: var(--shadow-sm);
 }
 
-.account-toggle:hover,
-.account-toggle[aria-expanded=true] {
+.account-toggle:hover {
   background: var(--text);
   box-shadow: 0 0 0 4px var(--focus-ring);
   transform: none;
 }
 
-.account-panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 260px;
-  padding: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  animation: menu-in var(--fast) both;
-}
 
-.account-panel[hidden] { display: none; }
 
 .account-who {
   display: grid;
@@ -723,22 +720,8 @@ nav {
   color: var(--text-muted);
 }
 
-.account-panel button {
-  width: 100%;
-  justify-content: flex-start;
-  font-size: var(--fs-xs);
-}
 
-.account-panel .lang-switch {
-  margin-top: 0;
-  justify-content: space-between;
-}
 
-.account-panel .lang-switch .lang-option {
-  width: auto;
-  flex: 1;
-  justify-content: center;
-}
 
 footer {
   width: 100%;
@@ -2440,17 +2423,8 @@ body:has(main.login-page) {
     border-top: 1px solid var(--border);
   }
 
-  body:has(> header > nav) .store-pill { justify-content: space-between; }
+  body:has(> header > nav) .store-pill { justify-content: flex-start; }
 
-  body:has(> header > nav) .store-pill .store-select { flex: 1; max-width: none; }
-
-  body:has(> header > nav) .account-panel {
-    top: auto;
-    right: auto;
-    bottom: calc(100% + 10px);
-    left: 0;
-    width: 224px;
-  }
 }
 
 /* 5c · Funktionssuche oben im Inhalt (Redesign 29.09.2026, Phase 5) ------ */
@@ -2505,6 +2479,60 @@ body:has(main.login-page) {
 
 .topsearch-none { padding: 10px 12px; font-size: var(--fs-sm); color: var(--text-muted); }
 
+/* 5d · Einstellungsfenster (Redesign 29.09.2026, Phase 6) ---------------- */
+.settings-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 22px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: menu-in var(--fast) both;
+}
+
+.settings-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-head h2 { margin: 0; }
+
+.settings-dialog .account-who { padding: 0 0 14px; }
+
+.settings-row {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.settings-dialog .lang-switch { margin-top: 0; }
+
+.settings-dialog .lang-switch .lang-option { flex: 1; justify-content: center; }
+
+.settings-dialog .theme-toggle,
+.settings-dialog .settings-logout { width: 100%; justify-content: flex-start; }
+
+.settings-dialog .settings-logout { margin-top: 4px; }
+
 /* 12 · Responsive --------------------------------------------------------- */
 @media (max-width: 1100px) {
   .store-pill .store-select { max-width: 150px; }
@@ -2534,7 +2562,8 @@ body:has(main.login-page) {
 
   nav.is-open .nav-links { display: flex; animation: menu-in var(--fast) both; }
 
-  .nav-links a { padding: 12px; font-weight: 600; color: var(--text); }
+  .nav-links a,
+  .nav-settings { padding: 12px; font-weight: 600; color: var(--text); }
 
   /* Gruppenkopf: nur Überschrift, die Seiten stehen immer darunter. */
   .nav-group-toggle {

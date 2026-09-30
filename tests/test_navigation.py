@@ -78,6 +78,23 @@ def test_suche_texte_und_beschreibungen_in_allen_sprachen():
         assert not fehlend, (sprache, fehlend)
 
 
+def test_einstellungen_als_letzter_eintrag_und_texte():
+    """Phase 6: „Einstellungen" ist der letzte Menüpunkt, öffnet ein Fenster
+    statt einer Seite (kein href) und hat Texte in DE/FR/EN."""
+    zeilen = [z for z in NAV_JS.splitlines() if "einstellungen: true" in z]
+    assert len(zeilen) == 1 and "key: 'nav.settings'" in zeilen[0]
+    assert "href" not in zeilen[0]
+    assert NAV_JS.index("einstellungen: true") > NAV_JS.index("gruppe: 'nav.group_verwaltung'")
+    schluessel = {
+        "nav.settings", "settings.close", "settings.language", "settings.theme",
+        "settings.branch",
+    }
+    for sprache in ("de", "fr", "en"):
+        katalog = json.loads((APP / "static" / "i18n" / f"{sprache}.json").read_text(encoding="utf-8"))
+        fehlend = sorted(k for k in schluessel if not katalog.get(k))
+        assert not fehlend, (sprache, fehlend)
+
+
 def test_anstehend_seite_fuer_alle_angemeldeten(welt):
     """Phase 4: /anstehend ist eine echte Seite, im Menü nicht mehr verborgen."""
     assert ("nav.anstehend", "/anstehend", False) in eintraege()
