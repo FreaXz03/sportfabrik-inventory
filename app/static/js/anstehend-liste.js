@@ -33,6 +33,8 @@
     const f = daten.filiale;
     if (f) {
       if (f.erwartet_total) liste.append(punkt(f.erwartet_total, t('dashboard.todo_expected'), '/wareneingaenge', false));
+      // Offene Empfehlungen der Zentrale (30.09.2026): führt zur Runterschreiben-Seite mit ihrem Abschnitt.
+      if (f.empfehlungen_offen) liste.append(punkt(f.empfehlungen_offen, t('dashboard.todo_recommendations'), '/runterschreiben#empfehlungPanel', false));
       // Jeder Punkt führt zur Liste mit genau den gezählten Einträgen (24.09.2026).
       if (f.negativ) liste.append(punkt(f.negativ, t('dashboard.todo_negative'), '/bestand?nur_negativ=true', true));
       const r = f.reduktionen || {};

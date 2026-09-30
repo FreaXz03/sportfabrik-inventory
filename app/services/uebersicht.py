@@ -19,6 +19,7 @@ from ..core.models import (
     Lagerbewegung,
     Lagerort,
     Lieferant,
+    ReduktionEmpfehlungZentrale,
     Variante,
     Wareneingang,
     WareneingangPosition,
@@ -344,6 +345,19 @@ def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
             for wareneingang_id, _, nummer, datum, lieferant in erwartet[:5]
         ],
         "erwartet_total": len(erwartet),
+        # Offene Empfehlungen der Zentrale für diese Filiale, sofort - auch mit
+        # Datum in der Zukunft und ohne Bestand (Entscheid 30.09.2026).
+        "empfehlungen_offen": int(
+            session.scalar(
+                select(func.count())
+                .select_from(ReduktionEmpfehlungZentrale)
+                .where(
+                    ReduktionEmpfehlungZentrale.lagerort_id == lagerort_id,
+                    ReduktionEmpfehlungZentrale.status == "offen",
+                )
+            )
+            or 0
+        ),
         "reduktionen": _reduktionen(session, lagerort_id, heute),
         "stufen": stufen_verteilung(session, lagerort_id, heute),
         "verlauf": verkaufsverlauf(session, lagerort_id, heute),
@@ -462,6 +476,7 @@ def anzahl_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> int:
     anzahl = int(bool(stamm_daten["ohne_kategorie"])) + int(bool(stamm_daten["ohne_ean"]))
     if filiale_daten:
         anzahl += int(bool(filiale_daten["erwartet_total"])) + int(bool(filiale_daten["negativ"]))
+        anzahl += int(bool(filiale_daten["empfehlungen_offen"]))
         for name in ("70", "50"):
             stufe = filiale_daten["reduktionen"].get(name, {})
             anzahl += int(bool(stufe.get("faellig"))) + int(bool(stufe.get("bald")))

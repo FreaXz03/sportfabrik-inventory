@@ -520,7 +520,8 @@ class ReduktionEmpfehlungZentrale(Base):
     __table_args__ = (
         CheckConstraint("prozent IN (30, 50, 70)", name="ck_empfehlung_zentrale_prozent"),
         CheckConstraint(
-            "status IN ('offen', 'uebernommen', 'abgelehnt')", name="ck_empfehlung_zentrale_status"
+            "status IN ('offen', 'uebernommen', 'abgelehnt', 'zurueckgezogen')",
+            name="ck_empfehlung_zentrale_status",
         ),
     )
 
@@ -538,3 +539,7 @@ class ReduktionEmpfehlungZentrale(Base):
     )
     beantwortet_von_name: Mapped[str | None] = mapped_column(String(100))
     beantwortet_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Zurückgezogen (30.09.2026): die Zentrale kann jederzeit zurückziehen, auch
+    # nach der Antwort; eine schon gesetzte Stufe bleibt (kein Rollback).
+    zurueckgezogen_von_name: Mapped[str | None] = mapped_column(String(100))
+    zurueckgezogen_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
