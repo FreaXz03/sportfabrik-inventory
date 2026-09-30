@@ -7,7 +7,9 @@ from datetime import date, datetime, time, timedelta, timezone
 from conftest import CHEF
 from testbelege import importieren, kopf, rechnung_pdf
 
-from app.core.models import Lagerbewegung, Variante
+from sqlalchemy import select
+
+from app.core.models import Artikel, Bestand, Kategorie, Lagerbewegung, Variante
 from app.services.uebersicht import _monate_zurueck
 
 
@@ -55,10 +57,42 @@ def test_uebersicht_stufen_verlauf_bestseller(welt):
     # Bestseller der letzten 7 Tage: Cap 5, Poloshirt 1.
     assert [(b["bezeichnung"], b["stueck"]) for b in filiale["bestseller"]] == [("Cap", "5.00"), ("Poloshirt", "1.00")]
 
+    # Redesign Phase 7: Bestand je Tag (30 Tage, heute zuletzt) und je Hauptgruppe.
+    # Heute 11 eingebucht, 3 verkauft = 8. Dazu eine Korrektur +5 vor 3 Tagen
+    # (Journal und Bestand gemeinsam, Regel 2) und Kategorien an zwei Modellen.
+    with sessions.begin() as session:
+        polo = session.scalar(select(Variante.id).where(Variante.ean == "4006632041234"))
+        session.add(Lagerbewegung(lagerort_id=codes["SF1"], varianten_id=cap, typ="korrektur", menge=5, zeitpunkt=vor_drei_tagen))
+        session.get(Bestand, (cap, codes["SF1"])).menge += 5
+        textil = session.scalar(select(Kategorie.id).where(Kategorie.hauptgruppe == "Textil", Kategorie.sportbereich == "Running"))
+        for variante in (cap, polo):
+            session.get(Artikel, session.get(Variante, variante).artikel_id).kategorie_id = textil
+    filiale = client.get("/api/dashboard").json()["filiale"]
+    verlauf = filiale["bestandsverlauf"]
+    assert len(verlauf) == 30
+    assert verlauf[-1] == {"tag": heute.isoformat(), "bestand": "13.00"}
+    je_tag = {v["tag"]: v["bestand"] for v in verlauf}
+    assert je_tag[(heute - timedelta(days=1)).isoformat()] == "5.00"
+    assert je_tag[(heute - timedelta(days=3)).isoformat()] == "5.00"
+    # Vor 3 Tagen: +5 Korrektur und die weiter oben nur ins Journal gesetzten -3 Verkäufe,
+    # darum steht der Vortag bei 5 - (5 - 3) = 3.
+    assert je_tag[(heute - timedelta(days=4)).isoformat()] == "3.00"
+    assert filiale["kategorien"] == [{"hauptgruppe": "Textil", "stueck": "13.00"}]
+    # Cap ohne Kategorie (7 Stück): "ohne" steht zuletzt, auch wenn es mehr Stück sind.
+    with sessions.begin() as session:
+        session.get(Artikel, session.get(Variante, cap).artikel_id).kategorie_id = None
+    ohne = client.get("/api/dashboard").json()["filiale"]["kategorien"]
+    assert ohne == [
+        {"hauptgruppe": "Textil", "stueck": "6.00"},
+        {"hauptgruppe": None, "stueck": "7.00"},
+    ]
+
     # Andere Filiale: nichts davon (Regel 4).
     welt.anmelden(CHEF)
     client.post("/api/active-lagerort", json={"lagerort_id": codes["SF2"]})
     sf2 = client.get("/api/dashboard").json()["filiale"]
+    assert sf2["kategorien"] == []
+    assert all(v["bestand"] == "0.00" for v in sf2["bestandsverlauf"])
     assert sf2["stufen"] == {"30": "0.00", "50": "0.00", "70": "0.00"}
     assert sf2["bestseller"] == []
     assert all(v["verkauft"] == "0.00" for v in sf2["verlauf"])

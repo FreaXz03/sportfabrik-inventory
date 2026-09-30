@@ -15,6 +15,7 @@ from ..core.models import (
     Artikel,
     Bestand,
     Dokument,
+    Kategorie,
     Lagerbewegung,
     Lagerort,
     Lieferant,
@@ -30,6 +31,7 @@ AKTUELLES_ANZAHL = 8
 # So viele Bewegungen werden höchstens gelesen, um daraus die Einträge zu bilden.
 AKTUELLES_ZEILEN = 2000
 VERLAUF_TAGE = 14
+BESTAND_TAGE = 30
 BESTSELLER_TAGE = 7
 BESTSELLER_ANZAHL = 5
 
@@ -224,6 +226,51 @@ def verkaufsverlauf(session, lagerort_id: int, heute: date) -> list[dict]:
     return [{"tag": tag.isoformat(), "verkauft": _zahl(summen[tag])} for tag in tage]
 
 
+def bestandsverlauf(session, lagerort_id: int, heute: date) -> list[dict]:
+    """Stück im Bestand am Ende jedes der letzten `BESTAND_TAGE` Tage, ältester
+    zuerst, heute zuletzt. Aus dem Journal rückwärts gerechnet (Regel 2): der
+    heutige Stand ist die Summe des Bestands, jeder Tag davor ist der Stand
+    des Folgetags minus dessen Bewegungen."""
+    tage = [heute - timedelta(days=i) for i in range(BESTAND_TAGE - 1, -1, -1)]
+    stand = Decimal(
+        session.scalar(select(func.coalesce(func.sum(Bestand.menge), 0)).where(Bestand.lagerort_id == lagerort_id))
+    )
+    je_tag = {tag: Decimal(0) for tag in tage}
+    for zeitpunkt, menge in session.execute(
+        select(Lagerbewegung.zeitpunkt, Lagerbewegung.menge).where(
+            Lagerbewegung.lagerort_id == lagerort_id,
+            Lagerbewegung.zeitpunkt >= _tagesbeginn(tage[0]),
+        )
+    ):
+        if zeitpunkt.tzinfo is None:  # SQLite liefert UTC ohne Zeitzone
+            zeitpunkt = zeitpunkt.replace(tzinfo=timezone.utc)
+        tag = zeitpunkt.astimezone().date()
+        if tag in je_tag:
+            je_tag[tag] += menge
+    ergebnis = []
+    for tag in reversed(tage):
+        ergebnis.append({"tag": tag.isoformat(), "bestand": _zahl(stand)})
+        stand -= je_tag[tag]
+    return list(reversed(ergebnis))
+
+
+def kategorien_verteilung(session, lagerort_id: int) -> list[dict]:
+    """Stück im Bestand je Hauptgruppe der Kassenkategorie (Regel 8), grösste
+    zuerst; Artikel ohne Kategorie als `hauptgruppe: None`."""
+    zeilen = session.execute(
+        select(Kategorie.hauptgruppe, func.sum(Bestand.menge))
+        .select_from(Bestand)
+        .join(Variante, Variante.id == Bestand.varianten_id)
+        .join(Artikel, Artikel.id == Variante.artikel_id)
+        .outerjoin(Kategorie, Kategorie.id == Artikel.kategorie_id)
+        .where(Bestand.lagerort_id == lagerort_id, Bestand.menge > 0)
+        .group_by(Kategorie.hauptgruppe)
+    ).all()
+    # Ohne Kategorie immer zuletzt, sonst nach Menge, bei Gleichstand nach Name.
+    zeilen.sort(key=lambda z: (z[0] is None, -z[1], z[0] or ""))
+    return [{"hauptgruppe": gruppe, "stueck": _zahl(menge)} for gruppe, menge in zeilen]
+
+
 def bestseller(session, lagerort_id: int, heute: date) -> list[dict]:
     """Meistverkaufte Artikel (Modelle) der letzten `BESTSELLER_TAGE` Tage."""
     stueck = func.sum(-Lagerbewegung.menge)
@@ -301,6 +348,8 @@ def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
         "stufen": stufen_verteilung(session, lagerort_id, heute),
         "verlauf": verkaufsverlauf(session, lagerort_id, heute),
         "bestseller": bestseller(session, lagerort_id, heute),
+        "bestandsverlauf": bestandsverlauf(session, lagerort_id, heute),
+        "kategorien": kategorien_verteilung(session, lagerort_id),
     }
 
 

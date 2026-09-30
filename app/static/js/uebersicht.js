@@ -146,6 +146,74 @@
     }
   }
 
+  // Bestand der letzten 30 Tage als Linie (ohne Achsen; Anfang, Ende und Änderung stehen als Text daneben).
+  function bestandsverlauf(f) {
+    const tage = f.bestandsverlauf || [];
+    if (!tage.length) return;
+    const werte = tage.map((tag) => Number(tag.bestand));
+    const jetzt = werte[werte.length - 1];
+    const unterschied = jetzt - werte[0];
+    $('stockNow').textContent = t('dashboard.stock_now', { anzahl: zahl(jetzt) });
+    $('stockDelta').textContent = unterschied === 0
+      ? t('dashboard.stock_same')
+      : t(unterschied > 0 ? 'dashboard.stock_up' : 'dashboard.stock_down', { anzahl: zahl(Math.abs(unterschied)) });
+    $('stockVon').textContent = datum(tage[0].tag).slice(0, 6);
+    const tiefster = Math.min(...werte);
+    const spanne = Math.max(...werte) - tiefster;
+    const punkte = werte.map((wert, index) => {
+      const x = tage.length > 1 ? index / (tage.length - 1) * 300 : 0;
+      const y = spanne === 0 ? 40 : 74 - (wert - tiefster) / spanne * 68;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    $('stockLinie').setAttribute('points', punkte.join(' '));
+    $('stockFlaeche').setAttribute('d', 'M' + punkte.join(' L') + ' L300,80 L0,80 Z');
+  }
+
+  // Bestand nach Hauptgruppe der Kassenkategorie als Ring; jede Zahl steht auch in der Liste.
+  function kategorien(f) {
+    const eintraege = (f.kategorien || []).map((e) => ({ name: e.hauptgruppe, menge: Number(e.stueck) }));
+    const gesamt = summe(eintraege.map((e) => e.menge));
+    const ring = $('catsDonut');
+    const liste = $('catsListe');
+    ring.replaceChildren();
+    liste.replaceChildren();
+    ring.hidden = liste.hidden = gesamt === 0;
+    $('catsLeer').hidden = gesamt !== 0;
+    if (gesamt === 0) return;
+    const svgNs = 'http://www.w3.org/2000/svg';
+    let start = 0;
+    eintraege.forEach((e, index) => {
+      const anteil = e.menge / gesamt * 100;
+      const farbe = e.name === null ? 'none' : String(index % 5 + 1);
+      const bogen = document.createElementNS(svgNs, 'circle');
+      bogen.setAttribute('class', 'donut-seg');
+      bogen.setAttribute('cx', '21');
+      bogen.setAttribute('cy', '21');
+      bogen.setAttribute('r', '15.9155');
+      bogen.setAttribute('pathLength', '100');
+      bogen.setAttribute('stroke-dasharray', anteil.toFixed(3) + ' ' + (100 - anteil).toFixed(3));
+      bogen.setAttribute('stroke-dashoffset', (25 - start).toFixed(3));
+      bogen.dataset.cat = farbe;
+      ring.append(bogen);
+      start += anteil;
+      const li = node('li', null, 'cat-row');
+      const punkt = node('span', null, 'cat-dot');
+      punkt.dataset.cat = farbe;
+      punkt.setAttribute('aria-hidden', 'true');
+      li.append(punkt, node('span', e.name === null ? t('dashboard.cats_none') : e.name, 'cat-name'),
+        node('span', t('dashboard.stages_pieces', { anzahl: zahl(e.menge) }), 'stage-qty'),
+        node('span', Math.round(e.menge / gesamt * 100) + ' %', 'stage-share muted'));
+      liste.append(li);
+    });
+    const mitte = document.createElementNS(svgNs, 'text');
+    mitte.setAttribute('class', 'donut-total');
+    mitte.setAttribute('x', '21');
+    mitte.setAttribute('y', '23.2');
+    mitte.setAttribute('text-anchor', 'middle');
+    mitte.textContent = zahl(gesamt);
+    ring.append(mitte);
+  }
+
   function bestseller(f) {
     const liste = $('bestsellerListe');
     liste.replaceChildren();
@@ -365,6 +433,8 @@
       verlauf(f);
       stufen(f);
       bestseller(f);
+      bestandsverlauf(f);
+      kategorien(f);
     }
     $('products').textContent = zahl(daten.products);
     $('invoices').textContent = zahl(daten.invoices);

@@ -298,13 +298,18 @@ pill is always visible — booking in the wrong branch is the most expensive mis
 
 Greeting (mixed-weight title) → shortcuts (max 5, equal size) → 4 metrics → three small insight
 panels (sales of the last 14 days as bars, stock by reduction stage as a stacked bar, best sellers
-of the week) → two columns "Anstehend" and "Aktuelles" (grouped by day). Metrics show one number,
+of the week) → stock line and donut → two columns "Anstehend" and "Aktuelles" (grouped by day). Metrics show one number,
 one label, one link.
 
-Charts on the dashboard are allowed since 29.09.2026 (decision: user), under three limits: only
-plain bars from tokens (no axes, no chart library; the only legend is the stage list, which repeats every number as text); every value is
-also written as text next to or in the bar (`title`, legend numbers); reduction stages use the
-roll colours of §4.4 and nothing else does. Detailed charts and periods stay in Statistiken.
+Charts on the dashboard are allowed since 29.09.2026 (decision: user), under these limits: no axes
+and no chart library (plain HTML/CSS bars and, since 30.09.2026, two small inline SVGs: a stock line
+over the last 30 days and a donut of stock by main group); every value is also written as text next
+to or in the chart (`title`, legend numbers, start date and "today" under the line); reduction stages
+use the roll colours of §4.4 and nothing else does. The donut uses the calm category tokens
+`--cat-1…5` (accent, blue, purple, teal, sand) and `--cat-none` for stock without category; these
+are neither roll colours nor danger. Detailed charts and periods stay in Statistiken.
+
+The two wide panels sit in a second row under the three insights (3:2 columns, one column under 900).
 
 ### 9.4 Grid
 
