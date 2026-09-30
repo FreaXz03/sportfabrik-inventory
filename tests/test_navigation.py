@@ -85,7 +85,7 @@ def test_einstellungen_nicht_mehr_im_menue_aber_texte_da():
     assert "sportfabrik:settings-open" not in NAV_JS
     schluessel = {
         "nav.settings", "settings.close", "settings.language", "settings.theme",
-        "settings.branch", "nav.sidebar_collapse", "nav.sidebar_expand",
+        "settings.branch", "nav.sidebar_collapse", "nav.sidebar_expand", "nav.bell_aria", "nav.bell_none",
         "dashboard.shortcuts_edit",
     }
     for sprache in ("de", "fr", "en"):

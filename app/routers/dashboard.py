@@ -52,10 +52,25 @@ def dashboard(
             else {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
             filiale=None if lagerort is None else uebersicht.filiale(session, lagerort.id),
             aktuelles=uebersicht.aktuelles(session, None if lagerort is None else lagerort.id),
-            stamm=uebersicht.stamm(session, None if lagerort is None else lagerort.id),
+            stamm=uebersicht.stamm(session),
             hinweise=hinweise_service.liste(session, lagerort.id) if lagerort else [],
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
             503, translate("errors.dashboard.load_failed", language)
         ) from exc
+
+
+@router.get("/api/anstehend/anzahl")
+def anstehend_anzahl(
+    user=Depends(require_login_api),
+    lagerort=Depends(get_active_lagerort),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Zahl der Meldungen unter „Anstehend" für die Glocke (jede Seite)."""
+    try:
+        filiale = None if lagerort is None else uebersicht.filiale(session, lagerort.id)
+        return {"anzahl": uebersicht.anzahl_meldungen(filiale, uebersicht.stamm(session))}
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, translate("errors.dashboard.load_failed", language)) from exc

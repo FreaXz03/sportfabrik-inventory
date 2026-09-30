@@ -2579,11 +2579,54 @@ body:has(main.login-page) {
   border: 0;
 }
 
-.topsearch {
-  position: relative;
-  max-width: 520px;
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0 0 clamp(18px, 3vw, 28px);
 }
+
+.topsearch {
+  position: relative;
+  flex: 1 1 auto;
+  max-width: 520px;
+  margin: 0;
+}
+
+/* Glocke oben rechts auf jeder Seite (30.09.2026): Zahl der Meldungen unter „Anstehend". */
+.bell {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.bell:hover { background: var(--surface-alt); }
+
+.bell-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.bell-badge[hidden] { display: none; }
 
 .topsearch input[type="search"] { width: 100%; }
 

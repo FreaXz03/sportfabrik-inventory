@@ -797,6 +797,8 @@
   "settings.theme": "Darstellung",
   "settings.branch": "Filiale",
   "nav.menu": "Menü",
+  "nav.bell_aria": "Anstehend – {anzahl} Meldungen",
+  "nav.bell_none": "Anstehend – keine Meldungen",
   "nav.sidebar_collapse": "Seitenleiste einklappen",
   "nav.sidebar_expand": "Seitenleiste ausklappen",
   "nav.info.erfassen": "Ware ohne Beleg einbuchen",

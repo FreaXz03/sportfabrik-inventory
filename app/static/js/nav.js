@@ -137,6 +137,53 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     }).slice(0, 8);
   }
 
+  // Glocke: führt zu „Anstehend", das Zeichen zeigt die Zahl der Meldungen.
+  // Zahl von /api/anstehend/anzahl; ohne Meldungen bleibt das Zeichen weg.
+  var glocke = null;
+  var meldungen = 0;
+
+  function glockeBeschriften() {
+    if (!glocke) return;
+    var text = meldungen
+      ? window.SportfabrikI18n.t('nav.bell_aria', { anzahl: meldungen })
+      : t('nav.bell_none');
+    glocke.link.setAttribute('aria-label', text);
+    glocke.link.title = text;
+    glocke.zeichen.textContent = meldungen > 99 ? '99+' : String(meldungen);
+    glocke.zeichen.hidden = !meldungen;
+  }
+
+  function glockeAktualisieren() {
+    fetch('/api/anstehend/anzahl').then(function (r) { return r.ok ? r.json() : null; }).then(function (daten) {
+      if (!daten) return;
+      meldungen = daten.anzahl;
+      glockeBeschriften();
+    }).catch(function () { });
+  }
+
+  function glockeBauen() {
+    var link = document.createElement('a');
+    link.className = 'bell';
+    link.href = '/anstehend';
+    var svgNs = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('class', 'icon icon-16');
+    svg.setAttribute('aria-hidden', 'true');
+    var use = document.createElementNS(svgNs, 'use');
+    use.setAttribute('href', '/static/img/icons.svg#icon-bell');
+    svg.append(use);
+    var zeichen = document.createElement('span');
+    zeichen.className = 'bell-badge';
+    zeichen.setAttribute('aria-hidden', 'true');
+    zeichen.hidden = true;
+    link.append(svg, zeichen);
+    glocke = { link: link, zeichen: zeichen };
+    glockeBeschriften();
+    glockeAktualisieren();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) glockeAktualisieren(); });
+    return link;
+  }
+
   function sucheBauen() {
     var haupt = document.querySelector('main');
     if (!haupt) return null;
@@ -228,7 +275,11 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
       }
     });
     huelle.append(label, feld, liste, status);
-    haupt.prepend(huelle);
+    // Zeile oben im Inhalt: Suche links, Glocke rechts (30.09.2026).
+    var leiste = document.createElement('div');
+    leiste.className = 'topbar';
+    leiste.append(huelle, glockeBauen());
+    haupt.prepend(leiste);
     return { label: label, feld: feld };
   }
 
@@ -237,6 +288,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     if (!suche) return;
     suche.label.textContent = t('nav.search_label');
     suche.feld.placeholder = t('nav.search_placeholder');
+    glockeBeschriften();
   }
 
   function zeichnen() {

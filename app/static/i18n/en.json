@@ -797,6 +797,8 @@
   "settings.theme": "Appearance",
   "settings.branch": "Branch",
   "nav.menu": "Menu",
+  "nav.bell_aria": "Pending – {anzahl} messages",
+  "nav.bell_none": "Pending – no messages",
   "nav.sidebar_collapse": "Collapse sidebar",
   "nav.sidebar_expand": "Expand sidebar",
   "nav.info.erfassen": "Book in goods without a document",

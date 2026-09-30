@@ -259,21 +259,19 @@ def test_anstehend_fuehrt_zur_gefilterten_liste(welt):
         assert antwort.status_code == 200, (pfad, antwort.text)
         return antwort.json()["total"]
 
-    sf1 = codes["SF1"]
-    assert stamm["lagerort_id"] == sf1
-    assert treffer(f"/api/articles?ohne_ean=true&lagerort_id={sf1}") == stamm["ohne_ean"]
-    assert treffer(f"/api/articles?kategorie_fehlt=true&lagerort_id={sf1}") == stamm["ohne_kategorie"]
+    assert treffer("/api/articles?ohne_ean=true") == stamm["ohne_ean"]
+    assert treffer("/api/articles?kategorie_fehlt=true") == stamm["ohne_kategorie"]
     assert treffer("/api/bestand?nur_negativ=true") == filiale["negativ"]
 
-    # Entscheid 28.09.2026: „Anstehend" je Filiale - dieselbe Lücke in SF2
-    # zählt in SF1 nicht mit; nur die Zentrale ohne Filialwahl sieht alles.
+    # Entscheid 29.09.2026: „ohne EAN" und „ohne Kategorie" zählen den ganzen
+    # Stamm, für alle Rollen in jeder Filiale; Liste und Zahl stimmen überein.
     client.post("/api/erfassen", json={"lagerort_id": codes["SF2"], "positionen": [{"marke": "CMP", "bezeichnung": "Weste", "menge": "1", "uvp": "59"}]})
-    stamm = client.get("/api/dashboard").json()["stamm"]
-    assert stamm["ohne_ean"] == 1 and stamm["ohne_kategorie"] == 1
-    welt.anmelden(ZENTRALE)
-    alles = client.get("/api/dashboard").json()["stamm"]
-    assert alles["lagerort_id"] is None and alles["ohne_ean"] == 2 and alles["ohne_kategorie"] == 2
-    assert treffer("/api/articles?ohne_ean=true") == 2
+    for konto in (CHEF, ANNA, ZENTRALE):
+        welt.anmelden(konto)
+        stamm = client.get("/api/dashboard").json()["stamm"]
+        assert stamm["ohne_ean"] == 2 and stamm["ohne_kategorie"] == 2, konto
+        assert treffer("/api/articles?ohne_ean=true") == 2
+        assert treffer("/api/articles?kategorie_fehlt=true") == 2
     welt.anmelden(CHEF)
     for stufe in ("50", "70"):
         for stand in ("faellig", "bald"):

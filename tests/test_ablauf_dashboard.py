@@ -96,3 +96,15 @@ def test_uebersicht_stufen_verlauf_bestseller(welt):
     assert sf2["stufen"] == {"30": "0.00", "50": "0.00", "70": "0.00"}
     assert sf2["bestseller"] == []
     assert all(v["verkauft"] == "0.00" for v in sf2["verlauf"])
+
+
+def test_glocke_zaehlt_meldungen_wie_die_anstehend_liste(welt):
+    """2026-09-30: die Glocke zeigt die Zahl der Punkte unter „Anstehend" der
+    aktiven Filiale (ein Punkt = eine Meldung), für jede angemeldete Rolle."""
+    client = welt.client
+    assert client.get("/api/anstehend/anzahl").status_code == 401
+    welt.anmelden(CHEF)
+    assert client.get("/api/anstehend/anzahl").json() == {"anzahl": 0}
+    # Von Hand ohne EAN und ohne Kategorie: zwei Punkte (Stamm, alle Filialen).
+    client.post("/api/erfassen", json={"positionen": [{"marke": "CMP", "bezeichnung": "Jacke", "menge": "1", "uvp": "99"}]})
+    assert client.get("/api/anstehend/anzahl").json() == {"anzahl": 2}

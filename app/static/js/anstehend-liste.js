@@ -44,12 +44,9 @@
       }
     }
     const s = daten.stamm || {};
-    // Je Filiale (28.09.2026): die Liste zeigt dieselbe Auswahl wie die Zahl.
-    const filiale = s.lagerort_id && daten.lagerort
-      ? '&' + new URLSearchParams({ lagerort_id: String(s.lagerort_id), filiale: daten.lagerort.code })
-      : '';
-    if (s.ohne_kategorie) liste.append(punkt(s.ohne_kategorie, t('dashboard.todo_no_category'), '/articles?kategorie_fehlt=true' + filiale, false));
-    if (s.ohne_ean) liste.append(punkt(s.ohne_ean, t('dashboard.todo_no_ean'), '/articles?ohne_ean=true' + filiale, false));
+    // Ganzer Stamm, alle Filialen (29.09.2026): die Liste zeigt dieselbe Auswahl wie die Zahl.
+    if (s.ohne_kategorie) liste.append(punkt(s.ohne_kategorie, t('dashboard.todo_no_category'), '/articles?kategorie_fehlt=true', false));
+    if (s.ohne_ean) liste.append(punkt(s.ohne_ean, t('dashboard.todo_no_ean'), '/articles?ohne_ean=true', false));
     leer.hidden = liste.children.length > 0;
   }
 

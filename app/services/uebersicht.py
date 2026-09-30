@@ -435,13 +435,11 @@ def varianten_mit_bestand(lagerort_id: int):
     )
 
 
-def stamm(session, lagerort_id: int | None = None) -> dict:
-    """Lücken im Artikelstamm für „Anstehend". Mit Filiale nur Varianten mit
-    Bestand dort (Entscheid 28.09.2026: je Filiale), ohne Filiale - nur die
-    Zentrale kann „alle Filialen" wählen - der ganze Stamm."""
-    bedingungen = [] if lagerort_id is None else [Variante.id.in_(varianten_mit_bestand(lagerort_id))]
+def stamm(session) -> dict:
+    """Lücken im Artikelstamm für „Anstehend". Der Artikelstamm gehört allen
+    Filialen (Regel 4): Entscheid 29.09.2026 - die beiden Zahlen zählen den
+    ganzen Stamm, für alle Rollen in jeder Filiale."""
     return {
-        "lagerort_id": lagerort_id,
         # Varianten, nicht Artikel: die Artikelliste zeigt eine Zeile je
         # Variante, und ein Klick soll genau so viele Zeilen zeigen.
         "ohne_kategorie": int(
@@ -449,14 +447,22 @@ def stamm(session, lagerort_id: int | None = None) -> dict:
                 select(func.count())
                 .select_from(Variante)
                 .join(Artikel, Artikel.id == Variante.artikel_id)
-                .where(Artikel.kategorie_id.is_(None), *bedingungen)
+                .where(Artikel.kategorie_id.is_(None))
             )
             or 0
         ),
-        "ohne_ean": int(
-            session.scalar(
-                select(func.count()).select_from(Variante).where(Variante.ean.is_(None), *bedingungen)
-            )
-            or 0
-        ),
+        "ohne_ean": int(session.scalar(select(func.count()).select_from(Variante).where(Variante.ean.is_(None))) or 0),
     }
+
+
+def anzahl_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> int:
+    """Zahl der Punkte unter „Anstehend" - ein Punkt je Meldung, genau wie
+    anstehend-liste.js sie zeichnet (Glocke, 30.09.2026). Ohne aktive Filiale
+    zählen nur die Stammdaten-Hinweise."""
+    anzahl = int(bool(stamm_daten["ohne_kategorie"])) + int(bool(stamm_daten["ohne_ean"]))
+    if filiale_daten:
+        anzahl += int(bool(filiale_daten["erwartet_total"])) + int(bool(filiale_daten["negativ"]))
+        for name in ("70", "50"):
+            stufe = filiale_daten["reduktionen"].get(name, {})
+            anzahl += int(bool(stufe.get("faellig"))) + int(bool(stufe.get("bald")))
+    return anzahl
