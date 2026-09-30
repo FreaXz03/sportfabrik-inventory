@@ -15,3 +15,8 @@ graphify-out/
 
 # S4: public age key for encrypted external backups (store-specific)
 backup-age-recipient.txt
+
+# local tooling
+dev.sqlite3
+.claude/settings.local.json
+.claude/skills/
