@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ..core.fedas import suggest_kategorie
 from ..core.kategorien import HAUPTGRUPPEN_MIT_SPORTBEREICH
+from ..core.stichwoerter import kategorie_aus_text, kombiniere
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import (
     Artikel,
@@ -64,38 +65,46 @@ class DeletePosted(DeleteRejected):
     """Das Dokument hat Buchungen: es wird storniert, nicht gelöscht (Regel 2)."""
 
 
-def _backfill_artikel(session, kategorie_cache, artikel, item):
+def _backfill_artikel(session, kategorie_cache, artikel, item, dateiname=None):
     """Fehlenden FEDAS-Code und die daraus abgeleitete Kategorie nachtragen.
 
     Läuft für jeden Artikel einer Rechnungsposition - auch wenn die Variante
     über ihre EAN gefunden wurde, denn genau die migrierten Altartikel haben
-    noch keinen FEDAS-Code. Ein bereits gesetzter Wert wird nie überschrieben
-    („einmal pro Artikel, danach gemerkt") - das gilt besonders für eine von
-    Hand gewählte Kategorie (`artikel.kategorie_manuell`, Teilaufgabe B8):
-    sie ist gesetzt, also rührt der Import sie nicht an.
+    noch keinen FEDAS-Code. Die Kategorie kommt aus FEDAS, ergänzt durch
+    Stichwörter in Artikel- und Dateiname (Punkt 2, `app/core/stichwoerter.py`).
+    Gesetzt wird sie, wenn der Artikel keine hat oder nur eine Hauptgruppe ohne
+    Sportbereich (Punkt 1) und der Vorschlag sie präzisiert. Eine von Hand
+    gewählte Kategorie (`artikel.kategorie_manuell`, Teilaufgabe B8) rührt der
+    Import nie an.
     """
     if not artikel.fedas_code and item.get("fedas_code"):
         artikel.fedas_code = item["fedas_code"]
-    if artikel.kategorie_id is None:
-        artikel.kategorie_id = _resolve_kategorie_id(
-            session, kategorie_cache, artikel.fedas_code
-        )
-    elif not artikel.kategorie_manuell and item.get("fedas_code"):
-        # Nur Hauptgruppe (Sportbereich offen, Punkt 1): ein Beleg, dessen Code
-        # den Sportbereich kennt, ergänzt ihn - innerhalb derselben Hauptgruppe.
-        aktuell = session.get(Kategorie, artikel.kategorie_id)
-        if aktuell is not None and aktuell.sportbereich is None and aktuell.hauptgruppe in HAUPTGRUPPEN_MIT_SPORTBEREICH:
-            vorschlag = suggest_kategorie(item["fedas_code"])
-            if vorschlag is not None and vorschlag[0] == aktuell.hauptgruppe and vorschlag[1] is not None:
-                artikel.kategorie_id = _resolve_kategorie_id(session, kategorie_cache, item["fedas_code"])
+    if artikel.kategorie_manuell:
+        return
+    aktuell = session.get(Kategorie, artikel.kategorie_id) if artikel.kategorie_id is not None else None
+    if aktuell is not None and not (
+        aktuell.sportbereich is None and aktuell.hauptgruppe in HAUPTGRUPPEN_MIT_SPORTBEREICH
+    ):
+        return  # schon vollständig gesetzt
+    # Ein Beleg mit eigenem FEDAS-Code zählt vor dem gespeicherten.
+    vorschlag_id = _resolve_kategorie_id(
+        session, kategorie_cache, item.get("fedas_code") or artikel.fedas_code,
+        artikel.bezeichnung or item.get("description"), dateiname,
+    )
+    if vorschlag_id is None or vorschlag_id == artikel.kategorie_id:
+        return
+    vorschlag = session.get(Kategorie, vorschlag_id)
+    if aktuell is None or (vorschlag.hauptgruppe == aktuell.hauptgruppe and vorschlag.sportbereich is not None):
+        artikel.kategorie_id = vorschlag_id
 
 
-def _resolve_kategorie_id(session, cache, fedas_code):
-    """Kategorie-Vorschlag aus dem FEDAS-Code (siehe app/core/fedas.py), oder
-    None, wenn der Code (noch) nicht zugeordnet ist bzw. fehlt - dann bleibt
-    artikel.kategorie_id leer und die Kategorie wird auf der Artikelseite von
-    Hand gewählt (app/services/kategorien.py, Teilaufgabe B8)."""
-    suggestion = suggest_kategorie(fedas_code)
+def _resolve_kategorie_id(session, cache, fedas_code, bezeichnung=None, dateiname=None):
+    """Kategorie-Vorschlag aus FEDAS-Code (app/core/fedas.py) und Stichwörtern
+    in Artikel- und Dateiname (app/core/stichwoerter.py), oder None, wenn
+    nichts zuzuordnen ist - dann bleibt artikel.kategorie_id leer und die
+    Kategorie wird auf der Artikelseite von Hand gewählt
+    (app/services/kategorien.py, Teilaufgabe B8)."""
+    suggestion = kombiniere(suggest_kategorie(fedas_code), kategorie_aus_text(bezeichnung, dateiname))
     if suggestion is None:
         return None
     if suggestion not in cache:
@@ -363,12 +372,14 @@ def import_invoice(
                             lieferanten_artikelnr=item.get("supplier_article_no"),
                             bezeichnung=item.get("description"),
                             fedas_code=fedas_code,
-                            kategorie_id=_resolve_kategorie_id(session, kategorie_cache, fedas_code),
+                            kategorie_id=_resolve_kategorie_id(
+                                session, kategorie_cache, fedas_code, item.get("description"), filename
+                            ),
                         )
                         session.add(artikel)
                         session.flush()
                     else:
-                        _backfill_artikel(session, kategorie_cache, artikel, item)
+                        _backfill_artikel(session, kategorie_cache, artikel, item, filename)
                     if group_key:
                         artikel_cache[group_key] = artikel
 
@@ -396,7 +407,7 @@ def import_invoice(
                     # - sonst bliebe genau der migrierte Altbestand für immer
                     # ohne Kategorie.
                     _backfill_artikel(
-                        session, kategorie_cache, session.get(Artikel, variante.artikel_id), item
+                        session, kategorie_cache, session.get(Artikel, variante.artikel_id), item, filename
                     )
                 if ean:
                     variante_cache[ean] = variante
