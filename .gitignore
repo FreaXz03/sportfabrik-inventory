@@ -20,3 +20,4 @@ backup-age-recipient.txt
 dev.sqlite3
 .claude/settings.local.json
 .claude/skills/
+.impeccable/
