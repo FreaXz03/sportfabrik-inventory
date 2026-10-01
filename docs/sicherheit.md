@@ -116,3 +116,7 @@ supplier documents, purchase prices, and accounts.
 - Run `pip-audit -r requirements-server.txt` before every server update.
 - HTTPS, network separation, and encrypted backups are mandatory items for
   phase F (operations).
+
+## Mail dispatch (2026-10-01)
+
+`POST /api/fehlermeldung` (any logged-in user) and `POST /api/dokument-melden` (branch managers/head office) send mail to a fixed address. Checks: recipient not user-controlled; subject stripped of line breaks (no header injection); images checked by type and content, max 4 × 5 MB; documents must be PDFs ≤ 10 MB; 10 messages per hour per account. Nothing is sent automatically, including on unknown layouts.

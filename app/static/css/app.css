@@ -3058,3 +3058,9 @@ body:has(main.login-page) {
 .preset-label { font-weight: 600; }
 
 .preset p { margin: 0; }
+
+/* Fehler melden und Dokument senden (Punkte 4/5, 2026-10-01) ---------------- */
+.settings-dialog form { display: grid; gap: 12px; }
+.settings-dialog label { display: grid; gap: 6px; font-size: var(--fs-sm); }
+.settings-dialog textarea { width: 100%; resize: vertical; font: inherit; }
+.report-button { white-space: nowrap; }

@@ -18,6 +18,7 @@ from .routers.auth import (
 from .routers.auth import router as auth_router
 from .core.database import engine
 from .services.operation import OperationConflict
+from .routers.meldungen import router as meldungen_router
 from .routers.preview import router as preview_router
 from .routers.catalog import router as catalog_router
 from .routers.history import router as history_router
@@ -78,6 +79,7 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.include_router(preview_router)
+app.include_router(meldungen_router)
 app.include_router(catalog_router)
 app.include_router(history_router)
 app.include_router(article_details_router)

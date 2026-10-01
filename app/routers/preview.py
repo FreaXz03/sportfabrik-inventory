@@ -12,7 +12,7 @@ from .auth import (
 from ..core.database import get_session
 from ..core.i18n import translate
 from ..services.lagerorte import lade_adressen, list_wareneingang_lagerorte
-from ..services.parsers import DocumentParseError, parse_document
+from ..services.parsers import DocumentParseError, UnknownLayoutError, parse_document
 from pathlib import Path
 from fastapi.responses import FileResponse
 
@@ -67,6 +67,9 @@ async def upload_preview(
         adressen = lade_adressen(session)
         try:
             result = await run_in_threadpool(parse_document, data, language, adressen)
+        except UnknownLayoutError as exc:
+            # Der Code erlaubt der Oberfläche, „Dokument an Fabian senden" anzubieten (Punkt 5).
+            raise HTTPException(422, str(exc), headers={"X-Error-Code": "unknown_layout"}) from exc
         except DocumentParseError as exc:
             raise HTTPException(422, str(exc)) from exc
         return {
