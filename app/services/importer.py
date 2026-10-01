@@ -9,6 +9,7 @@ from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.fedas import suggest_kategorie
+from ..core.kategorien import HAUPTGRUPPEN_MIT_SPORTBEREICH
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import (
     Artikel,
@@ -79,6 +80,14 @@ def _backfill_artikel(session, kategorie_cache, artikel, item):
         artikel.kategorie_id = _resolve_kategorie_id(
             session, kategorie_cache, artikel.fedas_code
         )
+    elif not artikel.kategorie_manuell and item.get("fedas_code"):
+        # Nur Hauptgruppe (Sportbereich offen, Punkt 1): ein Beleg, dessen Code
+        # den Sportbereich kennt, ergänzt ihn - innerhalb derselben Hauptgruppe.
+        aktuell = session.get(Kategorie, artikel.kategorie_id)
+        if aktuell is not None and aktuell.sportbereich is None and aktuell.hauptgruppe in HAUPTGRUPPEN_MIT_SPORTBEREICH:
+            vorschlag = suggest_kategorie(item["fedas_code"])
+            if vorschlag is not None and vorschlag[0] == aktuell.hauptgruppe and vorschlag[1] is not None:
+                artikel.kategorie_id = _resolve_kategorie_id(session, kategorie_cache, item["fedas_code"])
 
 
 def _resolve_kategorie_id(session, cache, fedas_code):
