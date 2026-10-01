@@ -16,7 +16,10 @@ from app.services.importer import _backfill_artikel
     [
         ("WOMAN PANT", None, ("Textil", None)),
         ("WOMAN PANT", "OUTDOOR Bestellung SF1.pdf", ("Textil", "Outdoor")),
-        ("Kids Running Shoe", None, ("Schuhe", None)),  # Kids und Running: mehrdeutig, nicht raten
+        ("Kids Running Shoe", None, ("Schuhe", "Kids")),  # Entscheid 2026-10-01: Kinderware ist immer Kids
+        ("Girls Tee", None, ("Textil", "Kids")),
+        ("Boys Jacket", "OUTDOOR.pdf", ("Textil", "Kids")),
+        ("Junior Ball", None, ("Hartware", "Kids")),
         ("Trail-Jacket", "outdoor_2026.pdf", ("Textil", "Outdoor")),
         ("Tennis Racket", None, ("Hartware", "Tennis")),
         ("PANTHER 2000", None, (None, None)),  # ganze Wörter, kein Teilstring
@@ -36,6 +39,9 @@ def test_kategorie_aus_text(name, datei, erwartet):
         (("Velo", None), ("Textil", "Outdoor"), ("Velo", None)),
         (("Textil", None), (None, "Outdoor"), ("Textil", "Outdoor")),  # Lücke gefüllt
         (("Textil", None), ("Schuhe", "Outdoor"), ("Textil", "Outdoor")),  # Hauptgruppe bleibt FEDAS
+        (("Textil", "Running"), (None, "Kids"), ("Textil", "Kids")),  # Kids schlägt den FEDAS-Bereich
+        (("Textil", "Tennis"), (None, "Outdoor"), ("Textil", "Tennis")),
+        (("Velo", None), (None, "Kids"), ("Velo", None)),  # Velo/Food bleiben
         (None, ("Textil", "Outdoor"), ("Textil", "Outdoor")),
         (None, ("Textil", None), ("Textil", None)),
         (None, (None, "Outdoor"), None),  # ohne Hauptgruppe keine Kategorie

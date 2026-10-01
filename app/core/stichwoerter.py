@@ -24,6 +24,10 @@ HAUPTGRUPPE_STICHWOERTER = {
     "Hartware": {"BALL", "RACKET", "RACQUET", "SCHLAEGER", "BOTTLE", "FLASCHE", "HELMET", "HELM"},
 }
 
+# Entscheid 2026-10-01: alles für Kinder ist Kids - auch wenn FEDAS oder ein
+# anderes Stichwort einen anderen Sportbereich nennt.
+KIDS_STICHWOERTER = {"KID", "KIDS", "JUNIOR", "JUNIORS", "JR", "KINDER", "BOY", "BOYS", "GIRL", "GIRLS"}
+
 # Sportbereiche wie in der Kasse (Regel 8); "Velo" bewusst nicht.
 SPORTBEREICH_STICHWOERTER = {
     "Outdoor": {"OUTDOOR", "TREKKING", "HIKING", "WANDERN"},
@@ -32,7 +36,7 @@ SPORTBEREICH_STICHWOERTER = {
     "Fussball": {"FUSSBALL", "FOOTBALL", "SOCCER"},
     "Baden": {"SWIM", "SWIMMING", "BADE", "BEACH"},
     "Winter": {"SKI", "SNOWBOARD", "WINTER"},
-    "Kids": {"KIDS", "JUNIOR", "KINDER"},
+    "Kids": KIDS_STICHWOERTER,
     "Indoor": {"FITNESS", "YOGA", "INDOOR", "HANDBALL", "BASKETBALL"},
 }
 
@@ -55,7 +59,9 @@ def kategorie_aus_text(bezeichnung: str | None, dateiname: str | None) -> tuple[
     wo nichts oder Mehrdeutiges gefunden wurde."""
     name = _woerter(bezeichnung)
     hauptgruppe = _treffer(name, HAUPTGRUPPE_STICHWOERTER)
-    sportbereich = _treffer(name | _woerter(dateiname), SPORTBEREICH_STICHWOERTER)
+    alle = name | _woerter(dateiname)
+    # Kids hat Vorrang vor jedem anderen Treffer (kein "mehrdeutig" bei Kids Running).
+    sportbereich = "Kids" if alle & KIDS_STICHWOERTER else _treffer(alle, SPORTBEREICH_STICHWOERTER)
     return hauptgruppe, sportbereich
 
 
@@ -64,14 +70,19 @@ def kombiniere(
 ) -> tuple[str, str | None] | None:
     """FEDAS und Stichwörter zu einem Vorschlag (hauptgruppe, sportbereich).
 
-    FEDAS mit Sportbereich und Velo/Food gelten unverändert. Kennt FEDAS nur
+    FEDAS mit Sportbereich und Velo/Food gelten unverändert - ausser Kids: ein
+    Kids-Stichwort (kids, junior, boys, girls) schlägt den FEDAS-Bereich. Kennt FEDAS nur
     die Hauptgruppe, ergänzt der Stichwort-Sportbereich sie (die Hauptgruppe
     bleibt die von FEDAS). Ohne FEDAS braucht es mindestens eine Hauptgruppe
     aus dem Text; ein Sportbereich allein ergibt keine Kategorie."""
     text_gruppe, text_bereich = text
     if fedas is not None:
         gruppe, bereich = fedas
-        if bereich is not None or gruppe in ("Velo", "Food"):
+        if gruppe in ("Velo", "Food"):
+            return fedas
+        if text_bereich == "Kids":
+            return gruppe, "Kids"  # Kinderware ist immer Kids, auch gegen FEDAS
+        if bereich is not None:
             return fedas
         return gruppe, text_bereich
     if text_gruppe is None:
