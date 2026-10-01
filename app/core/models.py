@@ -383,6 +383,23 @@ class Wareneingang(Base):
     versendet_von: Mapped[str | None] = mapped_column(String(20))
 
 
+class WareneingangUmleitung(Base):
+    """Umleitung einer erwarteten Lieferung an eine andere Filiale (Punkt 3,
+    2026-10-01), solange nichts angekommen ist. Nur die Erwartung wandert
+    (`wareneingaenge.lagerort_id`), gebucht wird nichts (Regel 3); diese
+    Zeilen sind die Historie."""
+
+    __tablename__ = "wareneingang_umleitungen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    wareneingang_id: Mapped[int] = mapped_column(ForeignKey("wareneingaenge.id"), index=True)
+    von_lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"))
+    nach_lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"))
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    zeitpunkt: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class WareneingangPosition(Base):
     """Eine Position (Zeile) eines Wareneingangs - verallgemeinert die frühere
     invoice_items-Tabelle.

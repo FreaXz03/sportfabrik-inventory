@@ -38,6 +38,7 @@ from ..core.models import (
     Variante,
     Wareneingang,
     WareneingangPosition,
+    WareneingangUmleitung,
 )
 from . import operation
 from .hinweise import erstelle_hinweise, pruefe_und_merke
@@ -193,6 +194,7 @@ def liste_erwartete(
                     # Eingangsdatum - die Oberfläche blendet das Feld aus.
                     "verkauf": bool(lagerort.verkauf),
                 },
+                "umleitungen": _umleitungen(session, wareneingang.id),
                 "positionen": [
                     {
                         "id": position.id,
@@ -395,6 +397,84 @@ def _abschluss(session, wareneingang, positionen: dict, gebucht: dict, mehrliefe
         if wareneingang.eingangsdatum
         else None,
     }
+
+
+def _umleitungen(session, wareneingang_id: int) -> list[dict]:
+    """Bisherige Umleitungen einer Lieferung, älteste zuerst."""
+    von, nach = aliased(Lagerort), aliased(Lagerort)
+    return [
+        {
+            "von": {"id": a.id, "code": a.code, "name": a.name},
+            "nach": {"id": b.id, "code": b.code, "name": b.name},
+            "zeitpunkt": u.zeitpunkt.isoformat(),
+            "benutzer": u.benutzer_name,
+        }
+        for u, a, b in session.execute(
+            select(WareneingangUmleitung, von, nach)
+            .join(von, von.id == WareneingangUmleitung.von_lagerort_id)
+            .join(nach, nach.id == WareneingangUmleitung.nach_lagerort_id)
+            .where(WareneingangUmleitung.wareneingang_id == wareneingang_id)
+            .order_by(WareneingangUmleitung.id)
+        )
+    ]
+
+
+def leite_um(
+    wareneingang_id: int,
+    ziel_lagerort_id: int,
+    session_factory,
+    benutzer: dict | None = None,
+    language: str = DEFAULT_LANGUAGE,
+) -> dict:
+    """Erwartete Lieferung vor der Ankunft an eine andere Filiale umleiten
+    (Punkt 3, 2026-10-01): die Ware geht direkt dorthin, also soll sie weder
+    an der ersten Filiale gebucht noch nachträglich umgelagert werden.
+
+    Bewegt wird nur die Erwartung (`lagerort_id`); es entsteht keine
+    Lagerbewegung und kein Eingangsdatum (Regel 3, 6) - die Ziel-Filiale
+    bestätigt die Ankunft wie jede Lieferung. Jede Umleitung bleibt in
+    `wareneingang_umleitungen`. Nicht möglich, sobald etwas angekommen ist
+    (sonst wäre ein Teil schon an der ersten Filiale gebucht) und bei
+    Umlagerungen (die haben Stornieren und neu Versenden)."""
+    with session_factory() as session, session.begin():
+        if session.bind.dialect.name == "postgresql":
+            session.execute(text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})"))
+        wareneingang = session.get(Wareneingang, wareneingang_id)
+        if wareneingang is None:
+            raise AnkunftRejected(
+                translate("errors.wareneingang.not_found", language, id=wareneingang_id)
+            )
+        if wareneingang.herkunft_lagerort_id is not None:
+            raise AnkunftRejected(translate("errors.wareneingang.redirect_transfer", language))
+        if wareneingang.status != "erwartet" or session.scalar(
+            select(func.count())
+            .select_from(WareneingangPosition)
+            .where(
+                WareneingangPosition.wareneingang_id == wareneingang.id,
+                WareneingangPosition.menge_eingetroffen > 0,
+            )
+        ):
+            raise AnkunftRejected(translate("errors.wareneingang.redirect_arrived", language))
+        ziel = session.get(Lagerort, ziel_lagerort_id)
+        if ziel is None or ziel.id == wareneingang.lagerort_id:
+            raise AnkunftRejected(translate("errors.wareneingang.redirect_target", language))
+        von = session.get(Lagerort, wareneingang.lagerort_id)
+        wareneingang.lagerort_id = ziel.id
+        session.add(
+            WareneingangUmleitung(
+                wareneingang_id=wareneingang.id,
+                von_lagerort_id=von.id,
+                nach_lagerort_id=ziel.id,
+                benutzer_kassennummer=(benutzer or {}).get("kassennummer"),
+                benutzer_name=(benutzer or {}).get("name"),
+                zeitpunkt=datetime.now(timezone.utc),
+            )
+        )
+        return {
+            "wareneingang_id": wareneingang.id,
+            "von": {"id": von.id, "code": von.code, "name": von.name},
+            "nach": {"id": ziel.id, "code": ziel.code, "name": ziel.name},
+        }
 
 
 def zaehle_erwartete(session, lagerort_id: int | None = None) -> int:
