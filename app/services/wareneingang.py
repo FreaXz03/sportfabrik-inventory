@@ -91,6 +91,9 @@ def buche_zugang(
                 aeltestes_eingangsdatum=eingangsdatum,
             )
         )
+        # SessionLocal hat kein Autoflush: ohne Flush findet die nächste
+        # Position derselben Variante (Beleg listet sie doppelt) die Zeile nicht.
+        session.flush()
         return
     bestand.menge += menge
     if eingangsdatum and (
