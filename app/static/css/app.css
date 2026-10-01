@@ -1576,6 +1576,10 @@ th button:hover {
   white-space: nowrap;
 }
 
+.chip-link { text-decoration: none; }
+.chip-link:hover { filter: brightness(.95); }
+.chip-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .chip-dot {
   width: 10px;
   height: 10px;
@@ -2854,7 +2858,19 @@ button.pv-link[aria-expanded="true"] { color: var(--text-muted); }
 
   html.sidebar-collapsed body:has(> header > nav) > header > .header-tools { margin-top: auto; }
 
-  html.sidebar-collapsed .sidebar-toggle { right: 18px; }
+  /* SF über dem Drei-Striche-Knopf (2026-10-01): eingeklappt steht der Knopf
+     im Fluss unter dem Logo statt oben rechts darüber. */
+  html.sidebar-collapsed body:has(> header > nav) > header { padding-top: 18px; }
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand { order: -2; }
+  html.sidebar-collapsed .sidebar-toggle {
+    position: static;
+    order: -1;
+    align-self: center;
+    margin-top: 12px;
+  }
+
+  /* Eingeklappt zeigt „Problem melden" nur das Symbol (2026-10-01). */
+  html.sidebar-collapsed .report-label { display: none; }
 
   /* Knopf ohne Rahmen (2026-10-01); nur beim Darüberfahren eine Fläche. */
   .sidebar-toggle.secondary { border-color: transparent; background: transparent; box-shadow: none; }
@@ -3230,4 +3246,4 @@ button.pv-link[aria-expanded="true"] { color: var(--text-muted); }
 .settings-dialog form { display: grid; gap: 12px; }
 .settings-dialog label { display: grid; gap: 6px; font-size: var(--fs-sm); }
 .settings-dialog textarea { width: 100%; resize: vertical; font: inherit; }
-.report-button { white-space: nowrap; }
+.report-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }

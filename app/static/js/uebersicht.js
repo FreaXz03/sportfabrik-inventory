@@ -113,7 +113,9 @@
       segment.style.setProperty('--w', String(menge / gesamt));
       balken.append(segment);
       const li = node('li', null, 'stage-row');
-      const chip = node('span', null, 'chip chip-stage');
+      const chip = node('a', null, 'chip chip-stage chip-link');
+      chip.href = '/bestand?stufe=' + stufe;
+      chip.title = t('dashboard.stages_open', { stufe: stufe });
       chip.dataset.stage = stufe;
       const punkt = node('span', null, 'chip-dot');
       punkt.setAttribute('aria-hidden', 'true');

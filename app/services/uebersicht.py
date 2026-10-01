@@ -121,6 +121,21 @@ def reduktions_varianten(session, lagerort_id: int, heute: date | None = None) -
     return ergebnis
 
 
+def stufen_varianten(session, lagerort_id: int, stufe: int, heute: date | None = None) -> list[int]:
+    """Varianten mit Bestand, die in dieser Filiale gerade in `stufe` (30/50/70 %)
+    liegen - dieselbe Einteilung wie `stufen_verteilung`; Bestand ohne
+    Eingangsdatum zählt nicht (2026-10-01, Klick auf die Stufe der Übersicht)."""
+    heute = heute or date.today()
+    eingaenge = _letzte_eingaenge(lagerort_id)
+    daten = session.execute(
+        select(Variante.id, eingaenge.c.datum)
+        .join(Bestand, Bestand.varianten_id == Variante.id)
+        .join(eingaenge, eingaenge.c.artikel_id == Variante.artikel_id)
+        .where(Bestand.lagerort_id == lagerort_id, Bestand.menge > 0)
+    ).all()
+    return sorted(vid for vid, datum in daten if reduktionsstufe(datum, heute) == stufe)
+
+
 def reduktions_liste(session, lagerort_id: int, heute: date | None = None) -> list[dict]:
     """Seite „Runterschreiben" (Phase D): dieselbe Auswahl wie
     `reduktions_varianten`, aber je Artikel (Modell) zusammengefasst - die

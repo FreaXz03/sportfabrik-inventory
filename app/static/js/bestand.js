@@ -17,6 +17,7 @@
   const adresse = new URLSearchParams(location.search);
   let vorgabe = null;
   if (adresse.get('nur_negativ') === 'true') vorgabe = { nur_negativ: 'true' };
+  else if (['30', '50', '70'].includes(adresse.get('stufe'))) vorgabe = { stufe: adresse.get('stufe') };
   else if (adresse.get('reduktion')) {
     vorgabe = { reduktion: adresse.get('reduktion'), reduktion_status: adresse.get('reduktion_status') === 'bald' ? 'bald' : 'faellig' };
   }
@@ -327,8 +328,10 @@
     if (!vorgabe) return;
     const key = vorgabe.nur_negativ
       ? 'bestand.filter_active.negative'
-      : 'bestand.filter_active.' + (vorgabe.reduktion_status === 'bald' ? 'reduction_soon' : 'reduction_due');
-    $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(key, { stufe: vorgabe.reduktion });
+      : vorgabe.stufe
+        ? 'bestand.filter_active.stage'
+        : 'bestand.filter_active.' + (vorgabe.reduktion_status === 'bald' ? 'reduction_soon' : 'reduction_due');
+    $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(key, { stufe: vorgabe.stufe || vorgabe.reduktion });
   }
 
   function vorgabeWeg() {
@@ -396,7 +399,7 @@
   $('lagerort').addEventListener('change', function () {
     wahl = $('lagerort').value;
     // Die Reduktion gilt je Filiale - bei einem Wechsel wieder alles zeigen.
-    if (vorgabe && vorgabe.reduktion) vorgabeWeg();
+    if (vorgabe && (vorgabe.reduktion || vorgabe.stufe)) vorgabeWeg();
     neuLaden();
   });
   $('suche').addEventListener('input', function () {

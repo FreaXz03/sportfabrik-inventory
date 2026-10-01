@@ -131,7 +131,19 @@
       if (!leiste || leiste.querySelector('.report-button')) return;
       var knopf = el('button', null, 'report-button secondary');
       knopf.type = 'button';
-      function beschriften() { knopf.textContent = t('meldung.button'); knopf.setAttribute('aria-label', t('meldung.button_aria')); }
+      var symbol = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      symbol.setAttribute('class', 'icon icon-16');
+      symbol.setAttribute('aria-hidden', 'true');
+      var verweis = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      verweis.setAttribute('href', '/static/img/icons.svg#icon-bug');
+      symbol.append(verweis);
+      var beschriftung = el('span', null, 'report-label');
+      knopf.append(symbol, beschriftung);
+      function beschriften() {
+        beschriftung.textContent = t('meldung.button');
+        knopf.setAttribute('aria-label', t('meldung.button_aria'));
+        knopf.title = t('meldung.button');
+      }
       beschriften();
       document.addEventListener('sportfabrik:i18n-ready', beschriften);
       knopf.addEventListener('click', fehlerFenster);

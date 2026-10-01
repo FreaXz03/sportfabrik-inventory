@@ -405,3 +405,29 @@ def test_umlagerung_unterwegs_stornieren(welt):
     assert eigene in [u["id"] for u in client.get("/api/umlagerung/unterwegs").json()["umlagerungen"]]
     assert client.post(f"/api/umlagerung/{eigene}/stornieren").status_code == 200
     _bestand_ist_summe_der_bewegungen(sessions)
+
+
+def test_bestand_filter_nach_aktueller_stufe(welt):
+    """2026-10-01: die Stufen-Beschriftungen der Übersicht öffnen den Bestand,
+    gefiltert auf die Varianten in genau dieser Stufe - dieselbe Einteilung wie
+    `stufen_verteilung`, inklusive der 30-%-Stufe ab Eingang."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    vor_40_monaten = date(heute.year - 3, heute.month, 1) - timedelta(days=150)
+    vor_20_monaten = date(heute.year - 2, heute.month, 1) + timedelta(days=150)
+    welt.anmelden(CHEF)
+    for nummer, datum, positionen in (
+        ("9000000031", vor_40_monaten, POSITIONEN[:2]),
+        ("9000000032", vor_20_monaten, POSITIONEN[2:3]),
+        ("9000000033", heute, [["Nike", "424100", "C3", "9988770013", "4006632041265", "Jacke", "4", "Stk", "89.00", "50.00"]]),
+    ):
+        pdf = rechnung_pdf(header_lines=kopf(nummer=nummer, datum=datum.strftime("%d.%m.%Y")), rows=positionen)
+        assert importieren(client, pdf, lagerort_id=str(codes["SF1"])).status_code == 200
+    verteilung = client.get("/api/dashboard").json()["filiale"]["stufen"]
+    for stufe in ("30", "50", "70"):
+        antwort = client.get(f"/api/bestand?stufe={stufe}")
+        assert antwort.status_code == 200, antwort.text
+        stueck = sum(Decimal(str(z["menge"])) for z in antwort.json()["zeilen"])
+        assert stueck == Decimal(str(verteilung[stufe])) and stueck > 0, stufe
+    assert client.get("/api/bestand?stufe=40").status_code == 422
+    assert client.get("/api/bestand?stufe=50&alle=true").status_code == 422
