@@ -93,7 +93,9 @@ only fills in a category that is still empty.
 | GET | `/articles/{id}/history` | Item history page (including notes and price history) |
 | GET | `/api/invoices` | Invoice list; filter `q` (invoice number), pagination |
 | GET | `/api/invoices/{invoice_id}` | Invoice details including all lines; sortable (`sort_by`/`sort_dir`, see above) |
-| DELETE | `/api/invoices/{invoice_id}` | 🔒 Irrevocably delete an invoice including lines and original snapshots; affected item metrics are recalculated |
+| DELETE | `/api/invoices/{invoice_id}` | 🔒 Delete a document **without any posted movement** (e.g. an order confirmation with nothing arrived), including lines and original snapshots; `409` if it has posted goods — cancel instead |
+| GET | `/api/invoices/{invoice_id}/cancel-preview` | 🔒 Quantity effect of cancelling per variant and branch (stock now / receipt / stock after, "moved since", `hat_negativen_bestand`); books nothing |
+| POST | `/api/invoices/{invoice_id}/cancel` | 🔒 Cancel a posted document with one counter-movement per receipt line (`korrektur`, reason `storno:<movement id>`); document, snapshots and prices stay; `409` if already cancelled |
 
 ## Upload & import
 

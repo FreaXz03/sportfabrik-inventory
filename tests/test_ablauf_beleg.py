@@ -40,7 +40,7 @@ def _bestand(sessions, lagerort_id):
         )
 
 
-def test_rechnung_hochladen_korrigieren_importieren_loeschen(welt):
+def test_rechnung_hochladen_korrigieren_importieren_stornieren(welt):
     client, sessions, codes = welt.client, welt.sessions, welt.codes
     pdf = rechnung_pdf(header_lines=kopf() + LIEFERADRESSE_CONTHEY)
 
@@ -130,12 +130,14 @@ def test_rechnung_hochladen_korrigieren_importieren_loeschen(welt):
     assert client.get(f"/api/invoices/{beleg_id}").status_code == 200
     assert client.delete(f"/api/invoices/{beleg_id}").status_code == 403
 
-    # Löschen: Beleg, Wareneingang und Buchungen weg, Artikelstamm bleibt (Regel 4).
+    # Gebucht: nicht löschbar, sondern per Gegenbuchung stornierbar (Regel 2).
+    # Beleg, Buchungen und Artikelstamm bleiben (Regel 4).
     welt.anmelden(CHEF)
-    assert client.delete(f"/api/invoices/{beleg_id}").status_code == 200
-    assert _anzahl(sessions, Dokument) == 0
-    assert _anzahl(sessions, Lagerbewegung) == 0
-    assert _bestand(sessions, codes["SF2"]) == []
+    assert client.delete(f"/api/invoices/{beleg_id}").status_code == 409
+    assert client.post(f"/api/invoices/{beleg_id}/cancel").status_code == 200
+    assert _anzahl(sessions, Dokument) == 1
+    assert _anzahl(sessions, Lagerbewegung) == 6
+    assert _bestand(sessions, codes["SF2"]) == ["0.00", "0.00", "0.00"]
     assert _anzahl(sessions, Variante) == 3
 
 

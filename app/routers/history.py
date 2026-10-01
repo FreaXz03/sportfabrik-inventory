@@ -4,6 +4,7 @@ from typing import Literal
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 from .auth import get_language, require_chef_api, require_login_api, require_login_page
@@ -12,7 +13,8 @@ from ..services.article_groups import article_group
 from ..core.database import SessionLocal, get_session
 from ..core.i18n import translate
 from ..services.artikel_loeschen import hat_beleg
-from ..services.importer import delete_invoice, DeleteRejected
+from ..services.beleg_storno import StornoNotFound, StornoRejected, storniere_dokument, vorschau
+from ..services.importer import delete_invoice, DeletePosted, DeleteRejected
 from ..core.models import (
     Artikel,
     Dokument,
@@ -47,6 +49,9 @@ def invoice_data(dokument, supplier=None):
         "imported_by_kassennummer": dokument.hochgeladen_von_kassennummer,
         "imported_by_name": dokument.hochgeladen_von_name,
         "ocr_used": dokument.ocr_verwendet,
+        "status": dokument.status,
+        "cancelled_at": dokument.storniert_am,
+        "cancelled_by_name": dokument.storniert_von_name,
     }
 
 
@@ -307,9 +312,56 @@ def remove_invoice(
 ):
     try:
         return delete_invoice(invoice_id, SessionLocal, language)
+    except DeletePosted as exc:
+        raise HTTPException(409, str(exc)) from exc
     except DeleteRejected as exc:
         raise HTTPException(404, str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(
             503, translate("errors.history.invoice_delete_failed", language)
+        ) from exc
+
+
+@router.get("/api/invoices/{invoice_id}/cancel-preview")
+def cancel_preview(
+    invoice_id: int,
+    user=Depends(require_chef_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Mengenwirkung des Stornos, ohne zu buchen (Paket 1)."""
+    try:
+        return vorschau(session, invoice_id, language)
+    except StornoNotFound as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except StornoRejected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, translate("errors.history.invoice_cancel_failed", language)
+        ) from exc
+
+
+@router.post("/api/invoices/{invoice_id}/cancel")
+async def cancel_invoice(
+    invoice_id: int,
+    user=Depends(require_chef_api),
+    language: str = Depends(get_language),
+):
+    """Ein gebuchtes Dokument per Gegenbuchungen stornieren (Regel 2)."""
+    try:
+        return await run_in_threadpool(
+            storniere_dokument,
+            invoice_id,
+            SessionLocal,
+            {"kassennummer": user.kassennummer, "name": user.name},
+            language,
+        )
+    except StornoNotFound as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except StornoRejected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, translate("errors.history.invoice_cancel_failed", language)
         ) from exc

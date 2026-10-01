@@ -250,6 +250,8 @@ active branch. A document has exactly one storage location (D20).
 `ocr_verwendet` marks documents that were read via Tesseract OCR for
 lack of a text layer.
 
+`status` (`aktiv`/`storniert`, 2026-10-01): a document that posted goods is never deleted but cancelled — each receipt line gets a counter-movement, its receipts become `storniert`, `menge_eingetroffen` of its lines is set to 0 (the arrived quantity stays in the movement and its counter-movement), and the document keeps `storniert_am`/`storniert_von_*`. Only a document without any posted movement can still be deleted.
+
 ### `wareneingaenge`
 One goods receipt per document (currently 1:1; the schema allows several
 per document later, e.g. for partial deliveries) — or **without** a
@@ -458,6 +460,7 @@ above):
 | `f3a4b5c6d7e8` | Transfer as a delivery (2026-09-28): `wareneingaenge.herkunft_lagerort_id`, `wareneingaenge.versanddatum`, `wareneingang_positionen.mitgebracht_datum`; new empty columns only |
 | `a4b5c6d7e8f9` | Cancel a transfer in transit (2026-09-29): check constraint `ck_wareneingaenge_status` also allows `storniert`; new empty column `wareneingaenge.versendet_von` |
 | `b5c6d7e8f9a0` | Withdraw a head-office recommendation (2026-09-30): check constraint `ck_empfehlung_zentrale_status` also allows `zurueckgezogen`; new empty columns `zurueckgezogen_von_name`, `zurueckgezogen_am` |
+| `c6d7e8f9a0b1` | Cancel instead of delete (2026-10-01): `dokumente.status` (`aktiv`/`storniert`, check constraint `ck_dokumente_status`), `storniert_am`, `storniert_von_kassennummer`, `storniert_von_name` |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

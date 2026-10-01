@@ -50,6 +50,10 @@ class DeleteRejected(ValueError):
     pass
 
 
+class DeletePosted(DeleteRejected):
+    """Das Dokument hat Buchungen: es wird storniert, nicht gelöscht (Regel 2)."""
+
+
 def _backfill_artikel(session, kategorie_cache, artikel, item):
     """Fehlenden FEDAS-Code und die daraus abgeleitete Kategorie nachtragen.
 
@@ -388,6 +392,57 @@ def import_invoice(
         ) from exc
 
 
+def dokument_ist_gebucht(session, dokument_id: int) -> bool:
+    """Hat das Dokument je Ware gebucht (eine Lagerbewegung an einer Position)?"""
+    return (
+        session.scalar(
+            select(Lagerbewegung.id)
+            .join(
+                WareneingangPosition,
+                WareneingangPosition.id == Lagerbewegung.wareneingang_position_id,
+            )
+            .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+            .where(Wareneingang.dokument_id == dokument_id)
+            .limit(1)
+        )
+        is not None
+    )
+
+
+def aktualisiere_first_last_seen(session, varianten_ids) -> None:
+    """first_seen/last_seen aus den verbleibenden, angekommenen Wareneingängen
+    neu berechnen (nach Löschen oder Stornieren eines Dokuments)."""
+    for varianten_id in varianten_ids:
+        # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
+        # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an einem
+        #   Standort ohne Verkauf leer (Regel 6) und wuerde die Werte hier
+        #   auf NULL zuruecksetzen.
+        # Datum der Lieferung: das Dokumentdatum, und bei manuell
+        # erfasster Ware (ohne Beleg, D27) das Eingangsdatum. Darum ein
+        # LEFT JOIN auf `dokumente` - sonst fielen genau diese
+        # Wareneingänge aus der Berechnung. Bleibt beides leer (von Hand
+        # an einem Standort ohne Verkauf erfasst, Regel 6), zählt dieser
+        # Wareneingang hier nicht mit - first_seen/last_seen sind reine
+        # Anzeigewerte, die Reduktionsuhr hängt an
+        # `bestand.aeltestes_eingangsdatum`.
+        datum = func.coalesce(Dokument.dokumentdatum, Wareneingang.eingangsdatum)
+        first_seen, last_seen = session.execute(
+            select(func.min(datum), func.max(datum))
+            .select_from(WareneingangPosition)
+            .join(
+                Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
+            )
+            .join(Dokument, Dokument.id == Wareneingang.dokument_id, isouter=True)
+            .where(
+                WareneingangPosition.varianten_id == varianten_id,
+                # Nur angekommene Ware zählt als Lieferung (Teilaufgabe B5).
+                WareneingangPosition.menge_eingetroffen > 0,
+            )
+        ).one()
+        variante = session.get(Variante, varianten_id)
+        variante.first_seen, variante.last_seen = first_seen, last_seen
+
+
 def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LANGUAGE) -> dict:
     """Löscht ein importiertes Dokument samt Wareneingang, Positionen und
     Originaltexten unwiderruflich - inklusive der dadurch entstandenen
@@ -408,6 +463,8 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                 translate("errors.importer.invoice_not_found", language, id=invoice_id)
             )
         dokumentnummer = dokument.dokumentnummer
+        if dokument_ist_gebucht(session, invoice_id):
+            raise DeletePosted(translate("errors.importer.invoice_posted", language))
         wareneingaenge = session.scalars(
             select(Wareneingang).where(Wareneingang.dokument_id == invoice_id)
         ).all()
@@ -483,35 +540,7 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                     session.delete(bestand)
 
         all_varianten_ids = {v for ids in varianten_by_lagerort.values() for v in ids}
-        for varianten_id in all_varianten_ids:
-            # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
-            # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an einem
-            #   Standort ohne Verkauf leer (Regel 6) und wuerde die Werte hier
-            #   auf NULL zuruecksetzen.
-            # Datum der Lieferung: das Dokumentdatum, und bei manuell
-            # erfasster Ware (ohne Beleg, D27) das Eingangsdatum. Darum ein
-            # LEFT JOIN auf `dokumente` - sonst fielen genau diese
-            # Wareneingänge aus der Berechnung. Bleibt beides leer (von Hand
-            # an einem Standort ohne Verkauf erfasst, Regel 6), zählt dieser
-            # Wareneingang hier nicht mit - first_seen/last_seen sind reine
-            # Anzeigewerte, die Reduktionsuhr hängt an
-            # `bestand.aeltestes_eingangsdatum`.
-            datum = func.coalesce(Dokument.dokumentdatum, Wareneingang.eingangsdatum)
-            first_seen, last_seen = session.execute(
-                select(func.min(datum), func.max(datum))
-                .select_from(WareneingangPosition)
-                .join(
-                    Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
-                )
-                .join(Dokument, Dokument.id == Wareneingang.dokument_id, isouter=True)
-                .where(
-                    WareneingangPosition.varianten_id == varianten_id,
-                    # Nur angekommene Ware zählt als Lieferung (Teilaufgabe B5).
-                    WareneingangPosition.menge_eingetroffen > 0,
-                )
-            ).one()
-            variante = session.get(Variante, varianten_id)
-            variante.first_seen, variante.last_seen = first_seen, last_seen
+        aktualisiere_first_last_seen(session, all_varianten_ids)
         return dict(
             invoice_id=invoice_id,
             invoice_number=dokumentnummer,

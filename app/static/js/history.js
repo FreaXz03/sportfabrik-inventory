@@ -61,11 +61,37 @@ function renderArticleDeleteBox(product) {
      box.append(wrap);
 }
 
-function renderDeleteBox(invoice) {
+// Gebuchte Belege werden storniert, nicht gelöscht (Regel 2, 01.10.2026);
+// nur ein Beleg ohne jede Buchung lässt sich noch löschen. Der Server prüft das.
+async function renderDeleteBox(invoice) {
      const box = $('deleteBox');
 
+     if (invoice.status === 'storniert') {
+          box.hidden = false;
+          box.replaceChildren(el('p', t('history.cancel.done_note', {
+               date: date(invoice.cancelled_at),
+               name: invoice.cancelled_by_name ?? '—'
+          })));
+          return;
+     }
+
+     await meReady;
      if (!canDelete) {
           box.hidden = true;
+          return;
+     }
+
+     let preview;
+     try {
+          const response = await fetch('/api/invoices/' + invoice.id + '/cancel-preview');
+          if (!response.ok) throw new Error();
+          preview = await response.json();
+     } catch {
+          box.hidden = true;
+          return;
+     }
+     if (preview.zeilen.length > 0) {
+          renderCancelBox(invoice, preview);
           return;
      }
 
@@ -119,6 +145,84 @@ function renderDeleteBox(invoice) {
 
      wrap.append(input, btn, msg);
      box.append(label, wrap);
+}
+
+function renderCancelBox(invoice, preview) {
+     const box = $('deleteBox');
+     box.hidden = false;
+     box.replaceChildren();
+
+     const hint = el('p', t('history.cancel.hint'));
+     const msg = document.createElement('span');
+     msg.className = 'muted';
+
+     const table = document.createElement('table');
+     const head = document.createElement('tr');
+     for (const key of ['article', 'now', 'receipt', 'after', 'moved']) {
+          head.append(el('th', t('history.cancel.col_' + key)));
+     }
+     table.append(head);
+     for (const z of preview.zeilen) {
+          const row = document.createElement('tr');
+          const name = [z.marke, z.bezeichnung, z.lieferanten_artikelnr, z.farbe, z.groesse].filter(Boolean).join(' · ');
+          for (const value of [name, z.bestand_jetzt, '−' + z.wareneingang, z.bestand_danach, z.spaetere_bewegungen ? t('history.cancel.yes') : '']) {
+               row.append(el('td', value));
+          }
+          if (Number(z.bestand_danach) < 0) row.lastElementChild.previousElementSibling.className = 'warning-text';
+          table.append(row);
+     }
+
+     const confirmBtn = document.createElement('button');
+     confirmBtn.type = 'button';
+     confirmBtn.className = 'secondary danger';
+     confirmBtn.textContent = t('history.cancel.confirm_button');
+     const abortBtn = document.createElement('button');
+     abortBtn.type = 'button';
+     abortBtn.className = 'secondary';
+     abortBtn.textContent = t('history.cancel.abort');
+     const wrap = document.createElement('div');
+     wrap.className = 'filters';
+     wrap.append(confirmBtn, abortBtn, msg);
+
+     const openBtn = document.createElement('button');
+     openBtn.type = 'button';
+     openBtn.className = 'secondary';
+     openBtn.textContent = t('history.cancel.button');
+     const details = document.createElement('div');
+     details.hidden = true;
+     details.append(table);
+     if (preview.hat_negativen_bestand) {
+          const warn = el('p', t('history.cancel.negative_warning'));
+          warn.className = 'warning-text';
+          details.append(warn);
+     }
+     details.append(wrap);
+
+     openBtn.addEventListener('click', () => {
+          details.hidden = false;
+          openBtn.hidden = true;
+     });
+     abortBtn.addEventListener('click', () => {
+          details.hidden = true;
+          openBtn.hidden = false;
+     });
+     confirmBtn.addEventListener('click', async () => {
+          confirmBtn.disabled = true;
+          abortBtn.disabled = true;
+          msg.textContent = t('history.cancel.in_progress');
+          try {
+               const response = await fetch('/api/invoices/' + invoice.id + '/cancel', { method: 'POST' });
+               const result = await response.json().catch(() => ({}));
+               if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : t('history.cancel.failed'));
+               location.reload();
+          } catch (error) {
+               msg.textContent = error.message === 'Failed to fetch' ? t('common.connection_lost') : error.message;
+               confirmBtn.disabled = false;
+               abortBtn.disabled = false;
+          }
+     });
+
+     box.append(hint, openBtn, details);
 }
 
 function el(tag, text) {
@@ -269,6 +373,12 @@ async function load() {
 
                if (list) {
                     add(row, link(item.invoice_number, '/invoices/' + item.id));
+                    if (item.status === 'storniert') {
+                         const mark = document.createElement('span');
+                         mark.className = 'muted';
+                         mark.textContent = ' · ' + t('history.status.cancelled');
+                         row.lastElementChild.append(mark);
+                    }
 
                     for (const value of [
                          date(item.invoice_date),

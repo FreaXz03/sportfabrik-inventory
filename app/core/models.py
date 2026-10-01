@@ -194,6 +194,7 @@ class Dokument(Base):
             "typ IN ('rechnung', 'lieferschein', 'auftragsbestaetigung', 'bestellung')",
             name="ck_dokumente_typ",
         ),
+        CheckConstraint("status IN ('aktiv', 'storniert')", name="ck_dokumente_status"),
         # Belegnummern sind nur beim jeweiligen Lieferanten eindeutig - zwei
         # Lieferanten dürfen dieselbe Nummer verwenden (Phase B, Teilaufgabe
         # B2, Migration e5f6a7b8c9d0). Der Importer prüft zusätzlich selbst auf
@@ -232,6 +233,16 @@ class Dokument(Base):
     ocr_verwendet: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )
+
+    # Ein gebuchtes Dokument wird nie gelöscht, sondern storniert (Regel 2,
+    # 01.10.2026): Gegenbuchungen heben den Bestand wieder auf, Dokument,
+    # Originaltext und Preise bleiben.
+    status: Mapped[str] = mapped_column(
+        String(20), default="aktiv", server_default="aktiv"
+    )
+    storniert_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    storniert_von_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    storniert_von_name: Mapped[str | None] = mapped_column(String(100))
 
 
 class Artikel(Base):
