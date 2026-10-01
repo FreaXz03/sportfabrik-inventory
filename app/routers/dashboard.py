@@ -38,6 +38,7 @@ def dashboard(
             .order_by(Dokument.hochgeladen_am.desc(), Dokument.id.desc())
             .limit(5)
         ).all()
+        ziele = uebersicht.ziel_filialen(session, [d.id for d, _ in rows])
         delivered_quantity = session.scalar(select(func.sum(WareneingangPosition.menge)))
         return dict(
             **counts,
@@ -46,7 +47,7 @@ def dashboard(
                 if delivered_quantity is not None
                 else "0"
             ),
-            recent_invoices=[invoice_data(d, supplier) for d, supplier in rows],
+            recent_invoices=[dict(invoice_data(d, supplier), lagerort=ziele[d.id]) for d, supplier in rows],
             lagerort=None
             if lagerort is None
             else {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
@@ -71,6 +72,24 @@ def anstehend_anzahl(
     """Zahl der Meldungen unter „Anstehend" für die Glocke (jede Seite)."""
     try:
         filiale = None if lagerort is None else uebersicht.meldungen_filiale(session, lagerort.id)
-        return {"anzahl": uebersicht.anzahl_meldungen(filiale, uebersicht.stamm(session))}
+        meldungen = uebersicht.liste_meldungen(filiale, uebersicht.stamm(session))
+        return {"anzahl": len(meldungen), "meldungen": meldungen}
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, translate("errors.dashboard.load_failed", language)) from exc
+
+
+@router.get("/api/uebersicht/verlaeufe")
+def uebersicht_verlaeufe(
+    tage: int,
+    user=Depends(require_login_api),
+    lagerort=Depends(get_active_lagerort),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Bestand und neue Artikelvarianten über `tage` Tage mit Vergleich zur Vorperiode."""
+    if tage not in uebersicht.VERLAUF_PERIODEN:
+        raise HTTPException(422, f"tage muss einer von {', '.join(map(str, uebersicht.VERLAUF_PERIODEN))} sein")
+    try:
+        return uebersicht.verlaeufe(session, None if lagerort is None else lagerort.id, tage)
     except SQLAlchemyError as exc:
         raise HTTPException(503, translate("errors.dashboard.load_failed", language)) from exc

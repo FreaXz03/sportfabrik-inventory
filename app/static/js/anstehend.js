@@ -12,6 +12,7 @@
     $('heuteText').textContent = daten.lagerort ? daten.lagerort.code + ' · ' + daten.lagerort.name : '';
     window.SportfabrikAnstehend.zeichnen(daten, $('anstehend'), $('nichtsAnstehend'));
     $('anstehendPanel').hidden = !f;
+    window.SportfabrikAnstehend.aktuelles(daten, $('aktuelles'), $('nichtsNeues'));
   }
 
   async function laden() {

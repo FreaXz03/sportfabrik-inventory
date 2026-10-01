@@ -7,7 +7,7 @@
      <script src="/static/js/theme-init.js?v=2"></script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="dashboard.page_title">Übersicht · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=sidebar-8">
+     <link rel="stylesheet" href="/static/css/app.css?v=prio1-1">
 </head>
 
 <body>
@@ -16,17 +16,16 @@
           <nav data-i18n-aria-label="nav.main_aria" aria-label="Hauptnavigation"></nav>
      </header>
      <main>
-          <div class="quick-bar">
-               <nav class="quick-actions" id="schnellzugriffe" data-i18n-aria-label="dashboard.quick_aria" aria-label="Schnellzugriff"></nav>
-               <button type="button" id="schnellzugriffeBearbeiten" class="secondary quick-edit" data-i18n-aria-label="dashboard.shortcuts_edit" data-i18n-title="dashboard.shortcuts_edit" aria-label="Schnellzugriffe bearbeiten" title="Schnellzugriffe bearbeiten"><svg class="icon icon-16" aria-hidden="true"><use href="/static/img/icons.svg#icon-settings"/></svg></button>
-          </div>
-
           <section class="hero">
                <div>
                     <h1 id="begruessung" class="title-mixed" data-i18n="dashboard.greeting_plain">Guten Tag</h1>
                     <p id="heuteText" class="muted"></p>
                </div>
           </section>
+          <div class="quick-bar">
+               <nav class="quick-actions" id="schnellzugriffe" data-i18n-aria-label="dashboard.quick_aria" aria-label="Schnellzugriff"></nav>
+               <button type="button" id="schnellzugriffeBearbeiten" class="secondary quick-edit" data-i18n-aria-label="dashboard.shortcuts_edit" data-i18n-title="dashboard.shortcuts_edit" aria-label="Schnellzugriffe bearbeiten" title="Schnellzugriffe bearbeiten"><svg class="icon icon-16" aria-hidden="true"><use href="/static/img/icons.svg#icon-settings"/></svg></button>
+          </div>
           <p id="status" role="status" aria-live="polite" data-i18n="dashboard.loading">Übersicht wird geladen …</p><button id="retry"
                class="secondary" hidden data-i18n="common.retry">Erneut versuchen</button>
 
@@ -43,47 +42,41 @@
                </div>
           </div>
 
-          <div class="cards">
-               <div class="metric filiale-only"><span data-i18n="dashboard.metric_stock">Stück im Bestand</span><strong id="stueck">—</strong><small id="variantenText"></small></div>
-               <div class="metric filiale-only"><span data-i18n="dashboard.metric_sold_today">Heute verkauft</span><strong id="verkauftHeute">—</strong><small id="abgaengeText"></small></div>
-               <div class="metric"><span data-i18n="dashboard.metric_products">Erfasste Artikelvarianten</span><strong id="products">—</strong><small><a
-                              href="/articles" data-i18n="dashboard.metric_products_link">Artikel durchsuchen</a></small></div>
-               <div class="metric"><span data-i18n="dashboard.metric_invoices">Importierte Belege</span><strong id="invoices">—</strong><small><a
-                              href="/invoices" data-i18n="dashboard.metric_invoices_link">Alle Belege</a></small></div>
-          </div>
           <p id="ohneFiliale" class="muted" hidden data-i18n="dashboard.no_lagerort">Für Bestand, Verkäufe und Anstehendes unter Einstellungen eine Filiale wählen.</p>
 
-          <div class="insights filiale-only">
-               <section class="panel insight" aria-labelledby="trendHeading">
-                    <h2 id="trendHeading" data-i18n="dashboard.trend_heading">Verkäufe der letzten 14 Tage</h2>
-                    <p class="insight-figure"><strong id="trendWoche">—</strong></p>
-                    <p id="trendDelta" class="muted insight-delta"></p>
-                    <div id="trendBalken" class="bars" role="img" data-i18n-aria-label="dashboard.trend_aria" aria-label="Balkendiagramm: verkaufte Stück je Tag, letzte 14 Tage"></div>
+          <div class="chart-head">
+               <h2 data-i18n="dashboard.charts_heading">Verlauf</h2>
+               <label class="chart-period"><span data-i18n="dashboard.period_label">Zeitraum</span>
+                    <select id="periode">
+                         <option value="7" data-i18n="dashboard.period_7">7 Tage</option>
+                         <option value="30" selected data-i18n="dashboard.period_30">30 Tage</option>
+                         <option value="180" data-i18n="dashboard.period_180">6 Monate</option>
+                    </select>
+               </label>
+          </div>
+          <div class="insights insights-even">
+               <section class="panel insight filiale-only" aria-labelledby="stockHeading">
+                    <h3 id="stockHeading" class="insight-title" data-i18n="dashboard.stock_heading">Bestand</h3>
+                    <p class="insight-figure"><strong id="stockNow">—</strong></p>
+                    <p id="stockDelta" class="insight-delta"></p>
+                    <div id="stockChart" class="chart-xy"></div>
                </section>
+               <section class="panel insight" aria-labelledby="neuHeading">
+                    <h3 id="neuHeading" class="insight-title" data-i18n="dashboard.new_heading">Neu erfasste Artikelvarianten</h3>
+                    <p class="insight-figure"><strong id="neuNow">—</strong></p>
+                    <p id="neuDelta" class="insight-delta"></p>
+                    <div id="neuChart" class="chart-xy"></div>
+                    <p class="muted"><a href="/articles" data-i18n="dashboard.metric_products_link">Artikel durchsuchen</a></p>
+               </section>
+          </div>
+
+          <div class="insights insights-wide filiale-only">
                <section class="panel insight" aria-labelledby="stufenHeading">
                     <h2 id="stufenHeading" data-i18n="dashboard.stages_heading">Reduktionsstufen im Bestand</h2>
                     <p class="muted" data-i18n="dashboard.stages_hint">Stück nach Alter des letzten Eingangs in dieser Filiale.</p>
                     <div id="stufenBalken" class="stagebar" role="img" data-i18n-aria-label="dashboard.stages_aria" aria-label="Verteilung des Bestands auf die Stufen −30 %, −50 % und −70 %"></div>
                     <ul id="stufenListe" class="stage-legend"></ul>
                     <p id="stufenLeer" class="muted" hidden data-i18n="dashboard.stages_empty">Noch kein Bestand mit Eingangsdatum.</p>
-               </section>
-               <section class="panel insight" aria-labelledby="bestsellerHeading">
-                    <h2 id="bestsellerHeading" data-i18n="dashboard.bestseller_heading">Bestseller der Woche</h2>
-                    <ol id="bestsellerListe" class="rank-list"></ol>
-                    <p id="bestsellerLeer" class="muted" hidden data-i18n="dashboard.bestseller_empty">Diese Woche noch nichts verkauft.</p>
-               </section>
-          </div>
-
-          <div class="insights insights-wide filiale-only">
-               <section class="panel insight" aria-labelledby="stockHeading">
-                    <h2 id="stockHeading" data-i18n="dashboard.stock_heading">Bestand der letzten 30 Tage</h2>
-                    <p class="insight-figure"><strong id="stockNow">—</strong></p>
-                    <p id="stockDelta" class="muted insight-delta"></p>
-                    <svg id="stockSvg" class="linechart" viewBox="0 0 300 80" preserveAspectRatio="none" role="img" data-i18n-aria-label="dashboard.stock_aria" aria-label="Liniendiagramm: Stück im Bestand je Tag, letzte 30 Tage">
-                         <path id="stockFlaeche" class="line-area"></path>
-                         <polyline id="stockLinie" class="line-stroke"></polyline>
-                    </svg>
-                    <p class="line-axis muted"><span id="stockVon"></span><span data-i18n="dashboard.stock_today">heute</span></p>
                </section>
                <section class="panel insight" aria-labelledby="catsHeading">
                     <h2 id="catsHeading" data-i18n="dashboard.cats_heading">Bestand nach Hauptgruppe</h2>
@@ -125,6 +118,7 @@
                                    <th data-i18n="dashboard.table_invoice">Beleg</th>
                                    <th data-i18n="dashboard.table_invoice_date">Datum</th>
                                    <th data-i18n="dashboard.table_supplier">Lieferant</th>
+                                   <th data-i18n="dashboard.table_branch">Filiale</th>
                                    <th data-i18n="dashboard.table_uploaded">Importiert</th>
                                    <th data-i18n="dashboard.table_uploaded_by">Importiert von</th>
                               </tr>
@@ -135,9 +129,10 @@
           </section>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/anstehend-liste.js?v=2"></script>
-     <script src="/static/js/uebersicht.js?v=10"></script>
-     <script src="/static/js/nav.js?v=11"></script>
+     <script src="/static/js/diagramme.js?v=1"></script>
+     <script src="/static/js/anstehend-liste.js?v=3"></script>
+     <script src="/static/js/uebersicht.js?v=11"></script>
+     <script src="/static/js/nav.js?v=12"></script>
      <script src="/static/js/session.js?v=settings-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>

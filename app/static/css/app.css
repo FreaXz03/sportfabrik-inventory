@@ -2401,6 +2401,103 @@ body:has(main.login-page) {
 
 .line-axis { display: flex; justify-content: space-between; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
 
+/* Verlaufsdiagramme mit Achsen und Vergleich (2026-10-01). Zahlen links und
+   Daten unten sind echter Text, die Linie ist gedehntes SVG ohne Schrift. */
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.chart-head h2 { margin: 0; }
+
+.chart-period { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-sm); }
+
+.chart-period select { width: auto; }
+
+.insights-even { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
+
+@media (max-width: 899px) {
+  .insights-even { grid-template-columns: minmax(0, 1fr); }
+}
+
+.insight-title { margin: 0; font-size: var(--fs-h3); }
+
+.chart-xy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 140px auto;
+  column-gap: 10px;
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.chart-xy .linechart { height: 100%; margin-top: 0; border-bottom: 0; overflow: visible; }
+
+.chart-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Höhe 0: die Zahl sitzt mittig auf ihrer Rasterlinie. */
+.chart-y li { height: 0; display: flex; align-items: center; justify-content: flex-end; }
+
+.chart-x {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.chart-grid { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+.compare { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-sm); }
+
+.compare strong { font-variant-numeric: tabular-nums; }
+
+.compare-arrow { font-size: var(--fs-xs); }
+
+.compare.is-up .compare-arrow,
+.compare.is-up strong { color: var(--success-text); }
+
+.compare.is-down .compare-arrow,
+.compare.is-down strong { color: var(--danger-text); }
+
+/* Statistik: Block der aktiven Filiale mit grossem Ring und Kreisen je Hauptgruppe. */
+.filiale-block { display: grid; gap: 18px; margin-bottom: 28px; }
+
+.filiale-block h2,
+.filiale-block > p { margin: 0; }
+
+.filiale-block .insights { margin-top: 0; }
+
+.donut-lg { width: 220px; height: 220px; }
+
+.donut-md { width: 150px; height: 150px; }
+
+.donut-wrap-lg { gap: 32px; }
+
+.donut-wrap-lg .cat-legend { max-width: 460px; }
+
+.filiale-block .cards { grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); }
+
+.pie-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
 .donut-wrap { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
 
 .donut { width: 132px; height: 132px; flex: none; }
@@ -2569,14 +2666,48 @@ body:has(main.login-page) {
 
   html.sidebar-collapsed body:has(> header > nav) > header { padding: 62px 10px 16px; }
 
-  html.sidebar-collapsed body:has(> header > nav) > header > .brand,
   html.sidebar-collapsed body:has(> header > nav) > header > nav,
   html.sidebar-collapsed .store-pill,
   html.sidebar-collapsed .account-name { display: none; }
 
+  /* Eingeklappt bleibt ein „SF" als Logo (2026-10-01): gleiche Schrift (Geologica,
+     fett) und Orange wie das Wortzeichen, Höhe der Grossbuchstaben wie dort. */
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand { padding: 0; align-items: center; }
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand img,
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand span { display: none; }
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand::before {
+    content: "SF";
+    font-family: 'Geologica', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: .02em;
+    color: var(--accent);
+  }
+
   html.sidebar-collapsed body:has(> header > nav) > header > .header-tools { margin-top: auto; }
 
   html.sidebar-collapsed .sidebar-toggle { right: 18px; }
+
+  /* Knopf ohne Rahmen (2026-10-01); nur beim Darüberfahren eine Fläche. */
+  .sidebar-toggle.secondary { border-color: transparent; background: transparent; box-shadow: none; }
+  .sidebar-toggle.secondary:hover { background: var(--surface-alt); }
+
+  /* Kleine Animation beim Ein- und Ausklappen (2026-10-01). nav.js setzt
+     `sidebar-anim` nur für den Moment des Umschaltens, damit beim Laden der
+     Seite nichts fährt. */
+  body:has(> header > nav) > header { overflow-x: hidden; }
+
+  html.sidebar-anim body:has(> header > nav) { transition: grid-template-columns .24s var(--ease); }
+
+  html.sidebar-anim body:has(> header > nav) > header > * { animation: sidebar-in .24s var(--ease) both; }
+}
+
+@keyframes sidebar-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html.sidebar-anim body:has(> header > nav) { transition: none; }
+  html.sidebar-anim body:has(> header > nav) > header > * { animation: none; }
 }
 
 @media (max-width: 900px) {
@@ -2628,6 +2759,51 @@ body:has(main.login-page) {
 }
 
 .bell:hover { background: var(--surface-alt); }
+
+/* Alerts-Fenster unter der Glocke (2026-10-01). */
+.bell-wrap { position: relative; flex: none; margin-left: auto; }
+
+.bell-wrap .bell { margin-left: 0; padding: 0; cursor: pointer; }
+
+.alerts-popup {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(380px, calc(100vw - 32px));
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  animation: menu-in var(--fast) both;
+}
+
+.alerts-popup[hidden] { display: none; }
+
+.alerts-popup h2 { margin: 0 0 8px; font-size: var(--fs-h3); }
+
+.alerts-list { margin: 0; padding: 0; list-style: none; }
+
+.alerts-list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.alerts-list a:hover { background: var(--surface-alt); }
+
+.alerts-list a.is-urgent .todo-count {
+  background: var(--accent-soft-bg);
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 1px var(--accent-soft-border);
+}
+
+.alerts-all { display: inline-block; margin-top: 8px; font-size: var(--fs-sm); }
 
 .bell-badge {
   position: absolute;

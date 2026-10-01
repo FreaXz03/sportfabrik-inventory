@@ -137,34 +137,75 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     }).slice(0, 8);
   }
 
-  // Glocke: führt zu „Anstehend", das Zeichen zeigt die Zahl der Meldungen.
-  // Zahl von /api/anstehend/anzahl; ohne Meldungen bleibt das Zeichen weg.
+  // Glocke / „Alerts" (2026-10-01): ein Klick öffnet ein kleines Fenster mit den
+  // ersten fünf Meldungen aus „Anstehend" (dringende zuerst, wie in der Liste);
+  // ein Link führt zur ganzen Liste. Das Zeichen zeigt die Zahl aller Meldungen.
+  // Daten von /api/anstehend/anzahl; ohne Meldungen bleibt das Zeichen weg.
   var glocke = null;
   var meldungen = 0;
+  var meldungsliste = [];
+  var ALERTS_MAX = 5;
 
   function glockeBeschriften() {
     if (!glocke) return;
     var text = meldungen
       ? window.SportfabrikI18n.t('nav.bell_aria', { anzahl: meldungen })
       : t('nav.bell_none');
-    glocke.link.setAttribute('aria-label', text);
-    glocke.link.title = text;
+    glocke.knopf.setAttribute('aria-label', text);
+    glocke.knopf.title = text;
     glocke.zeichen.textContent = meldungen > 99 ? '99+' : String(meldungen);
     glocke.zeichen.hidden = !meldungen;
+    glocke.titel.textContent = t('nav.alerts_title');
+    glocke.alle.textContent = t('nav.alerts_all');
+    alertsZeichnen();
+  }
+
+  function alertsZeichnen() {
+    if (!glocke) return;
+    glocke.liste.replaceChildren();
+    // Dringendes zuerst (stabil: sonst bleibt die Reihenfolge der Liste).
+    var sortiert = meldungsliste.map(function (m, i) { return { m: m, i: i }; }).sort(function (x, y) {
+      return (Number(y.m.dringend) - Number(x.m.dringend)) || (x.i - y.i);
+    }).map(function (x) { return x.m; });
+    sortiert.slice(0, ALERTS_MAX).forEach(function (m) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = m.href;
+      if (m.dringend) a.className = 'is-urgent';
+      var anzahl = document.createElement('span');
+      anzahl.className = 'todo-count';
+      anzahl.textContent = String(m.anzahl);
+      var text = document.createElement('span');
+      text.className = 'todo-text';
+      text.textContent = window.SportfabrikI18n.t('dashboard.todo_' + m.art, { stufe: m.stufe });
+      a.append(anzahl, text);
+      li.append(a);
+      glocke.liste.append(li);
+    });
+    glocke.leer.textContent = t('nav.alerts_empty');
+    glocke.leer.hidden = meldungsliste.length > 0;
+    glocke.alle.hidden = meldungsliste.length === 0;
   }
 
   function glockeAktualisieren() {
-    fetch('/api/anstehend/anzahl').then(function (r) { return r.ok ? r.json() : null; }).then(function (daten) {
+    return fetch('/api/anstehend/anzahl').then(function (r) { return r.ok ? r.json() : null; }).then(function (daten) {
       if (!daten) return;
       meldungen = daten.anzahl;
+      meldungsliste = daten.meldungen || [];
       glockeBeschriften();
     }).catch(function () { });
   }
 
   function glockeBauen() {
-    var link = document.createElement('a');
-    link.className = 'bell';
-    link.href = '/anstehend';
+    var huelle = document.createElement('div');
+    huelle.className = 'bell-wrap';
+    var knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'bell';
+    knopf.id = 'alertsKnopf';
+    knopf.setAttribute('aria-haspopup', 'dialog');
+    knopf.setAttribute('aria-expanded', 'false');
+    knopf.setAttribute('aria-controls', 'alertsFenster');
     var svgNs = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(svgNs, 'svg');
     svg.setAttribute('class', 'icon icon-16');
@@ -176,12 +217,49 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     zeichen.className = 'bell-badge';
     zeichen.setAttribute('aria-hidden', 'true');
     zeichen.hidden = true;
-    link.append(svg, zeichen);
-    glocke = { link: link, zeichen: zeichen };
+    knopf.append(svg, zeichen);
+
+    var fenster = document.createElement('div');
+    fenster.id = 'alertsFenster';
+    fenster.className = 'alerts-popup';
+    fenster.setAttribute('role', 'dialog');
+    fenster.setAttribute('aria-labelledby', 'alertsTitel');
+    fenster.hidden = true;
+    var titel = document.createElement('h2');
+    titel.id = 'alertsTitel';
+    var liste = document.createElement('ul');
+    liste.className = 'alerts-list';
+    var leer = document.createElement('p');
+    leer.className = 'muted';
+    var alle = document.createElement('a');
+    alle.className = 'alerts-all';
+    alle.href = '/anstehend';
+    fenster.append(titel, liste, leer, alle);
+
+    function schliessen(zurueck) {
+      fenster.hidden = true;
+      knopf.setAttribute('aria-expanded', 'false');
+      if (zurueck) knopf.focus();
+    }
+    knopf.addEventListener('click', function () {
+      if (!fenster.hidden) { schliessen(false); return; }
+      fenster.hidden = false;
+      knopf.setAttribute('aria-expanded', 'true');
+      glockeAktualisieren();
+    });
+    document.addEventListener('click', function (ereignis) {
+      if (!fenster.hidden && !huelle.contains(ereignis.target)) schliessen(false);
+    });
+    huelle.addEventListener('keydown', function (ereignis) {
+      if (ereignis.key === 'Escape' && !fenster.hidden) schliessen(true);
+    });
+    huelle.append(knopf, fenster);
+
+    glocke = { knopf: knopf, zeichen: zeichen, titel: titel, liste: liste, leer: leer, alle: alle };
     glockeBeschriften();
     glockeAktualisieren();
     document.addEventListener('visibilitychange', function () { if (!document.hidden) glockeAktualisieren(); });
-    return link;
+    return huelle;
   }
 
   function sucheBauen() {
@@ -229,28 +307,31 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
       var frage = feld.value.trim();
       if (!frage) { status.textContent = ''; schliessen(); return; }
       var gefunden = treffer(frage);
-      gefunden.forEach(function (x, i) {
+      function option(href, titel, info) {
         var li = document.createElement('li');
-        li.id = 'navSucheTreffer' + i;
+        li.id = 'navSucheTreffer' + liste.children.length;
         li.setAttribute('role', 'option');
         var a = document.createElement('a');
-        a.href = x.e.href;
+        a.href = href;
         a.tabIndex = -1;
         var name = document.createElement('strong');
-        name.textContent = t(x.e.key);
-        var info = document.createElement('span');
-        info.textContent = (x.gruppe ? t(x.gruppe) + ' · ' : '') + t(x.e.info);
-        a.append(name, info);
+        name.textContent = titel;
+        var zusatz = document.createElement('span');
+        zusatz.textContent = info;
+        a.append(name, zusatz);
         li.append(a);
         liste.append(li);
-      });
-      if (!gefunden.length) {
-        var leer = document.createElement('li');
-        leer.className = 'topsearch-none';
-        leer.textContent = t('nav.search_none');
-        liste.append(leer);
       }
-      status.textContent = gefunden.length ? window.SportfabrikI18n.t('nav.search_results', { anzahl: gefunden.length }) : t('nav.search_none');
+      gefunden.forEach(function (x) {
+        option(x.e.href, t(x.e.key), (x.gruppe ? t(x.gruppe) + ' · ' : '') + t(x.e.info));
+      });
+      // Alles-Finder (2026-10-01): jede Eingabe lässt sich auch als Artikel- oder
+      // Belegsuche öffnen; die Seiten filtern selbst und prüfen die Rechte.
+      var suchtext = encodeURIComponent(frage);
+      var i18n = window.SportfabrikI18n;
+      option('/articles?q=' + suchtext, i18n.t('nav.search_in_articles', { text: frage }), i18n.t('nav.search_in_articles_info'));
+      option('/invoices?q=' + suchtext, i18n.t('nav.search_in_documents', { text: frage }), i18n.t('nav.search_in_documents_info'));
+      status.textContent = i18n.t('nav.search_results', { anzahl: liste.children.length });
       liste.hidden = false;
       feld.setAttribute('aria-expanded', 'true');
       markieren(-1);
@@ -342,7 +423,10 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
       svg.append(use);
       leistenKnopf.append(svg);
       leistenKnopf.addEventListener('click', function () {
-        var zu = document.documentElement.classList.toggle('sidebar-collapsed');
+        var wurzel = document.documentElement;
+        wurzel.classList.add('sidebar-anim');
+        setTimeout(function () { wurzel.classList.remove('sidebar-anim'); }, 300);
+        var zu = wurzel.classList.toggle('sidebar-collapsed');
         try { localStorage.setItem('sportfabrikSidebar', zu ? 'collapsed' : 'open'); } catch (e) { }
         seitenleisteKnopf();
       });

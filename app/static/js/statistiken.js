@@ -88,6 +88,108 @@
     }));
   }
 
+  // --- Verkäufe und Bestand der aktiven Filiale (von der Übersicht hierher verschoben, 2026-10-01).
+  const D = window.SportfabrikDiagramme;
+
+  function datumKurz(wert) { return D.datumKurz(wert); }
+
+  function verlauf(f) {
+    const tage = f.verlauf || [];
+    const werte = tage.map((tag) => Number(tag.verkauft));
+    const woche = D.summe(werte.slice(-7));
+    const davor = D.summe(werte.slice(-14, -7));
+    $('trendWoche').textContent = t('dashboard.trend_week', { anzahl: D.zahl(woche) });
+    const unterschied = woche - davor;
+    $('trendDelta').textContent = unterschied === 0
+      ? t('dashboard.trend_same')
+      : t(unterschied > 0 ? 'dashboard.trend_up' : 'dashboard.trend_down', { anzahl: D.zahl(Math.abs(unterschied)) });
+    const hoechster = Math.max(1, ...werte);
+    const balken = $('trendBalken');
+    balken.replaceChildren();
+    tage.forEach((tag, index) => {
+      const eintrag = document.createElement('span');
+      eintrag.className = index === tage.length - 1 ? 'bar is-today' : 'bar';
+      eintrag.style.setProperty('--h', String(werte[index] / hoechster));
+      eintrag.title = t('dashboard.trend_bar', { datum: datumKurz(tag.tag), anzahl: D.zahl(werte[index]) });
+      balken.append(eintrag);
+    });
+  }
+
+  function bestseller(f) {
+    const liste = $('bestsellerListe');
+    liste.replaceChildren();
+    const eintraege = f.bestseller || [];
+    const hoechster = Math.max(1, ...eintraege.map((e) => Number(e.stueck)));
+    for (const e of eintraege) {
+      const li = document.createElement('li');
+      li.className = 'rank';
+      li.append(node('span', [e.marke, e.bezeichnung].filter(Boolean).join(' ')), node('strong', D.zahl(e.stueck)));
+      li.firstChild.className = 'rank-name';
+      li.lastChild.className = 'rank-qty';
+      const spur = document.createElement('span');
+      spur.className = 'rank-bar';
+      spur.style.setProperty('--w', String(Number(e.stueck) / hoechster));
+      li.append(spur);
+      liste.append(li);
+    }
+    $('bestsellerLeer').hidden = eintraege.length > 0;
+  }
+
+  // Ein Kreisdiagramm je Hauptgruppe, aufgeschlüsselt nach Sportbereich.
+  const PIE_GRUPPEN = ['Schuhe', 'Textil', 'Hartware'];
+
+  function gruppenKreise(gruppen) {
+    const raster = $('pieGrid');
+    raster.replaceChildren();
+    for (const gruppe of PIE_GRUPPEN) {
+      const huelle = document.createElement('section');
+      huelle.className = 'panel insight';
+      const titel = node('h3', gruppe);
+      titel.className = 'insight-title';
+      const hinweis = node('p', t('statistik.pie_hint'));
+      hinweis.className = 'muted';
+      const wrap = document.createElement('div');
+      wrap.className = 'donut-wrap';
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'donut donut-md');
+      svg.setAttribute('viewBox', '0 0 42 42');
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', t('statistik.pie_aria', { gruppe: gruppe }));
+      const liste = document.createElement('ul');
+      liste.className = 'cat-legend';
+      wrap.append(svg, liste);
+      const leer = node('p', t('dashboard.cats_empty'));
+      leer.className = 'muted';
+      huelle.append(titel, hinweis, wrap, leer);
+      raster.append(huelle);
+      D.donut(svg, liste, leer, (gruppen[gruppe] || []).map((e) => ({
+        name: e.sportbereich === null ? t('statistik.pie_no_area') : e.sportbereich,
+        menge: Number(e.stueck),
+      })));
+    }
+  }
+
+  async function filialeLaden() {
+    try {
+      const antwort = await fetch('/api/dashboard');
+      const daten = await antwort.json();
+      if (!antwort.ok) return;
+      const f = daten.filiale;
+      $('filialeBlock').hidden = !f;
+      if (!f) return;
+      $('filialeTitel').textContent = t('statistik.filiale_heading', { filiale: daten.lagerort.code + ' · ' + daten.lagerort.name });
+      $('verkauftHeute').textContent = D.zahl(f.verkauft_heute);
+      $('abgaengeText').textContent = t('dashboard.metric_removed_today', { anzahl: D.zahl(f.abgaenge_heute) });
+      verlauf(f);
+      bestseller(f);
+      D.donut($('catsDonut'), $('catsListe'), $('catsLeer'),
+        (f.kategorien || []).map((e) => ({ name: e.hauptgruppe, menge: Number(e.stueck) })));
+      gruppenKreise(f.bestand_gruppen || {});
+    } catch (fehler) {
+      // Beiwerk: ohne Verbindung bleibt der Block verborgen, die übrige Statistik meldet den Fehler selbst.
+    }
+  }
+
   function lagerorteFuellen(lagerorte) {
     if (lagerorteGesetzt) return;
     const auswahl = $('lagerort');
@@ -129,5 +231,6 @@
   $('retry').addEventListener('click', laden);
   $('zeitraum').addEventListener('change', laden);
   $('lagerort').addEventListener('change', laden);
-  window.SportfabrikI18n.ready.then(laden);
+  window.SportfabrikI18n.ready.then(() => { laden(); filialeLaden(); });
+  document.addEventListener('sportfabrik:i18n-ready', filialeLaden);
 })();

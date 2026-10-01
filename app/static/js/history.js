@@ -4,8 +4,9 @@ const path = location.pathname;
 const list = path === '/invoices';
 const article = path.startsWith('/articles/');
 const endpoint = list ? '/api/invoices' : '/api' + path;
+// Suchtext aus dem Alles-Finder (2026-10-01): /invoices?q=...
 let page = 1,
-     q = '',
+     q = list ? (new URLSearchParams(location.search).get('q') || '').trim().slice(0, 200) : '',
      controller = null;
 const pageSize = 25;
 let sortBy = '',
@@ -466,6 +467,7 @@ async function load() {
      }
 }
 
+if (q) document.querySelector('#search [name="q"]').value = q;
 $('search').addEventListener('submit', (e) => {
      e.preventDefault();
      q = new FormData(e.target).get('q').trim();

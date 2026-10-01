@@ -120,6 +120,12 @@ for (const key of Object.keys(VORGABEN)) {
     filters.set(key, 'true');
   }
 }
+// Suchtext aus dem Alles-Finder oben (2026-10-01): in die Schnellsuche eintragen und filtern.
+const startSuche = (adresse.get('q') || '').slice(0, 200);
+if (startSuche) {
+  filters.set('q', startSuche);
+  document.querySelector('#filters [name="q"]').value = startSuche;
+}
 // „Anstehend" je Filiale (28.09.2026): nur Varianten mit Bestand dort.
 const vorgabeFiliale = vorgabe && /^\d+$/.test(adresse.get('lagerort_id') || '') ? (adresse.get('filiale') || '') : null;
 if (vorgabeFiliale !== null) filters.set('lagerort_id', adresse.get('lagerort_id'));

@@ -15,6 +15,7 @@ from ..core.models import (
     Artikel,
     Bestand,
     Dokument,
+    DokumentLieferung,
     Kategorie,
     Lagerbewegung,
     Lagerort,
@@ -227,12 +228,12 @@ def verkaufsverlauf(session, lagerort_id: int, heute: date) -> list[dict]:
     return [{"tag": tag.isoformat(), "verkauft": _zahl(summen[tag])} for tag in tage]
 
 
-def bestandsverlauf(session, lagerort_id: int, heute: date) -> list[dict]:
-    """Stück im Bestand am Ende jedes der letzten `BESTAND_TAGE` Tage, ältester
+def bestandsverlauf(session, lagerort_id: int, heute: date, tage_anzahl: int = BESTAND_TAGE) -> list[dict]:
+    """Stück im Bestand am Ende jedes der letzten `tage_anzahl` Tage, ältester
     zuerst, heute zuletzt. Aus dem Journal rückwärts gerechnet (Regel 2): der
     heutige Stand ist die Summe des Bestands, jeder Tag davor ist der Stand
     des Folgetags minus dessen Bewegungen."""
-    tage = [heute - timedelta(days=i) for i in range(BESTAND_TAGE - 1, -1, -1)]
+    tage = [heute - timedelta(days=i) for i in range(tage_anzahl - 1, -1, -1)]
     stand = Decimal(
         session.scalar(select(func.coalesce(func.sum(Bestand.menge), 0)).where(Bestand.lagerort_id == lagerort_id))
     )
@@ -270,6 +271,74 @@ def kategorien_verteilung(session, lagerort_id: int) -> list[dict]:
     # Ohne Kategorie immer zuletzt, sonst nach Menge, bei Gleichstand nach Name.
     zeilen.sort(key=lambda z: (z[0] is None, -z[1], z[0] or ""))
     return [{"hauptgruppe": gruppe, "stueck": _zahl(menge)} for gruppe, menge in zeilen]
+
+
+def bestand_gruppen(session, lagerort_id: int) -> dict:
+    """Stück im Bestand je Hauptgruppe, aufgeschlüsselt nach Sportbereich
+    (Regel 8; 2026-10-01, Kreisdiagramme der Statistik). Artikel ohne
+    Kategorie fehlen hier - sie stehen in `kategorien_verteilung`. Velo und
+    Food haben keinen Sportbereich (`None`)."""
+    zeilen = session.execute(
+        select(Kategorie.hauptgruppe, Kategorie.sportbereich, func.sum(Bestand.menge))
+        .select_from(Bestand)
+        .join(Variante, Variante.id == Bestand.varianten_id)
+        .join(Artikel, Artikel.id == Variante.artikel_id)
+        .join(Kategorie, Kategorie.id == Artikel.kategorie_id)
+        .where(Bestand.lagerort_id == lagerort_id, Bestand.menge > 0)
+        .group_by(Kategorie.hauptgruppe, Kategorie.sportbereich)
+    ).all()
+    zeilen.sort(key=lambda z: (z[0], -z[2], z[1] or ""))
+    gruppen: dict[str, list[dict]] = {}
+    for hauptgruppe, sportbereich, menge in zeilen:
+        gruppen.setdefault(hauptgruppe, []).append({"sportbereich": sportbereich, "stueck": _zahl(menge)})
+    return gruppen
+
+
+VERLAUF_PERIODEN = (7, 30, 180)
+
+
+def _prozent(jetzt: Decimal | int, vorher: Decimal | int) -> float | None:
+    """Änderung in Prozent gegenüber `vorher`; ohne Basis (0) keine Zahl erfinden."""
+    if not vorher:
+        return None
+    # abs(): bei negativem Bestand (erlaubt) zeigt ein Anstieg trotzdem nach oben.
+    return round(float((jetzt - vorher) / abs(vorher) * 100), 1)
+
+
+def verlaeufe(session, lagerort_id: int | None, tage: int, heute: date | None = None) -> dict:
+    """Bestand (aktive Filiale) und neu erfasste Artikelvarianten (ganzer
+    Stamm, nach erster Lieferung) der letzten `tage` Tage, je mit Vergleich
+    zur Periode davor: Bestand am Ende gegen Bestand am Ende der Vorperiode,
+    neue Varianten gegen die der Vorperiode (2026-10-01)."""
+    heute = heute or date.today()
+    ergebnis: dict = {"tage": tage, "bestand": None}
+    if lagerort_id is not None:
+        # Ein Tag mehr: der erste Punkt ist der Stand am Ende der Vorperiode.
+        punkte = bestandsverlauf(session, lagerort_id, heute, tage + 1)
+        vorher, jetzt = Decimal(punkte[0]["bestand"]), Decimal(punkte[-1]["bestand"])
+        ergebnis["bestand"] = {
+            "reihe": punkte[1:],
+            "jetzt": _zahl(jetzt),
+            "vorher": _zahl(vorher),
+            "prozent": _prozent(jetzt, vorher),
+        }
+    tage_liste = [heute - timedelta(days=i) for i in range(2 * tage - 1, -1, -1)]
+    je_tag = {tag: 0 for tag in tage_liste}
+    for erste, anzahl in session.execute(
+        select(Variante.first_seen, func.count())
+        .where(Variante.first_seen >= tage_liste[0], Variante.first_seen <= heute)
+        .group_by(Variante.first_seen)
+    ):
+        je_tag[erste] = anzahl
+    summe = sum(je_tag[tag] for tag in tage_liste[tage:])
+    vorher_summe = sum(je_tag[tag] for tag in tage_liste[:tage])
+    ergebnis["neu"] = {
+        "reihe": [{"tag": tag.isoformat(), "anzahl": je_tag[tag]} for tag in tage_liste[tage:]],
+        "summe": summe,
+        "vorher": vorher_summe,
+        "prozent": _prozent(summe, vorher_summe),
+    }
+    return ergebnis
 
 
 def bestseller(session, lagerort_id: int, heute: date) -> list[dict]:
@@ -393,7 +462,29 @@ def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
         "bestseller": bestseller(session, lagerort_id, heute),
         "bestandsverlauf": bestandsverlauf(session, lagerort_id, heute),
         "kategorien": kategorien_verteilung(session, lagerort_id),
+        "bestand_gruppen": bestand_gruppen(session, lagerort_id),
     }
+
+
+def ziel_filialen(session, dokument_ids: list[int]) -> dict[int, str | None]:
+    """Code der Filiale, in die ein Beleg importiert wurde („Zuletzt importiert",
+    2026-10-01): sein eigener Wareneingang oder - bei einem Beleg, der nur an
+    eine Lieferung angehängt ist - der Wareneingang dieser Lieferung."""
+    if not dokument_ids:
+        return {}
+    eigene = select(Wareneingang.dokument_id.label("dokument_id"), Lagerort.code.label("code")).join(
+        Lagerort, Lagerort.id == Wareneingang.lagerort_id
+    ).where(Wareneingang.dokument_id.in_(dokument_ids))
+    angehaengt = (
+        select(DokumentLieferung.dokument_id.label("dokument_id"), Lagerort.code.label("code"))
+        .join(Wareneingang, Wareneingang.id == DokumentLieferung.wareneingang_id)
+        .join(Lagerort, Lagerort.id == Wareneingang.lagerort_id)
+        .where(DokumentLieferung.dokument_id.in_(dokument_ids))
+    )
+    codes: dict[int, set[str]] = {}
+    for dokument_id, code in session.execute(union_all(eigene, angehaengt)):
+        codes.setdefault(dokument_id, set()).add(code)
+    return {dokument_id: ", ".join(sorted(codes[dokument_id])) if dokument_id in codes else None for dokument_id in dokument_ids}
 
 
 def aktuelles(session, lagerort_id: int | None, anzahl: int = AKTUELLES_ANZAHL) -> list[dict]:
@@ -498,15 +589,31 @@ def stamm(session) -> dict:
     }
 
 
-def anzahl_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> int:
-    """Zahl der Punkte unter „Anstehend" - ein Punkt je Meldung, genau wie
-    anstehend-liste.js sie zeichnet (Glocke, 30.09.2026). Ohne aktive Filiale
+def liste_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> list[dict]:
+    """Die Punkte unter „Anstehend" mit Ziel, in der Reihenfolge von
+    anstehend-liste.js (Glocke und Popup, 2026-10-01). Ohne aktive Filiale
     zählen nur die Stammdaten-Hinweise."""
-    anzahl = int(bool(stamm_daten["ohne_kategorie"])) + int(bool(stamm_daten["ohne_ean"]))
+    meldungen: list[dict] = []
+
+    def punkt(art: str, anzahl: int, href: str, dringend: bool = False, **extra) -> None:
+        if anzahl:
+            meldungen.append({"art": art, "anzahl": anzahl, "href": href, "dringend": dringend, **extra})
+
     if filiale_daten:
-        anzahl += int(bool(filiale_daten["erwartet_total"])) + int(bool(filiale_daten["negativ"]))
-        anzahl += int(bool(filiale_daten["empfehlungen_offen"]))
+        punkt("expected", filiale_daten["erwartet_total"], "/wareneingaenge")
+        punkt("recommendations", filiale_daten["empfehlungen_offen"], "/runterschreiben#empfehlungPanel")
+        punkt("negative", filiale_daten["negativ"], "/bestand?nur_negativ=true", True)
         for name in ("70", "50"):
             stufe = filiale_daten["reduktionen"].get(name, {})
-            anzahl += int(bool(stufe.get("faellig"))) + int(bool(stufe.get("bald")))
-    return anzahl
+            ziel = f"/bestand?reduktion={name}&reduktion_status="
+            punkt("reduction_due", stufe.get("faellig", 0), ziel + "faellig", True, stufe=name)
+            punkt("reduction_soon", stufe.get("bald", 0), ziel + "bald", False, stufe=name)
+    punkt("no_category", stamm_daten["ohne_kategorie"], "/articles?kategorie_fehlt=true")
+    punkt("no_ean", stamm_daten["ohne_ean"], "/articles?ohne_ean=true")
+    return meldungen
+
+
+def anzahl_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> int:
+    """Zahl der Punkte unter „Anstehend" - ein Punkt je Meldung, genau wie
+    anstehend-liste.js sie zeichnet (Glocke, 30.09.2026)."""
+    return len(liste_meldungen(filiale_daten, stamm_daten))
