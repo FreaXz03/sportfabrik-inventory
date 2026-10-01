@@ -1,9 +1,12 @@
 # Automatic Backups
 
-The daily run is set up in Codex for 20:00 (Europe/Zurich).
-It is bound to this local Codex task, not a Windows or Linux system service.
-The PC, Codex, and Docker must be available for the run. When moving to
-Linux, a dedicated server schedule must be set up and tested.
+**On the store server** the schedule is a systemd timer (22:00 daily), a daily
+check (06:15) and a weekly restore drill — see `ausfallsicherheit.md` and
+`deploy/systemd/`. Not yet installed or run on a server.
+
+On the current local setup, the daily run is set up in Codex for 20:00
+(Europe/Zurich). It is bound to this local Codex task, not a Windows or Linux
+system service. The PC, Codex, and Docker must be available for the run.
 
 Manually, from the project folder:
 

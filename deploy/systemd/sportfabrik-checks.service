@@ -1,0 +1,13 @@
+[Unit]
+Description=Sportfabrik Inventory daily checks (stock vs movements, backup age)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=sportfabrik
+WorkingDirectory=/opt/sportfabrik-inventory
+# Rule 2: bestand must equal the sum of lagerbewegungen. Exit code 1 if not.
+ExecStart=/usr/bin/docker compose --env-file .env.server exec -T app python scripts/betrieb.py pruefe
+# Fails if the newest local backup is older than 26 hours.
+ExecStart=/opt/sportfabrik-inventory/scripts/check_backup_age.sh

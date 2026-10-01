@@ -66,8 +66,11 @@ so no invoices are missing between the backup and the migration.
 
 Original PDFs also live in the Windows folder `Recchnungen/` and must be
 backed up separately and transferred if needed.
-Backup automation, retention, an offsite backup location, and the
-restore test are still outstanding. A Docker volume is not a backup.
+Backup automation (systemd timers), the restore drill script and the daily
+checks are prepared in `deploy/systemd/` and `scripts/` — see
+[`ausfallsicherheit.md`](ausfallsicherheit.md) and the pilot checklist
+[`pilot-sf1.md`](pilot-sf1.md); not yet run on a server. Retention and an offsite
+backup location are still outstanding. A Docker volume is not a backup.
 
 ## Access from the four PCs
 

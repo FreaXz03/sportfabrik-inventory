@@ -64,6 +64,8 @@ Mostly operations, partly parallel to packages 1–2. Builds on Phase F in `star
 
 Acceptance: one real day of receipts, sales, returns, transfers, and closing counts reconciles; restore works.
 
+*Preparation done 2026-10-01 (off-site): see [pilot-sf1.md](pilot-sf1.md) (plan, on-site checklists, opening count, reconciliation, outage procedure, open decisions) and [ausfallsicherheit.md](ausfallsicherheit.md) (no-data-loss options, backups, restore drill). On-site work and decisions D1–D6 remain.*
+
 **Do not start all four branches on the migrated balances.**
 
 ### Package 4 — Returns, held stock, transfer discrepancies
