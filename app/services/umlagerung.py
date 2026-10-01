@@ -21,6 +21,11 @@ Die Regeln dazu (docs/projekt-kontext.md Abschnitte 4 und 10):
 * **Zu wenig Bestand an der Quelle**: gewarnt und trotzdem gebucht, wie beim
   Ausbuchen (F9).
 
+* **Stornieren unterwegs** (Entscheid 29.09.2026): Filialleiter der Quelle,
+  wer versendet hat (`versendet_von`), oder Zentrale. Der offene Rest geht mit seinem alten Datum an die Quelle
+  zurück (Grund `zurueck:SF3`), schon Angekommenes bleibt am Ziel; der
+  Wareneingang wird `storniert`.
+
 Ob eine Umlagerung die Uhr startet, steht an ihrer Zugangsbewegung in
 `lagerbewegungen.eingangsdatum`; `reduktion.letzter_wareneingang()` zählt
 dieses Datum mit. Beide Bewegungen sind `typ = umlagerung`, der Grund nennt
@@ -31,8 +36,11 @@ Umlagerung bekommt nie ein eigenes `eingangsdatum`.
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
+from sqlalchemy import select
+
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Artikel, Bestand, Lagerort, Variante, Wareneingang, WareneingangPosition
+from . import operation
 from .ausbuchung import buche_bewegung, sperren, zahl
 from .reduktion import letzter_wareneingang
 from .wareneingang import MAX_MENGE
@@ -42,6 +50,10 @@ MAX_POSITIONEN = 500
 
 class UmlagerungRejected(ValueError):
     """Die Umlagerung ist nicht plausibel - nichts wurde gebucht."""
+
+
+class UmlagerungForbidden(PermissionError):
+    """Keine Berechtigung für diese Quelle - nichts wurde gebucht."""
 
 
 def _mengen(positionen, language: str) -> dict[int, Decimal]:
@@ -84,6 +96,7 @@ def umlagern(
     versanddatum: date | None = None,
     benutzer: dict | None = None,
     language: str = DEFAULT_LANGUAGE,
+    operation_id: str | None = None,
 ) -> dict:
     """Ware von `quelle_id` an `ziel_id` versenden - alles in einer
     Transaktion, entweder ganz oder gar nicht.
@@ -102,6 +115,14 @@ def umlagern(
 
     with session_factory() as session, session.begin():
         sperren(session)
+        op = operation.starte(
+            session, operation_id, "umlagern", benutzer,
+            {"quelle_id": quelle_id, "ziel_id": ziel_id, "positionen": positionen,
+             "versanddatum": versanddatum},
+            language,
+        )
+        if op.gespeichert is not None:
+            return op.gespeichert
         quelle = session.get(Lagerort, quelle_id)
         ziel = session.get(Lagerort, ziel_id)
         if quelle is None or ziel is None:
@@ -122,6 +143,7 @@ def umlagern(
             status="erwartet",
             herkunft_lagerort_id=quelle.id,
             versanddatum=datum,
+            versendet_von=(benutzer or {}).get("kassennummer"),
         )
         session.add(wareneingang)
         session.flush()
@@ -165,7 +187,7 @@ def umlagern(
             if quelle_vorher < menge:
                 fehlbestand.append(eintrag)
 
-        return {
+        return op.abschliessen({
             "wareneingang_id": wareneingang.id,
             "quelle": {"id": quelle.id, "code": quelle.code, "name": quelle.name},
             "ziel": {"id": ziel.id, "code": ziel.code, "name": ziel.name},
@@ -173,7 +195,7 @@ def umlagern(
             "positionen": ergebnis_positionen,
             "fehlbestand": fehlbestand,
             "stueck": zahl(sum(mengen.values(), Decimal("0"))),
-        }
+        })
 
 
 def buche_ankunft(session, wareneingang, gebucht: dict, positionen: dict, datum: date, benutzer, jetzt) -> None:
@@ -226,3 +248,68 @@ def buche_ankunft(session, wareneingang, gebucht: dict, positionen: dict, datum:
             aeltestes=aeltestes,
             position_id=position.id,
         )
+
+
+def stornieren(
+    session_factory,
+    wareneingang_id: int,
+    *,
+    erlaubte_quellen: set[int] | None,
+    benutzer: dict | None = None,
+    language: str = DEFAULT_LANGUAGE,
+) -> dict:
+    """Umlagerung unterwegs stornieren (Entscheid 29.09.2026), z. B. bei
+    falschem Ziel. Der noch offene Rest jeder Position geht an die Quelle
+    zurück - mit dem Datum, das er beim Versand hatte (`mitgebracht_datum`),
+    ohne die Reduktionsuhr neu zu starten. Schon Angekommenes bleibt am Ziel.
+    `erlaubte_quellen` = None heisst: jede Quelle (Zentrale). Wer die
+    Umlagerung versendet hat, darf sie auch aus einer fremden Quelle
+    stornieren (Entscheid 29.09.2026)."""
+    with session_factory() as session, session.begin():
+        sperren(session)
+        wareneingang = session.get(Wareneingang, wareneingang_id)
+        if wareneingang is None or wareneingang.herkunft_lagerort_id is None:
+            raise UmlagerungRejected(translate("errors.umlagerung.not_a_transfer", language))
+        selbst_versendet = bool(wareneingang.versendet_von) and wareneingang.versendet_von == (
+            benutzer or {}
+        ).get("kassennummer")
+        if (
+            erlaubte_quellen is not None
+            and wareneingang.herkunft_lagerort_id not in erlaubte_quellen
+            and not selbst_versendet
+        ):
+            raise UmlagerungForbidden(translate("errors.auth.no_lagerort_access", language))
+        if wareneingang.status != "erwartet":
+            raise UmlagerungRejected(translate("errors.umlagerung.not_in_transit", language))
+        quelle = session.get(Lagerort, wareneingang.herkunft_lagerort_id)
+        ziel = session.get(Lagerort, wareneingang.lagerort_id)
+        jetzt = datetime.now(timezone.utc)
+        zurueck = Decimal("0")
+        for position in session.scalars(
+            select(WareneingangPosition)
+            .where(WareneingangPosition.wareneingang_id == wareneingang.id)
+            .order_by(WareneingangPosition.id)
+        ):
+            offen = (position.menge or 0) - (position.menge_eingetroffen or 0)
+            if offen <= 0:
+                continue
+            buche_bewegung(
+                session,
+                lagerort_id=quelle.id,
+                varianten_id=position.varianten_id,
+                typ="umlagerung",
+                menge=offen,
+                grund=f"zurueck:{ziel.code}",
+                benutzer=benutzer,
+                zeitpunkt=jetzt,
+                aeltestes=position.mitgebracht_datum,
+                position_id=position.id,
+            )
+            zurueck += offen
+        wareneingang.status = "storniert"
+        return {
+            "wareneingang_id": wareneingang.id,
+            "quelle": {"id": quelle.id, "code": quelle.code, "name": quelle.name},
+            "ziel": {"id": ziel.id, "code": ziel.code, "name": ziel.name},
+            "stueck": zahl(zurueck),
+        }

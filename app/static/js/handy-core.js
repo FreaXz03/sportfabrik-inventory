@@ -30,7 +30,9 @@
   async function fetchJson(url, options) {
     var response;
     try {
-      response = await fetch(url, options);
+      response = await (options && options.method === 'POST' && window.SportfabrikOp
+        ? window.SportfabrikOp.fetch(url, options)
+        : fetch(url, options));
     } catch (e) {
       throw new Error(t('phone.error_offline'));
     }
@@ -44,6 +46,7 @@
       var detail = data && typeof data.detail === 'string' ? data.detail : t('phone.error_generic');
       var error = new Error(detail);
       error.status = response.status;
+      error.data = data;
       throw error;
     }
     return data;

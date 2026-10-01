@@ -250,6 +250,10 @@ active branch. A document has exactly one storage location (D20).
 `ocr_verwendet` marks documents that were read via Tesseract OCR for
 lack of a text layer.
 
+`status` (`aktiv`/`storniert`, 2026-10-01): a document that posted goods is never deleted but cancelled — each receipt line gets a counter-movement, its receipts become `storniert`, `menge_eingetroffen` of its lines is set to 0 (the arrived quantity stays in the movement and its counter-movement), and the document keeps `storniert_am`/`storniert_von_*`. Only a document without any posted movement can still be deleted.
+
+`dokument_lieferung` (2026-10-01): an invoice or delivery note that belongs to an existing delivery (the `wareneingaenge` row of e.g. an order confirmation) is imported as an *attached* document: it has no receipt, positions or movements of its own and books nothing; only the prices of already-known variants are kept. The user always chooses ("attach" or "new goods"); an order confirmation or purchase order never asks. A document with attached documents cannot be deleted.
+
 ### `wareneingaenge`
 One goods receipt per document (currently 1:1; the schema allows several
 per document later, e.g. for partial deliveries) — or **without** a
@@ -281,7 +285,11 @@ with `herkunft_lagerort_id` (source location, FK `lagerorte`) and
 `versanddatum` (dispatch date). Its `eingangsdatum` always stays empty —
 whether the arrival starts the markdown clock is recorded on the arrival
 movement (`lagerbewegungen.eingangsdatum`, see there). Both columns are
-empty for documents and manual entries.
+empty for documents and manual entries. A transfer still in transit can
+be cancelled (migration `a4b5c6d7e8f9`, 2026-09-29): status `storniert`,
+the open rest is booked back to the source. `versendet_von` (till number
+of the dispatcher, empty for documents and manual entries) allows the
+dispatcher to cancel.
 
 ### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
 `mitgebracht_datum` (2026-09-28, transfers only): the receipt date the
@@ -327,6 +335,19 @@ with `grund = 'manuelle-erfassung'` there (a fixed key, not UI text —
 translation only happens at display time). The user is stored as a
 snapshot (as with `dokumente`/`article_notes`), not as a foreign key.
 
+### `operationen`
+Retry keys (Package 2, 2026-10-01): `operation_id` (primary key, from the
+device), `endpunkt`, `kassennummer`, `anfrage_hash`, `antwort` (JSON),
+`erstellt_am`. Written in the same transaction as the booking; rows older than
+30 days are removed when new ones are written. Not business data.
+
+### `zaehlungen`
+Every counted quantity (Package 2, 2026-10-01): branch, variant, `gezaehlt`,
+`bestand_vorher`, `differenz`, `grund`, `bewegung_id` (empty if the stock was
+already right — "counted, no difference"), `bestaetigt_trotz_aenderung` (the
+user confirmed although the stock moved since the count started), user snapshot
+and time. Serves as proof of a stock-take, e.g. the opening count of the pilot.
+
 ### `bestand`
 Current stock per variant × branch (composite primary key), derived from
 `lagerbewegungen` and also kept in sync there (never written directly
@@ -369,8 +390,9 @@ Three tables for the open questions D-F1/D-F2/D-F3, migration
   marked down before (no batch separation in stock, hence only a hint
   instead of a real split).
 - `reduktion_empfehlung_zentrale` (D-F3): `artikel_id`, `lagerort_id`,
-  `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`),
-  `ablehnungsgrund`, head-office and response snapshot. At most one open
+  `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`/`zurueckgezogen`),
+  `ablehnungsgrund`, head-office and response snapshot, `zurueckgezogen_von_name`,
+  `zurueckgezogen_am`. At most one open
   row per model × branch — a new recommendation replaces an older one.
 
 ### `article_notes`
@@ -451,6 +473,12 @@ above):
 | `d1e2f3a4b5c6` | Quick access (requirement 14, 2026-09-25): `users.schnellzugriffe` (JSON, chosen functions and order) |
 | `e2f3a4b5c6d7` | Phase D, open questions (2026-09-25): new tables `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
 | `f3a4b5c6d7e8` | Transfer as a delivery (2026-09-28): `wareneingaenge.herkunft_lagerort_id`, `wareneingaenge.versanddatum`, `wareneingang_positionen.mitgebracht_datum`; new empty columns only |
+| `a4b5c6d7e8f9` | Cancel a transfer in transit (2026-09-29): check constraint `ck_wareneingaenge_status` also allows `storniert`; new empty column `wareneingaenge.versendet_von` |
+| `b5c6d7e8f9a0` | Withdraw a head-office recommendation (2026-09-30): check constraint `ck_empfehlung_zentrale_status` also allows `zurueckgezogen`; new empty columns `zurueckgezogen_von_name`, `zurueckgezogen_am` |
+| `c6d7e8f9a0b1` | Cancel instead of delete (2026-10-01): `dokumente.status` (`aktiv`/`storniert`, check constraint `ck_dokumente_status`), `storniert_am`, `storniert_von_kassennummer`, `storniert_von_name` |
+| `d7e8f9a0b1c2` | Link documents to one delivery (2026-10-01): new table `dokument_lieferung` (`dokument_id` PK → `dokumente`, `wareneingang_id` → `wareneingaenge`) |
+| `e8f9a0b1c2d3` | Retry protection (2026-10-01): table `operationen` |
+| `f9a0b1c2d3e4` | Counts (2026-10-01): table `zaehlungen` |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

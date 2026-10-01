@@ -20,6 +20,7 @@
   function statusLabel(zeile) {
     if (zeile.status === 'offen') return t('empfehlung.status.offen');
     if (zeile.status === 'uebernommen') return t('empfehlung.status.uebernommen');
+    if (zeile.status === 'zurueckgezogen') return t('empfehlung.status.zurueckgezogen');
     return t('empfehlung.status.abgelehnt') + (zeile.ablehnungsgrund ? ' – ' + zeile.ablehnungsgrund : '');
   }
 
@@ -39,12 +40,31 @@
       for (const zeile of zeilen) {
         const tr = document.createElement('tr');
         const name = [zeile.marke, zeile.bezeichnung].filter(Boolean).join(' ') + (zeile.lieferanten_artikelnr ? ' (' + zeile.lieferanten_artikelnr + ')' : '');
+        // Zurückziehen jederzeit, auch nach der Antwort (30.09.2026); eine schon gesetzte Stufe bleibt.
+        const aktion = node('td');
+        if (zeile.status !== 'zurueckgezogen') {
+          const zurueck = node('button', t('empfehlung.withdraw'), 'secondary');
+          zurueck.type = 'button';
+          zurueck.addEventListener('click', async () => {
+            zurueck.disabled = true;
+            try {
+              await api('/api/empfehlungen/' + zeile.id + '/zurueckziehen', { method: 'POST' });
+              $('sucheStatus').textContent = t('empfehlung.withdraw_done');
+              ladeUebersicht();
+            } catch (e) {
+              $('sucheStatus').textContent = e.message;
+              zurueck.disabled = false;
+            }
+          });
+          aktion.append(zurueck);
+        }
         tr.append(
           node('td', name),
           node('td', zeile.lagerort.code + ' · ' + zeile.lagerort.name),
           node('td', '−' + zeile.prozent + ' %'),
           node('td', zeile.ab_datum.split('-').reverse().join('.')),
-          node('td', statusLabel(zeile))
+          node('td', statusLabel(zeile)),
+          aktion
         );
         body.append(tr);
       }
@@ -58,6 +78,8 @@
     if (lagerorte.length) return;
     lagerorte = quellen.filter(l => l.verkauf);
     const auswahl = $('lagerort');
+    // „alle" = alle Verkaufsfilialen in einer Aktion (30.09.2026).
+    auswahl.add(new Option(t('empfehlung.all_branches'), 'alle'));
     for (const lagerort of lagerorte) auswahl.add(new Option(lagerort.code + ' · ' + lagerort.name, String(lagerort.id)));
   }
 
@@ -74,7 +96,8 @@
     const q = $('sucheFeld').value.trim();
     $('sucheStatus').textContent = t('bestand.loading');
     try {
-      const parameter = new URLSearchParams({ lagerort_id: lagerortId, limit: '500' });
+      const alleFilialen = lagerortId === 'alle';
+      const parameter = new URLSearchParams(alleFilialen ? { alle: 'true', limit: '500' } : { lagerort_id: lagerortId, limit: '500' });
       if (q) parameter.set('q', q);
       const ergebnis = await api('/api/bestand?' + parameter);
       const modelle = new Map();
@@ -95,17 +118,20 @@
           knopf.disabled = true;
           knopf.classList.add('is-loading');
           try {
-            await api('/api/empfehlungen', {
+            const antwort = await api('/api/empfehlungen', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 artikel_id: m.artikel_id,
-                lagerort_id: Number(lagerortId),
+                ...(alleFilialen ? { alle_filialen: true } : { lagerort_id: Number(lagerortId) }),
                 prozent: Number(prozent.value),
                 ab_datum: datum.value,
               }),
             });
-            $('sucheStatus').textContent = t('empfehlung.set_done', { artikel: m.marke + ' ' + m.bezeichnung });
+            const artikelName = m.marke + ' ' + m.bezeichnung;
+            $('sucheStatus').textContent = alleFilialen
+              ? t('empfehlung.set_done_all', { artikel: artikelName, anzahl: antwort.empfehlungen.length })
+              : t('empfehlung.set_done', { artikel: artikelName });
             ladeUebersicht();
           } catch (e) {
             $('sucheStatus').textContent = e.message;

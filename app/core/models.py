@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     JSON,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -194,6 +195,7 @@ class Dokument(Base):
             "typ IN ('rechnung', 'lieferschein', 'auftragsbestaetigung', 'bestellung')",
             name="ck_dokumente_typ",
         ),
+        CheckConstraint("status IN ('aktiv', 'storniert')", name="ck_dokumente_status"),
         # Belegnummern sind nur beim jeweiligen Lieferanten eindeutig - zwei
         # Lieferanten dürfen dieselbe Nummer verwenden (Phase B, Teilaufgabe
         # B2, Migration e5f6a7b8c9d0). Der Importer prüft zusätzlich selbst auf
@@ -231,6 +233,30 @@ class Dokument(Base):
     # Siehe invoices.ocr_used (frühere Tabelle) für den Hintergrund.
     ocr_verwendet: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
+    )
+
+    # Ein gebuchtes Dokument wird nie gelöscht, sondern storniert (Regel 2,
+    # 01.10.2026): Gegenbuchungen heben den Bestand wieder auf, Dokument,
+    # Originaltext und Preise bleiben.
+    status: Mapped[str] = mapped_column(
+        String(20), default="aktiv", server_default="aktiv"
+    )
+    storniert_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    storniert_von_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    storniert_von_name: Mapped[str | None] = mapped_column(String(100))
+
+
+class DokumentLieferung(Base):
+    """Ein Dokument gehört zu einer bestehenden Lieferung (Paket 1, Schritt 2,
+    01.10.2026): Lieferschein und Rechnung zur selben Ware wie eine
+    Auftragsbestätigung. Das Dokument bucht dann nichts - Menge und Bestand
+    kommen allein aus dem Wareneingang, an den es hängt."""
+
+    __tablename__ = "dokument_lieferung"
+
+    dokument_id: Mapped[int] = mapped_column(ForeignKey("dokumente.id"), primary_key=True)
+    wareneingang_id: Mapped[int] = mapped_column(
+        ForeignKey("wareneingaenge.id"), index=True
     )
 
 
@@ -286,6 +312,22 @@ class Variante(Base):
     last_seen: Mapped[date | None] = mapped_column(Date)
 
 
+class VarianteEan(Base):
+    """Weitere EAN einer Variante (Punkt 8, 2026-10-01): z. B. die Original-EAN
+    neben der internen. `varianten.ean` bleibt die Hauptnummer (Etikett); jede
+    EAN hier führt zur selben Variante. Eine EAN gehört nie zu zwei Varianten:
+    eindeutig in dieser Tabelle und gegen `varianten.ean` geprüft
+    (`app/services/ean.py`)."""
+
+    __tablename__ = "varianten_eans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+    ean: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    ean_intern: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    angelegt: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Preis(Base):
     """UVP/EK-Verlauf je Variante (Regel 10: EK optional, nie Pflicht)."""
 
@@ -309,12 +351,15 @@ class Wareneingang(Base):
     (`app/services/wareneingang.py`). Kommt nur ein Teil an, bleibt der
     Wareneingang `erwartet`, bis keine Position mehr offen ist (D22); der
     bereits gebuchte Teil steht in `wareneingang_positionen.menge_eingetroffen`.
+    `storniert` gibt es nur bei einer Umlagerung unterwegs (29.09.2026): der
+    offene Rest ist an die Quelle zurückgebucht.
     """
 
     __tablename__ = "wareneingaenge"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('erwartet', 'eingetroffen')", name="ck_wareneingaenge_status"
+            "status IN ('erwartet', 'eingetroffen', 'storniert')",
+            name="ck_wareneingaenge_status",
         ),
     )
 
@@ -333,6 +378,26 @@ class Wareneingang(Base):
     # `eingangsdatum` - ob sie die Uhr startet, steht an ihrer Lagerbewegung.
     herkunft_lagerort_id: Mapped[int | None] = mapped_column(ForeignKey("lagerorte.id"))
     versanddatum: Mapped[date | None] = mapped_column(Date)
+    # Kassennummer, wer die Umlagerung versendet hat - darf sie auch
+    # stornieren (Entscheid 29.09.2026).
+    versendet_von: Mapped[str | None] = mapped_column(String(20))
+
+
+class WareneingangUmleitung(Base):
+    """Umleitung einer erwarteten Lieferung an eine andere Filiale (Punkt 3,
+    2026-10-01), solange nichts angekommen ist. Nur die Erwartung wandert
+    (`wareneingaenge.lagerort_id`), gebucht wird nichts (Regel 3); diese
+    Zeilen sind die Historie."""
+
+    __tablename__ = "wareneingang_umleitungen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    wareneingang_id: Mapped[int] = mapped_column(ForeignKey("wareneingaenge.id"), index=True)
+    von_lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"))
+    nach_lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"))
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    zeitpunkt: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class WareneingangPosition(Base):
@@ -514,7 +579,8 @@ class ReduktionEmpfehlungZentrale(Base):
     __table_args__ = (
         CheckConstraint("prozent IN (30, 50, 70)", name="ck_empfehlung_zentrale_prozent"),
         CheckConstraint(
-            "status IN ('offen', 'uebernommen', 'abgelehnt')", name="ck_empfehlung_zentrale_status"
+            "status IN ('offen', 'uebernommen', 'abgelehnt', 'zurueckgezogen')",
+            name="ck_empfehlung_zentrale_status",
         ),
     )
 
@@ -532,3 +598,58 @@ class ReduktionEmpfehlungZentrale(Base):
     )
     beantwortet_von_name: Mapped[str | None] = mapped_column(String(100))
     beantwortet_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Zurückgezogen (30.09.2026): die Zentrale kann jederzeit zurückziehen, auch
+    # nach der Antwort; eine schon gesetzte Stufe bleibt (kein Rollback).
+    zurueckgezogen_von_name: Mapped[str | None] = mapped_column(String(100))
+    zurueckgezogen_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Operation(Base):
+    """Schutz vor doppelter Buchung bei Wiederholung (Paket 2, 01.10.2026).
+
+    Jede bewusste Aktion (Verkauf, Umlagerung, Ankunft, Zählung, manuelle
+    Erfassung) kann eine vom Gerät erzeugte Operations-ID mitschicken. Dieselbe
+    ID noch einmal liefert die gespeicherte Antwort und bucht nichts; eine neue
+    ID ist eine neue Buchung. Die Zeile entsteht in derselben Transaktion wie
+    die Buchung. Es sind Wiederholungsschlüssel, keine Geschäftsdaten - Zeilen
+    älter als 30 Tage werden beim Schreiben aufgeräumt."""
+
+    __tablename__ = "operationen"
+
+    operation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    endpunkt: Mapped[str] = mapped_column(String(40))
+    kassennummer: Mapped[str | None] = mapped_column(String(20))
+    anfrage_hash: Mapped[str] = mapped_column(String(64))
+    antwort: Mapped[dict] = mapped_column(JSON)
+    erstellt_am: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class Zaehlung(Base):
+    """Jede gezählte Menge (Paket 2, 01.10.2026) - auch eine ohne Differenz
+    („gezählt, kein Unterschied"), für die es keine Lagerbewegung gibt. Dient
+    als Nachweis der Inventur, z. B. der Eröffnungszählung im Pilotbetrieb.
+    Benutzer als Momentaufnahme, wie bei `lagerbewegungen`."""
+
+    __tablename__ = "zaehlungen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+    gezaehlt: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    bestand_vorher: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    differenz: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    grund: Mapped[str | None] = mapped_column(String(200))
+    # Leer, wenn der Bestand schon stimmte.
+    bewegung_id: Mapped[int | None] = mapped_column(ForeignKey("lagerbewegungen.id"))
+    # Der Bestand hatte sich seit Zählbeginn bewegt und der Benutzer hat trotzdem
+    # ausdrücklich bestätigt (statt neu zu zählen).
+    bestaetigt_trotz_aenderung: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    zeitpunkt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

@@ -286,7 +286,7 @@ app/
     reduktion_bestaetigung.py "Done" on the markdown list (D-F1)
     reduktion_empfehlung.py   Head-office recommendation and branch response (D-F3)
     hinweise.py         Notice when a marked-down model is delivered again (D-F2)
-    statistik.py        Statistics: sales per category, revenue estimate, order recommendation
+    statistik.py        Statistics: sales per category, revenue estimate, best sellers with current stock
     konten.py           Create/delete accounts (head office)
     anmeldung.py        Login lockout after 5 wrong passwords (S2)
   templates/         HTML pages (served by the routers via FileResponse)

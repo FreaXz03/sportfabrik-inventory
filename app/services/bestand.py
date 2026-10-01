@@ -15,7 +15,8 @@ from decimal import Decimal
 
 from sqlalchemy import func, or_, select
 
-from ..core.models import Artikel, Bestand, Kategorie, Lagerort, Variante
+from ..core.models import Artikel, Bestand, Kategorie, Lagerbewegung, Lagerort, Variante
+from .artikel import hat_ean
 
 # Obergrenze je Abfrage, damit eine Seite im Ladennetz nicht am Datenvolumen
 # erstickt. Der Rest kommt über `offset` nach.
@@ -55,7 +56,7 @@ def _mit_filtern(abfrage, lagerort_id, suche, nur_vorhanden, nur_negativ=False, 
                 Artikel.marke.ilike(muster),
                 Artikel.bezeichnung.ilike(muster),
                 Artikel.lieferanten_artikelnr.ilike(muster),
-                Variante.ean.ilike(muster),
+                hat_ean(muster),
             )
         )
     return abfrage
@@ -105,6 +106,25 @@ def liste_bestand(
         .offset(offset)
     ).all()
 
+    # Zählmarke (Paket 2): die letzte Bewegung je Variante × Filiale. Wer zählt,
+    # schickt sie mit der Zählung zurück; der Server erkennt daran, ob sich der
+    # Bestand seither bewegt hat (app/services/korrektur.py).
+    letzte_bewegung = {}
+    if zeilen:
+        for varianten_id, lagerort_id_, bewegung_id in session.execute(
+            select(
+                Lagerbewegung.varianten_id,
+                Lagerbewegung.lagerort_id,
+                func.max(Lagerbewegung.id),
+            )
+            .where(
+                Lagerbewegung.varianten_id.in_({z[0].varianten_id for z in zeilen}),
+                Lagerbewegung.lagerort_id.in_({z[0].lagerort_id for z in zeilen}),
+            )
+            .group_by(Lagerbewegung.varianten_id, Lagerbewegung.lagerort_id)
+        ):
+            letzte_bewegung[(varianten_id, lagerort_id_)] = bewegung_id
+
     return {
         "zeilen": [
             {
@@ -127,6 +147,9 @@ def liste_bestand(
                     "verkauf": bool(lagerort.verkauf),
                 },
                 "menge": _zahl(bestand.menge),
+                "letzte_bewegung_id": letzte_bewegung.get(
+                    (variante.id, lagerort.id), 0
+                ),
                 # Ohne Verkauf gibt es kein Eingangsdatum (Regel 6) - die
                 # Oberfläche zeigt dort einen Hinweis statt eines Datums.
                 "aeltestes_eingangsdatum": bestand.aeltestes_eingangsdatum.isoformat()

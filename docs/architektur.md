@@ -730,20 +730,30 @@ decision E8), but two scripts are included across all pages:
   `app.css` (follows the system setting by default, can be switched
   manually, remembered via `localStorage`) and provides the toggle
   button as a factory function.
-- `nav.js` builds the main navigation in **one** place (the templates
-  only contain an empty `<nav>`): Overview, Stock, "Goods" group (Enter,
-  Deliveries, Transfer, Write off), Articles, "Documents" group (All
-  documents, Upload document). The groups expand with a short
-  explanation per entry; the active page carries `aria-current="page"`.
-  "Upload document" is only visible to branch managers and head office
-  (rule 9). Below 900 px width, everything sits behind the "Menu"
-  button.
-- `session.js` builds the right side of the header: the **branch pill**
-  (active branch, a select if several are available) and the **account
-  menu** behind the initials button (name, till number, role, language,
-  light/dark, Excel export on the article page, log out). It fires the
+- `nav.js` builds the sidebar navigation in **one** place (the templates
+  only contain an empty `<nav>`), order per `docs/redesign-2026-09-29.md`:
+  Overview, Products, Stock (Stock, Mark down), Goods in (Deliveries,
+  Record), Goods out (Book out), Transfer, Documents (All documents,
+  Upload document), Statistics, Pending (`/anstehend`),
+  Administration (Accounts, Recommendations), Settings (a button that
+  opens the settings dialog, no page). Groups open on click and
+  stay open when they contain the active page (`aria-current="page"`).
+  Entries with `nur` are role-filtered (rule 9); the server still checks
+  every page. Below 901 px the sidebar becomes the top bar and everything
+  sits behind the "Menu" button, with groups shown as headings.
+  `nav.js` also adds the **function search** at the top of every page's
+  `<main>` (matches label, group and description of the entries the role may
+  see; it only opens links).
+  `tests/test_navigation.py` reads the entry list from the file.
+- `session.js` builds the tools of the header: the **branch pill** (shows the
+  active branch) and the initials button; both, and the "Settings" menu entry
+  (event `sportfabrik:settings-open`), open the **settings dialog** (native
+  `<dialog>`): account, language, light/dark, branch switch (users with
+  several branches), Excel export on the article page, log out. It fires the
   login as a `sportfabrik:me` event so `nav.js` can filter by role, and
   hides the upload tile on the overview for employees.
+- `anstehend-liste.js` renders the "Pending" list (used by the overview and
+  the `/anstehend` page, both fed by `/api/dashboard`).
 
 For older or visually impaired staff, article search additionally offers
 a column picker (hide individual columns) and larger text in the results
@@ -796,7 +806,10 @@ rules. Anyone who wants to change a color changes it in exactly one
 place. `color-scheme` is set as well, so native controls (date fields,
 scrollbars) match the mode too.
 
-Since 2026-09-23 the header has been **single-line** and stays fixed
+Since 2026-09-29 the header is a **fixed sidebar** from 901 px
+(`app.css` §5b: logo, navigation, branch pill and account menu at the
+bottom; scoped to `body:has(> header > nav)`, so login and phone pages
+are unaffected). Older note: since 2026-09-23 the header had been **single-line** and stays fixed
 while scrolling (`sticky` with `backdrop-filter`): the brand on the left,
 next to it the navigation from `nav.js`, and on the right the branch pill
 and account menu from `session.js`. Expandable menus are controlled via

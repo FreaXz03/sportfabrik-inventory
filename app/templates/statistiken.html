@@ -4,10 +4,10 @@
 <head>
      <meta charset="utf-8">
      <meta name="viewport" content="width=device-width,initial-scale=1">
-     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/theme-init.js?v=2"></script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="statistik.page_title">Statistik · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
+     <link rel="stylesheet" href="/static/css/app.css?v=tabelle-1">
 </head>
 
 <body>
@@ -17,8 +17,39 @@
      </header>
      <main>
           <h1 data-i18n="statistik.heading">Statistik</h1>
-          <p data-i18n="statistik.intro">Verkäufe je Kassenkategorie, geschätzte Einnahmen, eine Bestellempfehlung und die Abgänge ausser Verkauf.</p>
-          <form class="filters" onsubmit="return false;">
+          <p data-i18n="statistik.intro">Verkäufe je Kassenkategorie, geschätzte Einnahmen, die meistverkauften Artikel mit aktuellem Bestand und die Abgänge ausser Verkauf.</p>
+          <section id="filialeBlock" class="filiale-block" hidden>
+               <h2 id="filialeTitel"></h2>
+               <p class="muted" data-i18n="statistik.filiale_hint">Verkäufe und Bestand der Filiale, die oben links in den Einstellungen gewählt ist. Zeitraum und Filiale darunter gelten nicht dafür.</p>
+               <div class="cards">
+                    <div class="metric"><span data-i18n="dashboard.metric_sold_today">Heute verkauft</span><strong id="verkauftHeute">—</strong><small id="abgaengeText"></small></div>
+               </div>
+               <div class="insights">
+                    <section class="panel insight" aria-labelledby="trendHeading">
+                         <h3 id="trendHeading" class="insight-title" data-i18n="dashboard.trend_heading">Verkäufe der letzten 14 Tage</h3>
+                         <p class="insight-figure"><strong id="trendWoche">—</strong></p>
+                         <p id="trendDelta" class="muted insight-delta"></p>
+                         <div id="trendBalken" class="bars" role="img" data-i18n-aria-label="dashboard.trend_aria" aria-label="Balkendiagramm: verkaufte Stück je Tag, letzte 14 Tage"></div>
+                    </section>
+                    <section class="panel insight" aria-labelledby="bestsellerHeading">
+                         <h3 id="bestsellerHeading" class="insight-title" data-i18n="dashboard.bestseller_heading">Bestseller der Woche</h3>
+                         <ol id="bestsellerListe" class="rank-list"></ol>
+                         <p id="bestsellerLeer" class="muted" hidden data-i18n="dashboard.bestseller_empty">Diese Woche noch nichts verkauft.</p>
+                    </section>
+               </div>
+               <section class="panel insight" aria-labelledby="catsHeading">
+                    <h3 id="catsHeading" class="insight-title" data-i18n="dashboard.cats_heading">Bestand nach Hauptgruppe</h3>
+                    <p class="muted" data-i18n="dashboard.cats_hint">Stück in dieser Filiale nach Kassenkategorie.</p>
+                    <div class="donut-wrap donut-wrap-lg">
+                         <svg id="catsDonut" class="donut donut-lg" viewBox="0 0 42 42" role="img" data-i18n-aria-label="dashboard.cats_aria" aria-label="Kreisdiagramm: Bestand nach Hauptgruppe"></svg>
+                         <ul id="catsListe" class="cat-legend"></ul>
+                    </div>
+                    <p id="catsLeer" class="muted" hidden data-i18n="dashboard.cats_empty">Noch kein Bestand.</p>
+               </section>
+               <div id="pieGrid" class="pie-grid"></div>
+          </section>
+
+          <form class="filters" data-kein-absenden>
                <label><span data-i18n="statistik.filter_zeitraum">Zeitraum</span>
                     <select id="zeitraum">
                          <option value="tag" data-i18n="statistik.zeitraum.tag">Heute</option>
@@ -47,7 +78,7 @@
           </section>
 
           <section class="panel" id="empfehlungPanel" hidden>
-               <h2 data-i18n="statistik.empfehlung_heading">Bestellempfehlung</h2>
+               <h2 data-i18n="statistik.empfehlung_heading">Bestseller mit aktuellem Bestand</h2>
                <p class="muted" data-i18n="statistik.empfehlung_hinweis">Am meisten verkaufte Artikel in diesem Zeitraum, mit dem
                     aktuellen Bestand daneben.</p>
                <div class="tablewrap">
@@ -97,9 +128,11 @@
           </section>
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-     <script src="/static/js/statistiken.js?v=2"></script>
-     <script src="/static/js/nav.js?v=4"></script>
-     <script src="/static/js/session.js?v=header-2"></script>
+     <script src="/static/js/diagramme.js?v=1"></script>
+     <script src="/static/js/statistiken.js?v=3"></script>
+     <script src="/static/js/nav.js?v=13"></script>
+     <script src="/static/js/session.js?v=settings-2"></script>
+     <script src="/static/js/meldung.js?v=1"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>
 

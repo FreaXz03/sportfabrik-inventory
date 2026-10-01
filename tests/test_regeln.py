@@ -21,7 +21,7 @@ from app.core.fedas import suggest_kategorie
 from app.core.i18n import DEFAULT_LANGUAGE, LANGUAGES, translate
 from app.core.lagerorte import LAGERORTE_SEED
 from app.core.lieferanten import ETIKETT_CODES, LIEFERANTEN_SEED, etikett_code
-from app.core.models import Artikel, Bestand, Lagerort
+from app.core.models import Artikel, Bestand, Kategorie, Lagerort
 from app.core.security import hash_password, verify_password
 from app.services.barcode import BarcodeNichtDruckbar, druckbare_nummer, strichmuster
 from app.services.ean import EanError, interne_ean, ist_intern, pruefe_nachgetragene_ean, pruefziffer_stimmt
@@ -102,7 +102,7 @@ def test_nachlieferung_startet_die_uhr_neu_nur_in_derselben_filiale():
 
     def liefern(nummer, datum, lagerort, rows):
         pdf = rechnung_pdf(header_lines=kopf(nummer=nummer, datum=datum), rows=rows)
-        import_invoice(pdf, "b.pdf", hashlib.sha256(pdf).hexdigest(), sessions, codes[lagerort])
+        import_invoice(pdf, "b.pdf", hashlib.sha256(pdf).hexdigest(), sessions, codes[lagerort], lieferung="neu")
 
     liefern("9000000001", "05.02.2024", "SF1", POSITIONEN)
     liefern("9000000002", "05.03.2026", "SF1", POSITIONEN[1:2])  # nur Grösse L nach
@@ -176,7 +176,11 @@ def test_lagerorte_mit_richtigen_codes_und_nur_filialen_verkaufen():
         (None, None),
         ("12", None),
         ("999999", None),  # unbekannte Produktart
-        ("199999", None),  # unbekannter Erlebnisbereich
+        # Punkt 1 (2026-10-01): Produktart bekannt, Erlebnisbereich nicht ->
+        # nur die Hauptgruppe, der Sportbereich bleibt offen.
+        ("199999", ("Hartware", None)),
+        ("299999", ("Textil", None)),
+        ("399999", ("Schuhe", None)),
     ],
 )
 def test_fedas_vorschlag(fedas_code, erwartet):
@@ -196,6 +200,44 @@ def test_fedas_vorschlag_passt_zu_den_kassenkategorien():
             kategorie = kategorie_vorschlag(session, code)
             assert kategorie is not None, code
             assert (kategorie.hauptgruppe, kategorie.sportbereich) == suggest_kategorie(code)
+
+
+def test_hauptgruppe_ohne_sportbereich_ist_eine_kassenkategorie():
+    """Punkt 1 (2026-10-01, Regel-8-Erweiterung): Textil, Hartware und Schuhe
+    gibt es auch nur als Hauptgruppe; der Vorschlag findet sie in der DB, und
+    die Statistik zaehlt solche Artikel unter ihrer Hauptgruppe."""
+    from app.services.kategorien import kategorie_vorschlag
+
+    sessions = neue_datenbank()
+    with sessions() as session:
+        for code, gruppe in (("199999", "Hartware"), ("299999", "Textil"), ("399999", "Schuhe")):
+            kategorie = kategorie_vorschlag(session, code)
+            assert kategorie is not None and (kategorie.hauptgruppe, kategorie.sportbereich) == (gruppe, None)
+        kombis = set(session.execute(select(Kategorie.hauptgruppe, Kategorie.sportbereich)).all())
+        assert len(kombis) == 38
+
+
+def test_nur_hauptgruppe_wird_spaeter_verfeinert_aber_manuelles_nie():
+    """Punkt 1: eine Kategorie ohne Sportbereich ist offen - ein späterer Beleg
+    mit zuordenbarem FEDAS-Code ergänzt den Sportbereich; eine von Hand
+    gewählte Kategorie bleibt unangetastet."""
+    from app.services.importer import _backfill_artikel
+
+    sessions = neue_datenbank()
+    with sessions() as session:
+        ids = {
+            (k.hauptgruppe, k.sportbereich): k.id for k in session.scalars(select(Kategorie))
+        }
+        artikel = Artikel(bezeichnung="Pant", fedas_code="299999", kategorie_id=ids[("Textil", None)])
+        manuell = Artikel(
+            bezeichnung="Hose", fedas_code="299999", kategorie_id=ids[("Textil", None)], kategorie_manuell=True
+        )
+        session.add_all([artikel, manuell])
+        session.flush()
+        for eintrag in (artikel, manuell):
+            _backfill_artikel(session, {}, eintrag, {"fedas_code": "224100"})
+        assert artikel.kategorie_id == ids[("Textil", "Tennis")]
+        assert manuell.kategorie_id == ids[("Textil", None)]
 
 
 def test_lieferantencodes_fuers_etikett():

@@ -18,6 +18,7 @@ from ..core.models import (
     Wareneingang,
     WareneingangPosition,
 )
+from ..services.artikel import hat_ean
 from ..services.kategorien import kategorie_daten
 from ..services.uebersicht import varianten_mit_bestand
 
@@ -122,11 +123,11 @@ def articles(
     if q.strip():
         conditions.append(
             or_(
+                hat_ean("%" + q.strip().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%", escape="!"),
                 *(
                     contains(c, q)
                     for c in (
                         Artikel.marke,
-                        Variante.ean,
                         Artikel.bezeichnung,
                         Artikel.lieferanten_artikelnr,
                         Variante.farbe,
@@ -138,7 +139,7 @@ def articles(
     if brand:
         conditions.append(Artikel.marke == brand)
     if ean.strip():
-        conditions.append(Variante.ean == ean.strip())
+        conditions.append(hat_ean(ean.strip(), genau=True))
     if supplier_article_no.strip():
         conditions.append(contains(Artikel.lieferanten_artikelnr, supplier_article_no))
     if description.strip():

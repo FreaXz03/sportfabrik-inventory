@@ -282,10 +282,11 @@ The website hero uses orange topographic lines. In the app they become a quiet w
 
 ### 9.1 App shell
 
-Sticky glass header (surface at 72 % + `backdrop-filter: saturate(180%) blur(20px)`, hairline
-bottom border): logo left · main nav · right side: store pill (which branch you book in) and
-account avatar. The store pill is always visible — booking in the wrong branch is the most
-expensive mistake in the app.
+Fixed left sidebar from 901 px (252 px, `--surface`, hairline right border): stacked logo
+(SPORT-FABRIK above INVENTORY) · navigation · at the bottom the store pill (which branch you book
+in) and the account avatar. Below 901 px: sticky glass top bar (surface at 72 % +
+`backdrop-filter: saturate(180%) blur(20px)`) with logo, store pill, avatar and "Menü". The store
+pill is always visible — booking in the wrong branch is the most expensive mistake in the app.
 
 ### 9.2 Page anatomy (every page, same order)
 
@@ -295,9 +296,20 @@ expensive mistake in the app.
 
 ### 9.3 Dashboard
 
-Greeting (mixed-weight title) → shortcuts (max 5, equal size) → 4 metrics → two columns
-"Anstehend" and "Aktuelles". Metrics show one number, one label, one link. No charts on the
-dashboard; charts live in Statistiken.
+Greeting (mixed-weight title) → shortcuts (max 5, equal size) → 4 metrics → three small insight
+panels (sales of the last 14 days as bars, stock by reduction stage as a stacked bar, best sellers
+of the week) → stock line and donut → two columns "Anstehend" and "Aktuelles" (grouped by day). Metrics show one number,
+one label, one link.
+
+Charts on the dashboard are allowed since 29.09.2026 (decision: user), under these limits: no axes
+and no chart library (plain HTML/CSS bars and, since 30.09.2026, two small inline SVGs: a stock line
+over the last 30 days and a donut of stock by main group); every value is also written as text next
+to or in the chart (`title`, legend numbers, start date and "today" under the line); reduction stages
+use the roll colours of §4.4 and nothing else does. The donut uses the calm category tokens
+`--cat-1…5` (accent, blue, purple, teal, sand) and `--cat-none` for stock without category; these
+are neither roll colours nor danger. Detailed charts and periods stay in Statistiken.
+
+The two wide panels sit in a second row under the three insights (3:2 columns, one column under 900).
 
 ### 9.4 Grid
 
@@ -394,9 +406,12 @@ optional action right. Types map to 4.3. The active-filter notice (Filter aus de
 
 ### 10.10 Navigation
 
-- Max 6 top-level entries; groups open a menu with title + one-line description per item.
-- Active page: `--accent-soft-bg` pill, `--accent-text`, 600; inside menus a 3 px inset accent bar.
-- Mobile (< 900): burger opens full-width sheet; store pill stays in the header.
+- Sidebar list, order fixed by `docs/redesign-2026-09-29.md`; groups expand in place (chevron
+  turns), children are indented behind a hairline. A group holding the active page is open and
+  its label is `--accent-text`.
+- Active page: `--accent-soft-bg` fill, `--accent-text`, 600.
+- Mobile (< 901): burger opens full-width sheet; groups are always open, shown as small uppercase
+  headings; store pill stays in the header.
 
 ---
 

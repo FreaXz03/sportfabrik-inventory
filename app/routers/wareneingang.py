@@ -20,11 +20,14 @@ from ..core.i18n import translate
 from ..services.wareneingang import (
     AnkunftRejected,
     bestaetige_ankunft,
+    leite_um,
     liste_erwartete,
 )
+from .operation_id import operation_id_aus_header
 from .auth import (
     get_active_lagerort,
     get_language,
+    require_chef_api,
     require_login_api,
     require_login_page,
 )
@@ -69,6 +72,7 @@ async def api_ankunft_bestaetigen(
     body: AnkunftBody,
     user=Depends(require_login_api),
     language: str = Depends(get_language),
+    operation_id: str | None = Depends(operation_id_aus_header),
 ):
     from ..core.database import SessionLocal
     from sqlalchemy.exc import SQLAlchemyError
@@ -89,6 +93,40 @@ async def api_ankunft_bestaetigen(
             SessionLocal,
             {"kassennummer": user.kassennummer, "name": user.name},
             eingangsdatum,
+            language,
+            operation_id,
+        )
+    except AnkunftRejected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, translate("errors.preview.import_db_error", language)
+        ) from exc
+
+
+class UmleitungBody(BaseModel):
+    lagerort_id: int
+
+
+@router.post("/api/wareneingaenge/{wareneingang_id}/umleitung")
+async def api_lieferung_umleiten(
+    wareneingang_id: int,
+    body: UmleitungBody,
+    user=Depends(require_chef_api),
+    language: str = Depends(get_language),
+):
+    """Erwartete Lieferung an eine andere Filiale umleiten (Punkt 3). Nur
+    Filialleiter und Zentrale; die Ziel-Filiale bestätigt die Ankunft (D21)."""
+    from ..core.database import SessionLocal
+    from sqlalchemy.exc import SQLAlchemyError
+
+    try:
+        return await run_in_threadpool(
+            leite_um,
+            wareneingang_id,
+            body.lagerort_id,
+            SessionLocal,
+            {"kassennummer": user.kassennummer, "name": user.name},
             language,
         )
     except AnkunftRejected as exc:

@@ -21,6 +21,7 @@ from . import alpina, chrissports, cmp, intersport
 from ...core.lieferanten import LIEFERANTEN_SEED
 from .base import Document, DocumentParseError, decimal_value, read_document
 from ..lieferadresse import erkenne_lagerort
+from ...core.groessen import normalisiere_groesse
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
 # Reihenfolge ohne Bedeutung - es gewinnt die höchste Punktzahl aus detect().
@@ -80,6 +81,13 @@ def parse_with_parser(
     """
     treffer = erkenne_lagerort(document.text, lagerorte)
     parsed = parser.parse(document, language)
+    # Punkt 6: Grössen vereinheitlichen (D38 → 38, US/UK → EU). Die Original-
+    # grösse bleibt in `size_original`, damit nachvollziehbar ist, was im Beleg stand.
+    for item in parsed.get("items", []):
+        neu = normalisiere_groesse(item.get("size"), item.get("description"))
+        if neu != item.get("size"):
+            item["size_original"] = item["size"]
+            item["size"] = neu
     return {
         **parsed,
         "parser_key": parser.KEY,

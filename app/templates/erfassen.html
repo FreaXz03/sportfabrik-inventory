@@ -4,10 +4,10 @@
 <head>
      <meta charset="utf-8">
      <meta name="viewport" content="width=device-width,initial-scale=1">
-     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/theme-init.js?v=2"></script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="erfassen.page_title">Ware erfassen · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
+     <link rel="stylesheet" href="/static/css/app.css?v=tabelle-1">
 </head>
 
 <body>
@@ -68,9 +68,17 @@
                          <label><span data-i18n="fields.supplier_article_no">Lief. Art. Nr.</span><input id="lieferanten_artikelnr"
                                         type="text" autocomplete="off" maxlength="100"></label>
                          <label><span data-i18n="fields.kategorie">Kategorie</span><select id="kategorie"></select></label>
+                         <label id="reduktionFeld"><span data-i18n="fields.reduktion">Reduktion</span><select id="reduktion">
+                                        <option value="" data-i18n="erfassen.reduktion_auto">Automatisch</option>
+                                        <option value="30">−30 %</option>
+                                        <option value="50">−50 %</option>
+                                        <option value="70">−70 %</option>
+                                   </select></label>
                     </div>
                     <p class="muted" data-i18n="erfassen.kategorie_hint">Freiwillig – nötig nur für neue Artikel; eine bereits
                          gesetzte Kategorie bleibt unverändert.</p>
+                    <p id="reduktionHinweis" class="muted" data-i18n="erfassen.reduktion_hint">Reduktion freiwillig – gilt als Wahl von Hand
+                         für diese Filiale. Automatisch: ab Eingang −30 %, nach 18 Monaten −50 %, nach 36 Monaten −70 %.</p>
                     <p class="muted" data-i18n="erfassen.required_hint">* Pflichtfeld</p>
                     <div class="filters">
                          <button id="add" type="submit" data-i18n="erfassen.add">Zur Liste hinzufügen</button>
@@ -92,6 +100,7 @@
                                    <th data-i18n="erfassen.table_quantity">Menge</th>
                                    <th data-i18n="erfassen.table_price">UVP</th>
                                    <th data-i18n="fields.kategorie">Kategorie</th>
+                                   <th data-i18n="fields.reduktion">Reduktion</th>
                                    <th data-i18n="erfassen.table_actions">Aktion</th>
                               </tr>
                          </thead>
@@ -112,9 +121,11 @@
      </main>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
      <script src="/static/js/kategorien.js?v=1"></script>
-     <script src="/static/js/erfassen.js?v=2"></script>
-     <script src="/static/js/nav.js?v=4"></script>
-     <script src="/static/js/session.js?v=header-2"></script>
+     <script src="/static/js/operation.js?v=1"></script>
+     <script src="/static/js/erfassen.js?v=op-1"></script>
+     <script src="/static/js/nav.js?v=13"></script>
+     <script src="/static/js/session.js?v=settings-2"></script>
+     <script src="/static/js/meldung.js?v=1"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>
 

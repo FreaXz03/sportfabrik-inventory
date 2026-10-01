@@ -163,3 +163,32 @@ def test_schnellzugriffe_je_benutzer(welt):
 
     assert client.post("/logout")
     assert client.get("/api/schnellzugriffe").status_code == 401
+
+
+def test_neues_passwort_beendet_alte_sitzungen(welt):
+    """Sicherheit S1 (Rest): ein neues Passwort macht alle bestehenden
+    Sitzungen des Kontos ungültig - auch eine abgefangene Cookie-Kopie.
+    Andere Konten bleiben angemeldet."""
+    from sqlalchemy import select
+
+    from app.core.models import User
+    from app.core.security import hash_password
+
+    client = welt.client
+    welt.anmelden(CHEF)
+    assert client.get("/api/dashboard").status_code == 200
+    with welt.sessions() as session:
+        chef = session.scalar(select(User).where(User.kassennummer == CHEF))
+        chef.password_hash = hash_password("geheim123")  # gleiches Passwort, neuer Hash
+        session.commit()
+    assert client.get("/api/dashboard").status_code == 401
+    welt.anmelden(CHEF)
+    assert client.get("/api/dashboard").status_code == 200
+
+    # Mitarbeiterin ohne Passwort: Sitzung bleibt, solange sich nichts ändert.
+    welt.anmelden(ANNA)
+    with welt.sessions() as session:
+        chef = session.scalar(select(User).where(User.kassennummer == CHEF))
+        chef.password_hash = hash_password("anders456")
+        session.commit()
+    assert client.get("/api/dashboard").status_code == 200

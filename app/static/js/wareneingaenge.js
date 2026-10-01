@@ -4,6 +4,8 @@
   const $ = (id) => document.getElementById(id);
   const t = (...a) => window.SportfabrikI18n.t(...a);
   let aktiverLagerort = null;
+  // Umleiten dürfen nur Filialleiter und Zentrale (Punkt 3); Ziele = buchbare Orte.
+  let umleitenZiele = null;
 
   function node(tag, text, cls) {
     const el = document.createElement(tag);
@@ -106,7 +108,65 @@
     knopf.addEventListener('click', () => bestaetigen(lieferung, panel, datumsfeld, knopf, rueckmeldung));
     steuerung.append(knopf);
     panel.append(steuerung, rueckmeldung);
+    const umleitung = umleitenBereich(lieferung);
+    if (umleitung) panel.append(umleitung);
     return panel;
+  }
+
+  // Bisherige Umleitungen als Zeile, dazu (nur für Filialleiter/Zentrale und nur
+  // solange nichts angekommen ist) die Wahl einer anderen Filiale.
+  function umleitenBereich(lieferung) {
+    if (lieferung.umlagerung) return null;
+    const bereich = node('div', null, 'redirect');
+    (lieferung.umleitungen || []).forEach((u) => {
+      bereich.append(node('p', t('wareneingaenge.redirect_history', { von: u.von.code, nach: u.nach.code }), 'muted'));
+    });
+    const schonAngekommen = lieferung.positionen.some((p) => Number(p.menge_eingetroffen) > 0);
+    if (!umleitenZiele || schonAngekommen) return bereich.childElementCount ? bereich : null;
+    const zeile = node('div', null, 'filters');
+    const label = node('label', t('wareneingaenge.redirect_label'));
+    const auswahl = document.createElement('select');
+    auswahl.append(new Option(t('wareneingaenge.redirect_choose'), ''));
+    umleitenZiele.filter((z) => z.id !== lieferung.lagerort.id).forEach((z) => auswahl.append(new Option(z.code + ' · ' + z.name, String(z.id))));
+    label.append(auswahl);
+    const knopf = node('button', t('wareneingaenge.redirect_button'), 'secondary');
+    knopf.type = 'button';
+    const rueckmeldung = node('p', '', 'muted');
+    rueckmeldung.setAttribute('role', 'status');
+    knopf.addEventListener('click', async () => {
+      if (!auswahl.value) return;
+      knopf.disabled = true;
+      try {
+        const antwort = await fetch('/api/wareneingaenge/' + lieferung.id + '/umleitung', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lagerort_id: Number(auswahl.value) })
+        });
+        const ergebnis = await antwort.json();
+        if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('wareneingaenge.load_error'));
+        await laden();
+        $('status').textContent = t('wareneingaenge.redirected_done', { ziel: ergebnis.nach.code });
+      } catch (fehler) {
+        rueckmeldung.textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+        knopf.disabled = false;
+      }
+    });
+    zeile.append(label, knopf);
+    bereich.append(zeile, node('p', t('wareneingaenge.redirect_hint'), 'muted'), rueckmeldung);
+    return bereich;
+  }
+
+  async function umleitenZieleLaden() {
+    if (umleitenZiele !== null) return;
+    umleitenZiele = [];
+    try {
+      const me = await (await fetch('/api/me')).json();
+      if (!['chef', 'admin'].includes(me.role)) return;
+      const stamm = await (await fetch('/api/erfassen/stammdaten')).json();
+      umleitenZiele = stamm.lagerorte || [];
+    } catch (fehler) {
+      // Ohne Ziele bleibt nur die Anzeige - die Seite arbeitet sonst normal weiter.
+    }
   }
 
   async function bestaetigen(lieferung, panel, datumsfeld, knopf, rueckmeldung) {
@@ -118,7 +178,7 @@
     knopf.classList.add('is-loading');
     rueckmeldung.textContent = t('wareneingaenge.saving');
     try {
-      const antwort = await fetch('/api/wareneingaenge/' + lieferung.id + '/ankunft', {
+      const antwort = await SportfabrikOp.fetch('/api/wareneingaenge/' + lieferung.id + '/ankunft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mengen: mengen, eingangsdatum: datumsfeld ? datumsfeld.value : null })
@@ -155,6 +215,7 @@
       const daten = await antwort.json();
       if (!antwort.ok) throw new Error(typeof daten.detail === 'string' ? daten.detail : t('wareneingaenge.load_error'));
       aktiverLagerort = daten.lagerort;
+      await umleitenZieleLaden();
       const liste = document.createDocumentFragment();
       for (const lieferung of daten.wareneingaenge) liste.append(abschnitt(lieferung));
       $('list').replaceChildren(liste);

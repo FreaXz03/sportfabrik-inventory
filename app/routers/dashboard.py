@@ -38,6 +38,9 @@ def dashboard(
             .order_by(Dokument.hochgeladen_am.desc(), Dokument.id.desc())
             .limit(5)
         ).all()
+        ziele = uebersicht.ziel_filialen(session, [d.id for d, _ in rows])
+        filiale = None if lagerort is None else uebersicht.filiale(session, lagerort.id)
+        stamm = uebersicht.stamm(session)
         delivered_quantity = session.scalar(select(func.sum(WareneingangPosition.menge)))
         return dict(
             **counts,
@@ -46,16 +49,52 @@ def dashboard(
                 if delivered_quantity is not None
                 else "0"
             ),
-            recent_invoices=[invoice_data(d, supplier) for d, supplier in rows],
+            recent_invoices=[dict(invoice_data(d, supplier), lagerort=ziele[d.id]) for d, supplier in rows],
             lagerort=None
             if lagerort is None
             else {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
-            filiale=None if lagerort is None else uebersicht.filiale(session, lagerort.id),
+            filiale=filiale,
             aktuelles=uebersicht.aktuelles(session, None if lagerort is None else lagerort.id),
-            stamm=uebersicht.stamm(session, None if lagerort is None else lagerort.id),
+            stamm=stamm,
+            meldungen=uebersicht.liste_meldungen(filiale, stamm),
             hinweise=hinweise_service.liste(session, lagerort.id) if lagerort else [],
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
             503, translate("errors.dashboard.load_failed", language)
         ) from exc
+
+
+@router.get("/api/anstehend/anzahl")
+def anstehend_anzahl(
+    user=Depends(require_login_api),
+    lagerort=Depends(get_active_lagerort),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Zahl der Meldungen unter „Anstehend" für die Glocke (jede Seite)."""
+    try:
+        if lagerort is not None and not lagerort.verkauf:
+            return {"anzahl": 0, "meldungen": []}  # Punkt 10: kein Anstehend ohne Verkauf
+        filiale = None if lagerort is None else uebersicht.meldungen_filiale(session, lagerort.id)
+        meldungen = uebersicht.liste_meldungen(filiale, uebersicht.stamm(session))
+        return {"anzahl": len(meldungen), "meldungen": meldungen}
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, translate("errors.dashboard.load_failed", language)) from exc
+
+
+@router.get("/api/uebersicht/verlaeufe")
+def uebersicht_verlaeufe(
+    tage: int,
+    user=Depends(require_login_api),
+    lagerort=Depends(get_active_lagerort),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Bestand und neue Artikelvarianten über `tage` Tage mit Vergleich zur Vorperiode."""
+    if tage not in uebersicht.VERLAUF_PERIODEN:
+        raise HTTPException(422, translate("errors.dashboard.period_invalid", language))
+    try:
+        return uebersicht.verlaeufe(session, None if lagerort is None else lagerort.id, tage)
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, translate("errors.dashboard.load_failed", language)) from exc

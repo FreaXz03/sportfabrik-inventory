@@ -126,6 +126,15 @@
   --stage-70-text: #23612a;
   --stage-70-bg: #e3f3e0;
 
+  /* Kategorien im Ring (Uebersicht): ruhige Farben, bewusst weder Reduktions-
+     gelb/-rot/-gruen noch danger. */
+  --cat-1: #f39200;
+  --cat-2: #3f78ad;
+  --cat-3: #7d5fae;
+  --cat-4: #2f8f8a;
+  --cat-5: #a08a6a;
+  --cat-none: #b8b4ad;
+
   /* Schatten (warmes Graphit statt reinem Schwarz) */
   --shadow-sm: 0 1px 2px rgba(31, 30, 28, .04), 0 1px 3px rgba(31, 30, 28, .04);
   --shadow-md: 0 1px 2px rgba(31, 30, 28, .04), 0 8px 24px rgba(31, 30, 28, .07);
@@ -230,6 +239,12 @@
     --stage-50-bg: rgba(227, 52, 42, .16);
     --stage-70-text: #7fd473;
     --stage-70-bg: rgba(88, 178, 75, .16);
+    --cat-1: #ffb45c;
+    --cat-2: #6ea6dc;
+    --cat-3: #a68bd6;
+    --cat-4: #59bdb6;
+    --cat-5: #c4ae8b;
+    --cat-none: #6f6c66;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .5);
     --shadow-md: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .45);
     --shadow-lg: 0 2px 8px rgba(0, 0, 0, .5), 0 24px 56px rgba(0, 0, 0, .6);
@@ -287,6 +302,12 @@
   --stage-50-bg: rgba(227, 52, 42, .16);
   --stage-70-text: #7fd473;
   --stage-70-bg: rgba(88, 178, 75, .16);
+  --cat-1: #ffb45c;
+  --cat-2: #6ea6dc;
+  --cat-3: #a68bd6;
+  --cat-4: #59bdb6;
+  --cat-5: #c4ae8b;
+  --cat-none: #6f6c66;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .5);
   --shadow-md: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px rgba(0, 0, 0, .45);
   --shadow-lg: 0 2px 8px rgba(0, 0, 0, .5), 0 24px 56px rgba(0, 0, 0, .6);
@@ -524,8 +545,9 @@ header {
   color: var(--text-faint);
 }
 
-/* Navigation: wenige Hauptpunkte, zusammengehörige Seiten in Gruppen
-   (nav.js). Die aktive Seite ist leicht orange hinterlegt. */
+/* Navigation (nav.js): Hauptpunkte und Gruppen mit ihren Seiten. Ab 901px
+   steht sie als Seitenleiste links (Abschnitt 5b), darunter als Blatt hinter
+   dem Knopf „Menü". Die aktive Seite ist leicht orange hinterlegt. */
 nav {
   display: flex;
   align-items: center;
@@ -535,110 +557,78 @@ nav {
 
 .nav-links {
   display: flex;
-  align-items: center;
-  gap: 2px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
 }
 
-.nav-links > a,
+.nav-links a,
 .nav-group-toggle {
-  position: relative;
-  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  padding: 12px 14px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: transparent;
   box-shadow: none;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--text-muted);
+  text-align: left;
   text-decoration: none;
-  white-space: nowrap;
   transition: color var(--fast), background var(--fast);
 }
 
-.nav-links > a:hover,
-.nav-group-toggle:hover,
-.nav-group-toggle[aria-expanded=true] {
-  background-color: var(--surface-alt);
+.nav-links a:hover,
+.nav-group-toggle:hover {
+  background: var(--surface-alt);
   color: var(--text);
   box-shadow: none;
   transform: none;
 }
 
-.nav-links > a[aria-current=page],
-.nav-group-toggle.is-active {
-  background-color: var(--accent-soft-bg);
+.nav-links a[aria-current=page] {
+  background: var(--accent-soft-bg);
   color: var(--accent-text);
   font-weight: 600;
 }
 
-.nav-group { position: relative; }
-
-.nav-group-toggle {
-  padding-right: 30px;
-  background-image: var(--select-arrow);
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 9px 6px;
-}
-
-/* Die globale Knopf-Regel setzt beim Überfahren einen eigenen Hintergrund -
-   Pfeil und Grösse hier ausdrücklich behalten. */
-.nav-links .nav-group-toggle:hover,
-.nav-links .nav-group-toggle[aria-expanded=true],
-.nav-links .nav-group-toggle.is-active {
-  background-image: var(--select-arrow);
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 9px 6px;
-}
-
-.nav-menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  z-index: 60;
-  display: grid;
-  gap: 2px;
-  width: 310px;
-  padding: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  animation: menu-in var(--fast) both;
-}
-
-.nav-group:not(.is-open) > .nav-menu { display: none; }
-
-.nav-item {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  transition: background var(--fast);
-}
-
-.nav-item:hover { background: var(--surface-alt); }
-
-.nav-item-title {
-  font-size: var(--fs-sm);
+/* Gruppe mit aktiver Seite: nur Schrift, die Seite darunter trägt die Fläche. */
+.nav-group-toggle.is-active {
+  color: var(--accent-text);
   font-weight: 600;
-  color: var(--text);
 }
 
-.nav-item-info {
-  font-size: var(--fs-xs);
-  line-height: 1.35;
-  color: var(--text-muted);
+/* Pfeil der Gruppe: dreht sich beim Aufklappen. */
+.nav-group-toggle::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--fast);
 }
 
-.nav-item[aria-current=page] {
-  background: var(--accent-soft-bg);
-  box-shadow: inset 3px 0 0 var(--accent);
+.nav-group.is-open > .nav-group-toggle::after { transform: rotate(225deg) translate(-2px, -2px); }
+
+/* Seiten einer Gruppe: eingerückt unter dem Gruppenkopf. */
+.nav-menu {
+  display: none;
+  gap: 4px;
+  margin: 4px 0 10px 18px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
 }
 
-.nav-item[aria-current=page] .nav-item-title { color: var(--accent-text); }
+.nav-group.is-open > .nav-menu { display: grid; }
 
 .nav-burger { display: none; }
 
@@ -678,29 +668,54 @@ nav {
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
-.store-pill .store-select {
-  width: auto;
-  max-width: 220px;
-  padding: 6px 28px 6px 0;
-  border: 0;
-  background-color: transparent;
-  background-position: right 8px center;
+.store-name { padding: 6px 10px 6px 0; }
+
+button.store-pill {
+  height: auto;
+  min-height: 0;
+  padding: 3px 12px 3px 12px;
   box-shadow: none;
-  font: inherit;
-  color: inherit;
   cursor: pointer;
 }
 
-.store-pill .store-select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+button.store-pill:hover {
+  background: var(--accent-soft-bg);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  transform: none;
 }
 
-.store-name { padding: 6px 10px 6px 0; }
 
-.account-menu { position: relative; }
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-row:hover { background: var(--surface-alt); box-shadow: none; transform: none; }
+
+.account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .account-toggle {
+  flex: none;
   display: grid;
   place-items: center;
   width: 38px;
@@ -716,31 +731,9 @@ nav {
   box-shadow: var(--shadow-sm);
 }
 
-.account-toggle:hover,
-.account-toggle[aria-expanded=true] {
-  background: var(--text);
-  box-shadow: 0 0 0 4px var(--focus-ring);
-  transform: none;
-}
+.account-row:hover .account-toggle { box-shadow: 0 0 0 4px var(--focus-ring); }
 
-.account-panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 260px;
-  padding: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  animation: menu-in var(--fast) both;
-}
 
-.account-panel[hidden] { display: none; }
 
 .account-who {
   display: grid;
@@ -756,22 +749,8 @@ nav {
   color: var(--text-muted);
 }
 
-.account-panel button {
-  width: 100%;
-  justify-content: flex-start;
-  font-size: var(--fs-xs);
-}
 
-.account-panel .lang-switch {
-  margin-top: 0;
-  justify-content: space-between;
-}
 
-.account-panel .lang-switch .lang-option {
-  width: auto;
-  flex: 1;
-  justify-content: center;
-}
 
 footer {
   width: 100%;
@@ -975,6 +954,24 @@ input[type=checkbox] {
   accent-color: var(--accent);
   cursor: pointer;
 }
+
+input[type=radio] {
+  width: auto;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Wahl „an Lieferung anhängen / neue Ware" in der Belegvorschau. */
+.notice.lieferung-wahl { display: grid; gap: var(--space-2); }
+.notice.lieferung-wahl[hidden] { display: none; }
+.lieferung-wahl legend { padding: 0 var(--space-2); font-weight: 600; }
+.lieferung-wahl label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.lieferung-wahl label > input { margin-top: 0; }
 
 input[type=file] {
   padding: 9px 12px;
@@ -1861,22 +1858,28 @@ body:has(main.login-page) {
 }
 
 .preview-editbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
 }
 
-.preview-editbar .edit-switch { margin: 0 auto 0 0; }
+/* Schalter links, Knoepfe rechts in einer eigenen Zeile: Hilfetext und
+   Status stehen darunter, damit nichts springt, wenn sie erscheinen. */
+.editbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 36px;
+}
 
-.preview-editbar button { font-size: var(--fs-micro); padding: 9px 16px; }
+.editbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.preview-editbar button { height: 36px; padding: 0 16px; font-size: var(--fs-micro); }
 
 .preview-editbar #editHelp,
 .preview-editbar #editStatus:not(:empty) {
-  flex-basis: 100%;
-  margin: 0;
+  margin: 10px 0 0;
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
@@ -1898,20 +1901,181 @@ body:has(main.login-page) {
   color: var(--text-faint);
 }
 
-.preview-page td {
-  padding: 12px 14px;
-  font-size: var(--fs-xs);
-  vertical-align: top;
+/* Positions-Tabelle: feste Spaltenbreiten, damit alles ohne seitliches
+   Scrollen Platz hat. Lange Werte brechen um statt die Tabelle zu verbreitern. */
+.preview-tablewrap { overflow-x: hidden; }
+
+.preview-table { table-layout: fixed; font-size: var(--fs-micro); }
+
+.preview-table col.c-pos { width: 6%; }
+.preview-table col.c-brand { width: 7%; }
+.preview-table col.c-id { width: 9%; }
+.preview-table col.c-ean { width: 11.5%; }
+.preview-table col.c-desc { width: auto; }
+.preview-table col.c-color { width: 8%; }
+.preview-table col.c-size { width: 5.5%; }
+.preview-table col.c-qty { width: 5%; }
+.preview-table col.c-unit { width: 5%; }
+.preview-table col.c-price { width: 6.5%; }
+.preview-table col.c-status { width: 10.5%; }
+
+.preview-table th {
+  padding: 10px 8px;
+  font-size: 11px;
+  letter-spacing: .05em;
+  white-space: normal;
+  line-height: 1.25;
+  vertical-align: bottom;
 }
 
-.preview-page th { padding: 12px 14px; }
+.preview-table th:first-child,
+.preview-table td:first-child { padding-left: 14px; }
 
-.preview-page td p { margin: 0 0 6px; font-size: var(--fs-micro); }
+.preview-table td {
+  padding: 9px 8px;
+  border-bottom: 0;
+  vertical-align: middle;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 
-.preview-page td input {
-  padding: 8px 10px;
-  font-size: var(--fs-xs);
-  border-radius: var(--radius-sm);
+.preview-table td.pos { color: var(--text-faint); overflow-wrap: normal; }
+
+.preview-table td.id { white-space: normal; font-variant-numeric: tabular-nums; }
+
+.preview-table td.ean { overflow-wrap: normal; letter-spacing: -.01em; }
+
+.preview-table td.description { min-width: 0; color: var(--text); font-weight: 500; }
+
+.preview-table tbody tr:hover { background: none; }
+
+/* Eine Position = eine Gruppe (Warnung, Werte, Details) mit einer Linie darunter */
+.preview-table tr.pv-last td { border-bottom: 1px solid var(--border); }
+
+.preview-table tbody tr:last-child td { border-bottom: 0; }
+
+.preview-table tr.pv-group:hover td { background: var(--row-hover); }
+
+.preview-table tr.pv-group-warn td { background: var(--danger-bg); }
+
+.preview-table tr.pv-group-warn.pv-main td:first-child { box-shadow: inset 3px 0 0 var(--danger-text); }
+
+.preview-table tr.pv-alert td { padding: 10px 14px 2px; }
+
+.preview-table tr.pv-alert ul,
+.preview-table tr.pv-detail ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preview-table tr.pv-alert li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--danger-text);
+  font-weight: 500;
+}
+
+.preview-table tr.pv-alert li::before {
+  content: '!';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--danger-text);
+  color: var(--surface);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+}
+
+.preview-table tr.pv-detail td { padding: 2px 14px 12px; }
+
+.preview-table tr.pv-detail li { color: var(--text-muted); }
+
+.preview-table tr.pv-detail li::before { content: '· '; color: var(--text-faint); }
+
+.pv-detail-label {
+  display: block;
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.preview-table tr.pv-detail pre { max-width: none; margin-top: 4px; padding: 8px 10px; }
+
+/* Bearbeiten: kompakte Felder in Zellbreite */
+.preview-table td input {
+  width: 100%;
+  min-height: 0;
+  height: 30px;
+  padding: 4px 7px;
+  font-size: var(--fs-micro);
+  border-radius: 6px;
+}
+
+.preview-table td.num { text-align: right; }
+
+/* Einheit steht direkt nach der rechtsbuendigen Menge: etwas Luft dazwischen */
+.preview-table th:nth-child(10),
+.preview-table tr:not(.is-editing) td:nth-child(10) { padding-left: 14px; }
+
+.preview-table td.num input { text-align: right; }
+
+.preview-table tr.is-editing td:not(:first-child):not(.pv-status) { padding: 7px 3px; }
+
+/* Status-Spalte: kurze Chips statt Fliesstext */
+.pv-status { white-space: normal; }
+
+.pv-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.pv-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.pv-chip-ok { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.pv-chip-warn { background: var(--danger-text); color: var(--surface); }
+.pv-chip-edit { background: var(--accent-soft-bg); color: var(--accent-text); border-color: var(--accent-soft-border); }
+.pv-chip-info { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+
+.pv-actions { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 4px; }
+
+button.pv-link {
+  height: auto;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--link);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+button.pv-link:hover { background: none; box-shadow: none; text-decoration: underline; }
+
+button.pv-link[aria-expanded="true"] { color: var(--text-muted); }
+
+/* Schmale Bildschirme: dann darf die Tabelle seitlich rollen statt zu quetschen */
+@media (max-width: 1000px) {
+  .preview-tablewrap { overflow-x: auto; }
+  .preview-table { min-width: 960px; }
 }
 
 /* Abschluss der Pruefung */
@@ -2133,27 +2297,28 @@ body:has(main.login-page) {
    Die Begruessungskarte ist .hero (Abschnitt 8); Filiale im Titel nutzt
    .title-mixed statt eigener Orange-Textfarbe (nie Orange als Text). */
 
-.quick-actions-head {
+/* Schnellzugriffe oben über der Begrüssung (30.09.2026): nur Titel, feste
+   Höhe, immer über die ganze Breite verteilt (--anzahl setzt uebersicht.js). */
+.quick-bar {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .quick-actions {
+  flex: 1 1 auto;
+  min-width: 0;
   display: grid;
-  /* auto-fill statt auto-fit und gleich hohe Zeilen: alle Knöpfe gleich gross,
-     auch wenn sie umbrechen (Inbox 24.09.2026). */
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 12px;
-  margin-bottom: 22px;
+  grid-template-columns: repeat(var(--anzahl, 5), minmax(0, 1fr));
+  gap: 10px;
 }
 
 .quick-action {
-  display: grid;
-  align-content: start;
-  gap: 4px;
-  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
   border: 1px solid var(--border);
   border-left: 4px solid var(--accent);
   border-radius: var(--radius-md);
@@ -2171,9 +2336,21 @@ body:has(main.login-page) {
   box-shadow: var(--shadow-md);
 }
 
-.quick-action strong { font-size: var(--fs-h3); }
+.quick-action strong { font-size: var(--fs-sm); line-height: 1.25; }
 
-.quick-action span { font-size: var(--fs-xs); line-height: 1.35; color: var(--text-muted); }
+.quick-edit {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+@media (max-width: 600px) {
+  .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 .shortcut-picker-selected {
   display: flex;
@@ -2279,16 +2456,627 @@ body:has(main.login-page) {
 
 .news-person { grid-column: 2 / 4; font-size: var(--fs-xs); }
 
-/* 12 · Responsive --------------------------------------------------------- */
-@media (max-width: 1100px) {
-  .nav-links > a,
-  .nav-group-toggle { padding-left: 11px; padding-right: 11px; font-size: var(--fs-xs); }
-
-  .nav-group-toggle { padding-right: 27px; background-position: right 10px center; }
-
-  .store-pill .store-select { max-width: 150px; }
+/* Uebersicht: kleine Diagramme (Redesign 29.09.2026, DESIGN.md 9.3).
+   Nur Rechtecke aus Tokens; Farbe ist nie allein - Zahlen stehen daneben. */
+.insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
 }
 
+.insights[hidden] { display: none; }
+
+/* Zwei Spalten (Tablet): das dritte Feld nimmt die volle Breite, statt allein neben Leere zu stehen. */
+@media (min-width: 600px) and (max-width: 899px) {
+  .insight:last-child { grid-column: 1 / -1; }
+}
+
+.insight { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.insight h2 { margin-bottom: 0; }
+.insight p { margin: 0; }
+
+.insight-figure strong {
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.insight-delta { font-size: var(--fs-sm); }
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 96px;
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.bar {
+  flex: 1;
+  height: calc(var(--h, 0) * 100%);
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--border-strong);
+  transform-origin: bottom;
+  animation: bar-grow .28s var(--ease) both;
+}
+
+.bar.is-today { background: var(--accent); }
+
+@keyframes bar-grow { from { transform: scaleY(0); } }
+
+.stagebar {
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  margin: var(--space-3) 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.stagebar[hidden],
+.stage-legend[hidden] { display: none; }
+
+.stage-seg { flex: var(--w, 0) 1 0; min-width: 4px; }
+.stage-seg[data-stage="30"] { background: var(--roll-30); }
+.stage-seg[data-stage="50"] { background: var(--roll-50); }
+.stage-seg[data-stage="70"] { background: var(--roll-70); }
+
+.stage-legend { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+
+.stage-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.stage-qty,
+.stage-share { font-variant-numeric: tabular-nums; }
+.stage-qty { font-weight: 600; }
+
+/* Bestand als Linie und Kategorien als Ring (Redesign 29.09.2026, Phase 7). */
+.insights-wide { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+
+@media (max-width: 899px) {
+  .insights-wide { grid-template-columns: minmax(0, 1fr); }
+}
+
+.linechart {
+  width: 100%;
+  height: 96px;
+  margin-top: auto;
+  overflow: visible;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.line-area { fill: var(--accent-soft-bg); stroke: none; }
+
+.line-stroke {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.line-axis { display: flex; justify-content: space-between; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+
+/* Verlaufsdiagramme mit Achsen und Vergleich (2026-10-01). Zahlen links und
+   Daten unten sind echter Text, die Linie ist gedehntes SVG ohne Schrift. */
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.chart-head h2 { margin: 0; }
+
+.chart-period { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-sm); }
+
+.chart-period select { width: auto; }
+
+.insights-even { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
+
+@media (max-width: 899px) {
+  .insights-even { grid-template-columns: minmax(0, 1fr); }
+}
+
+.insight-title { margin: 0; font-size: var(--fs-h3); }
+
+.chart-xy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 140px auto;
+  column-gap: 10px;
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.chart-xy .linechart { height: 100%; margin-top: 0; border-bottom: 0; overflow: visible; }
+
+.chart-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Höhe 0: die Zahl sitzt mittig auf ihrer Rasterlinie. */
+.chart-y li { height: 0; display: flex; align-items: center; justify-content: flex-end; }
+
+.chart-x {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.chart-grid { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+.compare { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-sm); }
+
+.compare strong { font-variant-numeric: tabular-nums; }
+
+.compare-arrow { font-size: var(--fs-xs); }
+
+.compare.is-up .compare-arrow,
+.compare.is-up strong { color: var(--success-text); }
+
+.compare.is-down .compare-arrow,
+.compare.is-down strong { color: var(--danger-text); }
+
+/* Statistik: Block der aktiven Filiale mit grossem Ring und Kreisen je Hauptgruppe. */
+.filiale-block { display: grid; gap: 18px; margin-bottom: 28px; }
+
+.filiale-block h2,
+.filiale-block > p { margin: 0; }
+
+.filiale-block .insights { margin-top: 0; }
+
+.donut-lg { width: 220px; height: 220px; }
+
+.donut-md { width: 150px; height: 150px; }
+
+.donut-wrap-lg { gap: 32px; }
+
+.donut-wrap-lg .cat-legend { max-width: 460px; }
+
+.filiale-block .cards { grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); }
+
+.pie-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+.donut-wrap { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+
+.donut { width: 132px; height: 132px; flex: none; }
+
+.donut[hidden],
+.cat-legend[hidden] { display: none; }
+
+.donut-seg { fill: none; stroke-width: 6; transform: rotate(0deg); transform-origin: 21px 21px; }
+.donut-seg[data-cat="1"] { stroke: var(--cat-1); }
+.donut-seg[data-cat="2"] { stroke: var(--cat-2); }
+.donut-seg[data-cat="3"] { stroke: var(--cat-3); }
+.donut-seg[data-cat="4"] { stroke: var(--cat-4); }
+.donut-seg[data-cat="5"] { stroke: var(--cat-5); }
+.donut-seg[data-cat="none"] { stroke: var(--cat-none); }
+
+.donut-total { font-size: 6px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; }
+
+.cat-legend { flex: 1 1 160px; margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+
+.cat-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+.cat-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cat-dot[data-cat="1"] { background: var(--cat-1); }
+.cat-dot[data-cat="2"] { background: var(--cat-2); }
+.cat-dot[data-cat="3"] { background: var(--cat-3); }
+.cat-dot[data-cat="4"] { background: var(--cat-4); }
+.cat-dot[data-cat="5"] { background: var(--cat-5); }
+.cat-dot[data-cat="none"] { background: var(--cat-none); }
+.cat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rank-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-3); }
+
+.rank {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.rank-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-qty { font-variant-numeric: tabular-nums; }
+
+.rank-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  overflow: hidden;
+}
+
+.rank-bar::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: calc(var(--w, 0) * 100%);
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.news-day {
+  padding: var(--space-4) 2px var(--space-1);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.news-day:first-child { padding-top: 0; }
+
+@media (prefers-reduced-motion: reduce) { .bar { animation: none; } }
+
+/* 5b · Seitenleiste (Redesign 29.09.2026) --------------------------------
+   Ab 901px steht der Seitenkopf als feste Leiste links: Logo (SPORT-FABRIK
+   über INVENTORY), Navigation, unten Filiale und Konto. Nur Seiten mit
+   Navigation im Kopf (nicht Anmeldung und Handy-Ansicht). Darunter bleibt der
+   Kopf eine Leiste oben mit „Menü". */
+@media (min-width: 901px) {
+  body:has(> header > nav) {
+    --sidebar-w: 252px;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+  }
+
+  body:has(> header > nav) > header {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    height: 100vh;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 22px;
+    padding: 24px 14px 16px;
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+
+  body:has(> header > nav) > main { grid-column: 2; grid-row: 1; }
+
+  body:has(> header > nav) > footer { grid-column: 2; grid-row: 2; }
+
+  /* Logo: SPORT-FABRIK über INVENTORY */
+  body:has(> header > nav) > header > .brand {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  body:has(> header > nav) > header > .brand img { width: 172px; }
+
+  body:has(> header > nav) > header > .brand span {
+    padding-left: 2px;
+    border-left: 0;
+    font-size: var(--fs-xs);
+    letter-spacing: .34em;
+  }
+
+  body:has(> header > nav) > header > nav {
+    align-items: flex-start;
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+
+  /* Filiale und Konto unten in der Leiste */
+  body:has(> header > nav) > header > .header-tools {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  body:has(> header > nav) .store-pill { justify-content: flex-start; }
+
+  /* Ein-/ausklappen (30.09.2026): Knopf oben rechts in der Leiste; eingeklappt
+     bleiben nur Knopf und Konto-Kreis. */
+  body:has(> header > nav) > header { position: sticky; }
+
+  .sidebar-toggle {
+    position: absolute;
+    top: 14px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+  }
+
+  html.sidebar-collapsed body:has(> header > nav) { --sidebar-w: 72px; }
+
+  html.sidebar-collapsed body:has(> header > nav) > header { padding: 62px 10px 16px; }
+
+  html.sidebar-collapsed body:has(> header > nav) > header > nav,
+  html.sidebar-collapsed .store-pill,
+  html.sidebar-collapsed .account-name { display: none; }
+
+  /* Eingeklappt bleibt ein „SF" als Logo (2026-10-01): gleiche Schrift (Geologica,
+     fett) und Orange wie das Wortzeichen, Höhe der Grossbuchstaben wie dort. */
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand { padding: 0; align-items: center; }
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand img,
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand span { display: none; }
+  html.sidebar-collapsed body:has(> header > nav) > header > .brand::before {
+    content: "SF";
+    font-family: 'Geologica', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: .02em;
+    color: var(--accent);
+  }
+
+  html.sidebar-collapsed body:has(> header > nav) > header > .header-tools { margin-top: auto; }
+
+  html.sidebar-collapsed .sidebar-toggle { right: 18px; }
+
+  /* Knopf ohne Rahmen (2026-10-01); nur beim Darüberfahren eine Fläche. */
+  .sidebar-toggle.secondary { border-color: transparent; background: transparent; box-shadow: none; }
+  .sidebar-toggle.secondary:hover { background: var(--surface-alt); }
+
+  /* Kleine Animation beim Ein- und Ausklappen (2026-10-01). nav.js setzt
+     `sidebar-anim` nur für den Moment des Umschaltens, damit beim Laden der
+     Seite nichts fährt. */
+  body:has(> header > nav) > header { overflow-x: hidden; }
+
+  html.sidebar-anim body:has(> header > nav) { transition: grid-template-columns .24s var(--ease); }
+
+  html.sidebar-anim body:has(> header > nav) > header > * { animation: sidebar-in .24s var(--ease) both; }
+}
+
+@keyframes sidebar-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html.sidebar-anim body:has(> header > nav) { transition: none; }
+  html.sidebar-anim body:has(> header > nav) > header > * { animation: none; }
+}
+
+@media (max-width: 900px) {
+  .sidebar-toggle,
+  .account-name { display: none; }
+}
+
+/* 5c · Funktionssuche oben im Inhalt (Redesign 29.09.2026, Phase 5) ------ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 clamp(18px, 3vw, 28px);
+}
+
+.topsearch {
+  position: relative;
+  flex: 1 1 auto;
+  max-width: 520px;
+  margin: 0;
+}
+
+/* Glocke oben rechts auf jeder Seite (30.09.2026): Zahl der Meldungen unter „Anstehend". */
+.bell {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.bell:hover { background: var(--surface-alt); }
+
+/* Alerts-Fenster unter der Glocke (2026-10-01). */
+.bell-wrap { position: relative; flex: none; margin-left: auto; }
+
+.bell-wrap .bell { margin-left: 0; padding: 0; cursor: pointer; }
+
+.alerts-popup {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(380px, calc(100vw - 32px));
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  animation: menu-in var(--fast) both;
+}
+
+.alerts-popup[hidden] { display: none; }
+
+.alerts-popup h2 { margin: 0 0 8px; font-size: var(--fs-h3); }
+
+.alerts-list { margin: 0; padding: 0; list-style: none; }
+
+.alerts-list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.alerts-list a:hover { background: var(--surface-alt); }
+
+.alerts-list a.is-urgent .todo-count {
+  background: var(--accent-soft-bg);
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 1px var(--accent-soft-border);
+}
+
+.alerts-all { display: inline-block; margin-top: 8px; font-size: var(--fs-sm); }
+
+.bell-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.bell-badge[hidden] { display: none; }
+
+.topsearch input[type="search"] { width: 100%; }
+
+.topsearch-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.topsearch-list a {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.topsearch-list a span { font-size: var(--fs-xs); color: var(--text-muted); }
+
+.topsearch-list li:hover a,
+.topsearch-list li.is-active a { background: var(--surface-alt); }
+
+.topsearch-none { padding: 10px 12px; font-size: var(--fs-sm); color: var(--text-muted); }
+
+/* 5d · Einstellungsfenster (Redesign 29.09.2026, Phase 6) ---------------- */
+.settings-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 22px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: menu-in var(--fast) both;
+}
+
+.settings-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-head h2 { margin: 0; }
+
+.settings-dialog .account-who { padding: 0 0 14px; }
+
+.settings-row {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.settings-dialog .lang-switch { margin-top: 0; }
+
+.settings-dialog .lang-switch .lang-option { flex: 1; justify-content: center; }
+
+.settings-dialog .theme-toggle,
+.settings-dialog .settings-logout { width: 100%; justify-content: flex-start; }
+
+.settings-dialog .settings-logout { margin-top: 4px; }
+
+/* 12 · Responsive --------------------------------------------------------- */
 /* Schmal: Navigation hinter dem Knopf „Menü", als Blatt unter der Kopfzeile. */
 @media (max-width: 900px) {
   header { flex-wrap: nowrap; gap: 10px; }
@@ -2303,9 +3091,6 @@ body:has(main.login-page) {
     left: 0;
     right: 0;
     display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 2px;
     max-height: calc(100vh - var(--header-h));
     overflow-y: auto;
     padding: 10px var(--page-pad) 16px;
@@ -2316,23 +3101,25 @@ body:has(main.login-page) {
 
   nav.is-open .nav-links { display: flex; animation: menu-in var(--fast) both; }
 
-  .nav-links > a { padding: 12px; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+  .nav-links a { padding: 12px; font-weight: 600; color: var(--text); }
 
-  .nav-group-toggle { display: none; }
+  /* Gruppenkopf: nur Überschrift, die Seiten stehen immer darunter. */
+  .nav-group-toggle {
+    padding: 14px 12px 4px;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .nav-group-toggle::after { display: none; }
 
   .nav-menu,
   .nav-group:not(.is-open) > .nav-menu {
-    position: static;
     display: grid;
-    width: auto;
-    padding: 6px 0;
-    margin: 4px 0;
-    border: 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    border-radius: 0;
-    box-shadow: none;
-    animation: none;
+    margin: 0 0 0 14px;
   }
 }
 @media (max-width: 900px) {
@@ -2374,8 +3161,6 @@ body:has(main.login-page) {
 
 @media (max-width: 560px) {
   .brand img { width: 120px; }
-
-  .store-pill .store-select { max-width: 92px; }
 
   .store-name { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -2433,3 +3218,16 @@ body:has(main.login-page) {
 /* Manuelle Reduktion (24.09.2026): grosse, gut treffbare Knöpfe. */
 .reduktion-wahl { display: flex; flex-wrap: wrap; gap: 6px; }
 .reduktion-wahl button { min-width: 72px; padding: 8px 12px; }
+
+/* Runterschreiben: Stufe vorwählen, dann scannen (30.09.2026) */
+.preset { display: grid; gap: 8px; margin: 0 0 16px; }
+
+.preset-label { font-weight: 600; }
+
+.preset p { margin: 0; }
+
+/* Fehler melden und Dokument senden (Punkte 4/5, 2026-10-01) ---------------- */
+.settings-dialog form { display: grid; gap: 12px; }
+.settings-dialog label { display: grid; gap: 6px; font-size: var(--fs-sm); }
+.settings-dialog textarea { width: 100%; resize: vertical; font: inherit; }
+.report-button { white-space: nowrap; }
