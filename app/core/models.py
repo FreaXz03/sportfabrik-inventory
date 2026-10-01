@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     JSON,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -309,6 +310,22 @@ class Variante(Base):
 
     first_seen: Mapped[date | None] = mapped_column(Date)
     last_seen: Mapped[date | None] = mapped_column(Date)
+
+
+class VarianteEan(Base):
+    """Weitere EAN einer Variante (Punkt 8, 2026-10-01): z. B. die Original-EAN
+    neben der internen. `varianten.ean` bleibt die Hauptnummer (Etikett); jede
+    EAN hier führt zur selben Variante. Eine EAN gehört nie zu zwei Varianten:
+    eindeutig in dieser Tabelle und gegen `varianten.ean` geprüft
+    (`app/services/ean.py`)."""
+
+    __tablename__ = "varianten_eans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+    ean: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    ean_intern: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    angelegt: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Preis(Base):

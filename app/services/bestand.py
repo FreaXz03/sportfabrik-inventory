@@ -16,6 +16,7 @@ from decimal import Decimal
 from sqlalchemy import func, or_, select
 
 from ..core.models import Artikel, Bestand, Kategorie, Lagerbewegung, Lagerort, Variante
+from .artikel import hat_ean
 
 # Obergrenze je Abfrage, damit eine Seite im Ladennetz nicht am Datenvolumen
 # erstickt. Der Rest kommt über `offset` nach.
@@ -55,7 +56,7 @@ def _mit_filtern(abfrage, lagerort_id, suche, nur_vorhanden, nur_negativ=False, 
                 Artikel.marke.ilike(muster),
                 Artikel.bezeichnung.ilike(muster),
                 Artikel.lieferanten_artikelnr.ilike(muster),
-                Variante.ean.ilike(muster),
+                hat_ean(muster),
             )
         )
     return abfrage

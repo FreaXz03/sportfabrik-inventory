@@ -666,6 +666,8 @@
   "etikett.ean_none": "Noch keine EAN – an der Kasse nicht scannbar.",
   "etikett.ean_internal": "interne EAN",
   "etikett.ean_manufacturer": "Hersteller-EAN",
+  "etikett.ean_more": "Weitere EAN",
+  "etikett.add_more_label": "Weitere EAN nachtragen",
   "etikett.ean_not_printable": "Kein Strichcode möglich – die Nummer wird nur als Text gedruckt.",
   "etikett.generate": "Interne EAN erzeugen",
   "etikett.generate_hint": "Erzeugt eine hauseigene EAN-13 (Bereich 20–29) mit Prüfziffer – bleibt für immer an dieser Variante.",

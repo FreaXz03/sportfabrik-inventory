@@ -45,11 +45,20 @@
       hinweis.textContent = t('etikett.ean_not_printable');
       box.append(hinweis);
     }
-    // Eine bestehende EAN wird nie überschrieben (Regel 4) - die Felder
-    // bleiben deshalb gesperrt, statt einen Fehler zu provozieren.
-    $('eanInput').disabled = true;
-    $('saveEan').disabled = true;
+    // Weitere EANs derselben Variante (Punkt 8): sie führen zur selben Ware,
+    // gedruckt wird nur die Hauptnummer oben.
+    (daten.weitere_eans || []).forEach((e) => {
+      const zeile = document.createElement('p');
+      zeile.className = 'muted';
+      zeile.textContent = t('etikett.ean_more') + ': ' + e.ean + ' (' + (e.ean_intern ? t('etikett.ean_internal') : t('etikett.ean_manufacturer')) + ')';
+      box.append(zeile);
+    });
+    // Eine bestehende EAN wird nie überschrieben (Regel 4): „erzeugen" bleibt
+    // gesperrt, das Feld nimmt jetzt eine weitere EAN dazu.
+    $('eanInput').disabled = false;
+    $('saveEan').disabled = false;
     $('generateEan').disabled = true;
+    $('addEanLabel').textContent = t('etikett.add_more_label');
   }
 
   function rolleZeigen(rolle) {
@@ -130,7 +139,7 @@
     if (knopf) knopf.classList.add('is-loading');
     $('eanStatus').textContent = t('etikett.saving');
     try {
-      const antwort = await fetch(basis + '/ean', {
+      const antwort = await fetch(basis + (daten.ean && !koerper.generieren ? '/eans' : '/ean'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(koerper)

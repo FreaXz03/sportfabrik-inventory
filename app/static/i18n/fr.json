@@ -666,6 +666,8 @@
   "etikett.ean_none": "Pas encore d'EAN – non scannable en caisse.",
   "etikett.ean_internal": "EAN interne",
   "etikett.ean_manufacturer": "EAN du fabricant",
+  "etikett.ean_more": "Autre EAN",
+  "etikett.add_more_label": "Ajouter une autre EAN",
   "etikett.ean_not_printable": "Pas de code-barres possible – le numéro est imprimé en texte.",
   "etikett.generate": "Générer un EAN interne",
   "etikett.generate_hint": "Génère un EAN-13 interne (plage 20–29) avec chiffre de contrôle – il reste attaché à cette variante.",

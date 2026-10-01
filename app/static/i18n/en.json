@@ -666,6 +666,8 @@
   "etikett.ean_none": "No EAN yet – cannot be scanned at the till.",
   "etikett.ean_internal": "internal EAN",
   "etikett.ean_manufacturer": "manufacturer EAN",
+  "etikett.ean_more": "Further EAN",
+  "etikett.add_more_label": "Add a further EAN",
   "etikett.ean_not_printable": "No barcode possible – the number is printed as text only.",
   "etikett.generate": "Generate internal EAN",
   "etikett.generate_hint": "Creates an in-house EAN-13 (range 20–29) with check digit – it stays with this variant forever.",

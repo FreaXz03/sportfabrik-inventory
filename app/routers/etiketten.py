@@ -22,7 +22,7 @@ from ..core.database import get_session
 from ..core.i18n import translate
 from ..core.models import Bestand, Variante, Wareneingang, WareneingangPosition
 from ..services.barcode import druckbare_nummer
-from ..services.ean import EanError, EanNichtGefunden, setze_ean
+from ..services.ean import EanError, EanNichtGefunden, fuege_ean_hinzu, setze_ean
 from ..services.etikett import (
     GROESSEN,
     STANDARD_GROESSE,
@@ -61,6 +61,34 @@ async def api_ean_setzen(
             ean=body.ean,
             generieren=body.generieren,
             language=language,
+        )
+    except EanNichtGefunden as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except EanError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, translate("errors.preview.import_db_error", language)
+        ) from exc
+
+
+class WeitereEanBody(BaseModel):
+    ean: str
+
+
+@router.post("/api/varianten/{varianten_id}/eans")
+async def api_ean_hinzufuegen(
+    varianten_id: int,
+    body: WeitereEanBody,
+    user=Depends(require_login_api),
+    language: str = Depends(get_language),
+):
+    """Weitere EAN nachtragen (Punkt 8): ergänzt die vorhandene, ersetzt sie nie."""
+    from ..core.database import SessionLocal
+
+    try:
+        return await run_in_threadpool(
+            fuege_ean_hinzu, varianten_id, SessionLocal, ean=body.ean, language=language
         )
     except EanNichtGefunden as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -131,6 +159,7 @@ def api_etikett_daten(
         "reduktion": etikett.reduktion,
         "ean": etikett.ean,
         "ean_intern": etikett.ean_intern,
+        "weitere_eans": list(etikett.weitere_eans),
         "barcode": druckbare_nummer(etikett.ean) is not None,
         "lagerort": None
         if lagerort is None
