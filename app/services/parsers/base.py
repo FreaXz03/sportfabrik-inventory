@@ -240,6 +240,8 @@ def ergebnis(
     for index, item in enumerate(items, start=1):
         item["row_number"] = index
         item.setdefault("ocr_used", document.ocr_used)
+        # Die Vorschau zeigt je Position den Originaltext; jeder Parser liefert ihn, hier die Absicherung.
+        item.setdefault("raw_lines", [])
     zaehler = {}
     for item in items:
         zaehler[item.get("page", 1)] = zaehler.get(item.get("page", 1), 0) + 1

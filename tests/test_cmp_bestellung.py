@@ -53,7 +53,16 @@ def test_positionen_aus_einem_kasten():
     assert (first["brand"], first["supplier_article_no"], first["article_no"]) == ("CMP", "33N6677", "33N6677 P753")
     assert (first["description"], first["color"], first["ek"], first["uvp"]) == ("MAN T-SHIRT", "CORDA", "13.00", "29.90")
     assert first["warnings"] == [] and first["ean"] == ""
+    # Die Vorschau-Tabelle liest `raw_lines` jeder Position; fehlt es, bleibt die Tabelle leer.
+    assert all(isinstance(i["raw_lines"], list) and i["raw_lines"] for i in items)
     assert (stueck, betrag) == (8, Decimal("104.00"))
+
+
+def test_farbname_ohne_rahmenreste():
+    items, _, _ = baue_positionen(
+        [kasten([zeile("91UR", "/ANTRACITE-", ["2", "1", None, None], "3", "3900")])]
+    )
+    assert items[0]["color"] == "ANTRACITE-"
 
 
 def test_gegenrechnung_meldet_falsche_menge_und_betrag():

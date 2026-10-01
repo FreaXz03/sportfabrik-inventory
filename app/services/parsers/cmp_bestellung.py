@@ -179,7 +179,7 @@ def _farbzeile(zeile: dict, spalten) -> dict:
     code = kopf[0] if kopf else None
     name = ""
     for z in _zeilen(woerter):
-        text = " ".join(w[4] for w in z if w is not code)
+        text = re.sub(r"^[^\w\[(]+", "", " ".join(w[4] for w in z if w is not code))  # Reste vom Vorschaubild/Rahmen
         if not text or SAISON_ZEILE.fullmatch(text):
             continue
         name = name + text if name.endswith("-") else (name + " " + text).strip()
@@ -254,6 +254,11 @@ def baue_positionen(kaesten: list[dict], language: str = DEFAULT_LANGUAGE) -> tu
                     uvp=vk.get(groesse, ""),
                     ek=ek.get(groesse, ""),
                     page=kasten["page"],
+                    # Gelesene Zeile für die Prüfung in der Vorschau (Originaltext je Position).
+                    raw_lines=[
+                        f"{titel['code']} {farbe['code']} {farbe['name']} | Grösse {groesse}: {menge} | "
+                        f"EK {ek.get(groesse, '?')} VK {vk.get(groesse, '?')} | Zeile gesamt {farbe['gesamt']} / {farbe['betrag']}"
+                    ],
                     warnings=list(warnung),
                 )
                 position = pruefe_position(position, language)
