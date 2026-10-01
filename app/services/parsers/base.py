@@ -52,6 +52,9 @@ class Document:
     zuständigen Parser gemeinsam genutzt (einmal lesen, einmal OCR)."""
 
     pages: list[Page]
+    # Die Original-PDF, nur für Layouts, die eine unbrauchbare Textebene selbst
+    # per OCR neu lesen (cmp_bestellung). Alle anderen Parser ignorieren sie.
+    pdf_data: bytes | None = None
 
     @property
     def page_count(self) -> int:
@@ -150,7 +153,7 @@ def read_document(pdf_data: bytes, language: str = DEFAULT_LANGUAGE) -> Document
             read_page(page, index + 1, language)
             for index, page in enumerate(document)
         ]
-    return Document(pages=pages)
+    return Document(pages=pages, pdf_data=pdf_data)
 
 
 # --- Gemeinsamer Abschluss für die Layouts ab Phase E ----------------------
