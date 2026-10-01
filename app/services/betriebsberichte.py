@@ -104,19 +104,43 @@ def tagesabschluss(session, lagerort_id: int, tag: date) -> dict:
         .order_by(Lagerbewegung.id)
     ).all()
 
-    # Welche Verkäufe/Ausbuchungen wurden (irgendwann) storniert?
-    storniert = {
-        int(grund[len(STORNO_PREFIX):])
-        for (grund,) in session.execute(
-            select(Lagerbewegung.grund).where(Lagerbewegung.grund.like(f"{STORNO_PREFIX}%"))
+    # Welche Verkäufe/Ausbuchungen wurden (irgendwann) storniert? Nur deren
+    # Gegenposten verschwinden aus dem Bericht (der Fehlscan zählt nicht). Die
+    # Gegenbuchungen eines stornierten Belegs beziehen sich auf Zugänge: sie
+    # bleiben sichtbar, damit der Zugang des Tages aufgeht.
+    storno_ziele = {
+        int(grund[len(STORNO_PREFIX):]): bewegung_id
+        for bewegung_id, grund in session.execute(
+            select(Lagerbewegung.id, Lagerbewegung.grund).where(
+                Lagerbewegung.grund.like(f"{STORNO_PREFIX}%")
+            )
         )
         if grund[len(STORNO_PREFIX):].isdigit()
+    }
+    typ_des_ziels = (
+        dict(
+            session.execute(
+                select(Lagerbewegung.id, Lagerbewegung.typ).where(
+                    Lagerbewegung.id.in_(storno_ziele)
+                )
+            ).all()
+        )
+        if storno_ziele
+        else {}
+    )
+    storniert = {
+        ziel for ziel in storno_ziele if typ_des_ziels.get(ziel) in ("verkauf", "ausbuchung")
     }
 
     summen: dict[tuple, dict] = {}
     for bewegung, variante, artikel in bewegungen:
         grund = bewegung.grund or ""
-        if bewegung.typ == "korrektur" and grund.startswith(STORNO_PREFIX):
+        if (
+            bewegung.typ == "korrektur"
+            and grund.startswith(STORNO_PREFIX)
+            and grund[len(STORNO_PREFIX):].isdigit()
+            and int(grund[len(STORNO_PREFIX):]) in storniert
+        ):
             continue  # der Gegenposten eines stornierten Verkaufs: schon abgezogen
         if bewegung.typ in ("verkauf", "ausbuchung") and bewegung.id in storniert:
             continue

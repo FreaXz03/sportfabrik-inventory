@@ -136,3 +136,31 @@ def test_cancelled_document_is_listed_with_its_status(welt):
     liste = welt.client.get("/api/invoices").json()["items"]
     assert [(i["id"], i["status"]) for i in liste] == [(beleg_id, "storniert")]
     assert welt.client.get(f"/api/invoices/{beleg_id}").json()["invoice"]["status"] == "storniert"
+
+
+def test_cancel_keeps_an_older_oldest_receipt_date_that_came_from_elsewhere(welt):
+    """A transfer can bring an older date (rule 6, D17). Cancelling an unrelated
+    receipt must not replace it with the later date of the remaining receipt."""
+    from datetime import date
+
+    beleg_id = _importiere(welt, "SF1")
+    with welt.sessions.begin() as session:
+        for bestand in session.scalars(select(Bestand).where(Bestand.lagerort_id == welt.codes["SF1"])):
+            bestand.aeltestes_eingangsdatum = date(2024, 1, 15)  # carried in by a transfer
+    assert welt.client.post(f"/api/invoices/{beleg_id}/cancel").status_code == 200
+    with welt.sessions() as session:
+        daten = {b.aeltestes_eingangsdatum for b in session.scalars(select(Bestand))}
+    assert daten == {date(2024, 1, 15)}
+
+
+def test_non_ascii_digit_as_delivery_choice_is_rejected_not_a_server_error(welt):
+    from testbelege import importieren, kopf, rechnung_pdf
+
+    welt.anmelden(CHEF)
+    antwort = importieren(
+        welt.client,
+        rechnung_pdf(header_lines=kopf(nummer="9100000002")),
+        lagerort_id=str(welt.codes["SF1"]),
+        lieferung="²",
+    )
+    assert antwort.status_code == 409, antwort.text

@@ -108,7 +108,7 @@ def _haenge_an_lieferung(
     Einkaufspreis, wenn im Beleg); unbekannte Zeilen legen hier nichts an."""
     ziel = (
         pruefe_ziel(session, int(lieferung), lieferant.id, lagerort_id)
-        if lieferung.isdigit()
+        if lieferung.isascii() and lieferung.isdigit()
         else None
     )
     if ziel is None:

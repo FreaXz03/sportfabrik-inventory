@@ -212,3 +212,21 @@ def test_cli_pruefe_exit_code_and_daily_csv(welt):
     out = io.StringIO()
     assert betrieb.main(["pruefe", "SF1"], welt.sessions, out, io.StringIO()) == 1
     assert "ABWEICHUNG" in out.getvalue() and "FEHLER" in out.getvalue()
+
+
+def test_daily_closing_shows_the_reversal_of_a_cancelled_document(welt):
+    """A receipt booked and cancelled the same day must net out: the counter
+    movements of a cancelled document are not hidden like those of a cancelled sale."""
+    from testbelege import importieren, kopf, rechnung_pdf
+
+    welt.anmelden(CHEF)
+    antwort = importieren(
+        welt.client, rechnung_pdf(header_lines=kopf(nummer="9100000001")), lagerort_id=str(welt.codes["SF1"])
+    )
+    assert antwort.status_code == 200, antwort.text
+    assert welt.client.post(f"/api/invoices/{antwort.json()['invoice_id']}/cancel").status_code == 200
+    with welt.sessions() as session:
+        bericht = tagesabschluss(session, welt.codes["SF1"], _heute())
+    zugang = sum(float(z["menge"]) for z in bericht["zeilen"] if z["art"] == "zugang")
+    korrektur = sum(float(z["menge"]) for z in bericht["zeilen"] if z["art"] == "korrektur")
+    assert zugang == 10.0 and korrektur == -10.0

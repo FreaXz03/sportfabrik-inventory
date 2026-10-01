@@ -149,6 +149,14 @@ def storniere_dokument(
                 WareneingangPosition.wareneingang_id.in_([w.id for w in wareneingaenge])
             )
         ).all()
+        # Welche Eingangsdaten dieses Beleg je Variante × Filiale geliefert hat -
+        # vor dem Nullsetzen der angekommenen Mengen festhalten.
+        lagerort_von = {w.id: (w.lagerort_id, w.eingangsdatum) for w in wareneingaenge}
+        daten_des_belegs: dict[tuple[int, int], set] = {}
+        for position in positionen:
+            if (position.menge_eingetroffen or 0) > 0:
+                lagerort_id, datum = lagerort_von[position.wareneingang_id]
+                daten_des_belegs.setdefault((position.varianten_id, lagerort_id), set()).add(datum)
         # Die angekommene Menge steht weiter in Zugang + Gegenbuchung. Die
         # Position selbst gilt nicht mehr als angekommen - so zählt sie für
         # Reduktionsuhr, Etiketten und Statistik nicht mehr als Lieferung.
@@ -165,7 +173,13 @@ def storniere_dokument(
         betroffen = {(z.varianten_id, z.lagerort_id) for z in zugaenge}
         for varianten_id, lagerort_id in betroffen:
             bestand = session.get(Bestand, (varianten_id, lagerort_id))
-            if bestand is not None:
+            # Nur neu rechnen, wenn der stornierte Wareneingang das älteste
+            # Datum geliefert hat. Ein älteres Datum kann von einer Umlagerung
+            # stammen (Regel 6, D17: das Datum bleibt) - das darf ein
+            # unbeteiligter Beleg nicht überschreiben.
+            if bestand is not None and bestand.aeltestes_eingangsdatum in daten_des_belegs.get(
+                (varianten_id, lagerort_id), set()
+            ):
                 bestand.aeltestes_eingangsdatum = session.scalar(
                     select(func.min(Wareneingang.eingangsdatum))
                     .select_from(WareneingangPosition)

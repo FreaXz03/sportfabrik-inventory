@@ -7,7 +7,7 @@ After=docker.service
 Type=oneshot
 User=sportfabrik
 WorkingDirectory=/opt/sportfabrik-inventory
-# Rule 2: bestand must equal the sum of lagerbewegungen. Exit code 1 if not.
-ExecStart=/usr/bin/docker compose --env-file .env.server exec -T app python scripts/betrieb.py pruefe
-# Fails if the newest local backup is older than 26 hours.
-ExecStart=/opt/sportfabrik-inventory/scripts/check_backup_age.sh
+# Both checks always run, so a failing stock check cannot hide a stale backup:
+# rule 2 (bestand = sum of lagerbewegungen) and "newest backup < 26 hours".
+# The unit fails if either fails.
+ExecStart=/bin/sh -c 'rc=0; /usr/bin/docker compose --env-file .env.server exec -T app python scripts/betrieb.py pruefe || rc=1; /opt/sportfabrik-inventory/scripts/check_backup_age.sh || rc=1; exit $rc'
