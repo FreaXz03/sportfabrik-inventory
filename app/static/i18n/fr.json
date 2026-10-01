@@ -1140,5 +1140,11 @@
   "meldung.doc.note": "Note (facultatif)",
   "meldung.doc.send": "Envoyer le document",
   "meldung.doc.sent": "Le document a été envoyé.",
-  "meldung.close": "Fermer"
+  "meldung.close": "Fermer",
+  "errors.parser.amount_mismatch": "Le montant ne correspond pas : calculé {summe} CHF, le document indique {beleg} CHF - merci de vérifier s'il manque une taille ou une quantité.",
+  "errors.parser.code_unsure": "Le code « {nr} » a été lu avec incertitude - merci de le comparer avec le document et de corriger le n° d'article.",
+  "errors.corrections.added_invalid": "La position ajoutée est invalide : ligne source, taille et quantité sont nécessaires, le reste est repris.",
+  "hints.parser.manually_added": "Ajoutée à la main (copie de la position {row}).",
+  "preview.add_size": "Ajouter une taille",
+  "preview.add_size_hint": "Une taille manque ? Copie cette ligne - puis saisir la taille et la quantité et vérifier."
 }

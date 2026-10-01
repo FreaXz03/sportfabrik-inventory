@@ -1140,5 +1140,11 @@
   "meldung.doc.note": "Notiz (freiwillig)",
   "meldung.doc.send": "Dokument senden",
   "meldung.doc.sent": "Das Dokument wurde gesendet.",
-  "meldung.close": "Schliessen"
+  "meldung.close": "Schliessen",
+  "errors.parser.amount_mismatch": "Betrag stimmt nicht: berechnet {summe} CHF, der Beleg nennt {beleg} CHF - bitte prüfen, ob eine Grösse oder Menge fehlt.",
+  "errors.parser.code_unsure": "Der Code „{nr}\" wurde unsicher gelesen - bitte mit dem Beleg vergleichen und die Art. Nr. korrigieren.",
+  "errors.corrections.added_invalid": "Die ergänzte Position ist ungültig: Quellzeile, Grösse und Menge sind nötig, alles andere wird übernommen.",
+  "hints.parser.manually_added": "Von Hand ergänzt (Kopie von Position {row}).",
+  "preview.add_size": "Grösse ergänzen",
+  "preview.add_size_hint": "Fehlt eine Grösse? Kopiert diese Zeile - dann Grösse und Menge eintragen und prüfen."
 }

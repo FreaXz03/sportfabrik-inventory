@@ -433,7 +433,11 @@ def lies_bestellung(pdf_data: bytes, language: str, spaltenfinder) -> dict:
             letzter = None
             for nummer, seite in enumerate(dokument, start=1):
                 if nummer == 1:
-                    ergebnis["kopf_text"] = " ".join(w[4] for w in _ausschnitt(seite, x0, 90, x1, 240))
+                    # Zwei Ausschnitte: der schmale links liest „Bestellt am: …" zuverlässig (der breite
+                    # lässt diesen fetten Block aus), der breite die „Bestellung: …"-Nummer.
+                    ergebnis["kopf_text"] = " ".join(
+                        w[4] for crop in ((x0, 95, 300, 190), (x0, 90, x1, 240)) for w in _ausschnitt(seite, *crop)
+                    )
                 for k in kaesten(zeilenstruktur(seite)):
                     kopf = k["kopf"]
                     preis = _ausschnitt(seite, x0, k["preis"]["y0"], x1, k["preis"]["y1"])

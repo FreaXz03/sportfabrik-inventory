@@ -25,7 +25,7 @@ import re
 import pymupdf
 
 from .. import ocr
-from ...core.i18n import DEFAULT_LANGUAGE, translate
+from ...core.i18n import DEFAULT_LANGUAGE, template, translate
 
 
 class DocumentParseError(ValueError):
@@ -274,3 +274,95 @@ def gleiche_summe(soll, positionen, language: str = DEFAULT_LANGUAGE) -> list:
     if soll is None or Decimal(soll) == ist:
         return []
     return [translate("errors.parser.total_mismatch", language, summe=ist.normalize(), beleg=soll)]
+
+
+# --- Gegenrechnung für Layouts mit Rasterlesung (cmp_bestellung) -----------------
+#
+# Jede Position trägt `check`: `{"key", "gesamt", "betrag", "nr_unsicher"}` der
+# Farbzeile, aus der sie stammt. Die Warnungen werden **immer aus den aktuellen
+# Werten neu gebildet** - nach dem Lesen und nach jeder Korrektur in der Vorschau
+# (`app/services/corrections.py`). So verschwindet eine Warnung, sobald die Zahlen
+# aufgehen (Menge korrigiert oder fehlende Grösse ergänzt), und eine unsicher
+# gelesene Artikelnummer bleibt, bis sie geändert wird.
+
+GEGENRECHNUNG_KEYS = (
+    "errors.parser.total_mismatch",
+    "errors.parser.amount_mismatch",
+    "errors.parser.code_unsure",
+)
+
+
+def _praefixe(language: str) -> tuple:
+    return tuple(template(key, language).split("{", 1)[0] for key in GEGENRECHNUNG_KEYS)
+
+
+def _dez(wert):
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        return Decimal(str(wert))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _betrag_text(wert) -> str:
+    return format(wert, ".2f")
+
+
+def gegenrechnung_zeilen(items: list, language: str = DEFAULT_LANGUAGE) -> None:
+    """Warnungen der Farbzeilen (Menge ↔ Gesamtmenge, Menge × EK ↔ Betrag,
+    unsichere Artikelnummer) aus den aktuellen Werten neu setzen."""
+    praefixe = _praefixe(language)
+    gruppen: dict = {}
+    for item in items:
+        if item.get("check"):
+            item["warnings"] = [w for w in item["warnings"] if not w.startswith(praefixe)]
+            gruppen.setdefault(item["check"]["key"], []).append(item)
+    for gruppe in gruppen.values():
+        check = gruppe[0]["check"]
+        mengen = [_dez(i.get("quantity")) for i in gruppe]
+        eks = [_dez(i.get("ek")) for i in gruppe]
+        neu = []
+        if None not in mengen:
+            ist = sum(mengen)
+            if check.get("gesamt") is not None and ist != check["gesamt"]:
+                neu.append(translate("errors.parser.total_mismatch", language, summe=format(ist.normalize(), "f"), beleg=check["gesamt"]))
+            if None not in eks:
+                betrag = sum(m * e for m, e in zip(mengen, eks))
+                soll = _dez(check["betrag"]) if check.get("betrag") is not None else None
+                if soll is None or betrag != soll:
+                    neu.append(
+                        translate("errors.parser.amount_mismatch", language, summe=_betrag_text(betrag), beleg=_betrag_text(soll) if soll is not None else "-")
+                    )
+        for item in gruppe:
+            warnungen = list(neu)
+            if check.get("nr_unsicher") and item.get("article_no") == check["nr_unsicher"]:
+                warnungen.append(translate("errors.parser.code_unsure", language, nr=check["nr_unsicher"]))
+            item["warnings"].extend(warnungen)
+
+
+def gegenrechnung_dokument(items: list, totals: dict | None, language: str = DEFAULT_LANGUAGE) -> list[str]:
+    """Warnungen der Belegsumme („Menge: 159 Produkte, 3 505,30 CHF") gegen die Positionen.
+    `totals` = `{"stueck": int, "betrag": "3505.30"}` oder `None`, wenn die Summe nicht lesbar war."""
+    gezaehlt = [i for i in items if i.get("check")]
+    mengen = [_dez(i.get("quantity")) for i in gezaehlt]
+    if None in mengen:
+        return []
+    stueck = sum(mengen)
+    if totals is None:
+        return [translate("errors.parser.total_mismatch", language, summe=format(stueck.normalize(), "f"), beleg="-")]
+    warnungen = []
+    if stueck != totals["stueck"]:
+        warnungen.append(translate("errors.parser.total_mismatch", language, summe=format(stueck.normalize(), "f"), beleg=totals["stueck"]))
+    eks = [_dez(i.get("ek")) for i in gezaehlt]
+    if None not in eks:
+        betrag = sum(m * e for m, e in zip(mengen, eks))
+        if betrag != _dez(totals["betrag"]):
+            warnungen.append(translate("errors.parser.amount_mismatch", language, summe=_betrag_text(betrag), beleg=_betrag_text(_dez(totals["betrag"]))))
+    return warnungen
+
+
+def ohne_gegenrechnung(warnungen: list, language: str = DEFAULT_LANGUAGE) -> list:
+    """Belegwarnungen ohne die der Gegenrechnung (werden neu gebildet)."""
+    praefixe = _praefixe(language)
+    return [w for w in warnungen if not w.startswith(praefixe)]

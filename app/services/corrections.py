@@ -12,6 +12,7 @@ from collections import Counter
 from decimal import Decimal
 from .artikel import EAN_MUSTER
 from .parsers import decimal_value
+from .parsers.base import gegenrechnung_dokument, gegenrechnung_zeilen, ohne_gegenrechnung
 from ..core.i18n import DEFAULT_LANGUAGE, template, translate
 
 FIELDS = {
@@ -28,15 +29,56 @@ FIELDS = {
 }
 
 
+# Beim Ergänzen einer fehlenden Grösse (Vorschau) übernimmt die neue Position alles
+# von der Quellzeile ausser Grösse und Menge: Preise sind nicht frei wählbar.
+ADDED_COPY = ("brand", "supplier_article_no", "article_no", "description", "color", "unit", "uvp", "ek", "page", "check")
+ADDED_FIELDS = {"from_row", "size", "quantity"}
+MAX_ADDED = 60
+
+
 class CorrectionError(ValueError):
     pass
+
+
+def _add_items(result, added, language):
+    """Von Hand ergänzte Positionen („Grösse ergänzen"): je eine Kopie einer
+    Quellzeile mit eigener Grösse und Menge. Nur Layouts mit Gegenrechnung
+    (`check`) erlauben das - dort wird sie danach neu gerechnet."""
+    if not isinstance(added, list) or len(added) > MAX_ADDED:
+        raise CorrectionError(translate("errors.corrections.added_invalid", language))
+    quellen = {i["row_number"]: i for i in result["items"]}
+    naechste = max(quellen, default=0) + 1
+    for eintrag in added:
+        if not isinstance(eintrag, dict) or set(eintrag) - ADDED_FIELDS:
+            raise CorrectionError(translate("errors.corrections.added_invalid", language))
+        quelle = quellen.get(eintrag.get("from_row"))
+        groesse, menge = eintrag.get("size"), eintrag.get("quantity")
+        if quelle is None or not quelle.get("check") or not isinstance(groesse, str) or not groesse.strip() or not isinstance(menge, str):
+            raise CorrectionError(translate("errors.corrections.added_invalid", language))
+        neu = {key: deepcopy(quelle[key]) for key in ADDED_COPY if key in quelle}
+        neu.update(
+            ean="",
+            size=groesse.strip(),
+            quantity=menge.strip(),
+            raw_lines=[translate("hints.parser.manually_added", language, row=quelle["row_number"])],
+            warnings=[],
+            hints=[],
+            manual_added=True,
+            added_from=quelle["row_number"],
+            row_number=naechste,
+            ocr_used=quelle.get("ocr_used", False),
+        )
+        naechste += 1
+        result["items"].append(neu)
+    result["item_count"] = len(result["items"])
 
 
 def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFAULT_LANGUAGE):
     result = deepcopy(parsed)
     if not isinstance(corrections or {}, dict):
         raise CorrectionError(translate("errors.corrections.unordered", language))
-    patches = corrections or {}
+    patches = dict(corrections or {})
+    added = patches.pop("_added", [])
     known = {str(i["row_number"]) for i in result["items"]}
     if set(patches) - known:
         raise CorrectionError(translate("errors.corrections.unknown_position", language))
@@ -59,6 +101,8 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
         template(key, language).split("{", 1)[0]
         for key in ("hints.parser.ean_missing",)
     )
+    if added:
+        _add_items(result, added, language)
     for item in result["items"]:
         patch = patches.get(str(item["row_number"]), {})
         if not isinstance(patch, dict) or set(patch) - FIELDS.keys():
@@ -147,6 +191,12 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
                 "by": actor or {},
                 "at": datetime.now(timezone.utc).isoformat(),
             }
+    # Gegenrechnung (Layouts mit Rasterlesung) aus den jetzigen Werten neu bilden.
+    gegenrechnung_zeilen(result["items"], language)
+    if "check_totals" in result:
+        result["warnings"] = ohne_gegenrechnung(result["warnings"], language) + gegenrechnung_dokument(
+            result["items"], result["check_totals"], language
+        )
     counts = Counter(i["ean"] for i in result["items"] if i.get("ean"))
     result["duplicate_eans"] = {k: v for k, v in counts.items() if v > 1}
     result["rows_with_warnings"] = sum(bool(i["warnings"]) for i in result["items"])

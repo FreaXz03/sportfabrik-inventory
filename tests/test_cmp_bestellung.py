@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from app.services.corrections import CorrectionError, apply_corrections
 from app.services.parsers.cmp_bestellung import (
     artikelnummer,
     baue_positionen,
@@ -110,6 +111,63 @@ def test_preisspalten_aus_der_preiszeile():
     assert [round(c) for c in preisspalten(woerter)] == [294, 318, 340]  # das verklebte Paar wird geteilt
 
 
+def _vorschau(zeilen, stueck, betrag):
+    """Was die Vorschau dem Browser gibt: Positionen samt Gegenrechnung wie nach parse()."""
+    from app.services.parsers.base import gegenrechnung_dokument
+
+    items, warnungen, (ist_stueck, ist_betrag) = baue_positionen([kasten(zeilen)])
+    for nummer, item in enumerate(items, start=1):  # wie ergebnis() sie vergibt
+        item["row_number"] = nummer
+    totals = {"stueck": stueck, "betrag": betrag}
+    warnungen += gegenrechnung_dokument(items, totals)
+    return {"items": items, "warnings": warnungen, "check_totals": totals, "invoice_number": "22065", "document_type": "bestellung"}
+
+
+def test_fehlende_groesse_laesst_sich_ergaenzen_und_loest_die_warnungen():
+    # Beleg: 4 × 2 Stück à 13.00 = 104.00; gelesen wurden nur 3 Grössen.
+    vorschau = _vorschau([zeile("P753", "CORDA", ["2", "2", "2", None], "8", "10400")], 8, "104.00")
+    assert vorschau["warnings"] and all(i["warnings"] for i in vorschau["items"])
+    ergebnis = apply_corrections(vorschau, {"_added": [{"from_row": 1, "size": "56", "quantity": "2"}]}, None, "de")
+    assert ergebnis["rows_with_warnings"] == 0 and ergebnis["warnings"] == []
+    neu = ergebnis["items"][-1]
+    assert (neu["size"], neu["quantity"], neu["ek"], neu["uvp"], neu["article_no"]) == ("56", "2", "13.00", "29.90", "33N6677 P753")
+    assert neu["manual_added"] is True and neu["added_from"] == 1 and neu["row_number"] == 4
+    assert ergebnis["item_count"] == 4
+
+
+def test_falsche_menge_korrigieren_loest_die_warnung():
+    vorschau = _vorschau([zeile("P753", "CORDA", ["2", "2", "2", "1"], "8", "10400")], 8, "104.00")
+    assert vorschau["rows_with_warnings"] if "rows_with_warnings" in vorschau else all(i["warnings"] for i in vorschau["items"])
+    ergebnis = apply_corrections(vorschau, {"4": {"quantity": "2"}}, None, "de")
+    assert ergebnis["rows_with_warnings"] == 0 and ergebnis["warnings"] == []
+
+
+def test_ergaenzen_ist_nicht_beliebig():
+    vorschau = _vorschau([zeile("P753", "CORDA", ["2", "2", "2", None], "8", "10400")], 8, "104.00")
+    for falsch in (
+        [{"from_row": 99, "size": "56", "quantity": "2"}],  # Quellzeile gibt es nicht
+        [{"from_row": 1, "size": "", "quantity": "2"}],  # ohne Grösse
+        [{"from_row": 1, "size": "56", "quantity": "2", "ek": "0.01"}],  # Preise nicht frei wählbar
+        "kein liste",
+        [{"from_row": 1, "size": "56", "quantity": "2"}] * 80,  # zu viele
+    ):
+        with pytest.raises(CorrectionError):
+            apply_corrections(vorschau, {"_added": falsch}, None, "de")
+    # Nur Positionen mit Gegenrechnung (dieser Parser) lassen sich ergänzen.
+    vorschau["items"][0].pop("check")
+    with pytest.raises(CorrectionError):
+        apply_corrections(vorschau, {"_added": [{"from_row": 1, "size": "56", "quantity": "2"}]}, None, "de")
+
+
+def test_unsicherer_farbcode_bleibt_bis_er_geaendert_wird():
+    vorschau = _vorschau([zeile("382ZV", "PETROLEUM", ["2", "2", "2", "2"], "8", "10400")], 8, "104.00")
+    assert any("382ZV" in w for w in vorschau["items"][0]["warnings"])
+    unveraendert = apply_corrections(vorschau, {}, None, "de")
+    assert unveraendert["rows_with_warnings"] == 4  # eine Prüfung allein ändert nichts
+    korrigiert = apply_corrections(vorschau, {str(i["row_number"]): {"article_no": "33N6677 38ZV"} for i in vorschau["items"]}, None, "de")
+    assert korrigiert["rows_with_warnings"] == 0
+
+
 PDF = os.environ.get("CMP_BESTELLUNG_PDF")
 
 
@@ -120,6 +178,10 @@ def test_echter_beleg_wird_erkannt_und_gegengerechnet():
     document, parser = read_and_detect(Path(PDF).read_bytes())
     ergebnis = parse_with_parser(parser, document)
     assert ergebnis["document_type"] == "bestellung" and ergebnis["invoice_number"] == "22065"
+    # Das Belegdatum braucht der Import (wie bei jedem Layout): „Bestellt am: 15/08/2026".
+    from datetime import date
+
+    assert parser.dates(document)["document_date"] == date(2026, 8, 15)
     assert ergebnis["parser_key"] == "cmp"
     # Alles, was nicht sicher gelesen ist, steht als Warnung da; nichts wird still falsch.
     assert sum(int(i["quantity"]) for i in ergebnis["items"]) >= 150

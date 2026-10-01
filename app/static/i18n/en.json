@@ -1140,5 +1140,11 @@
   "meldung.doc.note": "Note (optional)",
   "meldung.doc.send": "Send document",
   "meldung.doc.sent": "The document was sent.",
-  "meldung.close": "Close"
+  "meldung.close": "Close",
+  "errors.parser.amount_mismatch": "Amount does not match: calculated {summe} CHF, the document states {beleg} CHF - please check whether a size or quantity is missing.",
+  "errors.parser.code_unsure": "The code \"{nr}\" was read with uncertainty - please compare it with the document and correct the item number.",
+  "errors.corrections.added_invalid": "The added line is invalid: source line, size and quantity are required, everything else is copied.",
+  "hints.parser.manually_added": "Added by hand (copy of line {row}).",
+  "preview.add_size": "Add a size",
+  "preview.add_size_hint": "A size missing? Copies this line - then enter the size and quantity and validate."
 }

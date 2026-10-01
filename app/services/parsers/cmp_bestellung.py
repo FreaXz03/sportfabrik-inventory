@@ -30,7 +30,7 @@ from datetime import date
 from decimal import Decimal
 from functools import lru_cache
 
-from .base import DocumentParseError, ergebnis, pruefe_position
+from .base import DocumentParseError, ergebnis, gegenrechnung_dokument, gegenrechnung_zeilen, pruefe_position
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
 MARKE = "CMP"
@@ -223,29 +223,26 @@ def baue_positionen(kaesten: list[dict], language: str = DEFAULT_LANGUAGE) -> tu
                 warnings.append(translate("errors.parser.unassigned_row", language, page=kasten["page"], row_text=titel["code"]))
                 continue
             mengen = {g: m for g, m in farbe["mengen"].items() if m}
-            ist = sum(mengen.values())
-            erwartet_betrag = sum((Decimal(ek[g]) * m for g, m in mengen.items() if g in ek), Decimal("0"))
             warnung = []
-            if farbe["gesamt"] is not None and farbe["gesamt"] != ist:
-                warnung.append(translate("errors.parser.total_mismatch", language, summe=ist, beleg=farbe["gesamt"]))
-            if farbe["unsicher"]:
-                warnung.append(translate("errors.parser.invalid_value", language, field=translate("fields.article_no", language), value=farbe["unsicher"]))
             if any(g not in ek or g not in vk for g in mengen):
                 warnung.append(translate("errors.parser.invalid_value", language, field=translate("fields.uvp", language), value="-"))
-            elif farbe["betrag"] != erwartet_betrag:
-                warnung.append(
-                    translate(
-                        "errors.parser.total_mismatch", language,
-                        summe=format(erwartet_betrag, "f"), beleg=farbe["betrag"] if farbe["betrag"] is not None else "-",
-                    )
-                )
+            article_no = f"{titel['code']} {farbe['code']}"
+            # Daten für die Gegenrechnung (Menge ↔ Gesamtmenge, Menge × EK ↔ Betrag, unsicherer Code);
+            # sie wird nach dem Lesen und nach jeder Korrektur aus den aktuellen Werten neu gebildet.
+            check = dict(
+                key=f"{kasten['page']}|{article_no}",
+                gesamt=farbe["gesamt"],
+                betrag=None if farbe["betrag"] is None else format(farbe["betrag"], "f"),
+                nr_unsicher=article_no if farbe["unsicher"] else None,
+            )
             for groesse, menge in mengen.items():
                 gesamt_stueck += menge
                 gesamt_betrag += Decimal(ek[groesse]) * menge if groesse in ek else 0
                 position = dict(
                     brand=MARKE,
                     supplier_article_no=titel["code"],
-                    article_no=f"{titel['code']} {farbe['code']}",
+                    article_no=article_no,
+                    check=check,
                     description=titel["bezeichnung"],
                     color=farbe["name"] or None,
                     size=groesse,
@@ -265,6 +262,7 @@ def baue_positionen(kaesten: list[dict], language: str = DEFAULT_LANGUAGE) -> tu
                 if titel["korrigiert"] or farbe["geaendert"]:
                     position["hints"].append(translate("errors.parser.article_no_corrected", language, nr=position["article_no"]))
                 items.append(position)
+    gegenrechnung_zeilen(items, language)
     return items, warnings, (gesamt_stueck, gesamt_betrag)
 
 
@@ -287,16 +285,12 @@ def parse(document, language: str = DEFAULT_LANGUAGE) -> dict:
     gelesen = _gelesen_von(document, language)
     items, warnings, (stueck, betrag) = baue_positionen(gelesen["kaesten"], language)
     summe = SUMME.search(gelesen["fuss_text"])
-    if summe is None:
-        warnings.append(translate("errors.parser.total_mismatch", language, summe=stueck, beleg="-"))
-    else:
-        soll_stueck, soll_betrag = int(summe.group(1)), zahl(summe.group(2).replace(".", ","))
-        if soll_stueck != stueck or soll_betrag != betrag:
-            warnings.append(
-                translate("errors.parser.total_mismatch", language, summe=f"{stueck} / {betrag}", beleg=f"{soll_stueck} / {soll_betrag}")
-            )
+    totals = None if summe is None else {"stueck": int(summe.group(1)), "betrag": format(zahl(summe.group(2).replace(".", ",")), "f")}
+    warnings += gegenrechnung_dokument(items, totals, language)
     nummer = BESTELLUNG.search(gelesen["kopf_text"])
-    return ergebnis(document, items, warnings, "bestellung", nummer.group(1) if nummer else None, language)
+    resultat = ergebnis(document, items, warnings, "bestellung", nummer.group(1) if nummer else None, language)
+    resultat["check_totals"] = totals  # für die erneute Gegenrechnung nach Korrekturen
+    return resultat
 
 
 def dates(document, language: str = DEFAULT_LANGUAGE) -> dict:
