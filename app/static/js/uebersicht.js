@@ -364,6 +364,8 @@
     name = (me.name || '').trim().split(/\s+/)[0] || null;
     if (daten) begruessen();
     schnellzugriffeZeichnen(me.schnellzugriffe);
+    // Punkt 10: an Orten ohne Verkauf (GEWA, VEBO, Dietikon) gibt es kein Anstehend.
+    $('anstehendPanel').hidden = !!(me.lagerort && me.lagerort.verkauf === false);
   });
   $('retry').addEventListener('click', laden);
   $('periode').addEventListener('change', () => { periode = $('periode').value; verlaeufeLaden(); });

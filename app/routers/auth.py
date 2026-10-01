@@ -147,6 +147,20 @@ def require_chef_api(
     return user
 
 
+def require_verkaufsort_page(
+    request: Request,
+    user: User = Depends(require_login_page),
+    session=Depends(get_session),
+) -> User:
+    """Seiten, die es nur an Orten mit Verkauf gibt (Statistik, Anstehend; Punkt
+    10, 2026-10-01): am gewählten Ort ohne Verkauf (GEWA, VEBO, Dietikon) zurück
+    auf die Übersicht. Gemeint ist der aktive Ort - nie ein einzelner Code."""
+    lagerort = _resolve_active_lagerort(request, session, user)
+    if lagerort is not None and not lagerort.verkauf:
+        raise HTTPException(303, headers={"Location": "/"})
+    return user
+
+
 def require_admin_page(user: User = Depends(require_login_page)) -> User:
     if user.role != "admin":
         raise HTTPException(303, headers={"Location": "/"})
@@ -282,7 +296,7 @@ def logout(request: Request):
 def _lagerort_data(lagerort: Lagerort | None) -> dict | None:
     if lagerort is None:
         return None
-    return {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name}
+    return {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name, "verkauf": bool(lagerort.verkauf)}
 
 
 @router.get("/api/me")

@@ -44,8 +44,8 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
         { href: '/preview', key: 'nav.upload', info: 'nav.info.upload', nur: ['chef', 'admin'] }
       ]
     },
-    { href: '/statistiken', key: 'nav.statistiken', info: 'nav.info.statistiken', nur: ['chef', 'admin'] },
-    { href: '/anstehend', key: 'nav.anstehend', info: 'nav.info.anstehend' },
+    { href: '/statistiken', key: 'nav.statistiken', info: 'nav.info.statistiken', nur: ['chef', 'admin'], nurVerkauf: true },
+    { href: '/anstehend', key: 'nav.anstehend', info: 'nav.info.anstehend', nurVerkauf: true },
     {
       gruppe: 'nav.group_verwaltung', eintraege: [
         { href: '/konten', key: 'nav.konten', info: 'nav.info.konten', nur: ['admin'] },
@@ -55,6 +55,9 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
   ];
 
   var rolle = null;
+  // Gewählter Ort verkauft nicht (GEWA, VEBO, Dietikon): Statistik und
+  // Anstehend entfallen (Punkt 10). Unbekannt (alle Filialen) blendet nichts aus.
+  var ohneVerkauf = false;
   var bereit = false;
   // Gruppen, die der Nutzer selbst auf- oder zugeklappt hat (überlebt das Neuzeichnen).
   var manuell = {};
@@ -67,6 +70,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
 
   function sichtbar(eintrag) {
     if (eintrag.bald) return false;
+    if (eintrag.nurVerkauf && ohneVerkauf) return false;
     return !eintrag.nur || (rolle !== null && eintrag.nur.indexOf(rolle) !== -1);
   }
 
@@ -148,6 +152,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
 
   function glockeBeschriften() {
     if (!glocke) return;
+    glocke.huelle.hidden = ohneVerkauf; // Punkt 10: ohne Verkauf kein Anstehend
     var text = meldungen
       ? window.SportfabrikI18n.t('nav.bell_aria', { anzahl: meldungen })
       : t('nav.bell_none');
@@ -254,7 +259,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     });
     huelle.append(knopf, fenster);
 
-    glocke = { knopf: knopf, zeichen: zeichen, titel: titel, liste: liste, leer: leer, alle: alle };
+    glocke = { huelle: huelle, knopf: knopf, zeichen: zeichen, titel: titel, liste: liste, leer: leer, alle: alle };
     glockeBeschriften();
     glockeAktualisieren();
     document.addEventListener('visibilitychange', function () { if (!document.hidden) glockeAktualisieren(); });
@@ -441,6 +446,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
   // session.js meldet die Rolle, sobald /api/me geantwortet hat.
   document.addEventListener('sportfabrik:me', function (ereignis) {
     rolle = ereignis.detail && ereignis.detail.role;
+    ohneVerkauf = !!(ereignis.detail && ereignis.detail.lagerort && ereignis.detail.lagerort.verkauf === false);
     if (bereit) zeichnen();
   });
   window.SportfabrikI18n.ready.then(function () {

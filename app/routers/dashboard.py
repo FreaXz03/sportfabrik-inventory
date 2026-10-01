@@ -74,6 +74,8 @@ def anstehend_anzahl(
 ):
     """Zahl der Meldungen unter „Anstehend" für die Glocke (jede Seite)."""
     try:
+        if lagerort is not None and not lagerort.verkauf:
+            return {"anzahl": 0, "meldungen": []}  # Punkt 10: kein Anstehend ohne Verkauf
         filiale = None if lagerort is None else uebersicht.meldungen_filiale(session, lagerort.id)
         meldungen = uebersicht.liste_meldungen(filiale, uebersicht.stamm(session))
         return {"anzahl": len(meldungen), "meldungen": meldungen}

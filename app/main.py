@@ -13,6 +13,7 @@ from .routers.auth import (
     SESSION_SECRET,
     phone_gate,
     require_login_page,
+    require_verkaufsort_page,
 )
 from .routers.auth import router as auth_router
 from .core.database import engine
@@ -105,7 +106,7 @@ def home(user=Depends(require_login_page)):
 
 
 @app.get("/anstehend", include_in_schema=False)
-def anstehend_page(user=Depends(require_login_page)):
+def anstehend_page(user=Depends(require_verkaufsort_page)):
     return FileResponse(Path(__file__).parent / "templates" / "anstehend.html")
 
 
