@@ -61,6 +61,7 @@ from .artikel import (
 )
 from .kategorien import kategorie_daten, merke_kategorie
 from .reduktion_manuell import MANUELLE_STUFEN, merke
+from . import operation
 from .wareneingang import ADVISORY_LOCK_ID, buche_zugang
 
 # Grund der Lagerbewegung: ein fester Schlüssel, kein UI-Text - übersetzt wird
@@ -304,6 +305,7 @@ def erfasse_wareneingang(
     eingangsdatum: date | None = None,
     lieferant_id: int | None = None,
     language: str = DEFAULT_LANGUAGE,
+    operation_id: str | None = None,
 ) -> dict:
     """Von Hand erfasste Ware als Wareneingang ohne Beleg buchen (D27).
 
@@ -321,6 +323,14 @@ def erfasse_wareneingang(
             # überholen.
             if session.bind.dialect.name == "postgresql":
                 session.execute(text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})"))
+            op = operation.starte(
+                session, operation_id, "erfassen", benutzer,
+                {"positionen": positionen, "lagerort_id": lagerort_id,
+                 "eingangsdatum": eingangsdatum, "lieferant_id": lieferant_id},
+                language,
+            )
+            if op.gespeichert is not None:
+                return op.gespeichert
             lagerort = session.get(Lagerort, lagerort_id)
             if lagerort is None:
                 raise ErfassungRejected(
@@ -507,6 +517,7 @@ def erfasse_wareneingang(
                 "bekannte_varianten": len(bekannte_varianten),
                 "eingangsdatum": datum.isoformat() if datum else None,
             }
+            op.abschliessen(ergebnis)
         return ergebnis
     except IntegrityError as exc:
         # Praktisch nur die EAN-Eindeutigkeit: zwei Arbeitsplätze erfassen

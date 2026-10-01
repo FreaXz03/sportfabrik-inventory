@@ -568,3 +568,54 @@ class ReduktionEmpfehlungZentrale(Base):
     # nach der Antwort; eine schon gesetzte Stufe bleibt (kein Rollback).
     zurueckgezogen_von_name: Mapped[str | None] = mapped_column(String(100))
     zurueckgezogen_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Operation(Base):
+    """Schutz vor doppelter Buchung bei Wiederholung (Paket 2, 01.10.2026).
+
+    Jede bewusste Aktion (Verkauf, Umlagerung, Ankunft, Zählung, manuelle
+    Erfassung) kann eine vom Gerät erzeugte Operations-ID mitschicken. Dieselbe
+    ID noch einmal liefert die gespeicherte Antwort und bucht nichts; eine neue
+    ID ist eine neue Buchung. Die Zeile entsteht in derselben Transaktion wie
+    die Buchung. Es sind Wiederholungsschlüssel, keine Geschäftsdaten - Zeilen
+    älter als 30 Tage werden beim Schreiben aufgeräumt."""
+
+    __tablename__ = "operationen"
+
+    operation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    endpunkt: Mapped[str] = mapped_column(String(40))
+    kassennummer: Mapped[str | None] = mapped_column(String(20))
+    anfrage_hash: Mapped[str] = mapped_column(String(64))
+    antwort: Mapped[dict] = mapped_column(JSON)
+    erstellt_am: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class Zaehlung(Base):
+    """Jede gezählte Menge (Paket 2, 01.10.2026) - auch eine ohne Differenz
+    („gezählt, kein Unterschied"), für die es keine Lagerbewegung gibt. Dient
+    als Nachweis der Inventur, z. B. der Eröffnungszählung im Pilotbetrieb.
+    Benutzer als Momentaufnahme, wie bei `lagerbewegungen`."""
+
+    __tablename__ = "zaehlungen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+    gezaehlt: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    bestand_vorher: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    differenz: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    grund: Mapped[str | None] = mapped_column(String(200))
+    # Leer, wenn der Bestand schon stimmte.
+    bewegung_id: Mapped[int | None] = mapped_column(ForeignKey("lagerbewegungen.id"))
+    # Der Bestand hatte sich seit Zählbeginn bewegt und der Benutzer hat trotzdem
+    # ausdrücklich bestätigt (statt neu zu zählen).
+    bestaetigt_trotz_aenderung: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    zeitpunkt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

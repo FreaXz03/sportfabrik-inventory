@@ -39,6 +39,7 @@ from ..core.models import (
     Wareneingang,
     WareneingangPosition,
 )
+from . import operation
 from .hinweise import erstelle_hinweise, pruefe_und_merke
 
 # Dieselbe Sperre wie der Import: Zugänge und Bestand dürfen sich zwischen
@@ -219,6 +220,7 @@ def bestaetige_ankunft(
     benutzer: dict | None = None,
     eingangsdatum: date | None = None,
     language: str = DEFAULT_LANGUAGE,
+    operation_id: str | None = None,
 ) -> dict:
     """Ankunft (ganz oder teilweise) bestätigen und den Zugang buchen.
 
@@ -233,6 +235,13 @@ def bestaetige_ankunft(
     with session_factory() as session, session.begin():
         if session.bind.dialect.name == "postgresql":
             session.execute(text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})"))
+        op = operation.starte(
+            session, operation_id, "ankunft", benutzer,
+            {"wareneingang_id": wareneingang_id, "mengen": mengen, "eingangsdatum": eingangsdatum},
+            language,
+        )
+        if op.gespeichert is not None:
+            return op.gespeichert
         wareneingang = session.get(Wareneingang, wareneingang_id)
         if wareneingang is None:
             raise AnkunftRejected(
@@ -301,7 +310,7 @@ def bestaetige_ankunft(
                 session, wareneingang, gebucht, positionen,
                 eingangsdatum or date.today(), benutzer, jetzt,
             )
-            return _abschluss(session, wareneingang, positionen, gebucht, mehr)
+            return op.abschliessen(_abschluss(session, wareneingang, positionen, gebucht, mehr))
         dokumentdatum = session.scalar(
             select(Dokument.dokumentdatum).where(
                 Dokument.id == wareneingang.dokument_id
@@ -357,7 +366,9 @@ def bestaetige_ankunft(
         erstelle_hinweise(session, wareneingang.lagerort_id, nachlieferungs_cache)
         if datum and wareneingang.eingangsdatum is None:
             wareneingang.eingangsdatum = datum
-        return _abschluss(session, wareneingang, positionen, gebucht, mehrlieferungen)
+        return op.abschliessen(
+            _abschluss(session, wareneingang, positionen, gebucht, mehrlieferungen)
+        )
 
 
 def _abschluss(session, wareneingang, positionen: dict, gebucht: dict, mehrlieferungen: list) -> dict:

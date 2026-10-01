@@ -185,7 +185,7 @@
     $('bookStatus').className = '';
     $('bookStatus').textContent = t('ausbuchen.booking');
     try {
-      const antwort = await fetch('/api/umlagerung', {
+      const antwort = await SportfabrikOp.fetch('/api/umlagerung', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

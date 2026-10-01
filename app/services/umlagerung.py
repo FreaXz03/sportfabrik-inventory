@@ -40,6 +40,7 @@ from sqlalchemy import select
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Artikel, Bestand, Lagerort, Variante, Wareneingang, WareneingangPosition
+from . import operation
 from .ausbuchung import buche_bewegung, sperren, zahl
 from .reduktion import letzter_wareneingang
 from .wareneingang import MAX_MENGE
@@ -95,6 +96,7 @@ def umlagern(
     versanddatum: date | None = None,
     benutzer: dict | None = None,
     language: str = DEFAULT_LANGUAGE,
+    operation_id: str | None = None,
 ) -> dict:
     """Ware von `quelle_id` an `ziel_id` versenden - alles in einer
     Transaktion, entweder ganz oder gar nicht.
@@ -113,6 +115,14 @@ def umlagern(
 
     with session_factory() as session, session.begin():
         sperren(session)
+        op = operation.starte(
+            session, operation_id, "umlagern", benutzer,
+            {"quelle_id": quelle_id, "ziel_id": ziel_id, "positionen": positionen,
+             "versanddatum": versanddatum},
+            language,
+        )
+        if op.gespeichert is not None:
+            return op.gespeichert
         quelle = session.get(Lagerort, quelle_id)
         ziel = session.get(Lagerort, ziel_id)
         if quelle is None or ziel is None:
@@ -177,7 +187,7 @@ def umlagern(
             if quelle_vorher < menge:
                 fehlbestand.append(eintrag)
 
-        return {
+        return op.abschliessen({
             "wareneingang_id": wareneingang.id,
             "quelle": {"id": quelle.id, "code": quelle.code, "name": quelle.name},
             "ziel": {"id": ziel.id, "code": ziel.code, "name": ziel.name},
@@ -185,7 +195,7 @@ def umlagern(
             "positionen": ergebnis_positionen,
             "fehlbestand": fehlbestand,
             "stueck": zahl(sum(mengen.values(), Decimal("0"))),
-        }
+        })
 
 
 def buche_ankunft(session, wareneingang, gebucht: dict, positionen: dict, datum: date, benutzer, jetzt) -> None:

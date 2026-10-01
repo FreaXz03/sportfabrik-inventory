@@ -335,6 +335,19 @@ with `grund = 'manuelle-erfassung'` there (a fixed key, not UI text —
 translation only happens at display time). The user is stored as a
 snapshot (as with `dokumente`/`article_notes`), not as a foreign key.
 
+### `operationen`
+Retry keys (Package 2, 2026-10-01): `operation_id` (primary key, from the
+device), `endpunkt`, `kassennummer`, `anfrage_hash`, `antwort` (JSON),
+`erstellt_am`. Written in the same transaction as the booking; rows older than
+30 days are removed when new ones are written. Not business data.
+
+### `zaehlungen`
+Every counted quantity (Package 2, 2026-10-01): branch, variant, `gezaehlt`,
+`bestand_vorher`, `differenz`, `grund`, `bewegung_id` (empty if the stock was
+already right — "counted, no difference"), `bestaetigt_trotz_aenderung` (the
+user confirmed although the stock moved since the count started), user snapshot
+and time. Serves as proof of a stock-take, e.g. the opening count of the pilot.
+
 ### `bestand`
 Current stock per variant × branch (composite primary key), derived from
 `lagerbewegungen` and also kept in sync there (never written directly
@@ -464,6 +477,8 @@ above):
 | `b5c6d7e8f9a0` | Withdraw a head-office recommendation (2026-09-30): check constraint `ck_empfehlung_zentrale_status` also allows `zurueckgezogen`; new empty columns `zurueckgezogen_von_name`, `zurueckgezogen_am` |
 | `c6d7e8f9a0b1` | Cancel instead of delete (2026-10-01): `dokumente.status` (`aktiv`/`storniert`, check constraint `ck_dokumente_status`), `storniert_am`, `storniert_von_kassennummer`, `storniert_von_name` |
 | `d7e8f9a0b1c2` | Link documents to one delivery (2026-10-01): new table `dokument_lieferung` (`dokument_id` PK → `dokumente`, `wareneingang_id` → `wareneingaenge`) |
+| `e8f9a0b1c2d3` | Retry protection (2026-10-01): table `operationen` |
+| `f9a0b1c2d3e4` | Counts (2026-10-01): table `zaehlungen` |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

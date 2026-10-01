@@ -22,6 +22,7 @@ from ..services.wareneingang import (
     bestaetige_ankunft,
     liste_erwartete,
 )
+from .operation_id import operation_id_aus_header
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -69,6 +70,7 @@ async def api_ankunft_bestaetigen(
     body: AnkunftBody,
     user=Depends(require_login_api),
     language: str = Depends(get_language),
+    operation_id: str | None = Depends(operation_id_aus_header),
 ):
     from ..core.database import SessionLocal
     from sqlalchemy.exc import SQLAlchemyError
@@ -90,6 +92,7 @@ async def api_ankunft_bestaetigen(
             {"kassennummer": user.kassennummer, "name": user.name},
             eingangsdatum,
             language,
+            operation_id,
         )
     except AnkunftRejected as exc:
         raise HTTPException(409, str(exc)) from exc

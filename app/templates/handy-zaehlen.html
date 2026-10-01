@@ -15,7 +15,7 @@
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="phone.count_title">Bestand zählen</title>
      <link rel="stylesheet" href="/static/css/app.css?v=sidebar-8">
-     <link rel="stylesheet" href="/static/css/handy.css?v=3">
+     <link rel="stylesheet" href="/static/css/handy.css?v=4">
 </head>
 
 <body class="phone">
@@ -52,16 +52,22 @@
                          <label for="freetext" data-i18n="ausbuchen.text_label">Text</label>
                          <input id="freetext" type="text" maxlength="150" autocomplete="off">
                     </div>
+                    <div id="staleBox" class="notice warning" role="alert" hidden>
+                         <p id="staleText"></p>
+                         <ul id="staleMoves"></ul>
+                         <button type="button" class="secondary" id="forceBook"></button>
+                    </div>
                     <p id="formError" class="error" role="alert" hidden></p>
                     <button type="submit" class="large m-wide" id="book" data-i18n="phone.count_book">Bestand korrigieren</button>
                     <button type="button" class="secondary large m-wide" id="other" data-i18n="phone.pick_other">Anderen Artikel wählen</button>
                </form>
           </section>
      </main>
-     <script src="/static/js/handy-core.js?v=1"></script>
+     <script src="/static/js/operation.js?v=1"></script>
+     <script src="/static/js/handy-core.js?v=op-1"></script>
      <script src="/static/js/handy-scan.js?v=1"></script>
      <script src="/static/js/handy-pick.js?v=1"></script>
-     <script src="/static/js/handy-zaehlen.js?v=1"></script>
+     <script src="/static/js/handy-zaehlen.js?v=op-1"></script>
      <script src="/static/js/session.js?v=settings-2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>

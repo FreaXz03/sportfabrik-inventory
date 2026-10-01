@@ -31,6 +31,7 @@ from ..services.manuelle_erfassung import (
     erfasse_wareneingang,
     variante_per_ean,
 )
+from .operation_id import operation_id_aus_header
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -143,6 +144,7 @@ async def api_erfassen(
     user=Depends(require_login_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
+    operation_id: str | None = Depends(operation_id_aus_header),
 ):
     from sqlalchemy.exc import SQLAlchemyError
 
@@ -174,6 +176,7 @@ async def api_erfassen(
             eingangsdatum=eingangsdatum,
             lieferant_id=body.lieferant_id,
             language=language,
+            operation_id=operation_id,
         )
     except ErfassungRejected as exc:
         raise HTTPException(409, str(exc)) from exc

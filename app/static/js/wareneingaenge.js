@@ -118,7 +118,7 @@
     knopf.classList.add('is-loading');
     rueckmeldung.textContent = t('wareneingaenge.saving');
     try {
-      const antwort = await fetch('/api/wareneingaenge/' + lieferung.id + '/ankunft', {
+      const antwort = await SportfabrikOp.fetch('/api/wareneingaenge/' + lieferung.id + '/ankunft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mengen: mengen, eingangsdatum: datumsfeld ? datumsfeld.value : null })

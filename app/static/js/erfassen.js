@@ -217,7 +217,7 @@
     $('book').classList.add('is-loading');
     $('bookStatus').textContent = t('erfassen.booking');
     try {
-      const antwort = await fetch('/api/erfassen', {
+      const antwort = await SportfabrikOp.fetch('/api/erfassen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -34,6 +34,7 @@ from ..services.umlagerung import (
     umlagern,
 )
 from ..services.wareneingang import liste_erwartete
+from .operation_id import operation_id_aus_header
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -104,6 +105,7 @@ async def api_umlagern(
     user=Depends(require_chef_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
+    operation_id: str | None = Depends(operation_id_aus_header),
 ):
     from ..core.database import SessionLocal
 
@@ -128,6 +130,7 @@ async def api_umlagern(
                 versanddatum=versanddatum,
                 benutzer={"kassennummer": user.kassennummer, "name": user.name},
                 language=language,
+                operation_id=operation_id,
             )
         )
     except UmlagerungRejected as exc:

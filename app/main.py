@@ -1,6 +1,6 @@
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from .routers.dashboard import router as dashboard_router
 
@@ -16,6 +16,7 @@ from .routers.auth import (
 )
 from .routers.auth import router as auth_router
 from .core.database import engine
+from .services.operation import OperationConflict
 from .routers.preview import router as preview_router
 from .routers.catalog import router as catalog_router
 from .routers.history import router as history_router
@@ -50,6 +51,12 @@ CSP = (
     "default-src 'self'; img-src 'self' data:; object-src 'none'; "
     "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 )
+
+
+@app.exception_handler(OperationConflict)
+async def operation_konflikt(request: Request, exc: OperationConflict):
+    """Dieselbe Operations-ID für eine andere Aktion (Paket 2): nichts gebucht."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.middleware("http")

@@ -16,10 +16,14 @@
   var formError = document.getElementById('formError');
   var book = document.getElementById('book');
   var current = document.getElementById('current');
+  var staleBox = document.getElementById('staleBox');
+  var staleText = document.getElementById('staleText');
+  var staleMoves = document.getElementById('staleMoves');
+  var forceBook = document.getElementById('forceBook');
 
   var me = null;
   var reasons = [];
-  var state = { item: null, stock: null, allowed: false, error: null, busy: false };
+  var state = { item: null, stock: null, marker: null, allowed: false, error: null, busy: false, pending: null };
 
   var pick = P.picker({
     container: document.getElementById('picker'),
@@ -67,13 +71,15 @@
 
   async function loadStock(item) {
     var s = store();
-    state.stock = null; state.error = null; state.allowed = false;
+    state.stock = null; state.marker = null; state.error = null; state.allowed = false;
+    hideStale();
     renderCount();
     try {
       var data = await P.fetchJson('/api/bestand?nur_vorhanden=false&limit=500&lagerort_id=' + s.id + '&artikel_von=' + item.id);
       if (state.item !== item) return;
       var row = data.zeilen.find(function (z) { return z.varianten_id === item.id; });
       state.stock = row ? row.menge : '0';
+      state.marker = row ? row.letzte_bewegung_id : 0;
       state.allowed = (data.rechte.korrektur_lagerorte || []).indexOf(s.id) !== -1;
     } catch (error) {
       if (state.item !== item) return;
@@ -109,13 +115,47 @@
     counted.value = String(Math.max(0, n + delta));
   }
 
+  function hideStale() {
+    state.pending = null;
+    staleBox.hidden = true;
+    staleMoves.replaceChildren();
+  }
+
+  // Der Bestand hat sich seit Zählbeginn bewegt (Paket 2): nichts gebucht.
+  // Neu zählen (Marke und Bestand sind aktualisiert), oder die letzte Zählung
+  // ausdrücklich gegen den Stand von jetzt buchen.
+  function showStale(data, pendingValue) {
+    state.stock = data.bestand_jetzt;
+    state.marker = data.stand_bewegung_id;
+    state.pending = pendingValue;
+    staleText.textContent = t('phone.count_stale', { n: P.qty(data.bestand_jetzt) });
+    staleMoves.replaceChildren();
+    (data.seit_zaehlbeginn || []).forEach(function (move) {
+      var li = document.createElement('li');
+      var time = new Date(move.zeitpunkt).toLocaleTimeString(P.locale ? P.locale() : undefined, { hour: '2-digit', minute: '2-digit' });
+      li.textContent = time + ' · ' + t('phone.move_type.' + move.typ) + ' ' + (Number(move.menge) > 0 ? '+' : '') + P.qty(move.menge) + (move.benutzer_name ? ' · ' + move.benutzer_name : '');
+      staleMoves.append(li);
+    });
+    forceBook.textContent = t('phone.count_force', { n: pendingValue });
+    staleBox.hidden = false;
+    counted.value = '';
+    counted.focus();
+  }
+
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
+    await submitCount(counted.value.trim(), false);
+  });
+  forceBook.addEventListener('click', function () {
+    if (state.pending !== null) submitCount(state.pending, true);
+  });
+
+  async function submitCount(value, confirmed) {
     if (state.busy || !state.item) return;
-    var value = counted.value.trim();
     if (!/^\d+$/.test(value)) { showError(t('errors.korrektur.invalid_quantity')); counted.focus(); return; }
     if (reason.value === 'sonstiges' && !freetext.value.trim()) { showError(t('phone.count_text_required')); freetext.focus(); return; }
     showError('');
+    hideStale();
     state.busy = true;
     book.classList.add('is-loading');
     renderCount();
@@ -129,7 +169,9 @@
           lagerort_id: store().id,
           gezaehlt: value,
           grund: reason.value,
-          freitext: reason.value === 'sonstiges' ? freetext.value.trim() : null
+          freitext: reason.value === 'sonstiges' ? freetext.value.trim() : null,
+          stand_bewegung_id: state.marker,
+          bestaetigt: confirmed
         })
       });
       var name = [item.brand, item.description, P.variantText(item)].filter(Boolean).join(' ');
@@ -146,13 +188,14 @@
       history.back();
       notice.hidden = false;
     } catch (error) {
-      showError(error.message);
+      if (error.data && error.data.code === 'bestand_geaendert') showStale(error.data, value);
+      else showError(error.message);
     } finally {
       state.busy = false;
       book.classList.remove('is-loading');
       renderCount();
     }
-  });
+  }
 
   document.getElementById('minus').addEventListener('click', function () { step(-1); });
   document.getElementById('plus').addEventListener('click', function () { step(1); });

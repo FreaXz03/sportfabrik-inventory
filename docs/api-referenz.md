@@ -391,6 +391,29 @@ desktop APIs — there is no separate phone API.
 | GET | `/static/{path}` | Static files: `css/`, `js/`, `fonts/`, `img/` |
 | GET | `/docs`, `/redoc`, `/openapi.json` | Automatically generated FastAPI documentation (Swagger/ReDoc) |
 
+## Retry protection and stale counts (Package 2, 2026-10-01)
+
+**Operation ID.** `POST /api/ausbuchen`, `/api/korrektur`, `/api/umlagerung`,
+`/api/wareneingaenge/{id}/ankunft` and `/api/erfassen` accept an optional header
+`X-Operation-Id` (8–64 characters: letters, digits, `-`, `_`; otherwise `422`).
+The same ID with the same request returns the stored response with
+`"wiederholt": true` and books nothing; the same ID for another request, endpoint
+or user is `409`. A new ID is a new booking. Without the header nothing is
+protected. A rejected request is not remembered. Rows live 30 days. The
+screens send an ID per deliberate action (`static/js/operation.js`): it is kept
+after a network or 5xx failure and dropped after any other answer.
+
+**Stale count.** `GET /api/bestand` rows carry `letzte_bewegung_id` (latest
+movement of that variant at that branch, `0` if none). `POST /api/korrektur`
+accepts `stand_bewegung_id` (that marker at the start of the count) and
+`bestaetigt` (default `false`). If the stock moved since, the server books
+nothing and answers `409` with `code: "bestand_geaendert"`, `bestand_jetzt`, the
+new `stand_bewegung_id` and `seit_zaehlbeginn` (movements: `id`, `typ`, `menge`,
+`zeitpunkt`, `benutzer_name`). Recount, or send the count again with
+`bestaetigt: true` to book against the current stock. Every count is stored in
+`zaehlungen`; the response carries `zaehlung_id` (also when nothing was booked
+because the stock was already right).
+
 ## Error format
 
 JSON error responses follow the FastAPI standard

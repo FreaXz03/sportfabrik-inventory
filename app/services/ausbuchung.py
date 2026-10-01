@@ -32,6 +32,7 @@ from sqlalchemy import func, select, text
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Artikel, Bestand, Lagerbewegung, Lagerort, Variante
 from .artikel import EAN_MUSTER, finde_variante_per_ean
+from . import operation
 from .wareneingang import ADVISORY_LOCK_ID
 
 # Reihenfolge = Reihenfolge in der Auswahl; Verkauf zuerst, er ist der
@@ -181,6 +182,7 @@ def ausbuchen(
     freitext: str | None = None,
     benutzer: dict | None = None,
     language: str = DEFAULT_LANGUAGE,
+    operation_id: str | None = None,
 ) -> dict:
     """Ein Stück einer Variante am Lagerort ausbuchen (F15).
 
@@ -193,6 +195,14 @@ def ausbuchen(
     typ = "verkauf" if grund == "verkauf" else "ausbuchung"
     with session_factory() as session, session.begin():
         sperren(session)
+        op = operation.starte(
+            session, operation_id, "ausbuchen", benutzer,
+            {"lagerort_id": lagerort_id, "grund": grund, "ean": ean,
+             "varianten_id": varianten_id, "freitext": freitext},
+            language,
+        )
+        if op.gespeichert is not None:
+            return op.gespeichert
         if session.get(Lagerort, lagerort_id) is None:
             raise AusbuchungRejected(translate("errors.bestand.unknown_lagerort", language))
         variante = _finde_variante(session, ean, varianten_id, language)
@@ -208,7 +218,7 @@ def ausbuchen(
         )
         ergebnis = _antwort(session, bewegung, variante, vorher, nachher)
         ergebnis["bestand_reicht_nicht"] = vorher < EIN_STUECK
-        return ergebnis
+        return op.abschliessen(ergebnis)
 
 
 def storniere(
