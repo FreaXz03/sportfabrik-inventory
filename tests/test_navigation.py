@@ -71,7 +71,7 @@ def test_suche_texte_und_beschreibungen_in_allen_sprachen():
     ohne_info = [z.strip() for z in seiten if "info: '" not in z]
     assert not ohne_info, ohne_info
     schluessel = set(re.findall(r"info: '([^']+)'", NAV_JS))
-    schluessel |= {"nav.search_label", "nav.search_placeholder", "nav.search_none", "nav.search_results"}
+    schluessel |= {"nav.search_label", "nav.search_placeholder", "nav.search_results"}
     for sprache in ("de", "fr", "en"):
         katalog = json.loads((APP / "static" / "i18n" / f"{sprache}.json").read_text(encoding="utf-8"))
         fehlend = sorted(k for k in schluessel if not katalog.get(k))

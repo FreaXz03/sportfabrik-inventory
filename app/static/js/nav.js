@@ -138,7 +138,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
   }
 
   // Glocke / „Alerts" (2026-10-01): ein Klick öffnet ein kleines Fenster mit den
-  // ersten fünf Meldungen aus „Anstehend" (dringende zuerst, wie in der Liste);
+  // ersten fünf Meldungen aus „Anstehend" (Reihenfolge vom Server, dringende zuerst);
   // ein Link führt zur ganzen Liste. Das Zeichen zeigt die Zahl aller Meldungen.
   // Daten von /api/anstehend/anzahl; ohne Meldungen bleibt das Zeichen weg.
   var glocke = null;
@@ -163,11 +163,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
   function alertsZeichnen() {
     if (!glocke) return;
     glocke.liste.replaceChildren();
-    // Dringendes zuerst (stabil: sonst bleibt die Reihenfolge der Liste).
-    var sortiert = meldungsliste.map(function (m, i) { return { m: m, i: i }; }).sort(function (x, y) {
-      return (Number(y.m.dringend) - Number(x.m.dringend)) || (x.i - y.i);
-    }).map(function (x) { return x.m; });
-    sortiert.slice(0, ALERTS_MAX).forEach(function (m) {
+    meldungsliste.slice(0, ALERTS_MAX).forEach(function (m) {
       var li = document.createElement('li');
       var a = document.createElement('a');
       a.href = m.href;
@@ -203,7 +199,6 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     knopf.type = 'button';
     knopf.className = 'bell';
     knopf.id = 'alertsKnopf';
-    knopf.setAttribute('aria-haspopup', 'dialog');
     knopf.setAttribute('aria-expanded', 'false');
     knopf.setAttribute('aria-controls', 'alertsFenster');
     var svgNs = 'http://www.w3.org/2000/svg';
@@ -222,7 +217,6 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     var fenster = document.createElement('div');
     fenster.id = 'alertsFenster';
     fenster.className = 'alerts-popup';
-    fenster.setAttribute('role', 'dialog');
     fenster.setAttribute('aria-labelledby', 'alertsTitel');
     fenster.hidden = true;
     var titel = document.createElement('h2');
@@ -231,6 +225,7 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     liste.className = 'alerts-list';
     var leer = document.createElement('p');
     leer.className = 'muted';
+    leer.setAttribute('role', 'status');
     var alle = document.createElement('a');
     alle.className = 'alerts-all';
     alle.href = '/anstehend';
@@ -249,6 +244,10 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     });
     document.addEventListener('click', function (ereignis) {
       if (!fenster.hidden && !huelle.contains(ereignis.target)) schliessen(false);
+    });
+    // Tastatur: verlässt der Fokus das Fenster, schliesst es sich.
+    huelle.addEventListener('focusout', function (ereignis) {
+      if (!fenster.hidden && ereignis.relatedTarget && !huelle.contains(ereignis.relatedTarget)) schliessen(false);
     });
     huelle.addEventListener('keydown', function (ereignis) {
       if (ereignis.key === 'Escape' && !fenster.hidden) schliessen(true);

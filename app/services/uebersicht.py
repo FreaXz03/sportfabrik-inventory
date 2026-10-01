@@ -590,9 +590,9 @@ def stamm(session) -> dict:
 
 
 def liste_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> list[dict]:
-    """Die Punkte unter „Anstehend" mit Ziel, in der Reihenfolge von
-    anstehend-liste.js (Glocke und Popup, 2026-10-01). Ohne aktive Filiale
-    zählen nur die Stammdaten-Hinweise."""
+    """Die Punkte unter „Anstehend" mit Ziel - die eine Quelle für die Liste
+    (anstehend-liste.js), die Glocke und ihr Popup (2026-10-01), dringende
+    zuerst. Ohne aktive Filiale zählen nur die Stammdaten-Hinweise."""
     meldungen: list[dict] = []
 
     def punkt(art: str, anzahl: int, href: str, dringend: bool = False, **extra) -> None:
@@ -610,6 +610,8 @@ def liste_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> list[dict]
             punkt("reduction_soon", stufe.get("bald", 0), ziel + "bald", False, stufe=name)
     punkt("no_category", stamm_daten["ohne_kategorie"], "/articles?kategorie_fehlt=true")
     punkt("no_ean", stamm_daten["ohne_ean"], "/articles?ohne_ean=true")
+    # Dringendes zuerst, sonst bleibt die Reihenfolge (sort ist stabil).
+    meldungen.sort(key=lambda m: not m["dringend"])
     return meldungen
 
 

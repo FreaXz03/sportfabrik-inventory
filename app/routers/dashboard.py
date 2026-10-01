@@ -39,6 +39,8 @@ def dashboard(
             .limit(5)
         ).all()
         ziele = uebersicht.ziel_filialen(session, [d.id for d, _ in rows])
+        filiale = None if lagerort is None else uebersicht.filiale(session, lagerort.id)
+        stamm = uebersicht.stamm(session)
         delivered_quantity = session.scalar(select(func.sum(WareneingangPosition.menge)))
         return dict(
             **counts,
@@ -51,9 +53,10 @@ def dashboard(
             lagerort=None
             if lagerort is None
             else {"id": lagerort.id, "code": lagerort.code, "name": lagerort.name},
-            filiale=None if lagerort is None else uebersicht.filiale(session, lagerort.id),
+            filiale=filiale,
             aktuelles=uebersicht.aktuelles(session, None if lagerort is None else lagerort.id),
-            stamm=uebersicht.stamm(session),
+            stamm=stamm,
+            meldungen=uebersicht.liste_meldungen(filiale, stamm),
             hinweise=hinweise_service.liste(session, lagerort.id) if lagerort else [],
         )
     except SQLAlchemyError as exc:
@@ -88,7 +91,7 @@ def uebersicht_verlaeufe(
 ):
     """Bestand und neue Artikelvarianten über `tage` Tage mit Vergleich zur Vorperiode."""
     if tage not in uebersicht.VERLAUF_PERIODEN:
-        raise HTTPException(422, f"tage muss einer von {', '.join(map(str, uebersicht.VERLAUF_PERIODEN))} sein")
+        raise HTTPException(422, translate("errors.dashboard.period_invalid", language))
     try:
         return uebersicht.verlaeufe(session, None if lagerort is None else lagerort.id, tage)
     except SQLAlchemyError as exc:

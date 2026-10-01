@@ -120,8 +120,10 @@ def test_glocke_zaehlt_meldungen_wie_die_anstehend_liste(welt):
         {"art": "no_category", "anzahl": 1, "href": "/articles?kategorie_fehlt=true", "dringend": False},
         {"art": "no_ean", "anzahl": 1, "href": "/articles?ohne_ean=true", "dringend": False},
     ]
-    # Die leichte Zählung der Glocke stimmt mit der vollen Übersicht überein.
+    # Die leichte Zählung der Glocke stimmt mit der vollen Übersicht überein -
+    # auch in der Liste selbst (eine Quelle für Glocke und „Anstehend", 2026-10-01).
     daten = client.get("/api/dashboard").json()
+    assert daten["meldungen"] == glocke["meldungen"]
     assert client.get("/api/anstehend/anzahl").json()["anzahl"] == anzahl_meldungen(daten["filiale"], daten["stamm"])
 
 
@@ -134,6 +136,7 @@ def test_verlaeufe_mit_vergleich(welt):
     assert client.get("/api/uebersicht/verlaeufe?tage=7").status_code == 401
     welt.anmelden(CHEF)
     assert client.get("/api/uebersicht/verlaeufe?tage=5").status_code == 422
+    assert "180" in client.get("/api/uebersicht/verlaeufe?tage=5").json()["detail"]
     for bezeichnung in ("Jacke", "Hose"):
         assert client.post("/api/erfassen", json={"positionen": [{"marke": "CMP", "bezeichnung": bezeichnung, "menge": "5", "uvp": "99"}]}).status_code == 200
     jetzt = client.get("/api/uebersicht/verlaeufe?tage=7").json()
