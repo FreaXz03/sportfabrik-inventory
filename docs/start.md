@@ -20,6 +20,10 @@ Merged into `feature/warenwirtschaft-v2` (fast-forward, not pushed, not in `main
 
 Assumptions to confirm: (1) "newest messages" = the first five Pending items, because Pending items carry no timestamp; (2) "new article variants" counts by `varianten.first_seen` (date of first delivery), not by entry time; (3) the SF logo is the text "SF" in Geologica 800 + brand orange, not a crop of the logo image; (4) the moved sales widgets are on the branch manager/head office Statistics page, but `/api/dashboard` still returns sales figures to employees (read rights unchanged, rule 9).
 
+## Done 2026-10-01 (full test run with example documents)
+
+All 12 example files were run on the dev database (parse, import, confirm arrival; local only). 11 imported without warnings; `CMP Nachbest. SF1 15.08.26.pdf` is an unknown layout (parser not built yet; needs the document shown explicitly, rule 1). Bug found and fixed: confirming arrival failed with a unique-constraint error on `bestand` when a document lists the same variant twice, because `SessionLocal` has no autoflush — `buche_zugang` now flushes after adding the stock row (test `tests/test_zugang_doppelte_variante.py`). A generic "database error" on arrival usually means pending migrations on the local DB: run `alembic upgrade head` after pulling. Open: `SF3 Regensdorf.PDF` was suggested for SF1 — check by hand. Tests: 219 passed, 12 skipped.
+
 ## Next steps
 
 **First: Sportfabrik Inventory Redesign**, explicitly prioritized on 2026-09-29. Follow [the redesign specification](redesign-2026-09-29.md): structural sidebar layout on all pages, stacked existing logo, exact navigation, function search, dashboard charts and Settings modal; preserve current colors and design elements. All 8 phases are done (merged into `feature/warenwirtschaft-v2`); the follow-up refinements of 2026-09-30 are listed above.
