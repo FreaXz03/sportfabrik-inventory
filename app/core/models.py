@@ -245,6 +245,20 @@ class Dokument(Base):
     storniert_von_name: Mapped[str | None] = mapped_column(String(100))
 
 
+class DokumentLieferung(Base):
+    """Ein Dokument gehört zu einer bestehenden Lieferung (Paket 1, Schritt 2,
+    01.10.2026): Lieferschein und Rechnung zur selben Ware wie eine
+    Auftragsbestätigung. Das Dokument bucht dann nichts - Menge und Bestand
+    kommen allein aus dem Wareneingang, an den es hängt."""
+
+    __tablename__ = "dokument_lieferung"
+
+    dokument_id: Mapped[int] = mapped_column(ForeignKey("dokumente.id"), primary_key=True)
+    wareneingang_id: Mapped[int] = mapped_column(
+        ForeignKey("wareneingaenge.id"), index=True
+    )
+
+
 class Artikel(Base):
     """Modell-Ebene, filialübergreifend (Regel 4): Marke + Lieferanten-
     Artikelnummer. Ohne Lieferanten-Artikelnummer bleibt jeder Artikel

@@ -96,6 +96,7 @@ only fills in a category that is still empty.
 | DELETE | `/api/invoices/{invoice_id}` | 🔒 Delete a document **without any posted movement** (e.g. an order confirmation with nothing arrived), including lines and original snapshots; `409` if it has posted goods — cancel instead |
 | GET | `/api/invoices/{invoice_id}/cancel-preview` | 🔒 Quantity effect of cancelling per variant and branch (stock now / receipt / stock after, "moved since", `hat_negativen_bestand`); books nothing |
 | POST | `/api/invoices/{invoice_id}/cancel` | 🔒 Cancel a posted document with one counter-movement per receipt line (`korrektur`, reason `storno:<movement id>`); document, snapshots and prices stay; `409` if already cancelled |
+| POST | `/api/lieferung-kandidaten` | 🔒 Form like `/validate-preview` (+ `lagerort_id`): existing deliveries of the same supplier and branch that match the document (≥ 50 % of its lines, ≤ 120 days old); `wahl_noetig` is true if any. Books nothing |
 
 ## Upload & import
 
@@ -104,7 +105,7 @@ only fills in a category that is still empty.
 | GET | `/preview` | 🔒 Upload page (supports several PDFs at once, see "Batch import" below) |
 | POST | `/upload-preview` | 🔒 Upload one PDF, recognize supplier/document type, and return the lines as a preview (max. 20 MB, no DB change) |
 | POST | `/validate-preview` | 🔒 Re-validate manually corrected lines (see `corrections`) against the same file before importing; requires `expected_hash` |
-| POST | `/import-invoice` | 🔒 Confirm the import; requires `expected_hash` (SHA-256 of the checked file), `confirmed=true`, optionally `corrections` (JSON, see below) and optionally `lagerort_id` (target of the goods receipt, see below). Without `lagerort_id`, booking goes against the account's active branch (`GET /api/me`, `lagerort`) — without a chosen branch (possible only for admin, all branches) HTTP 400 |
+| POST | `/import-invoice` | 🔒 Confirm the import; requires `expected_hash` (SHA-256 of the checked file), `confirmed=true`, optionally `corrections` (JSON, see below) and optionally `lagerort_id` (target of the goods receipt, see below) and `lieferung` (`neu` = book as new goods, or a `wareneingang_id` = attach the document to that delivery without booking). For an invoice or delivery note that matches an existing delivery, a missing `lieferung` is rejected with HTTP 409 — the user is always asked (Q3). Without `lagerort_id`, booking goes against the account's active branch (`GET /api/me`, `lagerort`) — without a chosen branch (possible only for admin, all branches) HTTP 400 |
 | GET | `/invoice-import-status` | 🔒 Checks, via file hash (`file_hash`) or via document number **at the recognized supplier** (`invoice_number` **and** `parser_key`, both from the preview response), whether an invoice has already been imported — used by the batch-import queue to skip already-imported files. Without `parser_key`, only the file hash counts: the same document number can be a completely different invoice at a different supplier |
 
 **Warnings and hints per line**: each line in the response has two

@@ -18,6 +18,7 @@ from ..services.importer import delete_invoice, DeletePosted, DeleteRejected
 from ..core.models import (
     Artikel,
     Dokument,
+    DokumentLieferung,
     Lieferant,
     Variante,
     Wareneingang,
@@ -246,8 +247,30 @@ def invoice_detail(
             supplier = session.scalar(
                 select(Lieferant.name).where(Lieferant.id == dokument.lieferant_id)
             )
+        invoice = invoice_data(dokument, supplier)
+        ziel = session.execute(
+            select(Dokument.id, Dokument.dokumentnummer, Dokument.typ)
+            .join(Wareneingang, Wareneingang.dokument_id == Dokument.id)
+            .join(DokumentLieferung, DokumentLieferung.wareneingang_id == Wareneingang.id)
+            .where(DokumentLieferung.dokument_id == invoice_id)
+        ).first()
+        invoice["attached_to"] = (
+            None
+            if ziel is None
+            else {"id": ziel.id, "invoice_number": ziel.dokumentnummer, "typ": ziel.typ}
+        )
+        invoice["attached_documents"] = [
+            {"id": d.id, "invoice_number": d.dokumentnummer, "typ": d.typ, "invoice_date": d.dokumentdatum}
+            for d in session.execute(
+                select(Dokument.id, Dokument.dokumentnummer, Dokument.typ, Dokument.dokumentdatum)
+                .join(DokumentLieferung, DokumentLieferung.dokument_id == Dokument.id)
+                .join(Wareneingang, Wareneingang.id == DokumentLieferung.wareneingang_id)
+                .where(Wareneingang.dokument_id == invoice_id)
+                .order_by(Dokument.id)
+            )
+        ]
         return dict(
-            invoice=invoice_data(dokument, supplier),
+            invoice=invoice,
             **positions(
                 session,
                 Wareneingang.dokument_id == invoice_id,

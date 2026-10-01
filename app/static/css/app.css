@@ -955,6 +955,24 @@ input[type=checkbox] {
   cursor: pointer;
 }
 
+input[type=radio] {
+  width: auto;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Wahl „an Lieferung anhängen / neue Ware" in der Belegvorschau. */
+.notice.lieferung-wahl { display: grid; gap: var(--space-2); }
+.notice.lieferung-wahl[hidden] { display: none; }
+.lieferung-wahl legend { padding: 0 var(--space-2); font-weight: 600; }
+.lieferung-wahl label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.lieferung-wahl label > input { margin-top: 0; }
+
 input[type=file] {
   padding: 9px 12px;
   background: var(--surface-soft);

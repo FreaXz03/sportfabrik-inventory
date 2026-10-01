@@ -242,7 +242,7 @@ def test_positionen_ohne_ean_und_kategorie_von_hand(welt):
     zweite = rechnung_pdf(header_lines=kopf(nummer="9000000002"), rows=[kaputt, variante("(Weiss)/M")])
     assert hochladen(client, zweite).json()["rows_with_warnings"] == 1
     assert importieren(client, zweite).status_code == 409
-    antwort = importieren(client, zweite, corrections='{"1": {"ean": ""}}')
+    antwort = importieren(client, zweite, corrections='{"1": {"ean": ""}}', lieferung="neu")
     assert antwort.status_code == 200, antwort.text
     assert _anzahl(sessions, Variante) == 2
     with sessions() as session:

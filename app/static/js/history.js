@@ -147,6 +147,20 @@ async function renderDeleteBox(invoice) {
      box.append(label, wrap);
 }
 
+function renderLieferungInfo(invoice) {
+     const info = $('lieferungInfo');
+     const docs = (d) => t('document_types.' + d.typ) + ' ' + d.invoice_number;
+     const parts = [];
+     if (invoice.attached_to) {
+          parts.push(t('history.delivery.attached_to', { document: docs(invoice.attached_to) }));
+     }
+     if (invoice.attached_documents?.length) {
+          parts.push(t('history.delivery.attached_documents', { documents: invoice.attached_documents.map(docs).join(', ') }));
+     }
+     info.hidden = !parts.length;
+     info.textContent = parts.join(' ');
+}
+
 function renderCancelBox(invoice, preview) {
      const box = $('deleteBox');
      box.hidden = false;
@@ -301,6 +315,7 @@ async function load() {
                     filename: data.invoice.filename ?? '—',
                     imported_by: importedBy(data.invoice) + sourceLabel(data.invoice)
                });
+               renderLieferungInfo(data.invoice);
                renderDeleteBox(data.invoice);
           }
 

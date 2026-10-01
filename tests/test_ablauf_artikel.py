@@ -22,7 +22,7 @@ def test_suchen_exportieren_historie_preise_notizen(welt):
     assert importieren(client, rechnung_pdf(header_lines=kopf(nummer="9000000001", datum="05.02.2026"))).status_code == 200
     # Nachlieferung Poloshirt M mit neuem UVP, dazu eine Formel als Bezeichnung.
     nachlieferung = [POSITIONEN[0][:8] + ["54.90", "33.00"], ["Hoka", "324100", "H1", "1", "0012345678905", "=1+1", "1", "Paa", "150.00", "90.00"]]
-    assert importieren(client, rechnung_pdf(header_lines=kopf(nummer="9000000002", datum="05.08.2026"), rows=nachlieferung)).status_code == 200
+    assert importieren(client, rechnung_pdf(header_lines=kopf(nummer="9000000002", datum="05.08.2026"), rows=nachlieferung), lieferung="neu").status_code == 200
 
     welt.anmelden(ANNA)
     alle = client.get("/api/articles").json()

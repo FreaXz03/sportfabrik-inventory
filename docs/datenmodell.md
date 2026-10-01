@@ -252,6 +252,8 @@ lack of a text layer.
 
 `status` (`aktiv`/`storniert`, 2026-10-01): a document that posted goods is never deleted but cancelled — each receipt line gets a counter-movement, its receipts become `storniert`, `menge_eingetroffen` of its lines is set to 0 (the arrived quantity stays in the movement and its counter-movement), and the document keeps `storniert_am`/`storniert_von_*`. Only a document without any posted movement can still be deleted.
 
+`dokument_lieferung` (2026-10-01): an invoice or delivery note that belongs to an existing delivery (the `wareneingaenge` row of e.g. an order confirmation) is imported as an *attached* document: it has no receipt, positions or movements of its own and books nothing; only the prices of already-known variants are kept. The user always chooses ("attach" or "new goods"); an order confirmation or purchase order never asks. A document with attached documents cannot be deleted.
+
 ### `wareneingaenge`
 One goods receipt per document (currently 1:1; the schema allows several
 per document later, e.g. for partial deliveries) — or **without** a
@@ -461,6 +463,7 @@ above):
 | `a4b5c6d7e8f9` | Cancel a transfer in transit (2026-09-29): check constraint `ck_wareneingaenge_status` also allows `storniert`; new empty column `wareneingaenge.versendet_von` |
 | `b5c6d7e8f9a0` | Withdraw a head-office recommendation (2026-09-30): check constraint `ck_empfehlung_zentrale_status` also allows `zurueckgezogen`; new empty columns `zurueckgezogen_von_name`, `zurueckgezogen_am` |
 | `c6d7e8f9a0b1` | Cancel instead of delete (2026-10-01): `dokumente.status` (`aktiv`/`storniert`, check constraint `ck_dokumente_status`), `storniert_am`, `storniert_von_kassennummer`, `storniert_von_name` |
+| `d7e8f9a0b1c2` | Link documents to one delivery (2026-10-01): new table `dokument_lieferung` (`dokument_id` PK → `dokumente`, `wareneingang_id` → `wareneingaenge`) |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

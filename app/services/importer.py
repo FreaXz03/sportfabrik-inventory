@@ -14,6 +14,7 @@ from ..core.models import (
     Artikel,
     Bestand,
     Dokument,
+    DokumentLieferung,
     Kategorie,
     Lagerbewegung,
     Lagerort,
@@ -33,6 +34,14 @@ from .artikel import (
 from .parsers import parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
 from .hinweise import erstelle_hinweise, pruefe_und_merke
+from .lieferung import (
+    FRAGT_NACH_LIEFERUNG,
+    NEU,
+    bekannte_varianten,
+    finde_kandidaten,
+    finde_lieferant,
+    pruefe_ziel,
+)
 from .wareneingang import buche_zugang
 
 
@@ -90,6 +99,60 @@ def _resolve_kategorie_id(session, cache, fedas_code):
     return cache[suggestion]
 
 
+def _haenge_an_lieferung(
+    session, lieferung, lieferant, lagerort_id, parsed, dates, digest, filename,
+    imported_by, language,
+):
+    """Das Dokument an eine bestehende Lieferung hängen, ohne zu buchen. Nur
+    die Preise der bereits bekannten Varianten werden übernommen (Regel 10:
+    Einkaufspreis, wenn im Beleg); unbekannte Zeilen legen hier nichts an."""
+    ziel = (
+        pruefe_ziel(session, int(lieferung), lieferant.id, lagerort_id)
+        if lieferung.isdigit()
+        else None
+    )
+    if ziel is None:
+        raise ImportRejected(translate("errors.importer.lieferung_ungueltig", language))
+    dokument = Dokument(
+        lieferant_id=lieferant.id,
+        lagerort_id=lagerort_id,
+        typ=parsed["document_type"],
+        dokumentnummer=parsed["invoice_number"],
+        dokumentdatum=dates["invoice_date"],
+        belegdatum=dates["document_date"],
+        dateiname=(filename or "rechnung.pdf")[:500],
+        datei_hash=digest,
+        hochgeladen_am=datetime.now(timezone.utc),
+        hochgeladen_von_kassennummer=(imported_by or {}).get("kassennummer"),
+        hochgeladen_von_name=(imported_by or {}).get("name"),
+        ocr_verwendet=bool(parsed.get("ocr_used")),
+    )
+    session.add(dokument)
+    session.flush()
+    session.add(DokumentLieferung(dokument_id=dokument.id, wareneingang_id=ziel.id))
+    varianten = bekannte_varianten(session, lieferant.id, parsed["items"])
+    for index, item in enumerate(parsed["items"]):
+        variante = varianten[index]
+        if variante is not None:
+            session.add(
+                Preis(
+                    varianten_id=variante.id,
+                    uvp=Decimal(item["uvp"]),
+                    ek=Decimal(item["ek"]) if item.get("ek") else None,
+                    datum=dates["invoice_date"],
+                    dokument_id=dokument.id,
+                )
+            )
+    return dict(
+        invoice_id=dokument.id,
+        invoice_number=dokument.dokumentnummer,
+        item_count=parsed["item_count"],
+        new_products=0,
+        reused_products=0,
+        attached_to=ziel.id,
+    )
+
+
 def import_invoice(
     pdf,
     filename,
@@ -99,6 +162,7 @@ def import_invoice(
     imported_by=None,
     corrections=None,
     language: str = DEFAULT_LANGUAGE,
+    lieferung: str | None = None,
 ):
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
@@ -166,23 +230,10 @@ def import_invoice(
             # different invoices that introduce the same EAN concurrently.
             if session.bind.dialect.name == "postgresql":
                 session.execute(text("SELECT pg_advisory_xact_lock(73421061)"))
-            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT):
-            # `parser_key` verbindet Parser-Modul und Lieferanten-Stammdaten.
+            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT).
             # Muss vor der Duplikatsprüfung stehen, weil die Belegnummer nur
             # beim jeweiligen Lieferanten eindeutig ist.
-            # Gehört das Dokument zu einer anderen Lieferantengruppe als der
-            # Parser (ECOM-Retoure im INTERSPORT-Layout), zählt die Gruppe.
-            if parsed.get("lieferant_typ"):
-                lieferant = session.scalar(
-                    select(Lieferant)
-                    .where(Lieferant.typ == parsed["lieferant_typ"])
-                    .order_by(Lieferant.id)
-                    .limit(1)
-                )
-            else:
-                lieferant = session.scalar(
-                    select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
-                )
+            lieferant = finde_lieferant(session, parsed)
             if lieferant is None:
                 raise ImportRejected(
                     translate("errors.importer.supplier_not_configured", language)
@@ -210,6 +261,23 @@ def import_invoice(
                         id=existing.id,
                     )
                 )
+            # Lieferschein/Rechnung zu einer bestehenden Lieferung (Paket 1,
+            # Schritt 2): erkennt das System eine passende, fragt es immer
+            # (Q3) - gewählt wird „neu" oder die Lieferung. Angehängt wird
+            # nichts automatisch, und ein angehängtes Dokument bucht nichts.
+            if parsed["document_type"] in FRAGT_NACH_LIEFERUNG:
+                if lieferung is None:
+                    if finde_kandidaten(session, lieferant.id, lagerort_id, parsed["items"]):
+                        raise ImportRejected(
+                            translate("errors.importer.lieferung_waehlen", language)
+                        )
+                elif lieferung != NEU:
+                    return _haenge_an_lieferung(
+                        session, lieferung, lieferant, lagerort_id, parsed, dates,
+                        digest, filename, imported_by, language,
+                    )
+            elif lieferung not in (None, NEU):
+                raise ImportRejected(translate("errors.importer.lieferung_ungueltig", language))
             # Regel 6: Ware an einen externen Standort ohne Verkauf (die
             # Verarbeitungsstellen GEWA und VEBO sowie das Lager Dietikon -
             # alle `verkauf = False`) bekommt noch KEIN Eingangsdatum. Das
@@ -465,6 +533,13 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
         dokumentnummer = dokument.dokumentnummer
         if dokument_ist_gebucht(session, invoice_id):
             raise DeletePosted(translate("errors.importer.invoice_posted", language))
+        if session.scalar(
+            select(DokumentLieferung.dokument_id)
+            .join(Wareneingang, Wareneingang.id == DokumentLieferung.wareneingang_id)
+            .where(Wareneingang.dokument_id == invoice_id)
+            .limit(1)
+        ) is not None:
+            raise DeletePosted(translate("errors.importer.invoice_has_attached", language))
         wareneingaenge = session.scalars(
             select(Wareneingang).where(Wareneingang.dokument_id == invoice_id)
         ).all()
@@ -493,6 +568,7 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                     Lagerbewegung.wareneingang_position_id.in_(position_ids)
                 )
             )
+        session.execute(delete(DokumentLieferung).where(DokumentLieferung.dokument_id == invoice_id))
         session.execute(delete(Preis).where(Preis.dokument_id == invoice_id))
         session.execute(
             delete(WareneingangPosition).where(

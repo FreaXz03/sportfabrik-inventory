@@ -102,7 +102,7 @@ def test_nachlieferung_startet_die_uhr_neu_nur_in_derselben_filiale():
 
     def liefern(nummer, datum, lagerort, rows):
         pdf = rechnung_pdf(header_lines=kopf(nummer=nummer, datum=datum), rows=rows)
-        import_invoice(pdf, "b.pdf", hashlib.sha256(pdf).hexdigest(), sessions, codes[lagerort])
+        import_invoice(pdf, "b.pdf", hashlib.sha256(pdf).hexdigest(), sessions, codes[lagerort], lieferung="neu")
 
     liefern("9000000001", "05.02.2024", "SF1", POSITIONEN)
     liefern("9000000002", "05.03.2026", "SF1", POSITIONEN[1:2])  # nur Grösse L nach

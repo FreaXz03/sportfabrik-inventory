@@ -87,6 +87,7 @@ async def confirm_import(
     confirmed: bool = Form(False),
     corrections: str = Form("{}", max_length=500000),
     lagerort_id: int | None = Form(None),
+    lieferung: str | None = Form(None, max_length=20),
     user=Depends(require_chef_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
@@ -119,6 +120,7 @@ async def confirm_import(
                 {"kassennummer": user.kassennummer, "name": user.name},
                 decode_corrections(corrections, language),
                 language,
+                lieferung,
             )
         except (ImportRejected, DocumentParseError) as exc:
             raise HTTPException(409, str(exc)) from exc
@@ -216,3 +218,42 @@ def invoice_import_status(
         raise HTTPException(
             503, translate("errors.preview.duplicate_check_unavailable", language)
         ) from exc
+
+
+@router.post("/api/lieferung-kandidaten")
+async def lieferung_kandidaten(
+    request: Request,
+    file: UploadFile,
+    expected_hash: str = Form(...),
+    corrections: str = Form("{}", max_length=500000),
+    lagerort_id: int | None = Form(None),
+    user=Depends(require_chef_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Bestehende Lieferungen, zu denen dieses Dokument passen könnte (Paket 1,
+    Schritt 2). Bucht nichts; die Vorschau fragt damit vor dem Import."""
+    from ..services.lieferung import FRAGT_NACH_LIEFERUNG, finde_kandidaten, finde_lieferant
+
+    try:
+        data = await file.read(MAX_UPLOAD_BYTES + 1)
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, translate("errors.preview.file_too_large_short", language))
+        if hashlib.sha256(data).hexdigest() != expected_hash:
+            raise HTTPException(409, translate("errors.preview.file_mismatch", language))
+        lagerort = resolve_wareneingang_lagerort(request, session, user, lagerort_id, language)
+        patches = decode_corrections(corrections, language)
+        adressen = lade_adressen(session)
+        try:
+            parsed = await run_in_threadpool(parse_document, data, language, adressen)
+            parsed = apply_corrections(parsed, patches, None, language)
+        except (DocumentParseError, CorrectionError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        lieferant = finde_lieferant(session, parsed)
+        if lieferant is None or parsed.get("document_type") not in FRAGT_NACH_LIEFERUNG:
+            kandidaten = []
+        else:
+            kandidaten = finde_kandidaten(session, lieferant.id, lagerort.id, parsed["items"])
+        return {"kandidaten": kandidaten, "wahl_noetig": bool(kandidaten)}
+    finally:
+        await file.close()
