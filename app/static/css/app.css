@@ -1858,22 +1858,28 @@ body:has(main.login-page) {
 }
 
 .preview-editbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
 }
 
-.preview-editbar .edit-switch { margin: 0 auto 0 0; }
+/* Schalter links, Knoepfe rechts in einer eigenen Zeile: Hilfetext und
+   Status stehen darunter, damit nichts springt, wenn sie erscheinen. */
+.editbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 36px;
+}
 
-.preview-editbar button { font-size: var(--fs-micro); padding: 9px 16px; }
+.editbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.preview-editbar button { height: 36px; padding: 0 16px; font-size: var(--fs-micro); }
 
 .preview-editbar #editHelp,
 .preview-editbar #editStatus:not(:empty) {
-  flex-basis: 100%;
-  margin: 0;
+  margin: 10px 0 0;
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
@@ -1895,20 +1901,181 @@ body:has(main.login-page) {
   color: var(--text-faint);
 }
 
-.preview-page td {
-  padding: 12px 14px;
-  font-size: var(--fs-xs);
-  vertical-align: top;
+/* Positions-Tabelle: feste Spaltenbreiten, damit alles ohne seitliches
+   Scrollen Platz hat. Lange Werte brechen um statt die Tabelle zu verbreitern. */
+.preview-tablewrap { overflow-x: hidden; }
+
+.preview-table { table-layout: fixed; font-size: var(--fs-micro); }
+
+.preview-table col.c-pos { width: 6%; }
+.preview-table col.c-brand { width: 7%; }
+.preview-table col.c-id { width: 9%; }
+.preview-table col.c-ean { width: 11.5%; }
+.preview-table col.c-desc { width: auto; }
+.preview-table col.c-color { width: 8%; }
+.preview-table col.c-size { width: 5.5%; }
+.preview-table col.c-qty { width: 5%; }
+.preview-table col.c-unit { width: 5%; }
+.preview-table col.c-price { width: 6.5%; }
+.preview-table col.c-status { width: 10.5%; }
+
+.preview-table th {
+  padding: 10px 8px;
+  font-size: 11px;
+  letter-spacing: .05em;
+  white-space: normal;
+  line-height: 1.25;
+  vertical-align: bottom;
 }
 
-.preview-page th { padding: 12px 14px; }
+.preview-table th:first-child,
+.preview-table td:first-child { padding-left: 14px; }
 
-.preview-page td p { margin: 0 0 6px; font-size: var(--fs-micro); }
+.preview-table td {
+  padding: 9px 8px;
+  border-bottom: 0;
+  vertical-align: middle;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 
-.preview-page td input {
-  padding: 8px 10px;
-  font-size: var(--fs-xs);
-  border-radius: var(--radius-sm);
+.preview-table td.pos { color: var(--text-faint); overflow-wrap: normal; }
+
+.preview-table td.id { white-space: normal; font-variant-numeric: tabular-nums; }
+
+.preview-table td.ean { overflow-wrap: normal; letter-spacing: -.01em; }
+
+.preview-table td.description { min-width: 0; color: var(--text); font-weight: 500; }
+
+.preview-table tbody tr:hover { background: none; }
+
+/* Eine Position = eine Gruppe (Warnung, Werte, Details) mit einer Linie darunter */
+.preview-table tr.pv-last td { border-bottom: 1px solid var(--border); }
+
+.preview-table tbody tr:last-child td { border-bottom: 0; }
+
+.preview-table tr.pv-group:hover td { background: var(--row-hover); }
+
+.preview-table tr.pv-group-warn td { background: var(--danger-bg); }
+
+.preview-table tr.pv-group-warn.pv-main td:first-child { box-shadow: inset 3px 0 0 var(--danger-text); }
+
+.preview-table tr.pv-alert td { padding: 10px 14px 2px; }
+
+.preview-table tr.pv-alert ul,
+.preview-table tr.pv-detail ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preview-table tr.pv-alert li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--danger-text);
+  font-weight: 500;
+}
+
+.preview-table tr.pv-alert li::before {
+  content: '!';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--danger-text);
+  color: var(--surface);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+}
+
+.preview-table tr.pv-detail td { padding: 2px 14px 12px; }
+
+.preview-table tr.pv-detail li { color: var(--text-muted); }
+
+.preview-table tr.pv-detail li::before { content: '· '; color: var(--text-faint); }
+
+.pv-detail-label {
+  display: block;
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.preview-table tr.pv-detail pre { max-width: none; margin-top: 4px; padding: 8px 10px; }
+
+/* Bearbeiten: kompakte Felder in Zellbreite */
+.preview-table td input {
+  width: 100%;
+  min-height: 0;
+  height: 30px;
+  padding: 4px 7px;
+  font-size: var(--fs-micro);
+  border-radius: 6px;
+}
+
+.preview-table td.num { text-align: right; }
+
+/* Einheit steht direkt nach der rechtsbuendigen Menge: etwas Luft dazwischen */
+.preview-table th:nth-child(10),
+.preview-table tr:not(.is-editing) td:nth-child(10) { padding-left: 14px; }
+
+.preview-table td.num input { text-align: right; }
+
+.preview-table tr.is-editing td:not(:first-child):not(.pv-status) { padding: 7px 3px; }
+
+/* Status-Spalte: kurze Chips statt Fliesstext */
+.pv-status { white-space: normal; }
+
+.pv-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.pv-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.pv-chip-ok { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.pv-chip-warn { background: var(--danger-text); color: var(--surface); }
+.pv-chip-edit { background: var(--accent-soft-bg); color: var(--accent-text); border-color: var(--accent-soft-border); }
+.pv-chip-info { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+
+.pv-actions { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 4px; }
+
+button.pv-link {
+  height: auto;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--link);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+button.pv-link:hover { background: none; box-shadow: none; text-decoration: underline; }
+
+button.pv-link[aria-expanded="true"] { color: var(--text-muted); }
+
+/* Schmale Bildschirme: dann darf die Tabelle seitlich rollen statt zu quetschen */
+@media (max-width: 1000px) {
+  .preview-tablewrap { overflow-x: auto; }
+  .preview-table { min-width: 960px; }
 }
 
 /* Abschluss der Pruefung */

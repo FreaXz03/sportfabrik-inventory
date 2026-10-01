@@ -7,7 +7,7 @@
      <script src="/static/js/theme-init.js?v=2"></script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="preview.page_title">Belegprüfung · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=prio1-1">
+     <link rel="stylesheet" href="/static/css/app.css?v=tabelle-1">
 </head>
 
 <body>
@@ -61,24 +61,40 @@
                               </select></label><label class="check"><input id="warningsOnly" type="checkbox"><span data-i18n="preview.warnings_only_label">Nur
                               Warnungen</span></label><button type="button" class="secondary" id="download" data-i18n="preview.download_json">JSON
                               herunterladen</button></div>
-                    <div class="preview-editbar"><label class="edit-switch"><input type="checkbox" role="switch"
-                                   id="editMode"><span class="edit-switch-track" aria-hidden="true"></span><span data-i18n="preview.edit_mode_label">Werte
-                                   bearbeiten</span></label>
+                    <div class="preview-editbar">
+                         <div class="editbar-row"><label class="edit-switch"><input type="checkbox" role="switch"
+                                        id="editMode"><span class="edit-switch-track" aria-hidden="true"></span><span data-i18n="preview.edit_mode_label">Werte
+                                        bearbeiten</span></label>
+                              <div class="editbar-actions"><button type="button" id="validateEdits" class="secondary" hidden data-i18n="preview.validate_edits">Änderungen
+                                        prüfen</button><button type="button" id="resetEdits" class="secondary" hidden data-i18n="preview.reset_edits">Alle
+                                        Korrekturen zurücksetzen</button></div>
+                         </div>
                          <p id="editHelp" hidden data-i18n="preview.edit_help">Felder direkt in der Tabelle bearbeiten. Bestehende Artikelstammdaten bleiben erhalten; korrigierte Werte werden für diese Belegposition gespeichert.</p>
-                         <button type="button" id="validateEdits" class="secondary" hidden data-i18n="preview.validate_edits">Änderungen
-                              prüfen</button><button type="button" id="resetEdits" class="secondary" hidden data-i18n="preview.reset_edits">Alle
-                              Korrekturen zurücksetzen</button>
                          <p id="editStatus" role="status"></p>
                     </div>
                </div>
                <div class="preview-table-heading">
-                    <p id="count" class="muted" aria-live="polite"></p><span data-i18n="preview.raw_text_hint">Originaltext je Position aufklappbar</span>
+                    <p id="count" class="muted" aria-live="polite"></p><span data-i18n="preview.raw_text_hint">Hinweise und Originaltext unter «Details»</span>
                </div>
-               <div class="tablewrap">
-                    <table>
+               <div class="tablewrap preview-tablewrap">
+                    <table class="preview-table">
+                         <colgroup>
+                              <col class="c-pos">
+                              <col class="c-brand">
+                              <col class="c-id">
+                              <col class="c-id">
+                              <col class="c-ean">
+                              <col class="c-desc">
+                              <col class="c-color">
+                              <col class="c-size">
+                              <col class="c-qty">
+                              <col class="c-unit">
+                              <col class="c-price">
+                              <col class="c-status">
+                         </colgroup>
                          <thead>
                               <tr>
-                                   <th data-i18n="preview.table.position_page">Position / Seite</th>
+                                   <th data-i18n="preview.table.position_page">Pos.</th>
                                    <th data-i18n="fields.brand">Marke</th>
                                    <th data-i18n="preview.table.supplier_article_no">Lief. Art. Nr.</th>
                                    <th data-i18n="preview.table.article_no">Art. Nr.</th>
@@ -86,10 +102,10 @@
                                    <th data-i18n="fields.description">Bezeichnung</th>
                                    <th data-i18n="fields.color">Farbe</th>
                                    <th data-i18n="fields.size">Grösse</th>
-                                   <th data-i18n="fields.quantity">Menge</th>
+                                   <th class="num" data-i18n="fields.quantity">Menge</th>
                                    <th data-i18n="fields.unit">Einheit</th>
-                                   <th data-i18n="fields.uvp">UVP</th>
-                                   <th data-i18n="preview.table.check">Prüfung / Originaltext</th>
+                                   <th class="num" data-i18n="fields.uvp">UVP</th>
+                                   <th data-i18n="preview.table.check">Status</th>
                               </tr>
                          </thead>
                          <tbody id="rows"></tbody>
@@ -107,7 +123,7 @@
                </div>
           </section>
      </main>
-     <script src="/static/js/preview.js?v=melden-3"></script>
+     <script src="/static/js/preview.js?v=tabelle-1"></script>
      <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
      <script src="/static/js/nav.js?v=13"></script>
      <script src="/static/js/session.js?v=settings-2"></script>
