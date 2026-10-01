@@ -32,6 +32,8 @@ All 12 example files were run on the dev database (parse, import, confirm arriva
 
 **New open requirements (2026-10-01, recorded, not implemented):** ten points from the vault — categories without subcategory and keyword-based assignment, redirecting a delivery to another branch before arrival (no booking at the first branch), bug-report and unknown-document buttons (mail to Fabian only, allowed 2026-10-01 as an explicit-click exception to rule 1), size normalization, CMP parser, adding a second EAN to a variant (both find the same article), the Overview "Stock by main group" bug, hiding Statistics/Pending for GEWA/VEBO/Dietikon. Answers of Fabian on points 3, 5, 8 included. Details: [anforderungen-inbox-2026-10-01.md](anforderungen-inbox-2026-10-01.md).
 
+**Inbox 2026-10-01 (points 1–10), done the same evening:** points 1, 2, 3, 8, 9, 10 — see [anforderungen-inbox-2026-10-01.md](anforderungen-inbox-2026-10-01.md). Migrations `a0b1c2d3e4f5` (main-group-only categories), `b1c2d3e4f5a6` (`varianten_eans`), `c2d3e4f5a6b7` (`wareneingang_umleitungen`), checked up/down/up on PostgreSQL. Tests: 246 passed, 12 skipped. Open: 6 (needs verified brand size tables), 7 (needs the CMP document shown explicitly), 4–5 (mail design). Not browser-verified yet: redirect control (goods-receipt page), "further EAN" input (label page).
+
 The previously queued items below follow the redesign:
 
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3–S7) into `main` — at the end of this session.
