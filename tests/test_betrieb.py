@@ -47,7 +47,7 @@ def test_migrationen_offline_fuer_postgres_und_online_auf_sqlite(tmp_path):
         codes = [row[0] for row in db.execute("SELECT code FROM lagerorte ORDER BY code")]
         assert codes == ["DIETIKON", "GEWA", "SF1", "SF2", "SF3", "SF4", "VEBO"]
         parser = {row[0] for row in db.execute("SELECT parser_key FROM lieferanten WHERE parser_key IS NOT NULL")}
-        assert parser == {"intersport", "alpina", "chrissports", "cmp"}
+        assert parser == {"intersport", "alpina", "chrissports", "cmp", "bliz"}
         spalten = {row[1] for row in db.execute("PRAGMA table_info(users)")}
         assert {"fehlversuche", "gesperrt_bis"} <= spalten  # Login-Sperre (S2)
 
@@ -127,7 +127,11 @@ def test_datenmigrationen_passen_zu_den_stammdaten():
     assert filialcodes.RICHTIG == {e["ort"]: e["code"] for e in LAGERORTE_SEED if e["code"] in ("SF2", "SF3", "SF4")}
     gruppen = _migration("f2a3b4c5d6e7_lieferantengruppen")
     parser = _migration("a8b9c0d1e2f3_lieferanten_mit_parser")
-    assert [LIEFERANTEN_SEED[0]] + gruppen._NEUE_LIEFERANTEN + parser._NEUE_LIEFERANTEN == LIEFERANTEN_SEED
+    bliz = _migration("d3e4f5a6b7c8_lieferant_bliz")
+    assert (
+        [LIEFERANTEN_SEED[0]] + gruppen._NEUE_LIEFERANTEN + parser._NEUE_LIEFERANTEN + bliz._NEUE_LIEFERANTEN
+        == LIEFERANTEN_SEED
+    )
 
 
 def test_filialcodes_werden_im_ring_getauscht():

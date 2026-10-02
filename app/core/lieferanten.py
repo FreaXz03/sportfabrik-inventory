@@ -31,6 +31,8 @@ LIEFERANTEN_SEED = [
     {"name": "ALPINA SPORTS Schweiz AG", "typ": "drittanbieter", "parser_key": "alpina"},
     {"name": "CHRIS sports AG", "typ": "drittanbieter", "parser_key": "chrissports"},
     {"name": "CMP (F.lli Campagnolo S.p.A.)", "typ": "drittanbieter", "parser_key": "cmp"},
+    # Bliz-Bestellformular (Migration d3e4f5a6b7c8, 02.10.2026).
+    {"name": "Bliz", "typ": "drittanbieter", "parser_key": "bliz"},
 ]
 
 # Lieferantengruppe (= `lieferanten.typ`) → Code auf dem Etikett

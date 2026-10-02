@@ -36,6 +36,8 @@ All 12 example files were run on the dev database (parse, import, confirm arriva
 
 **Inbox 2026-10-01 (points 1–10), done the same evening:** points 1, 2, 3, 8, 9, 10 — see [anforderungen-inbox-2026-10-01.md](anforderungen-inbox-2026-10-01.md). Migrations `a0b1c2d3e4f5` (main-group-only categories), `b1c2d3e4f5a6` (`varianten_eans`), `c2d3e4f5a6b7` (`wareneingang_umleitungen`), checked up/down/up on PostgreSQL. Tests: 246 passed, 12 skipped. Later the same day: 6 (sizes, Kids rule) and 7 (CMP portal order, local OCR, 158/159 pieces on the sample, rest flagged as warnings). 4–5 (bug report and send-unknown-document by mail, fixed recipient, `SMTP_*` settings needed on the server — see `docs/SERVER-SETUP.md`). All ten inbox points are done. Not browser-verified yet: redirect control (goods-receipt page), "further EAN" input (label page).
 
+**Bliz parser (2026-10-02):** `app/services/parsers/bliz.py` reads the Bliz order form / price list (Excel print, 197 sunglasses, all quantities 0, no document number or date). Preview only — the import rejects it (no number, rule 3). Supplier `Bliz` (group Dritte-Händler, assumed) via migration `d3e4f5a6b7c8`. Open: how the price list should reach the item master.
+
 The previously queued items below follow the redesign:
 
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3–S7) into `main` — at the end of this session.
