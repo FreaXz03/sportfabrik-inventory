@@ -24,7 +24,8 @@ LIEFERANTEN_SEED = [
     {"name": "Dritte-Händler (Marke direkt)", "typ": "drittanbieter", "parser_key": None},
     {"name": "Nike", "typ": "intern", "parser_key": None},
     {"name": "adidas", "typ": "intern", "parser_key": None},
-    {"name": "The North Face", "typ": "intern", "parser_key": None},
+    # Quintet-Bestellinformation (Migration e4f5a6b7c8d9, 02.10.2026).
+    {"name": "The North Face", "typ": "intern", "parser_key": "quintet"},
     # Lieferanten mit eigenem Parser (Phase E, Migration a8b9c0d1e2f3). Alle
     # drei sind Direktbestellungen bei der Marke bzw. beim Verteiler: Code 999
     # (Fabian, 24.09.2026).

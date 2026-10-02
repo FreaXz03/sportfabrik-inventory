@@ -17,7 +17,7 @@ Ablauf:
    lesen (projekt-kontext.md Abschnitt 6, Punkt 1).
 """
 
-from . import alpina, bliz, chrissports, cmp, intersport
+from . import alpina, bliz, chrissports, cmp, intersport, quintet
 from ...core.lieferanten import LIEFERANTEN_SEED
 from .base import Document, DocumentParseError, decimal_value, read_document
 from ..lieferadresse import erkenne_lagerort
@@ -25,7 +25,7 @@ from ...core.groessen import normalisiere_groesse
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
 # Reihenfolge ohne Bedeutung - es gewinnt die höchste Punktzahl aus detect().
-PARSERS = (intersport, alpina, chrissports, cmp, bliz)
+PARSERS = (intersport, alpina, chrissports, cmp, bliz, quintet)
 
 
 class UnknownLayoutError(DocumentParseError):

@@ -534,6 +534,8 @@
   "errors.parser.unknown_layout": "Le système ne connaît pas encore la mise en page de ce document{hint}. Il ne peut donc pas être lu automatiquement - merci de transmettre le document comme exemple afin que l'analyseur correspondant soit ajouté.",
   "errors.parser.total_mismatch": "Les positions donnent {summe} pièces, le justificatif en indique {beleg} - veuillez vérifier s'il manque une ligne.",
   "errors.parser.article_no_corrected": "Le numéro d'article {nr} a été corrigé à partir d'une écriture peu lisible – merci de le comparer avec le document.",
+  "errors.parser.size_quantity_mismatch": "Les quantités par taille donnent {summe}, l'article indique {total} pièces - un chiffre a probablement été mal lu, veuillez vérifier.",
+  "errors.parser.order_total_mismatch": "Les positions donnent {menge} pièces pour {betrag} CHF, la valeur de commande indique {soll_menge} pièces pour {soll_betrag} CHF - veuillez vérifier.",
   "errors.parser.total_value_mismatch": "La valeur des marchandises {warenwert} moins la remise {rabatt} ne donne pas le total {total} - un chiffre a probablement été mal lu, veuillez vérifier.",
   "errors.parser.position_value_mismatch": "Quantité × prix ne correspond pas à la valeur de la position - veuillez vérifier.",
   "errors.parser.ambiguous_layout": "La reconnaissance du fournisseur n'est pas univoque : plusieurs mises en page correspondent aussi bien ({suppliers}).",

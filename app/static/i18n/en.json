@@ -534,6 +534,8 @@
   "errors.parser.unknown_layout": "The system does not know this document layout yet{hint}. It cannot be read automatically - please pass the document on as a sample so the matching parser can be added.",
   "errors.parser.total_mismatch": "The positions add up to {summe} pieces, the document states {beleg} - please check whether a line is missing.",
   "errors.parser.article_no_corrected": "Item number {nr} was corrected from unclear print – please compare it with the document.",
+  "errors.parser.size_quantity_mismatch": "The quantities per size add up to {summe}, the item states {total} pieces - a number was probably misread, please check.",
+  "errors.parser.order_total_mismatch": "The items add up to {menge} pieces for CHF {betrag}, the order value states {soll_menge} pieces for CHF {soll_betrag} - please check.",
   "errors.parser.total_value_mismatch": "Goods value {warenwert} minus invoice discount {rabatt} does not match the total {total} - a number was probably misread, please check.",
   "errors.parser.position_value_mismatch": "Quantity × price does not match the position value in the document - please check.",
   "errors.parser.ambiguous_layout": "Supplier detection is not conclusive: several layouts match equally well ({suppliers}).",

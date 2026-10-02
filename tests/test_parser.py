@@ -18,7 +18,7 @@ import pymupdf
 import pytest
 from conftest import CHEF, neue_datenbank
 from sqlalchemy import func, select
-from testbelege import POSITIONEN, auftragsbestaetigung_pdf, rechnung_pdf, text_pdf
+from testbelege import POSITIONEN, QUINTET_BLOECKE, auftragsbestaetigung_pdf, quintet_pdf, rechnung_pdf, text_pdf
 
 from app.core.i18n import LANGUAGES, translate
 from app.core.lieferanten import LIEFERANTEN_SEED
@@ -193,6 +193,46 @@ def test_quer_gedrehter_text_wird_wie_normaler_gelesen():
     assert str(parser.dates(document)["invoice_date"]) == "2026-07-15"
     assert ergebnis["items"][0]["supplier_article_no"] == "NF0A52SA"
     assert ergebnis["items"][1]["color"] == "Summit Navy-TNF Black-N"
+
+
+# --- Quintet 24 (Bestellinformation The North Face) -------------------------
+
+
+def test_quintet_bestellung_wird_je_groesse_gelesen():
+    document, parser = read_and_detect(quintet_pdf())
+    ergebnis = parse_with_parser(parser, document)
+    assert parser.KEY == "quintet" and ergebnis["supplier_name"] == "The North Face"
+    assert (ergebnis["document_type"], ergebnis["invoice_number"]) == ("bestellung", "603515")
+    assert str(parser.dates(document)["invoice_date"]) == "2025-12-15"
+    assert ergebnis["warnings"] == [] and ergebnis["rows_with_warnings"] == 0
+    zeilen = [
+        (
+            i["supplier_article_no"], i["article_no"], i["description"], i["color"],
+            i.get("size_original", i["size"]), i["quantity"], i["ek"], i["uvp"],
+        )
+        for i in ergebnis["items"]
+    ]
+    assert zeilen == [
+        ("NF0A8BX1", "356343", "M COMBAL SOFTSHELL 2.0", "TNF BLACK", "S", "1", "60.50", "130.00"),
+        ("NF0A8BX1", "356343", "M COMBAL SOFTSHELL 2.0", "TNF BLACK", "M", "2", "60.50", "130.00"),
+        ("NF0A8J4S", "394034", "M RILA FULL ZIP FLEECE JACKET", "ANTHRACITE GREY/TNF BLA", "XLREGULAR", "1", "1048.85", "2100.00"),
+        ("NF0A8J4S", "394034", "M RILA FULL ZIP FLEECE JACKET", "ANTHRACITE GREY/TNF BLA", "36Regular", "2", "1048.85", "2100.00"),
+    ]
+    assert all(i["brand"] == "The North Face" and i["ean"] == "" for i in ergebnis["items"])
+
+
+def test_quintet_mengen_die_nicht_aufgehen_sperren_den_import():
+    falsch = [dict(QUINTET_BLOECKE[0], total=("4", "60,50", "242,00"))]
+    ergebnis = parse_document(quintet_pdf(falsch, wert=("4", "242,00")))
+    assert ergebnis["rows_with_warnings"] == 2
+    falscher_wert = parse_document(quintet_pdf(wert=("7", "3.328,05")))
+    assert len(falscher_wert["warnings"]) == 1
+
+
+def test_quintet_ohne_the_north_face_ist_unbekannt():
+    """Der Lieferant hängt an der Marke; andere Marken werden nicht geraten."""
+    with pytest.raises(UnknownLayoutError):
+        detect_parser(read_document(text_pdf("Lieferantartikel Nr. X1", "Bestellinformation aus Quintet 24")))
 
 
 def test_seite_ohne_tabellenkopf_vor_dem_total_bleibt_ein_fehler():

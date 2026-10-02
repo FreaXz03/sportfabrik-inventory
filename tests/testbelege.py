@@ -137,3 +137,86 @@ def importieren(client, pdf, name="beleg.pdf", **felder):
     return client.post(
         "/import-invoice", files={"file": (name, pdf, "application/pdf")}, data=daten
     )
+
+
+# Quintet-24-Bestellinformation (INTERSPORT-Bestellplattform, hier The North
+# Face): ein Block je Artikel und Farbe, Grössen als Raster mit der Menge
+# darunter. Breite Raster (viele Grössen) laufen über die Spalte der
+# Gesamtmenge hinaus; dann stehen die Preise eine Zeile tiefer, und lange
+# Grössen brechen um („XLREGUL" / „AR").
+QUINTET_BLOECKE = [
+    {
+        "zeilen": ["M COMBAL SOFTSHELL 2.0 - TNF BLACK black black"],
+        "artikel": "356343",
+        "lieferant": "NF0A8BX1",
+        "groessen": [(123, "S"), (149, "M"), (176, "L")],
+        "mengen": [(123, "1"), (150, "2")],
+        "total": ("3", "60,50", "181,50"),
+        "uvp": "130,00",
+    },
+    {
+        "zeilen": ["M RILA FULL ZIP FLEECE JACKET - ANTHRACITE GREY/TNF BLA grey", "grey"],
+        "artikel": "394034",
+        "lieferant": "NF0A8J4S",
+        "groessen": [(116, "XLREGUL"), (151, "MREGULA"), (441, "28Lon"), (466, "36Reg")],
+        "umbruch": [(126, "AR"), (164, "R"), (448, "g"), (469, "ular")],
+        "mengen": [(128, "1"), (473, "2")],
+        "getrennt": True,
+        "total": ("3", "1.048,85", "3.146,55"),
+        "uvp": "2.100,00",
+    },
+]
+
+
+def quintet_pdf(bloecke=QUINTET_BLOECKE, *, wert=("6", "3.328,05")) -> bytes:
+    with pymupdf.open() as document:
+        page = document.new_page(width=595, height=842)
+
+        def text(x, y, inhalt):
+            page.insert_text((x, y), inhalt, fontsize=7)
+
+        def rechts(x_ende, y, betrag):
+            """Beträge stehen rechtsbündig wie im Original."""
+            text(x_ende - pymupdf.get_text_length(betrag, fontsize=7), y, betrag)
+
+        text(36, 82, "Bestellinformationen")
+        text(36, 118, "Rechnungsadresse")
+        text(307, 118, "Bestellung #603515")
+        text(307, 131, "Marke: Intersport CH")
+        text(307, 191, "Bestelldatum: 2025-12-15")
+        text(36, 187, "Lieferadresse")
+        text(36, 200, "Sport-Fabrik AG")
+        text(36, 212, "Industriestrasse 21")
+        text(36, 224, "8604 Volketswil")
+        y = 294
+        for block in bloecke:
+            for zeile in ["The North Face", *block["zeilen"], block["artikel"]]:
+                text(112, y, zeile)
+                y += 13
+            text(112, y, f"Lieferantartikel Nr. {block['lieferant']}")
+            text(114, y + 17, "Liefertermin")
+            text(114, y + 30, "2026-07-22")
+            y += 51
+            for x, groesse in block["groessen"]:
+                text(x, y, groesse)
+            y += 15
+            for x, rest in block.get("umbruch", []):
+                text(x, y, rest)
+            if block.get("umbruch"):
+                y += 15
+            for x, menge in block["mengen"]:
+                text(x, y, menge)
+            if block.get("getrennt"):
+                y += 15
+            menge, ep, total = block["total"]
+            text(440, y, menge)
+            rechts(480, y, ep)
+            rechts(544, y, total)
+            rechts(480, y + 11, block["uvp"])
+            for zeile in (y, y + 11):
+                text(482, zeile, "CHF")
+            text(547, y, "CHF")
+            y += 34
+        text(342, 779, f"Wert: {wert[0]} {wert[1]} CHF")
+        text(32, 796, "Dies ist eine Bestellinformation aus Quintet 24 und keine Bestellbestätigung.")
+        return document.tobytes()
