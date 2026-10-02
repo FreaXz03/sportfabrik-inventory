@@ -270,7 +270,7 @@ FastAPI, PostgreSQL, Alembic, Docker, vanilla JS frontend, two-stage import with
 | **B — Goods receipt v2** | Document types, supplier recognition, expected→arrived, storage location from delivery address, manual entry with scanner, add/generate EAN + label, FEDAS category suggestion | every item enters the system | done |
 | **C — Stock** | Stock movements, stock per storage location, transfer external location → branch, booking out via scan, corrections | current stock | done |
 | **D — Prices & markdown** | RRP/purchase price history, markdown levels, central recommendation, 18-/36-month notices | markdown supported | done (2026-09-25); new requirements 2026-09-25/28 pending (minimum 30 %, see end of document) |
-| **E — More suppliers** | Parsers for Alpina, Chris Sports, CMP (text + scan), external dealer; more as examples come in | upload for all known suppliers | partly: Alpina, Chris Sports, CMP (text); scans and further suppliers open |
+| **E — More suppliers** | Parsers for Alpina, Chris Sports, CMP (text + scan), external dealer; more as examples come in | upload for all known suppliers | partly: Alpina, Chris Sports, CMP (text), Bliz, INTERSPORT order confirmations, The North Face (Quintet) — 2026-10-02; scans and further suppliers open (order: Columbia, Gonso, PPS Sportsgoods, PUMA, Bliz helmet, Maier Sports) |
 | **F — Operations** | Server Volketswil, VPN, external backups, data migration; required points from the [security review](sicherheit.md): HTTPS, login rate-limiting, network separation, encrypted backups | all 4 branches in production | started: HTTPS and login lockout done locally; server, VPN, encrypted backups, S3–S8 open |
 | **G — Till** | Connection to the Intersport till (depends on clarification with Intersport) | no more manual typing | waiting for Intersport |
 | *(extra)* **Phone** | Phone web app for search, scan, count, receipt, transfer, write-off, entry, markdowns | staff work at the shelf | done (2026-09-28), remote access (VPN) open |
@@ -385,7 +385,7 @@ No critical or high findings; four medium and five low points are open, details 
 | Booking rights (2026-09-24) | ✅ implemented: employees record and correct only in assigned branches; booking out, cancelling, transferring only branch manager/head office (`tests/test_rechte_lager.py`); not yet on the server |
 | Work from 2026-09-24 | ✅ tests cleaned up (few flow tests), 47 × 83 mm label for pre-printed rolls, FEDAS fully mapped, ECOM recognition (555) and purchase-price storage, Alpina/Chris Sports/CMP parsers (Phase E partial), paper invoice INTERSPORT via OCR — see below |
 | D — Prices & markdown | 🔶 Part 1 implemented (2026-09-24): "Markdown" page per branch with due/soon-due items and per-item label printing. Open: recording "done", central recommendation, configurable thresholds — questions to Fabian in section 10 |
-| E–G | open (E partial: Alpina, Chris Sports, CMP done; scanned delivery notes open) |
+| E–G | open (E partial: Alpina, Chris Sports, CMP, Bliz, INTERSPORT order confirmations, The North Face/Quintet done; scanned delivery notes and further suppliers open) |
 | UI: consistent design system (all pages) | ✅ complete, branch `feature/warenwirtschaft-v2` |
 
 **Phase B — goods receipt v2, split into subtasks** (from roadmap
@@ -1491,3 +1491,22 @@ Posted documents are cancelled (not deleted) by branch manager/head office. The 
 ## Inbox requirements 2026-10-01 (recorded, not implemented)
 
 Ten new points from the vault (categories, forwarding a delivery before arrival, bug-report and unknown-document mail buttons, size normalization, CMP parser, replacing an internal EAN, Overview main-group bug, hiding Statistics/Pending for GEWA/VEBO/Dietikon). Per-point status. Answers of Fabian (2026-10-01): (5) the unknown-document mail button is allowed — explicit click, only to his own mailbox, an exception to rule 1; (3) a delivery can be redirected to another branch before arrival, booking still only on arrival at the destination; (8) a later EAN is added, not replaced — both EANs lead to the same variant. `docs/anforderungen-inbox-2026-10-01.md`. Test run of the same day: the CMP re-order file is an unknown layout; an arrival bug with duplicate variants was fixed (commit `385459f`).
+
+## Parsers from real documents — 2026-10-02
+
+Survey of Fabian's folder of real documents (local only; only file names, page counts, text layer and parser results were looked at). Already read: INTERSPORT invoices, CMP, CHRIS sports, Alpina, Bliz. Order for new parsers: The North Face → Columbia (`OA…` Liq/Regulär, 6 files) → Gonso via ws4sports (SF1–SF4) → PPS Sportsgoods AG → PUMA → Bliz helmet → Maier Sports (1 PDF; the xlsx order sheet is not a PDF).
+
+Decisions (Fabian, 2026-10-02):
+
+- **The North Face pre-orders via Quintet 24** ("Bestellinformation", explicitly not an order confirmation) belong to supplier **The North Face, group intern (444)**, document type **`bestellung`** — an expected delivery, no stock (rule 3).
+- `winterhw.pdf` contains several different suppliers, all code 999 — no single parser.
+- The adidas `O.*` order PDFs from 2023 are ignored; `Sport-Fabrik F26 FREIZEIT/OUTDOOR` and an unreadable 12-page scan were removed from the sample folder.
+
+Implemented (branch `fix/intersport-trailer-page`, merged into `feature/warenwirtschaft-v2`):
+
+- **INTERSPORT trailer page:** when items end exactly at a page end, the last page only has the VAT summary, terms and footer. A page without a table header is skipped once `Total CHF inkl. MwSt.` has appeared; before the total it is still rejected. 6 real invoices that failed now parse. A PDF with several merged invoices (different numbers) stays rejected — split it.
+- **INTERSPORT order confirmation** (`Auftragsbestätigung 900-VA…`, The North Face reorder, one per branch): read by `intersport.py`, type `auftragsbestaetigung`, supplier INTERSPORT (111). Number from the title, or the shop `Auftragsnr.` when the title is drawn as graphics. 140–178 items per branch, branch suggestion correct for SF1–SF4.
+- **Rotated landscape pages:** some PDFs place the landscape page rotated on portrait A4 (rotation 0, text bottom to top). `base.read_page` rotates words back and rebuilds the page text; applies to all parsers.
+- **Quintet parser** (`quintet.py`, migration `e4f5a6b7c8d9`): one item per size; block totals and footer value checked. 3 real files: 216, 91 and 59 items, no warnings. Other brands on Quintet are reported as unknown.
+
+Open point: the same TNF product ordered via Quintet (supplier The North Face) and confirmed via an INTERSPORT order confirmation (supplier INTERSPORT) becomes two separate items, because items are kept per supplier. Clarify whether TNF reorders via INTERSPORT should also count as group intern.

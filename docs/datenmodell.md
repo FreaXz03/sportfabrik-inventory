@@ -162,7 +162,7 @@ code follows (Intersport 111, ECOM 555, dealer = `extern` 333,
 third-party dealer = `drittanbieter` 999, internal = Nike/adidas/The North
 Face 444; since 2026-09-24, migration `f2a3b4c5d6e7`). `typ` and
 `parser_key` (points to the matching parser module in
-`app/services/parsers/`, currently only `intersport`) drive automatic
+`app/services/parsers/`: `intersport`, `alpina`, `chrissports`, `cmp`, `bliz`, `quintet` — the last one on "The North Face") drive automatic
 supplier detection on document upload: the registry recognizes the layout
 and the importer looks up the supplier via the same `parser_key`
 (Phase B, subtask B1 — see `docs/architektur.md`, "PDF parsing"). A
@@ -479,6 +479,11 @@ above):
 | `d7e8f9a0b1c2` | Link documents to one delivery (2026-10-01): new table `dokument_lieferung` (`dokument_id` PK → `dokumente`, `wareneingang_id` → `wareneingaenge`) |
 | `e8f9a0b1c2d3` | Retry protection (2026-10-01): table `operationen` |
 | `f9a0b1c2d3e4` | Counts (2026-10-01): table `zaehlungen` |
+| `a0b1c2d3e4f5` | Main group without sport area as a till category (2026-10-01) |
+| `b1c2d3e4f5a6` | Several EANs per variant (2026-10-01): table `varianten_eans` |
+| `c2d3e4f5a6b7` | Redirect an expected delivery to another branch (2026-10-01): table `wareneingang_umleitungen` |
+| `d3e4f5a6b7c8` | Supplier Bliz with parser (2026-10-02): `parser_key` `bliz`, group third-party dealer (999). Data only |
+| `e4f5a6b7c8d9` | The North Face reads Quintet order information (2026-10-02): existing supplier "The North Face" (group intern, 444) gets `parser_key` `quintet` (only while still empty). Data only |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

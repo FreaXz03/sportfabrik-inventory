@@ -618,15 +618,17 @@ is the **registry** that decides who's responsible:
 
 | Component | Role |
 |---|---|
-| `base.py` | `read_document()` reads the whole PDF **once** (words with coordinates per page, via OCR for pages without a text layer), plus the recurring building blocks `lines()`, `joined()`, `decimal_value()` |
+| `base.py` | `read_document()` reads the whole PDF **once** (words with coordinates per page, via OCR for pages without a text layer), plus the recurring building blocks `lines()`, `joined()`, `decimal_value()`. A landscape page placed rotated on portrait A4 (page rotation 0, at least 80 % of the text running bottom to top) is turned back: words are rotated and the page text is rebuilt from them (2026-10-02) |
 | `<supplier>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
 | `__init__.py` | `PARSERS` list, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
 
-**Registered layouts (2026-09-24):**
+**Registered layouts (2026-10-02):**
 
 | Module | Supplier | Documents | Special cases |
 |---|---|---|---|
-| `intersport.py` | INTERSPORT Schweiz AG | Invoice | FEDAS code; reference "ret.Ecom" → supplier ECOM (code 555); "Preis" column = purchase price |
+| `intersport.py` | INTERSPORT Schweiz AG | Invoice, order confirmation | FEDAS code; reference "ret.Ecom" → supplier ECOM (code 555); "Preis" column = purchase price. A last page without item table after `Total CHF inkl. MwSt.` is skipped. Order confirmation (`Auftragsbestätigung 900-VA…`, e.g. The North Face reorder): recognized by its header (no EAN, `EP`, `Liefertermin`), colour/size `(…)/<size>` from the first description line, number from the title or else the shop `Auftragsnr.`, date `Auftragsdatum` |
+| `quintet.py` | The North Face (group intern, 444) | Order information (Quintet 24, `bestellung`) | one block per article and colour, size grid → one item per size (quantity matched by x position, wrapped size labels joined); block total and footer `Wert:` checked (5 Rappen tolerance); only accepted when "The North Face" appears — other Quintet brands stay unknown |
+| `bliz.py` | Bliz | Order form / price list (`bestellung`) | no number or date: generated `BLIZ-<date>-<hash>`, date = today; quantities 0 create items without stock |
 | `alpina.py` | ALPINA SPORTS Schweiz AG | Order confirmation | no EAN; article = model (first 5 characters of the product number), color and size from the description; quantity × unit price = line total checked |
 | `chrissports.py` | CHRIS sports AG | Order confirmation | "Preis" = RRP (D12), purchase price = amount/quantity; brand without a segment ("Giro"); "Total Menge" checked |
 | `cmp.py` | CMP (F.lli Campagnolo S.p.A.) | Order confirmation | size grid, values assigned by the right edge of the size column; cancelled blocks skipped; each block total checked |
