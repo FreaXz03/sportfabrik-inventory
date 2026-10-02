@@ -18,7 +18,7 @@ import pymupdf
 import pytest
 from conftest import CHEF, neue_datenbank
 from sqlalchemy import func, select
-from testbelege import POSITIONEN, rechnung_pdf, text_pdf
+from testbelege import POSITIONEN, auftragsbestaetigung_pdf, rechnung_pdf, text_pdf
 
 from app.core.i18n import LANGUAGES, translate
 from app.core.lieferanten import LIEFERANTEN_SEED
@@ -147,6 +147,52 @@ def test_folgeseite_ohne_positionen_nach_dem_total_wird_uebersprungen():
     ergebnis = parse_document(_rechnung_mit_folgeseite(mit_total=True))
     assert ergebnis["item_count"] == 3 and ergebnis["warnings"] == []
     assert ergebnis["page_item_counts"] == [3, 0]
+
+
+def test_intersport_auftragsbestaetigung_wird_gelesen():
+    """INTERSPORT-AB (z. B. The North Face): ohne EAN, „EP" statt „Preis",
+    Farbe/Grösse in der ersten Bezeichnungszeile, umbrechend."""
+    document, parser = read_and_detect(auftragsbestaetigung_pdf())
+    ergebnis = parse_with_parser(parser, document)
+    assert parser is intersport
+    assert ergebnis["document_type"] == "auftragsbestaetigung"
+    assert ergebnis["invoice_number"] == "900-VA0212349"
+    assert ergebnis["warnings"] == [] and ergebnis["rows_with_warnings"] == 0
+    erste, zweite = ergebnis["items"]
+    assert (erste["brand"], erste["supplier_article_no"], erste["article_no"]) == (
+        "The North Face", "NF0A52SA", "186391.084"
+    )
+    assert erste["description"] == "BASE CAMP DUFFEL - M"
+    assert (erste["color"], erste.get("size_original", erste["size"])) == (
+        "Summit Gold-TNF Black-N", "ONESIZE"
+    )
+    assert (erste["quantity"], erste["uvp"], erste["ek"], erste["ean"]) == ("2", "170.00", "82.95", "")
+    assert zweite["color"] == "Summit Navy-TNF Black-N" and zweite["quantity"] == "1"
+    daten = parser.dates(document)
+    assert str(daten["invoice_date"]) == str(daten["document_date"]) == "2026-07-15"
+
+
+def test_auftragsbestaetigung_ohne_titel_nimmt_die_shop_auftragsnummer():
+    document, parser = read_and_detect(auftragsbestaetigung_pdf(titel=False))
+    ergebnis = parse_with_parser(parser, document)
+    assert ergebnis["document_type"] == "auftragsbestaetigung"
+    assert ergebnis["invoice_number"] == "678235_1"
+    assert str(parser.dates(document)["invoice_date"]) == "2026-07-15"
+
+
+def test_quer_gedrehter_text_wird_wie_normaler_gelesen():
+    """Manche PDFs legen die Querformat-Seite gedreht auf ein Hochformat-Blatt
+    (Text läuft von unten nach oben, Seitendrehung trotzdem 0)."""
+    with pymupdf.open(stream=auftragsbestaetigung_pdf()) as quelle, pymupdf.open() as gedreht:
+        seite = gedreht.new_page(width=800, height=1200)
+        seite.show_pdf_page(seite.rect, quelle, 0, rotate=90)
+        pdf = gedreht.tobytes()
+    document, parser = read_and_detect(pdf)
+    ergebnis = parse_with_parser(parser, document)
+    assert ergebnis["warnings"] == [] and ergebnis["item_count"] == 2
+    assert str(parser.dates(document)["invoice_date"]) == "2026-07-15"
+    assert ergebnis["items"][0]["supplier_article_no"] == "NF0A52SA"
+    assert ergebnis["items"][1]["color"] == "Summit Navy-TNF Black-N"
 
 
 def test_seite_ohne_tabellenkopf_vor_dem_total_bleibt_ein_fehler():

@@ -79,6 +79,55 @@ def rechnung_pdf(*, header_lines=None, rows=POSITIONEN) -> bytes:
         return document.tobytes()
 
 
+# INTERSPORT-Auftragsbestätigung: gleiche Tabellenfamilie wie die Rechnung,
+# aber ohne EAN-Spalte, „EP" statt „Preis" und mit Liefertermin. Farbe und
+# Grösse stehen schon in der ersten Bezeichnungszeile und laufen oft um.
+AB_COLUMNS = [
+    ("Marke", 30), ("FEDAS", 120), ("Lief.", 210), ("Art.", 300), ("Art.", 390),
+    ("Bezeichnung", 470), ("Menge", 700), ("Einheit", 760), ("UVP", 830),
+    ("EP", 900), ("Rabatt", 960), ("Total", 1020), ("Liefertermin", 1080),
+]
+AB_POSITIONEN = [
+    # (Zeile 1, Zeile 2) je Position: Marke, FEDAS, Lief.-Art., Art., Bezeichnung, Menge, Einheit, UVP, EP
+    (
+        ["The North", "100898", "NF0A52SA", "186391.084", "BASE CAMP DUFFEL - M (Summit Gold-TNF", "2", "STK", "170.00", "82.95"],
+        ["Face", "", "", "", "Black-N)/ONESIZE"],
+    ),
+    (
+        ["The North", "100898", "NF0A52SA", "186391.085", "BASE CAMP DUFFEL - M (Summit Navy-", "1", "STK", "170.00", "82.95"],
+        ["Face", "", "", "", "TNF Black-N)/ONESIZE"],
+    ),
+]
+
+
+def auftragsbestaetigung_pdf(positionen=AB_POSITIONEN, *, titel=True) -> bytes:
+    """Einseitige INTERSPORT-Auftragsbestätigung (Layout wie 900-VA…). Ohne
+    `titel` fehlt die Überschrift mit der Nummer (manche PDFs zeichnen sie
+    als Grafik statt als Text)."""
+    # Lief. und die erste Art.-Spalte gehören zusammen (wie bei der Rechnung).
+    x_werte = [30, 120, 210, 390, 470, 700, 760, 830, 900]
+    with pymupdf.open() as document:
+        page = document.new_page(width=1200, height=800)
+        if titel:
+            page.insert_text((500, 40), "Auftragsbestätigung 900-VA0212349")
+        page.insert_text((30, 60), "Sport-Fabrik AG Auftragsdatum 15.07.2026")
+        page.insert_text((30, 80), "Conthey Shop Auftragsnr. 678235_1")
+        for label, x in AB_COLUMNS:
+            page.insert_text((x, 200), label)
+        y = 240
+        for zeilen in positionen:
+            for zeile in zeilen:
+                for x, value in zip(x_werte, zeile):
+                    if value:
+                        page.insert_text((x, y), value)
+                y += 14
+            y += 6
+        # Formularrest, den INTERSPORT unter die Tabelle druckt.
+        page.insert_text((25, y + 20), "False")
+        page.insert_text((30, y + 40), "INTERSPORT Schweiz AG, Wölflistrasse 2, 3006 Bern")
+        return document.tobytes()
+
+
 def hochladen(client, pdf, name="beleg.pdf"):
     return client.post("/upload-preview", files={"file": (name, pdf, "application/pdf")})
 

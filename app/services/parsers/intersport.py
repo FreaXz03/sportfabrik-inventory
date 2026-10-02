@@ -46,10 +46,20 @@ LIEFERANT_NAME = "INTERSPORT Schweiz AG"
 HEADER_WORDS = frozenset(
     {"Marke", "FEDAS", "EAN", "Bezeichnung", "Menge", "Einheit", "UVP", "Preis"}
 )
+# Auftragsbestätigung (z. B. Nachbestellung The North Face): gleiche Tabelle,
+# aber ohne EAN-Spalte, „EP" statt „Preis" und mit Liefertermin.
+AB_HEADER_WORDS = frozenset(
+    {"Marke", "FEDAS", "Bezeichnung", "Menge", "Einheit", "UVP", "EP", "Liefertermin"}
+)
 
 # Feste deutsche Textanker im Layout (unabhängig von der UI-Sprache, Regel 7):
-# die Rechnungsnummer und die beiden Datumsfelder.
+# die Belegnummer und die Datumsfelder.
 INVOICE_NUMBER_PATTERN = re.compile(r"Rechnung\s+Nr\.\s*(\d+)")
+AB_NUMBER_PATTERN = re.compile(r"Auftragsbestätigung\s+(\d{3}-[A-Z]{2}\d+)")
+# Manche AB-PDFs zeichnen die Überschrift als Grafik - dann bleibt nur die
+# Shop-Auftragsnummer im Kopf als Text.
+AB_ORDER_PATTERN = re.compile(r"Auftragsnr\.\s+([\w-]+)")
+AB_DATE_PATTERN = re.compile(r"Auftragsdatum\s+(\d{2}\.\d{2}\.\d{4})")
 
 # ECOM-Retouren (Onlineshop intersport.ch) kommen im selben Layout, tragen aber
 # „ret.Ecom" in der Referenz. Sie gehören zur Lieferantengruppe ECOM (Code 555,
@@ -73,12 +83,41 @@ TOTAL_INKL = re.compile(r"Total\s+CHF\s+inkl\.?\s+MwSt\.?\s+([\d'’.,]+\.\d{2})
 # would permanently block importing this whole class of invoice. Recognised
 # exactly (not as a loose keyword match) so it never masks a genuine
 # unrecognised line elsewhere in the table.
-_IGNORABLE_ROWS = {"mwst", "inkl mwst"}
+# "False"/"True" are leftover form-field values INTERSPORT's PDF generator
+# prints on a line of their own below the table.
+_IGNORABLE_ROWS = {"mwst", "inkl mwst", "false", "true"}
 
 
 def _header_rows(rows):
-    """Alle Zeilen, die die komplette Tabellen-Kopfzeile enthalten."""
-    return [r for r in rows if HEADER_WORDS <= {w[4] for w in r}]
+    """Alle Zeilen, die die komplette Tabellen-Kopfzeile enthalten (Rechnung
+    oder Auftragsbestätigung)."""
+    return [
+        r
+        for r in rows
+        if HEADER_WORDS <= {w[4] for w in r} or AB_HEADER_WORDS <= {w[4] for w in r}
+    ]
+
+
+def _ist_auftragsbestaetigung(document: Document) -> bool:
+    """Am Tabellenkopf erkannt, nicht an der Überschrift (die fehlt manchmal)."""
+    return any(
+        AB_HEADER_WORDS <= {w[4] for w in row}
+        for page in document.pages
+        for row in lines(page.words)
+    )
+
+
+def _ab_nummer(document: Document, language: str) -> str | None:
+    """Nummer „900-VA…" aus der Überschrift, sonst die Shop-Auftragsnummer."""
+    for pattern in (AB_NUMBER_PATTERN, AB_ORDER_PATTERN):
+        nummern = set(pattern.findall(document.text))
+        if len(nummern) > 1:
+            raise DocumentParseError(
+                translate("errors.parser.mixed_invoice_numbers", language)
+            )
+        if nummern:
+            return nummern.pop()
+    return None
 
 
 def detect(document: Document) -> int | None:
@@ -96,7 +135,7 @@ def detect(document: Document) -> int | None:
     text = document.text.upper()
     if "INTERSPORT" in text:
         score += 1
-    if INVOICE_NUMBER_PATTERN.search(document.text):
+    if INVOICE_NUMBER_PATTERN.search(document.text) or AB_DATE_PATTERN.search(document.text):
         score += 1
     return score
 
@@ -108,10 +147,11 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
     unkritische Auffälligkeiten (z. B. keine EAN) nur als Hinweis.
     """
     items, warnings, counts = [], [], []
-    invoice_number = None
     table_closed = False
+    ab = _ist_auftragsbestaetigung(document)
+    invoice_number = _ab_nummer(document, language) if ab else None
     for page in document.pages:
-        match = INVOICE_NUMBER_PATTERN.search(page.text)
+        match = None if ab else INVOICE_NUMBER_PATTERN.search(page.text)
         if match:
             if invoice_number and invoice_number != match[1]:
                 raise DocumentParseError(
@@ -163,7 +203,8 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
             h["FEDAS"][0] - 3,
             lief - 3,
             arts[-1] - 3,
-            h["EAN"][0] - 3,
+            # Ohne EAN-Spalte (Auftragsbestätigung) bleibt die Zelle leer.
+            h["EAN"][0] - 3 if "EAN" in h else h["Bezeichnung"][0] - 3,
             h["Bezeichnung"][0] - 3,
             h["Menge"][0] - 3,
             h["Menge"][2] + 3,
@@ -244,8 +285,17 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                 (i for i, s in enumerate(desc) if i > 0 and "(" in s), None
             )
             item.update(color=None, size=None, variant_raw=None)
+            if variant_index is None and ab and "(" in desc[0]:
+                # In der Auftragsbestätigung beginnt die Variante schon in
+                # der ersten Zeile: „BASE CAMP DUFFEL - M (Summit Gold-TNF".
+                head, _, rest = desc[0].partition("(")
+                desc = [head.rstrip(), "(" + rest] + desc[1:]
+                variant_index = 1
             if variant_index is not None:
                 variant = " ".join(desc[variant_index:])
+                if ab:
+                    # Umbruch nach Bindestrich: „Summit Navy-" / „TNF Black-N)".
+                    variant = re.sub(r"-\s+", "-", variant)
                 item["variant_raw"] = variant
                 m = re.fullmatch(r"(.*?)\((.*)\)\s*/\s*(.+)", variant)
                 if m:
@@ -257,7 +307,8 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                         translate("errors.parser.color_size_ambiguous", language)
                     )
                 desc = desc[:variant_index]
-            item["description"] = re.sub(r"-\s+", "-", " ".join(desc))
+            # Nur ein umbrochener Bindestrich wird zusammengezogen, nicht „ - ".
+            item["description"] = re.sub(r"(?<=\S)-\s+", "-", " ".join(desc))
             # „ean" fehlt hier bewusst: EAN ist optional (Regel 5), siehe unten.
             for key in (
                 "brand",
@@ -328,11 +379,12 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
         if count > 1
     }
     return dict(
-        # Dieses Layout kommt bisher nur als Rechnung vor (die Belegnummer
-        # steht als „Rechnung Nr." im Dokument). Ohne diesen Anker bleibt der
-        # Typ offen - der Import weist das Dokument dann ohnehin ab, weil die
-        # Belegnummer fehlt.
-        document_type="rechnung" if invoice_number else None,
+        # Rechnung („Rechnung Nr.") oder Auftragsbestätigung („Auftrags-
+        # bestätigung 900-VA…"). Ohne diesen Anker bleibt der Typ offen - der
+        # Import weist das Dokument dann ohnehin ab, weil die Belegnummer fehlt.
+        document_type=(
+            None if not invoice_number else "auftragsbestaetigung" if ab else "rechnung"
+        ),
         invoice_number=invoice_number,
         pages=document.page_count,
         item_count=len(items),
@@ -398,6 +450,15 @@ def dates(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
     immer in der Reihenfolge des digitalen Exports (der Kopfblock mit diesen
     Daten kann auf einer späteren Seite landen).
     """
+    if _ist_auftragsbestaetigung(document):
+        # Die Auftragsbestätigung kennt nur das Auftragsdatum.
+        treffer = AB_DATE_PATTERN.search(document.text)
+        if not treffer:
+            raise DocumentParseError(
+                translate("errors.importer.invoice_date_missing_or_ambiguous", language)
+            )
+        tag = datetime.strptime(treffer[1], "%d.%m.%Y").date()
+        return {"invoice_date": tag, "document_date": tag}
     result = {}
     for label, key in [
         ("Rechnungsdatum", "invoice_date"),

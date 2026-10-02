@@ -108,16 +108,47 @@ def collapsed(word):
     return "".join(result)
 
 
+def _text_laeuft_aufwaerts(page) -> bool:
+    """Läuft fast aller Text von unten nach oben (Richtung (0, -1)) auf einer
+    ungedrehten Seite? Einzelne senkrechte Randtexte zählen nicht."""
+    if page.rotation:
+        return False
+    aufwaerts = waagrecht = 0
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
+            dx, dy = line["dir"]
+            if round(dx) == 0 and round(dy) == -1:
+                aufwaerts += 1
+            else:
+                waagrecht += 1
+    return aufwaerts >= 4 * waagrecht and aufwaerts > 0
+
+
 def read_page(page, number: int, language: str = DEFAULT_LANGUAGE) -> Page:
     """Eine Seite einlesen - mit OCR-Rückfall, wenn sie keine Textebene hat
     (eingescannte Papierrechnung, siehe docs/architektur.md)."""
     words = page.get_text("words")
     if words:
+        height = page.rect.height
+        if not _text_laeuft_aufwaerts(page):
+            text = page.get_text()
+        else:
+            # Querformat-Seite gedreht auf ein Hochformat-Blatt gelegt (die
+            # Seitendrehung bleibt 0, nur der Text läuft von unten nach oben).
+            # Wörter zurückdrehen, damit Zeilen und Spalten wie gewohnt liegen;
+            # den Text daraus neu zusammensetzen (get_text() liefert ihn hier
+            # in falscher Reihenfolge).
+            words = [
+                (height - y1, x0, height - y0, x1, *rest)
+                for x0, y0, x1, y1, *rest in words
+            ]
+            height = page.rect.width
+            text = "\n".join(joined(row) for row in lines(words))
         return Page(
             number=number,
             words=words,
-            text=page.get_text(),
-            height=page.rect.height,
+            text=text,
+            height=height,
             ocr_used=False,
         )
     try:
