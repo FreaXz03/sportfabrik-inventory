@@ -129,6 +129,33 @@ def test_ohne_belegnummer_bleibt_der_typ_offen():
     assert ergebnis["document_type"] is None and ergebnis["invoice_number"] is None
 
 
+def _rechnung_mit_folgeseite(*, mit_total: bool) -> bytes:
+    """Rechnung, deren Positionen auf Seite 1 enden; Seite 2 trägt nur noch
+    MWST-Zusammenfassung, AGB und Fusszeile (keine Positionstabelle)."""
+    with pymupdf.open(stream=rechnung_pdf()) as document:
+        if mit_total:
+            document[0].insert_text((30, 360), "Total CHF inkl. MwSt. 400.00")
+        seite = document.new_page(width=1000, height=800)
+        for index, text in enumerate(
+            ["Rechnung Nr. 9001759392", "MWST ID MWST % MWST Basis MWST-Betrag", "Total 400.00 32.40"]
+        ):
+            seite.insert_text((30, 40 + index * 20), text)
+        return document.tobytes()
+
+
+def test_folgeseite_ohne_positionen_nach_dem_total_wird_uebersprungen():
+    ergebnis = parse_document(_rechnung_mit_folgeseite(mit_total=True))
+    assert ergebnis["item_count"] == 3 and ergebnis["warnings"] == []
+    assert ergebnis["page_item_counts"] == [3, 0]
+
+
+def test_seite_ohne_tabellenkopf_vor_dem_total_bleibt_ein_fehler():
+    """Ohne Total ist offen, ob auf Seite 2 Positionen fehlen (z. B. Scan)."""
+    with pytest.raises(DocumentParseError) as fehler:
+        parse_document(_rechnung_mit_folgeseite(mit_total=False))
+    assert "2" in str(fehler.value)
+
+
 @pytest.mark.parametrize(("wert", "erwartet"), [("1’234.50", "1234.50"), ("-2", "-2"), ("1,5", "1.5")])
 def test_zahlen_aus_belegen(wert, erwartet):
     assert decimal_value(wert) == erwartet

@@ -109,6 +109,7 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
     """
     items, warnings, counts = [], [], []
     invoice_number = None
+    table_closed = False
     for page in document.pages:
         match = INVOICE_NUMBER_PATTERN.search(page.text)
         if match:
@@ -119,6 +120,12 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
             invoice_number = match[1]
         rows = lines(page.words)
         headers = _header_rows(rows)
+        if not headers and table_closed:
+            # Enden die Positionen genau am Seitenende, druckt INTERSPORT eine
+            # Folgeseite nur mit MWST-Zusammenfassung, AGB und Fusszeile. Erst
+            # nach dem Total ist sicher, dass dort keine Positionen fehlen.
+            counts.append(0)
+            continue
         if len(headers) != 1:
             # Das Layout passt grundsätzlich (sonst hätte die Erkennung in
             # __init__.py dieses Modul nicht gewählt), aber diese Seite
@@ -303,6 +310,7 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
             item["row_number"] = len(items) + 1
             items.append(item)
         counts.append(len(page_items))
+        table_closed = bool(TOTAL_INKL.search(page.text))
         if not page_items:
             warnings.append(
                 translate(
