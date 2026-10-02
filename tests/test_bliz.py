@@ -4,10 +4,17 @@ Das PDF wird selbst gebaut (echte Belege gehören nie ins Repo, Regel 1). Spalte
 und Kopfzeile folgen dem echten Formular.
 """
 
+import hashlib
+from datetime import date
+
 import pymupdf
 import pytest
+from conftest import neue_datenbank
+from sqlalchemy import func, select
 
-from app.services.parsers import DocumentParseError, bliz, detect_parser, parse_document, read_document
+from app.core.models import Bestand, Lagerbewegung, Lagerort, Variante
+from app.services.importer import ImportRejected, import_invoice
+from app.services.parsers import bliz, detect_parser, parse_document, read_document
 
 KOPF = [
     (22, "QTY"), (46, "VALUE"), (79, "MATERIAL"), (114, "GRID"), (124, "VALUE"), (160, "STYLE"),
@@ -59,13 +66,30 @@ def test_erkennt_layout_und_liest_positionen():
     assert ergebnis["rows_with_warnings"] == 0
 
 
-def test_formular_hat_keine_belegnummer():
-    # Ein Bestellformular ohne Nummer/Datum bleibt Vorschau: der Import weist es ab.
-    ergebnis = parse_document(formular())
-    assert ergebnis["invoice_number"] is None
-    assert ergebnis["document_type"] is None
-    with pytest.raises(DocumentParseError):
-        bliz.dates(read_document(formular()))
+def test_formular_bekommt_belegnummer_und_heutiges_datum():
+    # Das Formular trägt weder Nummer noch Datum: beides wird erzeugt (02.10.2026).
+    pdf = formular()
+    ergebnis = parse_document(pdf)
+    heute = date.today()
+    assert ergebnis["document_type"] == "bestellung"
+    assert ergebnis["invoice_number"].startswith("BLIZ-" + heute.strftime("%Y%m%d") + "-")
+    assert parse_document(pdf)["invoice_number"] == ergebnis["invoice_number"]
+    assert bliz.dates(read_document(pdf)) == {"invoice_date": heute, "document_date": heute}
+
+
+def test_import_legt_artikel_an_aber_bucht_keinen_bestand():
+    sessions = neue_datenbank()
+    with sessions() as session:
+        sf1 = session.scalar(select(Lagerort.id).where(Lagerort.code == "SF1"))
+    pdf = formular()
+    importiert = import_invoice(pdf, "bliz.pdf", hashlib.sha256(pdf).hexdigest(), sessions, sf1)
+    assert importiert["item_count"] == 3
+    with sessions() as session:
+        assert session.scalar(select(func.count()).select_from(Variante)) == 3
+        assert session.scalar(select(func.count()).select_from(Lagerbewegung)) == 0
+        assert session.scalar(select(func.coalesce(func.sum(Bestand.menge), 0))) == 0
+    with pytest.raises(ImportRejected):
+        import_invoice(pdf, "nochmal.pdf", hashlib.sha256(pdf).hexdigest(), sessions, sf1)
 
 
 def test_zeile_ohne_ean_gibt_hinweis_und_falsche_ean_warnung():

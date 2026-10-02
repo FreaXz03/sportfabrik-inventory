@@ -10,14 +10,18 @@ Seite, die Folgeseiten setzen die Tabelle ohne Kopf fort. Jede Zeile beginnt mit
 dem Stil-Code (Spalte MATERIAL); die UPC (= EAN) ist optional (Regel 5). Preise stehen 1 pt höher als der Rest der Zeile,
 darum wird jedes Wort der Zeile zugeordnet, deren Mitte ihm am nächsten liegt.
 
-Das Formular trägt weder Belegnummer noch Datum und bei der Vorlage stehen alle
-Mengen auf 0: es bleibt eine Vorschau, der Import weist es ab (Regel 3: ohne
-Menge keine Ware). Eine Brille hat keine Grösse (ONESIZE); Farbe = Rahmen / Linse.
+Das Formular trägt weder Belegnummer noch Datum (Fabian, 02.10.2026): beides
+wird erzeugt - Nummer BLIZ-<heutiges Datum>-<Hash des Inhalts>, Datum = heute.
+Der Typ ist „bestellung": Die Positionen legen die Artikel an, gebucht wird
+nichts (Regel 3), und bei Menge 0 entsteht ohnehin kein Bestand. Eine Brille
+hat keine Grösse (ONESIZE); Farbe = Rahmen / Linse.
 """
 
+import hashlib
 import re
+from datetime import date
 
-from .base import Document, DocumentParseError, ergebnis, pruefe_position
+from .base import Document, ergebnis, pruefe_position
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
 KEY = "bliz"
@@ -102,8 +106,15 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                 raw_lines=[" ".join(w[4] for w in sorted(rest + [a], key=lambda w: w[0]))],
             )
             items.append(pruefe_position(item, language))
-    return ergebnis(document, items, warnings, None, None, language)
+    return ergebnis(document, items, warnings, "bestellung", _nummer(document), language)
+
+
+def _nummer(document: Document) -> str:
+    """Erzeugte Belegnummer: dieselbe Datei am selben Tag ergibt dieselbe Nummer."""
+    inhalt = hashlib.sha256(document.text.encode()).hexdigest()[:8].upper()
+    return f"BLIZ-{date.today():%Y%m%d}-{inhalt}"
 
 
 def dates(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
-    raise DocumentParseError(translate("errors.importer.invoice_date_missing_or_ambiguous", language))
+    heute = date.today()
+    return {"invoice_date": heute, "document_date": heute}
