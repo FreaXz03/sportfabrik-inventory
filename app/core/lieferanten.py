@@ -34,6 +34,8 @@ LIEFERANTEN_SEED = [
     {"name": "CMP (F.lli Campagnolo S.p.A.)", "typ": "drittanbieter", "parser_key": "cmp"},
     # Bliz-Bestellformular (Migration d3e4f5a6b7c8, 02.10.2026).
     {"name": "Bliz", "typ": "drittanbieter", "parser_key": "bliz"},
+    # Columbia-Auftragsempfangsbestätigung (Migration f5a6b7c8d9e0, 03.10.2026).
+    {"name": "Columbia", "typ": "drittanbieter", "parser_key": "columbia"},
 ]
 
 # Lieferantengruppe (= `lieferanten.typ`) → Code auf dem Etikett

@@ -487,3 +487,44 @@ def test_bolle_rechnung_ohne_uvp_wird_nicht_gelesen():
     damit lässt sich nichts auszeichnen; sie bleibt aussen vor (24.09.2026)."""
     with pytest.raises(UnknownLayoutError):
         parse_document(_beleg("FaGu00072586-1.pdf"))
+
+
+# --- Columbia (Auftragsempfangsbestätigung) ------------------------------------
+
+
+def _columbia_pdf(menge="4", betrag="45,40", zwischensumme="45,40"):
+    return text_pdf(
+        "Columbia Sportswear International SARL", "Auftragsempfangsbestätigung",
+        "Auftrags- Nr.:", "63029341", "Bestelldatum:", "17.08.2026",
+        "Gesamt", "Menge", "Preis", "Rabatt %", "Nettopreis / Stück", "Gesamtbetrag",
+        "2118541845", "AO3772845 Zero Rules Light SS Grap-Super Sonic, Sc",
+        "Größe", "Stückzahl", "-S-", "1 ", "-M-", "0 ", "-XL-", "3 ",
+        menge, "22,70 ", "50,00 ", "11,35 ", betrag,
+        "Gesamtmenge", f"  {menge} ", "Zwischensumme", f"  {zwischensumme} ",
+    )
+
+
+def test_columbia_auftragsbestaetigung_wird_je_groesse_gelesen():
+    document, parser = read_and_detect(_columbia_pdf())
+    ergebnis = parse_with_parser(parser, document)
+    assert parser.KEY == "columbia" and ergebnis["supplier_name"] == "Columbia"
+    assert (ergebnis["document_type"], ergebnis["invoice_number"]) == ("auftragsbestaetigung", "63029341")
+    assert str(parser.dates(document)["invoice_date"]) == "2026-08-17"
+    assert ergebnis["warnings"] == []
+    zeilen = [
+        (i["supplier_article_no"], i["article_no"], i["description"], i["color"], i["size"], i["quantity"], i["ek"])
+        for i in ergebnis["items"]
+    ]
+    # Menge 0 (Grösse M) ergibt keine Position; die UVP fehlt im Beleg und wird gemeldet.
+    assert zeilen == [
+        ("AO3772845", "2118541845", "Zero Rules Light SS Grap", "Super Sonic, Sc", "S", "1", "11.35"),
+        ("AO3772845", "2118541845", "Zero Rules Light SS Grap", "Super Sonic, Sc", "XL", "3", "11.35"),
+    ]
+    assert all(i["uvp"] is None and len(i["warnings"]) == 1 for i in ergebnis["items"])
+
+
+def test_columbia_summen_die_nicht_aufgehen_werden_gemeldet():
+    falsch = parse_document(_columbia_pdf(zwischensumme="50,00"))
+    assert len(falsch["warnings"]) == 1
+    falsche_zeile = parse_document(_columbia_pdf(betrag="40,00"))
+    assert all(len(i["warnings"]) == 2 for i in falsche_zeile["items"])

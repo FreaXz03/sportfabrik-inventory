@@ -42,6 +42,8 @@ All 12 example files were run on the dev database (parse, import, confirm arriva
 
 **Bliz parser (2026-10-02):** `app/services/parsers/bliz.py` reads the Bliz order form / price list (Excel print, 197 sunglasses, all quantities 0, no number or date). The parser generates number `BLIZ-<today>-<content hash>` and date = today, type `bestellung`: the import creates the items and prices, no stock (quantities 0, rule 3). Supplier `Bliz` (group Dritte-Händler, assumed) via migration `d3e4f5a6b7c8`. Open: the expected receipt with quantity 0 stays in "Pending".
 
+**Columbia parser (2026-10-03):** `app/services/parsers/columbia.py` reads the Columbia order acknowledgement (`Auftragsempfangsbestätigung`, `OA…`, Liq and Regulär). One item per size, type `auftragsbestaetigung` (expected delivery, no stock), supplier `Columbia` (group Dritte-Händler, assumed), migration `f5a6b7c8d9e0`. All 6 sample files parse with matching totals. `ek` = net price per piece. **Open:** the document has no UVP (required field) → every row carries a "UVP missing" warning and the UVP must be entered in the preview; name/colour are cut off at 50 characters by Columbia. `supplier_article_no` = style+colour code (`AO3772845`), `article_no` = 10-digit material number — assumption, confirm. Next parsers: Gonso (ws4sports), PPS Sportsgoods, PUMA, Bliz helmet, Maier Sports.
+
 The previously queued items below follow the redesign:
 
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3–S7) into `main` — at the end of this session.
