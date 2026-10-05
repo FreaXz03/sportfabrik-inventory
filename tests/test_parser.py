@@ -630,3 +630,25 @@ def test_columbia_linesheet_wird_je_farbe_und_groesse_gelesen():
 def test_columbia_linesheet_meldet_abweichenden_stil_index():
     ergebnis = parse_document(_linesheet_pdf(index_stil="2088999"))
     assert len(ergebnis["warnings"]) == 1
+
+
+def test_columbia_linesheet_praeparierte_seite_wird_begrenzt_gemeldet():
+    """Resource guard: a page with thousands of 3-digit words is reported, not crunched."""
+    with pymupdf.open() as document:
+        titel = document.new_page()
+        titel.insert_text((30, 40), "CHE | F26 OUTDOOR Created 12/17/2025")
+        seite = document.new_page()
+        seite.insert_text((30, 50), "2088363")
+        for index in range(300):
+            seite.insert_text((142 + (index % 6) * 60, 80 + (index // 6) * 2), "123")
+        seite.insert_text((346, 700), "165.00")
+        seite.insert_text((410, 700), "MSRP")
+        seite.insert_text((346, 720), "78.60")
+        seite.insert_text((410, 720), "BASE")
+        seite.insert_text((142, 710), "XS S M")
+        ende = document.new_page()
+        for y, text in ((40, "Columbia Sportswear International SaRL"), (60, "STYLE NUMBER INDEX"), (80, "2088363........ 1")):
+            ende.insert_text((30, y), text)
+        pdf = document.tobytes()
+    with pytest.raises(DocumentParseError):
+        parse_document(pdf)

@@ -48,6 +48,13 @@ LINKS = 40  # Stil-Nr. und Titel stehen links davon
 FARBE_AB = 138
 PREIS_AB = 340
 GRUPPEN = ("FREIZEIT", "OUTDOOR", "SKI")
+# Obergrenzen gegen präparierte PDFs (die Farbzuordnung ist Wörter × Codes):
+# ein echtes Linesheet hat höchstens ~5 Modelle je Seite, ~12 Farben je Modell
+# und ~20 Grössen.
+MAX_MODELLE_JE_SEITE = 12
+MAX_FARBEN = 40
+MAX_GROESSEN = 40
+MAX_WORTE_JE_SEITE = 5000
 
 
 def erkenne(document: Document) -> bool:
@@ -120,6 +127,10 @@ def _bloecke(page) -> list[dict]:
         (w for w in worte if STIL.fullmatch(w[4]) and w[0] < LINKS and w[1] < 700),
         key=lambda w: w[1],
     )
+    if len(worte) > MAX_WORTE_JE_SEITE or len(anker) > MAX_MODELLE_JE_SEITE:
+        return [dict(stil=a[4], titel="", fehler=True, seite=page.number) for a in anker[:MAX_MODELLE_JE_SEITE]] or [
+            dict(stil="?", titel="", fehler=True, seite=page.number)
+        ]
     ergebnisse = []
     for index, stil in enumerate(anker):
         bis = anker[index + 1][1] - 36 if index + 1 < len(anker) else 760
@@ -135,7 +146,13 @@ def _bloecke(page) -> list[dict]:
             None,
         )
         farbband = [w for w in region if w[0] >= FARBE_AB and w[1] > stil[1] and w[1] < msrp[1] - 3]
+        if sum(1 for w in farbband if CODE.fullmatch(w[4])) > MAX_FARBEN:
+            ergebnisse.append(dict(stil=stil[4], titel=titel, fehler=True))
+            continue
         groessen, laengen = _groessen(region, msrp[1] + 2, base[1] + 1)
+        if len(groessen) > MAX_GROESSEN or len(laengen) > MAX_GROESSEN:
+            ergebnisse.append(dict(stil=stil[4], titel=titel, fehler=True))
+            continue
         ergebnisse.append(
             dict(
                 stil=stil[4],
