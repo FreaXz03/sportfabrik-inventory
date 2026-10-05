@@ -356,7 +356,7 @@ deliver). The last two no longer count as open; no stock movement (a transfer
 in transit is in no stock, the units already left the source). `aufgeloest_am`
 marks an `in_klaerung` note replaced by a declaration. `wareneingaenge.status`
 gains `abgeschlossen` (nothing open, at least one remainder declared).
-Migration `c8d9e0f1a2b3`; downgrade refuses while differences exist.
+Migration `e0f1a2b3c4d5`; downgrade refuses while differences exist.
 
 ### `retouren` (Package 4a, 2026-10-05)
 Customer return: `lagerort_id`, `varianten_id`, `menge`, `grund`, `zustand`,
@@ -366,7 +366,7 @@ reference from the till, free text), `status` (`beantragt`, `in_pruefung`,
 `abgeschrieben`), who/when for booking and decision. Held stock itself lives in
 `bestand.menge_gesperrt`; every change is a `lagerbewegungen` row with
 `bestandsart = gesperrt` (`retoure`, `freigabe`, `ausbuchung`). A release is two
-rows (`gesperrt` −n, `verkaufbar` +n). Migration `b7c8d9e0f1a2`; downgrade
+rows (`gesperrt` −n, `verkaufbar` +n). Migration `d9e0f1a2b3c4`; downgrade
 refuses while returns exist.
 
 ### `bestand`
@@ -508,8 +508,9 @@ above):
 
 | `f5a6b7c8d9e0` | Supplier Columbia with parser (2026-10-03): `parser_key` `columbia`, group third-party dealer (999). Data only |
 | `a6b7c8d9e0f1` | Supplier Gonso with parser (2026-10-05): `parser_key` `gonso`, group third-party dealer (999). Data only |
-| `b7c8d9e0f1a2` | Returns and held stock (2026-10-05): `bestand.menge_gesperrt`, `lagerbewegungen.bestandsart` and types `retoure`/`freigabe`, table `retouren`. Downgrade refuses while returns exist |
-| `c8d9e0f1a2b3` | Delivery remainders (2026-10-05): table `lieferung_differenzen`, `wareneingaenge.status` gains `abgeschlossen`. Downgrade refuses while differences exist |
+| `b7c8d9e0f1a2` | Supplier "Bestellplan (Dritte-Händler)" with parser (2026-10-05): `parser_key` `bestellplan`, group third-party dealer (999). Data only |
+| `d9e0f1a2b3c4` | Returns and held stock (2026-10-05): `bestand.menge_gesperrt`, `lagerbewegungen.bestandsart` and types `retoure`/`freigabe`, table `retouren`. Downgrade refuses while returns exist |
+| `e0f1a2b3c4d5` | Delivery remainders (2026-10-05): table `lieferung_differenzen`, `wareneingaenge.status` gains `abgeschlossen`. Downgrade refuses while differences exist |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

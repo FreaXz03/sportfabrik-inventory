@@ -38,6 +38,8 @@ LIEFERANTEN_SEED = [
     {"name": "Columbia", "typ": "drittanbieter", "parser_key": "columbia"},
     # Gonso-Auftrag aus dem Elastic-Portal von ws4sports (Migration a6b7c8d9e0f1, 05.10.2026).
     {"name": "Gonso", "typ": "drittanbieter", "parser_key": "gonso"},
+    # Interner Bestellplan Winter (Migration b7c8d9e0f1a2, 05.10.2026).
+    {"name": "Bestellplan (Dritte-Händler)", "typ": "drittanbieter", "parser_key": "bestellplan"},
 ]
 
 # Lieferantengruppe (= `lieferanten.typ`) → Code auf dem Etikett
