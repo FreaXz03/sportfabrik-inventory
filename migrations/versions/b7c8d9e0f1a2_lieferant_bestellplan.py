@@ -8,8 +8,8 @@ siehe a1b2c3d4e5f6; tests/test_betrieb.py prueft, dass beides uebereinstimmt.
 from alembic import context, op
 import sqlalchemy as sa
 
-revision = 'a6b7c8d9e0f1'
-down_revision = 'f5a6b7c8d9e0'
+revision = 'b7c8d9e0f1a2'
+down_revision = 'a6b7c8d9e0f1'
 branch_labels = None
 depends_on = None
 

@@ -528,3 +528,60 @@ def test_columbia_summen_die_nicht_aufgehen_werden_gemeldet():
     assert len(falsch["warnings"]) == 1
     falsche_zeile = parse_document(_columbia_pdf(betrag="40,00"))
     assert all(len(i["warnings"]) == 2 for i in falsche_zeile["items"])
+
+
+# --- Gonso (Elastic-Auftrag von ws4sports) -------------------------------------
+
+
+def _gonso_pdf(einheiten="7", gesamt="445.20"):
+    """Ein Block wie im echten Beleg: der Name steht links zwischen
+    Tabellenkopf und „Stilnr.:", die Mengen stehen unter ihren Grössen; die
+    Grösse M hat keine Menge."""
+    with pymupdf.open() as document:
+        page = document.new_page()
+        for y, x, text in (
+            (40, 30, "Elastic-Auftrag # - 28941"), (52, 30, "Auftragsdatum - 06/01/2026"),
+            (64, 30, "Einheiten gesamt"), (76, 30, einheiten), (88, 30, "Einzelhandelspreis"),
+            (100, 30, "Gesamtbetrag"), (112, 30, f"CHF{gesamt}"),
+        ):
+            page.insert_text((x, y), text)
+        for y, x, text in (
+            (170, 263, "Einzelhandel"), (170, 329, "Großhandel"), (170, 447, "Menge"), (170, 554, "Gesamtkosten"),
+            (173, 105, '"Sitivo Tight M"'),
+            (182, 267, "CHF139.90"), (182, 340, "CHF63.60"), (182, 420, "7"), (182, 470, "CHF445.20"),
+            (182, 530, "/"), (182, 540, "CHF979.30"),
+            (185, 105, "Stilnr.: 3000402"), (195, 105, 'Farbname: "oak ash"'), (205, 105, "Farbcode: M19018"),
+            (210, 244, "Größe/Menge"),
+            (222, 250, "S"), (222, 262, "-"), (222, 270, "Normal"),
+            (222, 310, "M"), (222, 322, "-"), (222, 330, "Normal"),
+            (222, 370, "L"), (222, 382, "-"), (222, 390, "Normal"),
+            (222, 430, "XL"), (222, 452, "-"), (222, 462, "Normal"),
+            (234, 266, "1"), (234, 386, "2"), (234, 458, "4"),
+            (700, 30, "Seite - 1"), (712, 30, "Powered by Elastic"),
+        ):
+            page.insert_text((x, y), text)
+        return document.tobytes()
+
+
+def test_gonso_auftrag_wird_je_groesse_gelesen():
+    document, parser = read_and_detect(_gonso_pdf())
+    ergebnis = parse_with_parser(parser, document)
+    assert parser.KEY == "gonso" and ergebnis["supplier_name"] == "Gonso"
+    assert (ergebnis["document_type"], ergebnis["invoice_number"]) == ("bestellung", "28941")
+    assert str(parser.dates(document)["invoice_date"]) == "2026-01-06"
+    assert ergebnis["warnings"] == []
+    zeilen = [
+        (i["supplier_article_no"], i["article_no"], i["description"], i["color"], i["size"], i["quantity"], i["ek"], i["uvp"])
+        for i in ergebnis["items"]
+    ]
+    # Mengen stehen unter ihrer Grösse (x-Position); M hat keine Menge → keine Position.
+    assert zeilen == [
+        ("3000402", "M19018", "Sitivo Tight M", "oak ash", "S", "1", "63.60", "139.90"),
+        ("3000402", "M19018", "Sitivo Tight M", "oak ash", "L", "2", "63.60", "139.90"),
+        ("3000402", "M19018", "Sitivo Tight M", "oak ash", "XL", "4", "63.60", "139.90"),
+    ]
+
+
+def test_gonso_summen_die_nicht_aufgehen_werden_gemeldet():
+    falsch = parse_document(_gonso_pdf(einheiten="9"))
+    assert len(falsch["warnings"]) == 1

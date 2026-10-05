@@ -36,7 +36,9 @@ LIEFERANTEN_SEED = [
     {"name": "Bliz", "typ": "drittanbieter", "parser_key": "bliz"},
     # Columbia-Auftragsempfangsbestätigung (Migration f5a6b7c8d9e0, 03.10.2026).
     {"name": "Columbia", "typ": "drittanbieter", "parser_key": "columbia"},
-    # Interner Bestellplan Winter (Migration a6b7c8d9e0f1, 05.10.2026).
+    # Gonso-Auftrag aus dem Elastic-Portal von ws4sports (Migration a6b7c8d9e0f1, 05.10.2026).
+    {"name": "Gonso", "typ": "drittanbieter", "parser_key": "gonso"},
+    # Interner Bestellplan Winter (Migration b7c8d9e0f1a2, 05.10.2026).
     {"name": "Bestellplan (Dritte-Händler)", "typ": "drittanbieter", "parser_key": "bestellplan"},
 ]
 
