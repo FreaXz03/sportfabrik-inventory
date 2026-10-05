@@ -47,11 +47,15 @@ def pruefe_bestand(session, lagerort_id: int | None = None) -> dict:
     Lagerort. Eine Abweichung heisst: der Bestand wurde am Journal vorbei
     verändert (oder das Journal ist unvollständig). Ein negativer Bestand ist
     erlaubt (Entscheid 22.09.2026) und wird nur gezählt."""
-    summen = select(
-        Lagerbewegung.varianten_id,
-        Lagerbewegung.lagerort_id,
-        func.sum(Lagerbewegung.menge).label("summe"),
-    ).group_by(Lagerbewegung.varianten_id, Lagerbewegung.lagerort_id)
+    summen = (
+        select(
+            Lagerbewegung.varianten_id,
+            Lagerbewegung.lagerort_id,
+            func.sum(Lagerbewegung.menge).label("summe"),
+        )
+        .where(Lagerbewegung.bestandsart == "verkaufbar")
+        .group_by(Lagerbewegung.varianten_id, Lagerbewegung.lagerort_id)
+    )
     bestaende = select(Bestand.varianten_id, Bestand.lagerort_id, Bestand.menge)
     if lagerort_id is not None:
         summen = summen.where(Lagerbewegung.lagerort_id == lagerort_id)

@@ -133,6 +133,7 @@ def korrigieren(
                 select(func.max(Lagerbewegung.id)).where(
                     Lagerbewegung.varianten_id == varianten_id,
                     Lagerbewegung.lagerort_id == lagerort_id,
+                    Lagerbewegung.bestandsart == "verkaufbar",
                 )
             ) or 0
             geaendert = neuer_stand > stand_bewegung_id

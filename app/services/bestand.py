@@ -44,7 +44,7 @@ def _mit_filtern(abfrage, lagerort_id, suche, nur_vorhanden, nur_negativ=False, 
     if nur_vorhanden:
         # Nicht `> 0`: ein negativer Bestand ist möglich (bestätigt am
         # 22.09.2026) und muss gerade dann sichtbar sein.
-        abfrage = abfrage.where(Bestand.menge != 0)
+        abfrage = abfrage.where(or_(Bestand.menge != 0, Bestand.menge_gesperrt != 0))
     if nur_negativ:
         abfrage = abfrage.where(Bestand.menge < 0)
     if varianten_ids is not None:
@@ -120,6 +120,7 @@ def liste_bestand(
             .where(
                 Lagerbewegung.varianten_id.in_({z[0].varianten_id for z in zeilen}),
                 Lagerbewegung.lagerort_id.in_({z[0].lagerort_id for z in zeilen}),
+                Lagerbewegung.bestandsart == "verkaufbar",
             )
             .group_by(Lagerbewegung.varianten_id, Lagerbewegung.lagerort_id)
         ):
@@ -147,6 +148,8 @@ def liste_bestand(
                     "verkauf": bool(lagerort.verkauf),
                 },
                 "menge": _zahl(bestand.menge),
+                # Rückware in Prüfung (Paket 4): nicht verkäuflich, nicht in `menge`.
+                "gesperrt": _zahl(bestand.menge_gesperrt),
                 "letzte_bewegung_id": letzte_bewegung.get(
                     (variante.id, lagerort.id), 0
                 ),

@@ -28,6 +28,7 @@ from .routers.erfassung import router as erfassung_router
 from .routers.etiketten import router as etiketten_router
 from .routers.kategorien import router as kategorien_router
 from .routers.ausbuchung import router as ausbuchung_router
+from .routers.retoure import router as retoure_router
 from .routers.bestand import router as bestand_router
 from .routers.korrektur import router as korrektur_router
 from .routers.umlagerung import router as umlagerung_router
@@ -87,6 +88,7 @@ app.include_router(dashboard_router)
 app.include_router(wareneingang_router)
 app.include_router(bestand_router)
 app.include_router(ausbuchung_router)
+app.include_router(retoure_router)
 app.include_router(umlagerung_router)
 app.include_router(korrektur_router)
 app.include_router(erfassung_router)

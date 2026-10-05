@@ -452,8 +452,12 @@ class Lagerbewegung(Base):
     __tablename__ = "lagerbewegungen"
     __table_args__ = (
         CheckConstraint(
-            "typ IN ('zugang', 'verkauf', 'ausbuchung', 'korrektur', 'umlagerung')",
+            "typ IN ('zugang', 'verkauf', 'ausbuchung', 'korrektur', 'umlagerung', 'retoure', 'freigabe')",
             name="ck_lagerbewegungen_typ",
+        ),
+        CheckConstraint(
+            "bestandsart IN ('verkaufbar', 'gesperrt')",
+            name="ck_lagerbewegungen_bestandsart",
         ),
     )
 
@@ -464,6 +468,12 @@ class Lagerbewegung(Base):
     typ: Mapped[str] = mapped_column(String(20))
     menge: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     grund: Mapped[str | None] = mapped_column(String(200))
+    # Welcher Bestand sich ändert: `verkaufbar` (`bestand.menge`) oder
+    # `gesperrt` (Rückware in Prüfung, `bestand.menge_gesperrt`, Paket 4).
+    # Eine Freigabe sind zwei Zeilen: gesperrt −n und verkaufbar +n.
+    bestandsart: Mapped[str] = mapped_column(
+        String(12), default="verkaufbar", server_default="verkaufbar"
+    )
     # Nur bei einer Umlagerung, die in der Zielfiliale die Reduktionsuhr
     # startet (D13: externer Standort -> Filiale, F11: Filiale ohne bisherigen
     # Wareneingang). Sonst leer - das Datum eines Zugangs steht am
@@ -492,7 +502,50 @@ class Bestand(Base):
     varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), primary_key=True)
     lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), primary_key=True)
     menge: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, server_default=text("0"))
+    # Rückware in Prüfung (Paket 4): nicht verkäuflich, zählt nicht in `menge`.
+    menge_gesperrt: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=0, server_default=text("0")
+    )
     aeltestes_eingangsdatum: Mapped[date | None] = mapped_column(Date)
+
+
+class Retoure(Base):
+    """Kundenretoure (Paket 4a, 05.10.2026). Grund Passform/Geschmack: bucht
+    sofort in den gesperrten Bestand (`in_pruefung`). Jeder andere Grund ist
+    erst `beantragt` und bucht nichts, bis Filialleiter/Zentrale genehmigt
+    (Entscheid Q8). Ergebnis: freigegeben (wieder verkäuflich), Lieferanten-
+    retoure oder abgeschrieben. Die Erstattung läuft an der Kasse; hier steht
+    nur der Verweis darauf."""
+
+    __tablename__ = "retouren"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('beantragt', 'in_pruefung', 'abgeschlossen', 'abgelehnt')",
+            name="ck_retouren_status",
+        ),
+        CheckConstraint(
+            "ergebnis IS NULL OR ergebnis IN ('freigegeben', 'lieferant', 'abgeschrieben')",
+            name="ck_retouren_ergebnis",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lagerort_id: Mapped[int] = mapped_column(ForeignKey("lagerorte.id"), index=True)
+    varianten_id: Mapped[int] = mapped_column(ForeignKey("varianten.id"), index=True)
+    menge: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    grund: Mapped[str] = mapped_column(String(20))
+    freitext: Mapped[str | None] = mapped_column(String(200))
+    zustand: Mapped[str] = mapped_column(String(20))
+    verkauf_bewegung_id: Mapped[int | None] = mapped_column(ForeignKey("lagerbewegungen.id"))
+    erstattungsreferenz: Mapped[str | None] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    ergebnis: Mapped[str | None] = mapped_column(String(20))
+    erfasst_von_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    erfasst_von_name: Mapped[str | None] = mapped_column(String(100))
+    erfasst_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    entschieden_von_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    entschieden_von_name: Mapped[str | None] = mapped_column(String(100))
+    entschieden_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ReduktionManuell(Base):

@@ -348,8 +348,19 @@ already right — "counted, no difference"), `bestaetigt_trotz_aenderung` (the
 user confirmed although the stock moved since the count started), user snapshot
 and time. Serves as proof of a stock-take, e.g. the opening count of the pilot.
 
+### `retouren` (Package 4a, 2026-10-05)
+Customer return: `lagerort_id`, `varianten_id`, `menge`, `grund`, `zustand`,
+`verkauf_bewegung_id` (original sale, optional), `erstattungsreferenz` (refund
+reference from the till, free text), `status` (`beantragt`, `in_pruefung`,
+`abgeschlossen`, `abgelehnt`), `ergebnis` (`freigegeben`, `lieferant`,
+`abgeschrieben`), who/when for booking and decision. Held stock itself lives in
+`bestand.menge_gesperrt`; every change is a `lagerbewegungen` row with
+`bestandsart = gesperrt` (`retoure`, `freigabe`, `ausbuchung`). A release is two
+rows (`gesperrt` −n, `verkaufbar` +n). Migration `b7c8d9e0f1a2`; downgrade
+refuses while returns exist.
+
 ### `bestand`
-Current stock per variant × branch (composite primary key), derived from
+Current stock per variant × branch (composite primary key; `menge` = saleable, `menge_gesperrt` = returns in inspection), derived from
 `lagerbewegungen` and also kept in sync there (never written directly
 except to update the running total). `aeltestes_eingangsdatum` (oldest
 receipt date) later serves the markdown logic (Phase D, 18/36 months
