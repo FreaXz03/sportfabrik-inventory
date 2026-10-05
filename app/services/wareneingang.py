@@ -164,6 +164,13 @@ def liste_erwartete(
             .where(WareneingangPosition.wareneingang_id == wareneingang.id)
             .order_by(WareneingangPosition.id)
         ).all()
+        # Import hier: lieferung_differenz importiert ausbuchung, das wiederum
+        # dieses Modul (Zirkel beim Laden).
+        from .lieferung_differenz import differenzen_je_position, geschlossene_menge
+
+        position_ids = [position.id for position, _, _ in positionen]
+        differenzen = differenzen_je_position(session, position_ids)
+        geschlossen = {pid: geschlossene_menge(session, pid) for pid in position_ids}
         ergebnis.append(
             {
                 "id": wareneingang.id,
@@ -185,6 +192,11 @@ def liste_erwartete(
                     "versanddatum": wareneingang.versanddatum.isoformat()
                     if wareneingang.versanddatum
                     else None,
+                    # Tage seit dem Versand und wer versendet hat (Paket 4b).
+                    "tage_unterwegs": (date.today() - wareneingang.versanddatum).days
+                    if wareneingang.versanddatum
+                    else None,
+                    "versendet_von": wareneingang.versendet_von,
                 },
                 "lagerort": {
                     "id": lagerort.id,
@@ -208,8 +220,11 @@ def liste_erwartete(
                         "menge_erwartet": _zahl(position.menge),
                         "menge_eingetroffen": _zahl(position.menge_eingetroffen),
                         "menge_offen": _zahl(
-                            (position.menge or 0) - (position.menge_eingetroffen or 0)
+                            (position.menge or 0)
+                            - (position.menge_eingetroffen or 0)
+                            - geschlossen.get(position.id, 0)
                         ),
+                        "differenzen": differenzen.get(position.id, []),
                     }
                     for position, variante, artikel in positionen
                 ],
@@ -379,13 +394,16 @@ def bestaetige_ankunft(
 def _abschluss(session, wareneingang, positionen: dict, gebucht: dict, mehrlieferungen: list) -> dict:
     """Status nachführen (D22: erst ohne offene Position `eingetroffen`) und
     die Antwort der Ankunftsbestätigung bauen."""
+    from .lieferung_differenz import geschlossene_menge, schliesse_wenn_erledigt
+
     offen = [
         position
         for position in positionen.values()
-        if (position.menge or 0) > (position.menge_eingetroffen or 0)
+        if (position.menge or 0) - (position.menge_eingetroffen or 0) - geschlossene_menge(session, position.id) > 0
     ]
     if not offen:
-        wareneingang.status = "eingetroffen"
+        session.flush()
+        schliesse_wenn_erledigt(session, wareneingang)
     session.flush()
     return {
         "wareneingang_id": wareneingang.id,

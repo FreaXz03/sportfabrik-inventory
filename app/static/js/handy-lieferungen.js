@@ -159,7 +159,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mengen: mengen, eingangsdatum: delivery.lagerort.verkauf ? dateInput.value : null })
       });
-      var message = result.status === 'eingetroffen'
+      var message = (result.status === 'eingetroffen' || result.status === 'abgeschlossen')
         ? t('wareneingaenge.confirmed_complete')
         : t('wareneingaenge.confirmed_partial', { offen: result.offene_positionen });
       var over = result.mehrlieferungen || [];

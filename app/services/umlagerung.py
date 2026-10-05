@@ -42,6 +42,7 @@ from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Artikel, Bestand, Lagerort, Variante, Wareneingang, WareneingangPosition
 from . import operation
 from .ausbuchung import buche_bewegung, sperren, zahl
+from .lieferung_differenz import geschlossene_menge
 from .reduktion import letzter_wareneingang
 from .wareneingang import MAX_MENGE
 
@@ -290,7 +291,8 @@ def stornieren(
             .where(WareneingangPosition.wareneingang_id == wareneingang.id)
             .order_by(WareneingangPosition.id)
         ):
-            offen = (position.menge or 0) - (position.menge_eingetroffen or 0)
+            # Als verloren erklärte Stücke tauchen an der Quelle nicht wieder auf (4b).
+            offen = (position.menge or 0) - (position.menge_eingetroffen or 0) - geschlossene_menge(session, position.id)
             if offen <= 0:
                 continue
             buche_bewegung(

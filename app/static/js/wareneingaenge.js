@@ -6,6 +6,8 @@
   let aktiverLagerort = null;
   // Umleiten dürfen nur Filialleiter und Zentrale (Punkt 3); Ziele = buchbare Orte.
   let umleitenZiele = null;
+  // Verloren / vom Lieferanten storniert erklären dürfen nur Filialleiter und Zentrale (Q8).
+  let darfVerwalten = false;
 
   function node(tag, text, cls) {
     const el = document.createElement(tag);
@@ -79,7 +81,7 @@
       : t('wareneingaenge.document_line', { typ: t('document_types.' + lieferung.dokument.typ), nummer: lieferung.dokument.nummer });
     panel.append(node('h2', titel));
     const zeile = (u
-      ? [lieferung.lagerort.code + ' · ' + lieferung.lagerort.name, t('wareneingaenge.sent_on', { datum: datum(u.versanddatum) })]
+      ? [lieferung.lagerort.code + ' · ' + lieferung.lagerort.name, t('wareneingaenge.sent_on', { datum: datum(u.versanddatum) }), u.tage_unterwegs !== null && u.tage_unterwegs !== undefined ? t('wareneingaenge.transit_days', { tage: u.tage_unterwegs }) : null]
       : [
         lieferung.dokument.lieferant ? t('wareneingaenge.supplier_prefix') + lieferung.dokument.lieferant : null,
         lieferung.lagerort.code + ' · ' + lieferung.lagerort.name,
@@ -110,6 +112,8 @@
     panel.append(steuerung, rueckmeldung);
     const umleitung = umleitenBereich(lieferung);
     if (umleitung) panel.append(umleitung);
+    const rest = restBereich(lieferung);
+    if (rest) panel.append(rest);
     return panel;
   }
 
@@ -156,12 +160,80 @@
     return bereich;
   }
 
+  // Offener Rest nach einer Teilankunft (Paket 4b): in Klärung setzen (alle),
+  // als verloren oder vom Lieferanten storniert erklären (Filialleiter/Zentrale).
+  function restBereich(lieferung) {
+    const offene = lieferung.positionen.filter((p) => Number(p.menge_offen) > 0 && Number(p.menge_eingetroffen) > 0);
+    const erklaerte = lieferung.positionen.filter((p) => (p.differenzen || []).length);
+    if (!offene.length && !erklaerte.length) return null;
+    const bereich = node('div', null, 'remainder');
+    bereich.append(node('h3', t('wareneingaenge.remainder_heading')));
+    for (const position of lieferung.positionen) {
+      const name = [position.marke, position.bezeichnung, [position.farbe, position.groesse].filter(Boolean).join(' / ')].filter(Boolean).join(' ');
+      for (const d of position.differenzen || []) {
+        const text = t('wareneingaenge.difference.' + d.art, { menge: menge(d.menge), artikel: name }) + (d.notiz ? ': ' + d.notiz : '') + (d.aufgeloest ? ' ' + t('wareneingaenge.difference.resolved') : '');
+        bereich.append(node('p', text, 'muted'));
+      }
+    }
+    for (const position of offene) {
+      const name = [position.marke, position.bezeichnung, [position.farbe, position.groesse].filter(Boolean).join(' / ')].filter(Boolean).join(' ');
+      const zeile = node('div', null, 'filters');
+      zeile.append(node('p', t('wareneingaenge.remainder_line', { artikel: name, offen: menge(position.menge_offen) })));
+      const anzahl = document.createElement('input');
+      anzahl.type = 'number';
+      anzahl.min = '1';
+      anzahl.step = '1';
+      anzahl.value = menge(position.menge_offen);
+      anzahl.setAttribute('aria-label', t('wareneingaenge.remainder_quantity'));
+      const notiz = document.createElement('input');
+      notiz.type = 'text';
+      notiz.maxLength = 200;
+      notiz.setAttribute('aria-label', t('wareneingaenge.remainder_note'));
+      notiz.placeholder = t('wareneingaenge.remainder_note');
+      const rueckmeldung = node('p', '', 'muted');
+      rueckmeldung.setAttribute('role', 'status');
+      const knoepfe = [['in_klaerung', true]];
+      if (darfVerwalten) {
+        knoepfe.push(['verloren', true]);
+        if (!lieferung.umlagerung) knoepfe.push(['lieferant_storniert', true]);
+      }
+      zeile.append(anzahl, notiz);
+      for (const [art] of knoepfe) {
+        const knopf = node('button', t('wareneingaenge.action.' + art), 'secondary');
+        knopf.type = 'button';
+        knopf.addEventListener('click', () => erklaeren(lieferung, position, art, anzahl.value, notiz.value, knopf, rueckmeldung));
+        zeile.append(knopf);
+      }
+      bereich.append(zeile, rueckmeldung);
+    }
+    return bereich;
+  }
+
+  async function erklaeren(lieferung, position, art, anzahl, notiz, knopf, rueckmeldung) {
+    knopf.disabled = true;
+    try {
+      const antwort = await fetch('/api/wareneingaenge/' + lieferung.id + '/differenz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ position_id: position.id, art: art, menge: anzahl, notiz: notiz.trim() || null })
+      });
+      const ergebnis = await antwort.json().catch(() => ({}));
+      if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('wareneingaenge.load_error'));
+      await laden();
+      $('status').textContent = t(ergebnis.status === 'abgeschlossen' ? 'wareneingaenge.remainder_closed' : 'wareneingaenge.remainder_saved');
+    } catch (fehler) {
+      rueckmeldung.textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
+      knopf.disabled = false;
+    }
+  }
+
   async function umleitenZieleLaden() {
     if (umleitenZiele !== null) return;
     umleitenZiele = [];
     try {
       const me = await (await fetch('/api/me')).json();
       if (!['chef', 'admin'].includes(me.role)) return;
+      darfVerwalten = true;
       const stamm = await (await fetch('/api/erfassen/stammdaten')).json();
       umleitenZiele = stamm.lagerorte || [];
     } catch (fehler) {
@@ -185,7 +257,7 @@
       });
       const ergebnis = await antwort.json();
       if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('wareneingaenge.load_error'));
-      let meldung = ergebnis.status === 'eingetroffen'
+      let meldung = ['eingetroffen', 'abgeschlossen'].includes(ergebnis.status)
         ? t('wareneingaenge.confirmed_complete')
         : t('wareneingaenge.confirmed_partial', { offen: ergebnis.offene_positionen });
       // Mehr eingetroffen als erwartet: gebucht wird trotzdem, gesagt wird es

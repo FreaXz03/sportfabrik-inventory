@@ -352,13 +352,15 @@ class Wareneingang(Base):
     Wareneingang `erwartet`, bis keine Position mehr offen ist (D22); der
     bereits gebuchte Teil steht in `wareneingang_positionen.menge_eingetroffen`.
     `storniert` gibt es nur bei einer Umlagerung unterwegs (29.09.2026): der
-    offene Rest ist an die Quelle zurückgebucht.
+    offene Rest ist an die Quelle zurückgebucht. `abgeschlossen` (Paket 4b):
+    keine Position mehr offen, aber mindestens ein Rest wurde ausdrücklich als
+    verloren oder vom Lieferanten storniert erklärt (`lieferung_differenzen`).
     """
 
     __tablename__ = "wareneingaenge"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('erwartet', 'eingetroffen', 'storniert')",
+            "status IN ('erwartet', 'eingetroffen', 'storniert', 'abgeschlossen')",
             name="ck_wareneingaenge_status",
         ),
     )
@@ -429,6 +431,37 @@ class WareneingangPosition(Base):
     # Nur bei einer Umlagerung: das Eingangsdatum der Ware an der Quelle beim
     # Versand (D17 - Filiale -> Filiale behält ihr Datum).
     mitgebracht_datum: Mapped[date | None] = mapped_column(Date)
+
+
+class LieferungDifferenz(Base):
+    """Ausdrücklicher Umgang mit einer offenen Restmenge (Paket 4b,
+    05.10.2026): `in_klaerung` (Fehlmenge wird untersucht, schliesst nichts),
+    `verloren` (unterwegs verloren, nur Filialleiter/Zentrale) oder
+    `lieferant_storniert` (nur bei Lieferantenlieferungen). Verloren und
+    storniert zählen nicht mehr als offen. Es gibt keine Lagerbewegung: die Ware
+    ist beim Versand schon von der Quelle abgegangen und taucht dort nicht
+    wieder auf (Umlagerung unterwegs ist in keinem Bestand). Eine Meldung
+    `in_klaerung` wird mit der späteren Erklärung `aufgeloest_am` gesetzt."""
+
+    __tablename__ = "lieferung_differenzen"
+    __table_args__ = (
+        CheckConstraint(
+            "art IN ('in_klaerung', 'verloren', 'lieferant_storniert')",
+            name="ck_lieferung_differenzen_art",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    wareneingang_position_id: Mapped[int] = mapped_column(
+        ForeignKey("wareneingang_positionen.id"), index=True
+    )
+    art: Mapped[str] = mapped_column(String(20))
+    menge: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    notiz: Mapped[str | None] = mapped_column(String(200))
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    zeitpunkt: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    aufgeloest_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class WareneingangPositionQuelle(Base):

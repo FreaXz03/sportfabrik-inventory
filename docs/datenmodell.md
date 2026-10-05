@@ -348,6 +348,16 @@ already right — "counted, no difference"), `bestaetigt_trotz_aenderung` (the
 user confirmed although the stock moved since the count started), user snapshot
 and time. Serves as proof of a stock-take, e.g. the opening count of the pilot.
 
+### `lieferung_differenzen` (Package 4b, 2026-10-05)
+Explicit outcome for an open remainder of a delivery position: `art` is
+`in_klaerung` (shortage under investigation, remainder stays open),
+`verloren` (lost in transit) or `lieferant_storniert` (supplier will not
+deliver). The last two no longer count as open; no stock movement (a transfer
+in transit is in no stock, the units already left the source). `aufgeloest_am`
+marks an `in_klaerung` note replaced by a declaration. `wareneingaenge.status`
+gains `abgeschlossen` (nothing open, at least one remainder declared).
+Migration `c8d9e0f1a2b3`; downgrade refuses while differences exist.
+
 ### `retouren` (Package 4a, 2026-10-05)
 Customer return: `lagerort_id`, `varianten_id`, `menge`, `grund`, `zustand`,
 `verkauf_bewegung_id` (original sale, optional), `erstattungsreferenz` (refund

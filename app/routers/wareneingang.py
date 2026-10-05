@@ -17,6 +17,8 @@ from starlette.concurrency import run_in_threadpool
 
 from ..core.database import get_session
 from ..core.i18n import translate
+from ..services.lagerorte import list_wareneingang_lagerorte
+from ..services.lieferung_differenz import DifferenzForbidden, DifferenzRejected, erklaere
 from ..services.wareneingang import (
     AnkunftRejected,
     bestaetige_ankunft,
@@ -131,6 +133,54 @@ async def api_lieferung_umleiten(
         )
     except AnkunftRejected as exc:
         raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, translate("errors.preview.import_db_error", language)
+        ) from exc
+
+
+class DifferenzBody(BaseModel):
+    position_id: int
+    art: str
+    # Als Text, damit nichts über float läuft (CLAUDE.md „Technik").
+    menge: str
+    notiz: str | None = None
+
+
+@router.post("/api/wareneingaenge/{wareneingang_id}/differenz")
+async def api_differenz_erklaeren(
+    wareneingang_id: int,
+    body: DifferenzBody,
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    """Offenen Rest erklären (Paket 4b): `in_klaerung` jede Mitarbeiterin der
+    erwartenden Filiale; `verloren` und `lieferant_storniert` nur
+    Filialleiter/Zentrale (Entscheid Q8)."""
+    from ..core.database import SessionLocal
+    from sqlalchemy.exc import SQLAlchemyError
+
+    erlaubt = {lagerort.id for lagerort in list_wareneingang_lagerorte(session, user)}
+    try:
+        return await run_in_threadpool(
+            lambda: erklaere(
+                SessionLocal,
+                wareneingang_id,
+                position_id=body.position_id,
+                art=body.art,
+                menge=body.menge,
+                notiz=body.notiz,
+                darf_verwalten=user.role in ("chef", "admin"),
+                erlaubte_lagerorte=erlaubt,
+                benutzer={"kassennummer": user.kassennummer, "name": user.name},
+                language=language,
+            )
+        )
+    except DifferenzRejected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except DifferenzForbidden as exc:
+        raise HTTPException(403, str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(
             503, translate("errors.preview.import_db_error", language)

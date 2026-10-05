@@ -90,7 +90,7 @@ def finde_kandidaten(
             Dokument.status == "aktiv",
             Dokument.hochgeladen_am >= seit,
             Wareneingang.lagerort_id == lagerort_id,
-            Wareneingang.status.in_(("erwartet", "eingetroffen")),
+            Wareneingang.status.in_(("erwartet", "eingetroffen", "abgeschlossen")),
         )
     ).all()
     kandidaten = []
@@ -136,6 +136,6 @@ def pruefe_ziel(
             Dokument.lieferant_id == lieferant_id,
             Dokument.status == "aktiv",
             Wareneingang.lagerort_id == lagerort_id,
-            Wareneingang.status.in_(("erwartet", "eingetroffen")),
+            Wareneingang.status.in_(("erwartet", "eingetroffen", "abgeschlossen")),
         )
     )
