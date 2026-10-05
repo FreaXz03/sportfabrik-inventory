@@ -47,7 +47,7 @@ def test_migrationen_offline_fuer_postgres_und_online_auf_sqlite(tmp_path):
         codes = [row[0] for row in db.execute("SELECT code FROM lagerorte ORDER BY code")]
         assert codes == ["DIETIKON", "GEWA", "SF1", "SF2", "SF3", "SF4", "VEBO"]
         parser = {row[0] for row in db.execute("SELECT parser_key FROM lieferanten WHERE parser_key IS NOT NULL")}
-        assert parser == {"intersport", "alpina", "chrissports", "cmp", "bliz", "quintet", "columbia"}
+        assert parser == {"intersport", "alpina", "chrissports", "cmp", "bliz", "quintet", "columbia", "bestellplan"}
         spalten = {row[1] for row in db.execute("PRAGMA table_info(users)")}
         assert {"fehlversuche", "gesperrt_bis"} <= spalten  # Login-Sperre (S2)
 
@@ -130,6 +130,7 @@ def test_datenmigrationen_passen_zu_den_stammdaten():
     bliz = _migration("d3e4f5a6b7c8_lieferant_bliz")
     quintet = _migration("e4f5a6b7c8d9_tnf_quintet_parser")
     columbia = _migration("f5a6b7c8d9e0_lieferant_columbia")
+    bestellplan = _migration("a6b7c8d9e0f1_lieferant_bestellplan")
     nach_migrationen = [
         dict(eintrag, parser_key=quintet.PARSER_KEYS.get(eintrag["name"], eintrag["parser_key"]))
         for eintrag in [LIEFERANTEN_SEED[0]]
@@ -137,6 +138,7 @@ def test_datenmigrationen_passen_zu_den_stammdaten():
         + parser._NEUE_LIEFERANTEN
         + bliz._NEUE_LIEFERANTEN
         + columbia._NEUE_LIEFERANTEN
+        + bestellplan._NEUE_LIEFERANTEN
     ]
     assert nach_migrationen == LIEFERANTEN_SEED
 

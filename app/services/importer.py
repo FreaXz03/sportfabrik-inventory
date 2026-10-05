@@ -302,13 +302,7 @@ def import_invoice(
             # wird erst bei Ankunft in einer Filiale gesetzt, damit die
             # Reduktionsuhr (18/36 Monate) nicht schon extern zu laufen
             # beginnt. Massgeblich ist `lagerorte.verkauf`, nie der Code.
-            lagerort_verkauft = session.scalar(
-                select(Lagerort.verkauf).where(Lagerort.id == lagerort_id)
-            )
             ware_ist_da = parsed["document_type"] in TYPEN_MIT_WARE
-            eingangsdatum = (
-                dates["invoice_date"] if ware_ist_da and lagerort_verkauft else None
-            )
             now = datetime.now(timezone.utc)
             dokument = Dokument(
                 lieferant_id=lieferant.id,
@@ -330,14 +324,33 @@ def import_invoice(
             # Bestand. Eine Auftragsbestätigung/Bestellung erzeugt einen
             # *erwarteten* Wareneingang; gebucht wird erst bei bestätigter
             # Ankunft (app/services/wareneingang.py).
-            wareneingang = Wareneingang(
-                dokument_id=dokument.id,
-                lagerort_id=lagerort_id,
-                status="eingetroffen" if ware_ist_da else "erwartet",
-                eingangsdatum=eingangsdatum,
-            )
-            session.add(wareneingang)
-            session.flush()
+            # Ein Plan über mehrere Filialen (Bestellplan) trägt je Position
+            # `lagerort_code`: dann entsteht je Filiale ein eigener
+            # Wareneingang. Ohne Code gilt der Lagerort des Dokuments.
+            lagerorte_nach_code = {
+                code: ort_id
+                for code, ort_id in session.execute(select(Lagerort.code, Lagerort.id))
+            }
+            eingaenge = {}
+
+            def eingang_fuer(item):
+                ort_id = lagerorte_nach_code.get(item.get("lagerort_code"), lagerort_id)
+                if ort_id not in eingaenge:
+                    verkauft = session.scalar(
+                        select(Lagerort.verkauf).where(Lagerort.id == ort_id)
+                    )
+                    eingang = Wareneingang(
+                        dokument_id=dokument.id,
+                        lagerort_id=ort_id,
+                        status="eingetroffen" if ware_ist_da else "erwartet",
+                        eingangsdatum=(
+                            dates["invoice_date"] if ware_ist_da and verkauft else None
+                        ),
+                    )
+                    session.add(eingang)
+                    session.flush()
+                    eingaenge[ort_id] = eingang
+                return eingaenge[ort_id]
 
             new_varianten, reused_varianten = 0, set()
             artikel_cache = {}
@@ -345,7 +358,7 @@ def import_invoice(
             kategorie_cache = {}
             # D-F2: vor jeder ersten Buchung eines Modells in dieser Lieferung
             # merken, ob es vorher schon reduziert war (Nachlieferung).
-            nachlieferungs_cache = {}
+            nachlieferungs_caches = {}
             seen = dates["invoice_date"]
             for item in parsed["items"]:
                 ean = item["ean"] or None
@@ -427,8 +440,13 @@ def import_invoice(
                 # (Nachlieferung) - muss vor dem Anlegen der Position
                 # passieren, sonst zählt `letzter_wareneingang` die eigene,
                 # gerade erst gebuchte Lieferung schon mit.
+                wareneingang = eingang_fuer(item)
+                ort_id = wareneingang.lagerort_id
                 if ware_ist_da:
-                    pruefe_und_merke(session, variante.artikel_id, lagerort_id, nachlieferungs_cache)
+                    pruefe_und_merke(
+                        session, variante.artikel_id, ort_id,
+                        nachlieferungs_caches.setdefault(ort_id, {}),
+                    )
 
                 quantity = Decimal(item["quantity"])
                 uvp = Decimal(item["uvp"])
@@ -456,16 +474,17 @@ def import_invoice(
                 if ware_ist_da:
                     buche_zugang(
                         session,
-                        lagerort_id=lagerort_id,
+                        lagerort_id=ort_id,
                         varianten_id=variante.id,
                         position_id=position.id,
                         menge=quantity,
-                        eingangsdatum=eingangsdatum,
+                        eingangsdatum=wareneingang.eingangsdatum,
                         benutzer=imported_by,
                         zeitpunkt=now,
                     )
 
-            erstelle_hinweise(session, lagerort_id, nachlieferungs_cache)
+            for ort_id, cache in nachlieferungs_caches.items():
+                erstelle_hinweise(session, ort_id, cache)
             result = dict(
                 invoice_id=dokument.id,
                 invoice_number=dokument.dokumentnummer,

@@ -36,6 +36,8 @@ LIEFERANTEN_SEED = [
     {"name": "Bliz", "typ": "drittanbieter", "parser_key": "bliz"},
     # Columbia-Auftragsempfangsbestätigung (Migration f5a6b7c8d9e0, 03.10.2026).
     {"name": "Columbia", "typ": "drittanbieter", "parser_key": "columbia"},
+    # Interner Bestellplan Winter (Migration a6b7c8d9e0f1, 05.10.2026).
+    {"name": "Bestellplan (Dritte-Händler)", "typ": "drittanbieter", "parser_key": "bestellplan"},
 ]
 
 # Lieferantengruppe (= `lieferanten.typ`) → Code auf dem Etikett
