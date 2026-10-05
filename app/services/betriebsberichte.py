@@ -76,6 +76,35 @@ def pruefe_bestand(session, lagerort_id: int | None = None) -> dict:
                     "summe_bewegungen": zahl(summe),
                 }
             )
+    # Gesperrter Bestand (Rückware in Prüfung, Paket 4) gegen seine eigenen Bewegungen.
+    gesperrt_summen = (
+        select(
+            Lagerbewegung.varianten_id,
+            Lagerbewegung.lagerort_id,
+            func.sum(Lagerbewegung.menge),
+        )
+        .where(Lagerbewegung.bestandsart == "gesperrt")
+        .group_by(Lagerbewegung.varianten_id, Lagerbewegung.lagerort_id)
+    )
+    gesperrt_bestaende = select(Bestand.varianten_id, Bestand.lagerort_id, Bestand.menge_gesperrt)
+    if lagerort_id is not None:
+        gesperrt_summen = gesperrt_summen.where(Lagerbewegung.lagerort_id == lagerort_id)
+        gesperrt_bestaende = gesperrt_bestaende.where(Bestand.lagerort_id == lagerort_id)
+    gesperrt_journal = {(v, lo): Decimal(m or 0) for v, lo, m in session.execute(gesperrt_summen)}
+    gesperrt_gespeichert = {(v, lo): Decimal(m or 0) for v, lo, m in session.execute(gesperrt_bestaende)}
+    for schluessel in sorted(set(gesperrt_journal) | set(gesperrt_gespeichert)):
+        bestand = gesperrt_gespeichert.get(schluessel, Decimal(0))
+        summe = gesperrt_journal.get(schluessel, Decimal(0))
+        if bestand != summe:
+            abweichungen.append(
+                {
+                    "varianten_id": schluessel[0],
+                    "lagerort_id": schluessel[1],
+                    "bestandsart": "gesperrt",
+                    "bestand": zahl(bestand),
+                    "summe_bewegungen": zahl(summe),
+                }
+            )
     return {
         "ok": not abweichungen,
         "geprueft": len(set(aus_journal) | set(gespeichert)),

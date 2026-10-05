@@ -53,7 +53,7 @@ def _menge(wert, language: str) -> Decimal:
         menge = Decimal(str(1 if wert is None else wert))
     except InvalidOperation:
         raise RetoureRejected(translate("errors.retoure.quantity_invalid", language)) from None
-    if menge <= 0 or menge > MAX_MENGE or menge != menge.to_integral_value():
+    if not menge.is_finite() or menge <= 0 or menge > MAX_MENGE or menge != menge.to_integral_value():
         raise RetoureRejected(translate("errors.retoure.quantity_invalid", language))
     return menge
 

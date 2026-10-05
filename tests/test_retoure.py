@@ -12,6 +12,7 @@
 
 from conftest import ANNA, BEAT, CHEF
 from sqlalchemy import select
+from testbelege import importieren, rechnung_pdf
 
 from app.core.models import Bestand, Lagerbewegung
 from app.services.betriebsberichte import pruefe_bestand
@@ -141,3 +142,27 @@ def test_returns_page_needs_login_and_is_served(welt):
     welt.anmelden(ANNA)
     antwort = welt.client.get("/retouren")
     assert antwort.status_code == 200 and "retouren.js" in antwort.text
+
+
+def test_deleting_an_unposted_document_keeps_held_stock_out_of_saleable_stock(welt, monkeypatch):
+    """Security review 2026-10-05: the recompute after deleting a document must
+    only sum saleable movements and must not erase held stock."""
+    from app.services import importer
+
+    original = importer.parse_with_parser
+    monkeypatch.setattr(
+        importer,
+        "parse_with_parser",
+        lambda *args, **kwargs: {**original(*args, **kwargs), "document_type": "auftragsbestaetigung"},
+    )
+    welt.anmelden(CHEF)
+    antwort = importieren(welt.client, rechnung_pdf(), lagerort_id=str(welt.codes["SF1"]))
+    assert antwort.status_code == 200, antwort.text
+    dokument_id = welt.client.get("/api/invoices").json()["items"][0]["id"]
+    varianten_id = welt.client.get("/api/articles?ean=4006632041234").json()["items"][0]["id"]
+    assert _retoure(welt, varianten_id).status_code == 200
+    assert _stand(welt, varianten_id) == ("0.00", "1.00")
+    assert welt.client.delete(f"/api/invoices/{dokument_id}").status_code == 200
+    assert _stand(welt, varianten_id) == ("0.00", "1.00")
+    with welt.sessions() as session:
+        assert pruefe_bestand(session)["ok"]

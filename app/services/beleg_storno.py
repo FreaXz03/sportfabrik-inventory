@@ -27,7 +27,7 @@ from ..core.models import (
 from .ausbuchung import STORNO_PREFIX, buche_bewegung, sperren, zahl
 from .importer import aktualisiere_first_last_seen
 
-SPAETERE_TYPEN = ("verkauf", "ausbuchung", "umlagerung", "korrektur")
+SPAETERE_TYPEN = ("verkauf", "ausbuchung", "umlagerung", "korrektur", "retoure", "freigabe")
 
 
 class StornoRejected(ValueError):

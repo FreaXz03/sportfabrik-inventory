@@ -123,6 +123,8 @@ def erklaere(
         menge = Decimal(str(menge))
     except InvalidOperation:
         raise DifferenzRejected(translate("errors.differenz.quantity_invalid", language)) from None
+    if not menge.is_finite():  # "NaN" parst, würde aber beim Vergleichen einen 500 auslösen
+        raise DifferenzRejected(translate("errors.differenz.quantity_invalid", language))
     notiz = (notiz or "").strip() or None
     if notiz and len(notiz) > NOTIZ_MAX:
         raise DifferenzRejected(translate("errors.ausbuchung.text_too_long", language, max=NOTIZ_MAX))

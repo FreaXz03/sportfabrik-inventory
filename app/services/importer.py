@@ -605,6 +605,8 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                     select(func.coalesce(func.sum(Lagerbewegung.menge), 0)).where(
                         Lagerbewegung.varianten_id == varianten_id,
                         Lagerbewegung.lagerort_id == lagerort_id,
+                        # Rückware in Prüfung zählt nicht zum verkäuflichen Bestand (Paket 4).
+                        Lagerbewegung.bestandsart == "verkaufbar",
                     )
                 )
                 bestand = session.get(Bestand, (varianten_id, lagerort_id))
@@ -633,7 +635,12 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                         bestand.menge = menge
                         bestand.aeltestes_eingangsdatum = aeltestes
                 elif bestand is not None:
-                    session.delete(bestand)
+                    if bestand.menge_gesperrt:
+                        # Gesperrte Rückware bleibt: Zeile behalten, verkäuflich 0.
+                        bestand.menge = 0
+                        bestand.aeltestes_eingangsdatum = None
+                    else:
+                        session.delete(bestand)
 
         all_varianten_ids = {v for ids in varianten_by_lagerort.values() for v in ids}
         aktualisiere_first_last_seen(session, all_varianten_ids)

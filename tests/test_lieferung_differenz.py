@@ -136,3 +136,10 @@ def test_cancelling_a_transfer_does_not_return_units_declared_lost(welt):
     assert storno.status_code == 200, storno.text
     # Only the 3 pieces that were neither lost nor arrived go back to SF2.
     assert storno.json()["stueck"] == "3.00"
+
+
+def test_nan_quantity_is_rejected_not_a_server_error(welt):
+    _, wareneingang_id, position_id = _versendet(welt)
+    welt.anmelden(CHEF)
+    for wert in ("NaN", "sNaN", "Infinity"):
+        assert _differenz(welt, wareneingang_id, position_id, "verloren", menge=wert).status_code == 409
