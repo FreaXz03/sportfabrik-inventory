@@ -7,7 +7,10 @@ Geschmack-Retoure ihrer Filialen; Lieferantenretoure und Abschreiben sind
 Filialleiter/Zentrale. Lesen dürfen alle alle Filialen (wie beim Bestand).
 """
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
@@ -33,6 +36,7 @@ from .auth import (
     get_language,
     require_chef_api,
     require_login_api,
+    require_login_page,
     resolve_wareneingang_lagerort,
 )
 from .operation_id import operation_id_aus_header
@@ -54,6 +58,11 @@ def _fehler(exc: Exception, language: str) -> HTTPException:
     if isinstance(exc, RetoureForbidden):
         return HTTPException(403, str(exc))
     return HTTPException(503, translate("errors.preview.import_db_error", language))
+
+
+@router.get("/retouren", include_in_schema=False)
+def retouren_page(user=Depends(require_login_page)):
+    return FileResponse(Path(__file__).resolve().parents[1] / "templates" / "retouren.html")
 
 
 @router.get("/api/retouren/stammdaten")

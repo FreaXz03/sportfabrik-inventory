@@ -27,6 +27,7 @@ ERWARTET = [
     "nav.erfassen",
     "nav.group_warenausgang",
     "nav.ausbuchen",
+    "nav.retouren",
     "nav.umlagern",
     "nav.group_belege",
     "nav.invoices",

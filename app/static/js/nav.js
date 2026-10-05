@@ -34,7 +34,8 @@ document.querySelectorAll('form[data-kein-absenden]').forEach(function (form) {
     },
     {
       gruppe: 'nav.group_warenausgang', eintraege: [
-        { href: '/ausbuchen', key: 'nav.ausbuchen', info: 'nav.info.ausbuchen' }
+        { href: '/ausbuchen', key: 'nav.ausbuchen', info: 'nav.info.ausbuchen' },
+        { href: '/retouren', key: 'nav.retouren', info: 'nav.info.retouren' }
       ]
     },
     { href: '/umlagern', key: 'nav.umlagern', info: 'nav.info.umlagern', nur: ['chef', 'admin'] },

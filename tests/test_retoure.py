@@ -134,3 +134,10 @@ def test_employee_may_not_book_a_return_in_a_foreign_branch(welt):
     assert _retoure(welt, varianten_id, lagerort="SF2").status_code == 403
     welt.anmelden(BEAT)  # SF2: allowed to book a return there, even with no stock yet
     assert _retoure(welt, varianten_id, lagerort="SF2").status_code == 200
+
+
+def test_returns_page_needs_login_and_is_served(welt):
+    assert welt.client.get("/retouren", follow_redirects=False).status_code in (302, 303, 307, 401)
+    welt.anmelden(ANNA)
+    antwort = welt.client.get("/retouren")
+    assert antwort.status_code == 200 and "retouren.js" in antwort.text

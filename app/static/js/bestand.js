@@ -70,6 +70,9 @@
     tr.append(node('td', zeile.groesse || '—'));
     tr.append(node('td', zeile.lagerort.code + ' · ' + zeile.lagerort.name));
     const mengenZelle = node('td', menge(zeile.menge));
+    if (Number(zeile.gesperrt) > 0) {
+      mengenZelle.append(document.createElement('br'), node('span', t('bestand.held', { menge: menge(zeile.gesperrt) }), 'muted'));
+    }
     tr.append(mengenZelle);
     tr.append(datumsZelle(zeile));
     // Wirksame Reduktion (24.09.2026): von Hand gewählt oder Empfehlung.
