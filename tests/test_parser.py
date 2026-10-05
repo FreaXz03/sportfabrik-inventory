@@ -652,3 +652,26 @@ def test_columbia_linesheet_praeparierte_seite_wird_begrenzt_gemeldet():
         pdf = document.tobytes()
     with pytest.raises(DocumentParseError):
         parse_document(pdf)
+
+
+def test_columbia_linesheet_zu_viele_varianten_je_farbe_werden_gemeldet():
+    """Resource guard: sizes x lengths must stay small; the model is reported, not expanded."""
+    with pymupdf.open() as document:
+        titel = document.new_page()
+        titel.insert_text((30, 40), "CHE | F26 OUTDOOR Created 12/17/2025")
+        seite = document.new_page()
+        seite.insert_text((30, 50), "2088363")
+        seite.insert_text((142, 180), "348")
+        seite.insert_text((142, 190), "Safari")
+        seite.insert_text((346, 220), "165.00")
+        seite.insert_text((410, 220), "MSRP")
+        seite.insert_text((346, 240), "78.60")
+        seite.insert_text((410, 240), "BASE")
+        # Tiny font so that many sizes and lengths fit into the size column.
+        seite.insert_text((142, 230), " ".join(str(n) for n in range(20, 45)) + " \u25b2 " + " ".join(f"{n}" for n in range(1, 26)), fontsize=3)
+        ende = document.new_page()
+        for y, text in ((40, "Columbia Sportswear International SaRL"), (60, "STYLE NUMBER INDEX"), (80, "2088363........ 1")):
+            ende.insert_text((30, y), text)
+        pdf = document.tobytes()
+    with pytest.raises(DocumentParseError):
+        parse_document(pdf)

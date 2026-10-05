@@ -54,6 +54,8 @@ GRUPPEN = ("FREIZEIT", "OUTDOOR", "SKI")
 MAX_MODELLE_JE_SEITE = 12
 MAX_FARBEN = 40
 MAX_GROESSEN = 40
+MAX_VARIANTEN_JE_FARBE = 60  # Grössen × Längen
+MAX_POSITIONEN = 20000  # je Dokument
 MAX_WORTE_JE_SEITE = 5000
 
 
@@ -150,7 +152,11 @@ def _bloecke(page) -> list[dict]:
             ergebnisse.append(dict(stil=stil[4], titel=titel, fehler=True))
             continue
         groessen, laengen = _groessen(region, msrp[1] + 2, base[1] + 1)
-        if len(groessen) > MAX_GROESSEN or len(laengen) > MAX_GROESSEN:
+        if (
+            len(groessen) > MAX_GROESSEN
+            or len(laengen) > MAX_GROESSEN
+            or len(groessen) * max(len(laengen), 1) > MAX_VARIANTEN_JE_FARBE
+        ):
             ergebnisse.append(dict(stil=stil[4], titel=titel, fehler=True))
             continue
         ergebnisse.append(
@@ -213,6 +219,8 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
                 continue
             gelesen.append(block["stil"])
             items += _positionen(block, language)
+            if len(items) > MAX_POSITIONEN:
+                raise DocumentParseError(translate("errors.parser.no_positions_detected", language))
     # Gegenprobe: dieselben Stil-Nummern wie im Index am Ende.
     index = set(INDEX_ZEILE.findall(document.text))
     if index and index != set(gelesen):
