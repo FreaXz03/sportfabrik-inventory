@@ -585,3 +585,48 @@ def test_gonso_auftrag_wird_je_groesse_gelesen():
 def test_gonso_summen_die_nicht_aufgehen_werden_gemeldet():
     falsch = parse_document(_gonso_pdf(einheiten="9"))
     assert len(falsch["warnings"]) == 1
+
+
+# --- Columbia Linesheet (Saisonkatalog ohne Mengen) -----------------------------
+
+
+def _linesheet_pdf(index_stil="2088363", msrp="165.00"):
+    """Titelseite, eine Modellseite (zwei Farben in einem 61-pt-Raster, die
+    zweite mit umbrochenem Namen; Grössen XS-XL) und der Stil-Index."""
+    with pymupdf.open() as document:
+        titel = document.new_page()
+        for y, text in ((40, "CHE | F26"), (60, "SPORT-FABRIK"), (80, "OUTDOOR"), (100, "F26"), (120, "Created 12/17/2025 9:01 PST")):
+            titel.insert_text((30, y), text)
+        seite = document.new_page()
+        for x, y, text in (
+            (30, 20, "LAKE 22 II DOWN JACKET"), (30, 50, "2088363"), (30, 70, "FEATURES"), (30, 90, "Heat Seal"),
+            (142, 180, "348"), (203, 180, "125"),
+            (142, 190, "Safari"), (203, 190, "Sea Salt,"), (203, 200, "Dark Stone"),
+            (346, 220, msrp), (410, 220, "MSRP"),
+            (142, 230, "XS"), (170, 230, "S"), (190, 230, "M"), (210, 230, "L"), (230, 230, "XL"),
+            (346, 240, "78.60"), (410, 240, "BASE"),
+        ):
+            seite.insert_text((x, y), text)
+        ende = document.new_page()
+        for y, text in ((40, "Columbia Sportswear International SaRL"), (60, "STYLE NUMBER INDEX"), (80, f"{index_stil}........ 1")):
+            ende.insert_text((30, y), text)
+        return document.tobytes()
+
+
+def test_columbia_linesheet_wird_je_farbe_und_groesse_gelesen():
+    document, parser = read_and_detect(_linesheet_pdf())
+    ergebnis = parse_with_parser(parser, document)
+    assert parser.KEY == "columbia" and ergebnis["supplier_name"] == "Columbia"
+    assert ergebnis["document_type"] == "bestellung"
+    assert ergebnis["invoice_number"].startswith("COLUMBIA-F26-OUTDOOR-")
+    assert str(parser.dates(document)["invoice_date"]) == "2025-12-17"
+    assert ergebnis["warnings"] == []
+    zeilen = {(i["article_no"], i["color"], i["size"]) for i in ergebnis["items"]}
+    assert zeilen == {(f"2088363{code}", farbe, groesse) for code, farbe in (("348", "Safari"), ("125", "Sea Salt, Dark Stone")) for groesse in ("XS", "S", "M", "L", "XL")}
+    # Keine Menge im Dokument: Menge 0 (legt Artikel an, bucht nichts); MSRP = UVP, BASE = EK.
+    assert {(i["quantity"], i["uvp"], i["ek"]) for i in ergebnis["items"]} == {("0", "165.00", "78.60")}
+
+
+def test_columbia_linesheet_meldet_abweichenden_stil_index():
+    ergebnis = parse_document(_linesheet_pdf(index_stil="2088999"))
+    assert len(ergebnis["warnings"]) == 1

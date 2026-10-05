@@ -29,6 +29,7 @@ import re
 from datetime import datetime
 from decimal import Decimal
 
+from . import columbia_katalog
 from .base import Document, DocumentParseError, ergebnis, pruefe_position
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
@@ -53,6 +54,9 @@ TOLERANZ = Decimal("0.05")
 def detect(document: Document) -> int | None:
     text = document.text
     if "Columbia Sportswear" in text and "Auftragsempfangsbestätigung" in text:
+        return 5
+    # Linesheet (Saisonkatalog ohne Mengen), eigenes Modul: columbia_katalog.py
+    if columbia_katalog.erkenne(document):
         return 5
     return None
 
@@ -145,6 +149,8 @@ def _block(zeilen: list[str], anfang: int, page, language: str) -> tuple[list, D
 
 
 def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
+    if columbia_katalog.erkenne(document):
+        return columbia_katalog.parse(document, language)
     items, warnings = [], []
     betrag = Decimal(0)
     for page in document.pages:
@@ -186,6 +192,8 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
 
 
 def dates(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
+    if columbia_katalog.erkenne(document):
+        return columbia_katalog.dates(document, language)
     treffer = DATUM.search(document.text)
     if not treffer:
         raise DocumentParseError(
