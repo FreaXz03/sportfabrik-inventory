@@ -1239,5 +1239,8 @@
   "errors.corrections.added_invalid": "Die ergänzte Position ist ungültig: Quellzeile, Grösse und Menge sind nötig, alles andere wird übernommen.",
   "hints.parser.manually_added": "Von Hand ergänzt (Kopie von Position {row}).",
   "preview.add_size": "Grösse ergänzen",
-  "preview.add_size_hint": "Fehlt eine Grösse? Kopiert diese Zeile - dann Grösse und Menge eintragen und prüfen."
+  "preview.add_size_hint": "Fehlt eine Grösse? Kopiert diese Zeile - dann Grösse und Menge eintragen und prüfen.",
+  "errors.parser.columbia_scan_review": "Gescannter Katalog: Artikelnummern, Farben, Grössen, Längen und Preise vor dem Import am Original prüfen. Keine Mengen oder Geldsummen gedruckt; Mengen sind null. Handschriftliche Notizen werden nicht angewendet.",
+  "errors.parser.columbia_scan_row": "Unsichere OCR, Grössen-/Längenbereich, fehlender Farbname oder Einkaufspreis: Position am Original prüfen; Grössenbereiche wurden nicht erweitert.",
+  "errors.parser.columbia_scan_index": "Stilindex ist unsicher, fehlt, ist unvollständig oder weicht von den gelesenen Modellen ab. Fehlende Modelle: {missing}; nicht im Index bestätigte Modelle: {extra}."
 }

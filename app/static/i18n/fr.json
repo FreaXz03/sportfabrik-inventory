@@ -1239,5 +1239,8 @@
   "errors.corrections.added_invalid": "La position ajoutée est invalide : ligne source, taille et quantité sont nécessaires, le reste est repris.",
   "hints.parser.manually_added": "Ajoutée à la main (copie de la position {row}).",
   "preview.add_size": "Ajouter une taille",
-  "preview.add_size_hint": "Une taille manque ? Copie cette ligne - puis saisir la taille et la quantité et vérifier."
+  "preview.add_size_hint": "Une taille manque ? Copie cette ligne - puis saisir la taille et la quantité et vérifier.",
+  "errors.parser.columbia_scan_review": "Catalogue numérisé : vérifier les références, couleurs, tailles, longueurs et prix sur l’original avant importation. Aucune quantité ni total monétaire imprimé ; quantités à zéro. Les notes manuscrites ne sont pas appliquées.",
+  "errors.parser.columbia_scan_row": "OCR incertaine, plage de tailles/longueurs, nom de couleur ou prix d’achat manquant : vérifier cette ligne sur l’original ; les plages de tailles ne sont pas développées.",
+  "errors.parser.columbia_scan_index": "Index des modèles incertain, absent, incomplet ou différent des modèles lus. Modèles manquants : {missing} ; modèles non confirmés par l’index : {extra}."
 }

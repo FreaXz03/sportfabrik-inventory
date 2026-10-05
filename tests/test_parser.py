@@ -675,3 +675,109 @@ def test_columbia_linesheet_zu_viele_varianten_je_farbe_werden_gemeldet():
         pdf = document.tobytes()
     with pytest.raises(DocumentParseError):
         parse_document(pdf)
+
+# --- Columbia: gescannte Linesheets ----------------------------------------
+
+
+def _scan_block(**changes):
+    block = dict(stil="1234567", titel="TEST JACKET", seite=2,
+                 farben=[("010", "Black"), ("125", "Sea Salt")],
+                 groessen=["XS", "S", "M"], laengen=[], uvp="120.00", ek="60.00",
+                 roh=["1234567 XS S M 120.00 MSRP 60.00 BASE"], unsicher=False)
+    return {**block, **changes}
+
+
+def test_columbia_scan_positionen_und_fehlende_bloecke(monkeypatch):
+    from app.services.parsers import columbia_scan
+    from app.services.parsers.base import Document, Page
+    native = read_document(_linesheet_pdf())
+    scan = Document([Page(p.number, p.words, p.text, p.height, True) for p in native.pages])
+    monkeypatch.setattr(columbia_scan, "lesen", lambda document, language: dict(
+        bloecke=[_scan_block(), _scan_block(stil="7654321", groessen=[])],
+        index={"1234567", "7654321"}, kopf="CHE F26 OUTDOOR Created 12/17/2025",
+    ))
+    parser = detect_parser(scan)
+    result = parse_with_parser(parser, scan, "en")
+    assert result["document_type"] == "bestellung"
+    assert result["item_count"] == 6
+    assert {i["quantity"] for i in result["items"]} == {"0"}
+    assert {i["ek"] for i in result["items"]} == {"60.00"}
+    assert result["warnings"] and any("7654321" in w for w in result["warnings"])
+    assert parser.dates(scan)["document_date"] == date(2025, 12, 17)
+
+
+def test_columbia_scan_groessen_werden_nicht_erfunden():
+    from app.services.parsers.columbia_scan import groessen
+    assert groessen("XS SMLXL") == (["XS", "S", "M", "L", "XL"], True)
+    assert groessen("7-15") == (["7-15"], True)
+    assert groessen("XS ? XL") == ([], True)
+    assert groessen("O/S") == (["O/S"], False)
+    assert groessen("XS XS") == ([], True)
+
+
+def test_columbia_scan_unsichere_zahlen_und_index():
+    from app.services.parsers.columbia_scan import auswerten
+    document = read_document(_linesheet_pdf())
+    result = auswerten(document, dict(bloecke=[_scan_block(uvp=None, ek=None)],
+        index=set(), kopf="F26 OUTDOOR"), "en")
+    assert result["item_count"] == 6
+    assert all(i["uvp"] is None and i["ek"] is None and i["warnings"] for i in result["items"])
+    assert any("index" in w.lower() for w in result["warnings"])
+
+
+@pytest.mark.skipif(not os.environ.get("COLUMBIA_SCAN_DIR"), reason="Local Columbia scans not supplied")
+def test_columbia_scans_lokal():
+    folder = Path(os.environ["COLUMBIA_SCAN_DIR"])
+    files = sorted(folder.glob("*.pdf"))
+    assert len(files) == 4
+    for path in files:
+        document, parser = read_and_detect(path.read_bytes())
+        result = parse_with_parser(parser, document)
+        assert parser.KEY == "columbia" and result["document_type"] == "bestellung"
+        assert result["item_count"] > 0 and result["ocr_used"]
+        assert all(i["quantity"] == "0" for i in result["items"])
+        assert result["warnings"]  # OCR bleibt prüfpflichtig.
+        assert parser.dates(document)["document_date"].year == 2025
+
+
+def test_columbia_scan_preise_farben_und_laengen_aus_ocr_woertern():
+    from app.services.parsers.columbia_scan import _farben, _preis, laengen
+    def wort(x, y, text, confidence=95):
+        return (x, y, x + 15, y + 4, text, confidence, 0, 0)
+    preise = [wort(335, 240, "120,00"), wort(375, 240, "MSRP"),
+              wort(335, 249, "60.00"), wort(375, 249, "BASE")]
+    assert _preis(preise, "MSRP") == "120.00"
+    assert _preis(preise, "BASE") == "60.00"
+    assert _preis(preise + [wort(350, 240, "130.00")], "MSRP") is None
+    assert _preis([wort(335, 240, "12O.OO"), wort(375, 240, "MSRP")], "MSRP") is None
+    assert _preis([wort(335, 240, "120.00", 30), wort(375, 240, "MSRP")], "MSRP") is None
+    assert _farben([wort(150, 220, "010"), wort(150, 226, "Black"),
+                    wort(250, 220, "125"), wort(250, 226, "Sea"), wort(275, 226, "Salt"),
+                    wort(330, 220, "999", 20)]) == [("010", "Black"), ("125", "Sea Salt")]
+    assert laengen("A S R L") == (["S", "R", "L"], False)
+    assert laengen("A 25in / 63.5cm") == ([], False)
+    assert laengen("A ? R") == ([], True)
+
+
+def test_columbia_scan_unbekanntes_layout_und_datum(monkeypatch):
+    from app.services.parsers import columbia_scan
+    from app.services.parsers.base import Document, Page
+    document = read_document(text_pdf("Columbia", "Invoice", "MSRP", "BASE"))
+    scan = Document([Page(p.number, p.words, p.text, p.height, True) for p in document.pages])
+    assert not columbia_scan.erkenne(scan)
+    with pytest.raises(UnknownLayoutError):
+        detect_parser(scan)
+    for kopf in ("F26", "Created 02/31/2025"):
+        monkeypatch.setattr(columbia_scan, "lesen", lambda *args: {"kopf": kopf})
+        with pytest.raises(DocumentParseError):
+            columbia_scan.dates(scan)
+
+
+def test_columbia_scan_fehlender_anker_wird_gemeldet(monkeypatch):
+    from app.services.parsers.columbia_scan import _raster
+    from app.services import ocr_raster
+    def kein_ausschnitt(*args, **kwargs):
+        pytest.fail("Invalid anchor must not reach raster rendering")
+    monkeypatch.setattr(ocr_raster, "_ausschnitt", kein_ausschnitt)
+    result = _raster(_linesheet_pdf(), ((2, "modell", (("?", -100, ""),)),))
+    assert result["bloecke"][0]["fehler"] is True

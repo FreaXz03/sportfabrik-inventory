@@ -1239,5 +1239,8 @@
   "errors.corrections.added_invalid": "The added line is invalid: source line, size and quantity are required, everything else is copied.",
   "hints.parser.manually_added": "Added by hand (copy of line {row}).",
   "preview.add_size": "Add a size",
-  "preview.add_size_hint": "A size missing? Copies this line - then enter the size and quantity and validate."
+  "preview.add_size_hint": "A size missing? Copies this line - then enter the size and quantity and validate.",
+  "errors.parser.columbia_scan_review": "Scanned catalogue: verify all article numbers, colours, sizes, lengths and prices against the original before importing. No quantities or monetary totals are printed; quantities are zero. Handwritten notes are not applied.",
+  "errors.parser.columbia_scan_row": "Uncertain OCR, size/length range, missing colour name or purchase price: check this row against the original; size ranges have not been expanded.",
+  "errors.parser.columbia_scan_index": "Style index is uncertain, missing, incomplete or differs from parsed models. Missing models: {missing}; models not confirmed by the index: {extra}."
 }
