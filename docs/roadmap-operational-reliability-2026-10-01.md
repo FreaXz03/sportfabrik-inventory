@@ -70,6 +70,8 @@ Acceptance: one real day of receipts, sales, returns, transfers, and closing cou
 
 ### Package 4 — Returns, held stock, transfer discrepancies
 
+**Status: done 2026-10-05** (4a returns and held stock, 4b outcomes for the open remainder, 4c Pending exceptions). Details and what is left out: `docs/start.md` and `docs/projekt-kontext.md` ("Package 4 — 2026-10-05"). Not built from item 4: count conflicts and stale backups as Pending entries (nothing stored for them yet), owner/cause columns per entry, "returned to source" as a new outcome (the existing transfer cancel stays).
+
 1. Stock states: at least *saleable* and *held/inspection* per variant and location.
 2. Customer return: condition, reason, original sale if known, outcome (release / supplier return / write-off). Refund reference stored separately.
 3. Explicit outcomes for open quantities: awaiting remainder, supplier cancelled remainder, shortage under investigation, lost in transit, returned to source. Existing transfer cancellation stays for mistaken dispatches only. Show transit age and responsible person.
@@ -107,6 +109,8 @@ Acceptance: changing today's markdown never changes yesterday's sale estimate. A
 - **Package 3:** SF1 pilot with double entry (till + app scan); Fabian reconciles app sales against the till report daily. **"No data loss" is more than the current nightly, age-encrypted backups** (`docs/BACKUPS.md`): it needs continuous PostgreSQL replication or WAL archiving to a second machine, plus copies of uploaded documents as they arrive. A few hours of downtime means a manual restore/switch-over is enough; no automatic standby server is needed. Scope this in `docs/SERVER-SETUP.md` before the pilot.
 - **Package 4:** return reasons split into "fit/taste" (employee books directly, goods go to held/inspection or saleable per check) and "other" (pending approval by branch manager/head office). Loss in transit: branch manager/head office.
 - **Package 5:** new item flag "reorderable" and a supplier field "delivery time", both editable by branch manager/head office.
+
+Confirmed by Fabian on 2026-10-05 (package 4): an employee may release a fit/taste return after checking it; the overdue-transit threshold is 14 days; held stock does not start a markdown clock (rule 6).
 
 Confirmed by Fabian on 2026-10-01: **Fabian owns the daily reconciliation** of app sales against the till report in SF1; "a higher-up" in Q8 means **branch manager or head office**; the **package order 0–5 is approved**.
 

@@ -895,6 +895,37 @@ in the Excel export (`article_export.py`, its own document format, still
 open).
 
 
+## Returns, held stock and delivery remainders (package 4, 2026-10-05)
+
+```mermaid
+flowchart LR
+    R["Customer return<br/>POST /api/retouren"] -->|"fit / taste: employee"| H["Held stock<br/>bestand.menge_gesperrt<br/>(retoure, gesperrt)"]
+    R -->|"other reason"| Q["Request beantragt<br/>books nothing"]
+    Q -->|"approve: branch manager / head office"| H
+    Q -->|"reject"| X["abgelehnt"]
+    H -->|"release (freigabe: held -n, saleable +n)"| S["Saleable stock<br/>bestand.menge"]
+    H -->|"supplier return / write-off<br/>(ausbuchung on held stock)"| E["Gone"]
+```
+
+`app/services/retoure.py`, `app/routers/retoure.py`, page `/retouren`. Saleable
+stock is unchanged until a release, so sales, markdown and reports keep working
+on `bestand.menge`; the movements carry `bestandsart` (`verkaufbar` /
+`gesperrt`). Readers that must only see saleable movements (count marker, daily
+check, document-delete recompute, write-off list) filter on it; held stock is
+reconciled separately in `pruefe_bestand`. Released goods start no markdown
+clock (rule 6).
+
+Open remainder of a delivery or transfer (`app/services/lieferung_differenz.py`,
+`POST /api/wareneingaenge/{id}/differenz`): after a partial arrival the rest is
+explained explicitly — `in_klaerung` (any employee of the receiving branch),
+`verloren` or `lieferant_storniert` (branch manager/head office; the latter not
+for transfers). Lost and cancelled units book no movement (a transfer in transit
+is in no stock; the units left the source at dispatch) and no longer count as
+open; with nothing open the delivery becomes `abgeschlossen`. Cancelling a
+transfer back to the source skips units declared lost. Pending lists returns
+awaiting approval or inspection, transfers in transit for 14 days or more
+(`uebersicht.TRANSIT_UEBERFAELLIG_TAGE`) and shortages under investigation.
+
 ## Booking rights as of 2026-09-24, refined 2026-09-28
 
 Employees may manually book in goods, correct stock, and book out sales
@@ -913,6 +944,7 @@ the reason per role. The
 write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
 `GET /api/erfassen/stammdaten` offers employees only their assigned
 branches; entry/correction also check this boundary server-side.
+Returns (package 4): employees book fit/taste returns and release them in their assigned branches; approving requests, supplier return, write-off from held stock and declaring a remainder lost or supplier-cancelled are branch manager/head office; flagging a shortage "under investigation" is open to employees of the receiving branch.
 `GET /api/bestand` additionally returns `rechte.ausbuchen` and
 `rechte.korrektur_lagerorte`, which determine which actions are shown.
 

@@ -89,6 +89,10 @@ supplier documents, purchase prices, and accounts.
 - Booking rights since 2026-09-24: employees enter and correct stock only in
   their assigned branches; booking out, cancelling, and transferring only for
   branch managers and head office (checked server-side, `tests/test_rechte_lager.py`).
+- Returns and delivery remainders (package 4, 2026-10-05): employees book and release fit/taste returns in
+  their branches and may flag a shortage; approving, supplier return, write-off and declaring a remainder
+  lost are branch manager/head office, checked server-side (`tests/test_retoure.py`,
+  `tests/test_lieferung_differenz.py`). Reviewed by a security subagent 2026-10-05, findings fixed.
 - Test passwords exist only in the tests.
 
 ## What's good

@@ -128,7 +128,7 @@ passed (stock = sum of movements, newest backup < 26 h) — or run
   attaches to the delivery already expected, the invoice later attaches to it too
   (the preview asks); arrival is confirmed on `/m/lieferungen` after unpacking.
 - Customer returns: for now by hand — put the item aside, **note it on the paper
-  sheet**, do not put it back on the shelf. (Returns and held stock are package 4.)
+  sheet**, do not put it back on the shelf. (Since 2026-10-05 returns can be booked on `/retouren`: fit/taste goes into inspection, other reasons wait for the branch manager. Decide with Fabian whether SF1 uses it from day one.)
 - Transfers: dispatched on `/m/umlagern`, confirmed at the destination.
 
 **Evening — reconciliation (Fabian):**

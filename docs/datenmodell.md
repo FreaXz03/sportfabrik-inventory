@@ -506,6 +506,11 @@ above):
 | `d3e4f5a6b7c8` | Supplier Bliz with parser (2026-10-02): `parser_key` `bliz`, group third-party dealer (999). Data only |
 | `e4f5a6b7c8d9` | The North Face reads Quintet order information (2026-10-02): existing supplier "The North Face" (group intern, 444) gets `parser_key` `quintet` (only while still empty). Data only |
 
+| `f5a6b7c8d9e0` | Supplier Columbia with parser (2026-10-03): `parser_key` `columbia`, group third-party dealer (999). Data only |
+| `a6b7c8d9e0f1` | Supplier Gonso with parser (2026-10-05): `parser_key` `gonso`, group third-party dealer (999). Data only |
+| `b7c8d9e0f1a2` | Returns and held stock (2026-10-05): `bestand.menge_gesperrt`, `lagerbewegungen.bestandsart` and types `retoure`/`freigabe`, table `retouren`. Downgrade refuses while returns exist |
+| `c8d9e0f1a2b3` | Delivery remainders (2026-10-05): table `lieferung_differenzen`, `wareneingaenge.status` gains `abgeschlossen`. Downgrade refuses while differences exist |
+
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs
 `alembic upgrade head` on startup (see `SERVER-SETUP.md`).
