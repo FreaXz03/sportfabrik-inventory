@@ -24,6 +24,8 @@ from ..core.models import (
     Variante,
     Wareneingang,
     WareneingangPosition,
+    LieferungDifferenz,
+    Retoure,
 )
 from .reduktion import STUFEN, stufe as reduktionsstufe
 from .reduktion_bestaetigung import bestaetigte_stufen
@@ -393,6 +395,63 @@ def _empfehlungen_offen(session, lagerort_id: int) -> int:
     )
 
 
+# Eine Umlagerung gilt ab so vielen Tagen unterwegs als überfällig (Paket 4c,
+# Arbeitswert vom 05.10.2026 - noch keine Geschäftsentscheidung).
+TRANSIT_UEBERFAELLIG_TAGE = 14
+
+
+def ausnahmen_filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
+    """Die Ausnahmen aus Paket 4 für „Anstehend": Retouren (Antrag offen, in
+    Prüfung), überfällige Umlagerungen und Fehlmengen in Klärung. Eine Zahl je
+    Art; die Liste selbst zeigen die jeweiligen Seiten."""
+    heute = heute or date.today()
+
+    def retouren(status: str) -> int:
+        return int(
+            session.scalar(
+                select(func.count())
+                .select_from(Retoure)
+                .where(Retoure.lagerort_id == lagerort_id, Retoure.status == status)
+            )
+            or 0
+        )
+
+    ueberfaellig = int(
+        session.scalar(
+            select(func.count())
+            .select_from(Wareneingang)
+            .where(
+                Wareneingang.lagerort_id == lagerort_id,
+                Wareneingang.status == "erwartet",
+                Wareneingang.herkunft_lagerort_id.is_not(None),
+                Wareneingang.versanddatum <= heute - timedelta(days=TRANSIT_UEBERFAELLIG_TAGE),
+            )
+        )
+        or 0
+    )
+    in_klaerung = int(
+        session.scalar(
+            select(func.count(func.distinct(LieferungDifferenz.wareneingang_position_id)))
+            .select_from(LieferungDifferenz)
+            .join(WareneingangPosition, WareneingangPosition.id == LieferungDifferenz.wareneingang_position_id)
+            .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+            .where(
+                Wareneingang.lagerort_id == lagerort_id,
+                Wareneingang.status == "erwartet",
+                LieferungDifferenz.art == "in_klaerung",
+                LieferungDifferenz.aufgeloest_am.is_(None),
+            )
+        )
+        or 0
+    )
+    return {
+        "retouren_antrag": retouren("beantragt"),
+        "retouren_pruefung": retouren("in_pruefung"),
+        "transit_ueberfaellig": ueberfaellig,
+        "differenzen_offen": in_klaerung,
+    }
+
+
 def meldungen_filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
     """Nur was die Glocke zum Zählen braucht - viel leichter als `filiale()`,
     weil sie bei jedem Seitenaufruf läuft."""
@@ -415,6 +474,7 @@ def meldungen_filiale(session, lagerort_id: int, heute: date | None = None) -> d
         ),
         "empfehlungen_offen": _empfehlungen_offen(session, lagerort_id),
         "reduktionen": _reduktionen(session, lagerort_id, heute or date.today()),
+        **ausnahmen_filiale(session, lagerort_id, heute),
     }
 
 
@@ -472,6 +532,7 @@ def filiale(session, lagerort_id: int, heute: date | None = None) -> dict:
         # Datum in der Zukunft und ohne Bestand (Entscheid 30.09.2026).
         "empfehlungen_offen": _empfehlungen_offen(session, lagerort_id),
         "reduktionen": _reduktionen(session, lagerort_id, heute),
+        **ausnahmen_filiale(session, lagerort_id, heute),
         "stufen": stufen_verteilung(session, lagerort_id, heute),
         "verlauf": verkaufsverlauf(session, lagerort_id, heute),
         "bestseller": bestseller(session, lagerort_id, heute),
@@ -618,6 +679,10 @@ def liste_meldungen(filiale_daten: dict | None, stamm_daten: dict) -> list[dict]
         punkt("expected", filiale_daten["erwartet_total"], "/wareneingaenge")
         punkt("recommendations", filiale_daten["empfehlungen_offen"], "/runterschreiben#empfehlungPanel")
         punkt("negative", filiale_daten["negativ"], "/bestand?nur_negativ=true", True)
+        punkt("returns_request", filiale_daten.get("retouren_antrag", 0), "/retouren?status=beantragt", True)
+        punkt("transit_overdue", filiale_daten.get("transit_ueberfaellig", 0), "/wareneingaenge", True)
+        punkt("returns_inspection", filiale_daten.get("retouren_pruefung", 0), "/retouren?status=in_pruefung")
+        punkt("delivery_differences", filiale_daten.get("differenzen_offen", 0), "/wareneingaenge")
         for name in ("70", "50"):
             stufe = filiale_daten["reduktionen"].get(name, {})
             ziel = f"/bestand?reduktion={name}&reduktion_status="

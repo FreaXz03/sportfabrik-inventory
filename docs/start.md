@@ -50,6 +50,8 @@ All 12 example files were run on the dev database (parse, import, confirm arriva
 
 **Package 4b (2026-10-05):** open remainder of a delivery or transfer gets explicit outcomes. Table `lieferung_differenzen` (`in_klaerung`, `verloren`, `lieferant_storniert`), status `abgeschlossen`, migration `c8d9e0f1a2b3`, `app/services/lieferung_differenz.py`, `POST /api/wareneingaenge/{id}/differenz`. Employees of the receiving branch may flag "under investigation"; lost / supplier-cancelled are branch manager/head office. Lost = no stock movement, nothing reappears at the source; cancelling a transfer back to the source skips units declared lost. Transit age (`tage_unterwegs`) is shown. UI on the deliveries page ("Open remainder"), **not browser-verified**. Tests: `tests/test_lieferung_differenz.py`. Not done: "returned to source" stays the existing transfer cancel; Pending exception list (4c).
 
+**Package 4c (2026-10-05):** Pending lists the new exceptions: `returns_request` (urgent), `transit_overdue` (urgent, transfers in transit ≥ 14 days, `TRANSIT_UEBERFAELLIG_TAGE` in `app/services/uebersicht.py`), `returns_inspection`, `delivery_differences` (shortage under investigation). Counts per branch via `ausnahmen_filiale`; same list feeds the bell and the dashboard. Test: `tests/test_anstehend_ausnahmen.py`. Not done from roadmap item 4: count conflicts and stale backups as Pending entries (no stored data for them yet); owner/cause columns per entry. The 14 days are a working value, not a business decision.
+
 The previously queued items below follow the redesign:
 
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3–S7) into `main` — at the end of this session.

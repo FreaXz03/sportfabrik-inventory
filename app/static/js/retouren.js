@@ -272,6 +272,9 @@
       }
       if (ausbuchStamm.lagerort_aktiv) $('lagerort').value = String(ausbuchStamm.lagerort_aktiv);
       auswahlFuellen();
+      // Link aus Anstehend: /retouren?status=beantragt
+      const wunsch = new URLSearchParams(window.location.search).get('status');
+      if (STATUS.includes(wunsch)) $('listeStatus').value = wunsch;
       $('status').textContent = '';
     } catch (fehler) {
       $('status').textContent = fehlertext(fehler);
