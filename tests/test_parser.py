@@ -719,13 +719,37 @@ def test_columbia_scan_groessen_werden_nicht_erfunden():
     assert groessen("XS XS") == ([], True)
 
 
+def test_columbia_scan_schuhgroessen_us_zu_eu():
+    # Columbia-Größentabellen (columbia.com/t/size-fit, 06.10.2026): Bereich -> EU
+    from app.services.parsers.columbia_scan import schuhgroessen
+    herren = schuhgroessen("7-15")
+    assert herren[:3] == ["40", "40.5", "41"] and herren[-4:] == ["45", "46", "47", "48"]
+    assert len(herren) == 14  # 7 bis 12 in halben, dann 13/14/15
+    damen = schuhgroessen("5-12")
+    assert damen[0] == "36" and damen[1] == "36.5" and damen[-1] == "43" and len(damen) == 15
+    assert schuhgroessen("1-7") == ["32", "33", "34", "35", "37", "38", "39"]
+    assert schuhgroessen("3-9") is None  # unbekannter Bereich: nicht raten
+
+
+def test_columbia_scan_schuhbereich_wird_zu_eu_groessen_und_bleibt_pruefpflichtig():
+    from app.services.parsers.columbia_scan import auswerten
+    document = read_document(_linesheet_pdf())
+    result = auswerten(document, dict(bloecke=[_scan_block(groessen=["1-7"], farben=[("010", "Black")])],
+        index={"1234567"}, kopf="F26 FTW"), "en")
+    assert [i["size"] for i in result["items"]] == ["32", "33", "34", "35", "37", "38", "39"]
+    assert all(i["warnings"] for i in result["items"])
+    assert result["import_nach_pruefung"] is True
+
+
 def test_columbia_scan_unsichere_zahlen_und_index():
     from app.services.parsers.columbia_scan import auswerten
     document = read_document(_linesheet_pdf())
-    result = auswerten(document, dict(bloecke=[_scan_block(uvp=None, ek=None)],
+    result = auswerten(document, dict(bloecke=[_scan_block(ek=None), _scan_block(stil="7654321", uvp=None)],
         index=set(), kopf="F26 OUTDOOR"), "en")
+    # Ohne EK importierbar (Regel 10), ohne UVP bleibt das Modell offen.
     assert result["item_count"] == 6
-    assert all(i["uvp"] is None and i["ek"] is None and i["warnings"] for i in result["items"])
+    assert all(i["ek"] is None and i["warnings"] for i in result["items"])
+    assert any("7654321" in w for w in result["warnings"])
     assert any("index" in w.lower() for w in result["warnings"])
 
 

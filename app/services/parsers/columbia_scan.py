@@ -34,6 +34,35 @@ def erkenne(document):
     )
 
 
+def _eu(zahl):
+    return str(int(zahl)) if zahl == int(zahl) else str(zahl)
+
+
+def _herren():
+    # Columbia-Tabelle: US 7-12 in halben Grössen (EU = US + 33), danach ganze.
+    us = [7 + 0.5 * i for i in range(11)] + [13, 14, 15]
+    return [_eu(u + 33) for u in us]
+
+
+def _damen():
+    return [_eu(5 + 0.5 * i + 31) for i in range(15)]
+
+
+# Druckbild der Scans: Herren 7-15, Damen 5-12, Youth 1-7 (US). Quelle:
+# columbia.com/t/size-fit, 06.10.2026 (Fabian). Unbekannte Bereiche bleiben
+# unverändert. Annahme (bestätigt 06.10.2026): jede Grösse des Bereichs existiert.
+SCHUHBEREICHE = {
+    "7-15": _herren(),
+    "5-12": _damen(),
+    "1-7": ["32", "33", "34", "35", "37", "38", "39"],
+}
+
+
+def schuhgroessen(bereich):
+    liste = SCHUHBEREICHE.get(bereich)
+    return list(liste) if liste else None
+
+
 def groessen(text):
     """Nur vollständig lesbare Grössen; verklebte Buchstaben bleiben unsicher."""
     result, unsicher = [], False
@@ -177,10 +206,15 @@ def lesen(document, language):
 def auswerten(document, gelesen, language):
     items, warnings, vollstaendig = [], [translate("errors.parser.columbia_scan_review", language)], set()
     for block in gelesen["bloecke"]:
-        if block.get("fehler") or not block["farben"] or not block["groessen"] or not block["titel"]:
+        # UVP ist Pflichtfeld des Imports: ohne gelesenen MSRP bleibt das Modell offen.
+        if (block.get("fehler") or not block["farben"] or not block["groessen"]
+                or not block["titel"] or not block["uvp"]):
             warnings.append(translate("errors.parser.unassigned_row", language, page=block["seite"],
                                       row_text=f"{block['stil']} {block['titel']}"))
             continue
+        # Schuhbereich (US) in EU-Einzelgrössen; die Zeilen bleiben prüfpflichtig.
+        if len(block["groessen"]) == 1 and schuhgroessen(block["groessen"][0]):
+            block = {**block, "groessen": schuhgroessen(block["groessen"][0]), "unsicher": True}
         neue = katalog._positionen(block, language)
         for item in neue:
             if block.get("unsicher") or not block["ek"] or not item["color"]:
@@ -197,7 +231,11 @@ def auswerten(document, gelesen, language):
     # Hash des Belegs, nicht bloss der zufällig erfolgreich gelesenen Positionen.
     inhalt = document.pdf_data or document.text.encode()
     nummer = "COLUMBIA-SCAN-" + hashlib.sha256(inhalt).hexdigest()[:16].upper()
-    return ergebnis(document, items, warnings, "bestellung", nummer, language)
+    result = ergebnis(document, items, warnings, "bestellung", nummer, language)
+    # OCR bleibt prüfpflichtig: Import erst nach der Bestätigung "alle Positionen
+    # geprüft" in der Vorschau (der Parser setzt die Marke, nie der Client).
+    result["import_nach_pruefung"] = True
+    return result
 
 
 def parse(document, language=DEFAULT_LANGUAGE):

@@ -197,8 +197,10 @@ def import_invoice(
             raise ImportRejected(str(exc)) from exc
     if (
         not parsed["invoice_number"]
-        or parsed["warnings"]
-        or parsed["rows_with_warnings"]
+        or (
+            not parsed.get("import_nach_pruefung")
+            and (parsed["warnings"] or parsed["rows_with_warnings"])
+        )
     ):
         raise ImportRejected(translate("errors.importer.locked_warnings", language))
     if not parsed.get("document_type"):

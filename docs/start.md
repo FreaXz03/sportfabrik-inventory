@@ -69,6 +69,8 @@ All 12 example files were run on the dev database (parse, import, confirm arriva
 
 Also open from the vault: the Sato test of the 47 × 83 mm label, Intersport feedback on the till interface (F2) and the wireless scanner are still pending.
 
+**Columbia scan import (2026-10-06):** the scanned catalogue (`columbia_scan.py`) is now importable after the user ticks "all positions checked" in the preview: the parser sets `import_nach_pruefung`, the server then accepts OCR warnings (`importer.py`, `preview.js`); unassigned models stay listed in the warnings and are not imported. A model without a read MSRP (UVP is required) is unassigned; no EK is fine. **Answered by Fabian 2026-10-06:** every colour exists in every size; BASE = EK, MSRP = UVP; unclear lengths are listed, handwriting is ignored; shoe ranges are converted US to EU with Columbia's chart (columbia.com/t/size-fit) and expanded to every size in the chart (men 7-15 to EU 40-48, women 5-12 to EU 36-43, youth 1-7 to EU 32-39); only these three printed ranges are converted, others stay as printed. Assumption: every size of a range exists. All four sample scans import on a temporary database (263/156/101/167 items). Not run on the server yet.
+
 The previously queued items below follow the redesign:
 
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3–S7) into `main` — at the end of this session.
