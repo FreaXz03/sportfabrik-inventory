@@ -712,6 +712,10 @@ def test_columbia_scan_groessen_werden_nicht_erfunden():
     assert groessen("7-15") == (["7-15"], True)
     assert groessen("XS ? XL") == ([], True)
     assert groessen("O/S") == (["O/S"], False)
+    # OCR-Varianten von Einheitsgrösse (Beanies): gelesen, aber prüfpflichtig
+    for lesart in ("o/S", "O!S", "OS", "o/s", "0/S"):
+        assert groessen(lesart) == (["O/S"], True)
+    assert groessen("O S M") == ([], True)
     assert groessen("XS XS") == ([], True)
 
 

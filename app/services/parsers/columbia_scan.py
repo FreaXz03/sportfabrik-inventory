@@ -24,6 +24,7 @@ from ...core.i18n import DEFAULT_LANGUAGE, translate
 PREIS = re.compile(r"\d+[.,]\d{2}")
 GROESSE = re.compile(r"XXXL|XXL|XXS|XS|XL|S|M|L|O/S|\d{1,3}(?:/\d{1,3})?")
 BEREICH = re.compile(r"\d{1,2}-\d{1,2}")
+EINHEITSGROESSE = re.compile(r"[O0][/!|\\]?S", re.IGNORECASE)
 
 
 def erkenne(document):
@@ -37,6 +38,9 @@ def groessen(text):
     """Nur vollständig lesbare Grössen; verklebte Buchstaben bleiben unsicher."""
     result, unsicher = [], False
     for token in text.split():
+        # Einheitsgrösse wird oft als "o/S", "O!S" oder "OS" gelesen.
+        if token != "O/S" and EINHEITSGROESSE.fullmatch(token) and len(text.split()) == 1:
+            return ["O/S"], True
         if BEREICH.fullmatch(token):
             result.append(token)
             unsicher = True
