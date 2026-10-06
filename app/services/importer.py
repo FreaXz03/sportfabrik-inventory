@@ -332,6 +332,14 @@ def import_invoice(
                 for code, ort_id in session.execute(select(Lagerort.code, Lagerort.id))
             }
             eingaenge = {}
+            # Katalog/Preisliste ohne Mengen: es wird nichts erwartet, die
+            # Lieferung bliebe sonst für immer offen (06.10.2026).
+            nichts_erwartet = not ware_ist_da and all(
+                Decimal(item["quantity"]) == 0 for item in parsed["items"]
+            )
+            status = "eingetroffen" if ware_ist_da else (
+                "abgeschlossen" if nichts_erwartet else "erwartet"
+            )
 
             def eingang_fuer(item):
                 ort_id = lagerorte_nach_code.get(item.get("lagerort_code"), lagerort_id)
@@ -342,7 +350,7 @@ def import_invoice(
                     eingang = Wareneingang(
                         dokument_id=dokument.id,
                         lagerort_id=ort_id,
-                        status="eingetroffen" if ware_ist_da else "erwartet",
+                        status=status,
                         eingangsdatum=(
                             dates["invoice_date"] if ware_ist_da and verkauft else None
                         ),

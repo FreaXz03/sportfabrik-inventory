@@ -56,6 +56,19 @@ All 12 example files were run on the dev database (parse, import, confirm arriva
 
 **Columbia linesheet (2026-10-05):** `app/services/parsers/columbia_katalog.py` (served by `columbia.py`, same supplier, no migration) reads the season catalogue "CHE | F26 – SPORT-FABRIK FREIZEIT / OUTDOOR / SKI" (`Sport-Fabrik F26 *.pdf`, 14/12/17 pages, 28/22/38 models, 174/321/332 items). It is **not an order**: no quantities, number or delivery date. Like Bliz it creates items and prices only (quantity 0, type `bestellung`, nothing booked); number `COLUMBIA-F26-<group>-<content hash>`, date from "Created" (MM/DD/YYYY). One item per colour × size; `uvp` = MSRP, `ek` = BASE; `article_no` = `supplier_article_no` = style + colour code (10 digits, equals the material number of the order acknowledgement). Style numbers are checked against the index at the end. Assumptions to confirm: every colour exists in every size of the model; BASE = purchase price; two or more lengths behind "▲" (trousers) become `waist x length` sizes ("32x30", women's "2xS"); colour names are cut off by Columbia ("…") and kept as printed. **Open:** the order acknowledgement has the alphanumeric style code (`AO3772845`) as `supplier_article_no`, which the catalogue does not carry — the same product from catalogue and OA becomes two items; the expected receipt with quantity 0 stays in Pending (as for Bliz).
 
+**Open requirements from the vault (2026-10-02 to 2026-10-06, recorded 2026-10-06, not implemented).** Source: vault Requirements note, same headings.
+1. Article units: remove Stück/STK/Paar/PAA labels from `/articles` and manual entry; show a plain number as on `/bestand`. Display only; stored unit data stays.
+2. Upload persistence: keep uploaded documents on the upload page so closing the page does not lose them. Storage lifetime and restore behavior to specify (see also the finding in `ausfallsicherheit.md`: uploaded PDFs are not stored).
+3. Price notification: warn when the same article has different prices in stock. **Open:** purchase or selling price, before or after markdown, comparison scope.
+4. Helmet sizes: a range such as "55-59" is a hint for Hardgoods, not proof (Fabian: usually helmets).
+5. Bliz: classify the brand as Hardgoods / Winter.
+6. Transfer ID and barcode: every transfer gets an ID and a printable barcode; scanned once at dispatch, scanned again at the receiving branch to open its list.
+7. Ski and ski-boot details on `/articles/xxx`: skis length, radius, flex, materials; boots Mondopoint size, last (width), flex; other product types later. Field list to specify.
+
+**Answered by Fabian 2026-10-06:** (3) compare the selling price (UVP), before markdown; (2) keep uploads in the browser for the same session only, nothing stored on the server; TNF reorders confirmed by INTERSPORT count as group Intern (444), merged with the Quintet order into one item master (not implemented yet). **Importer (2026-10-06):** a document of type order (not goods) whose quantities are all 0 (Bliz, Columbia catalogue) creates its delivery with status `abgeschlossen` instead of `erwartet`, so it no longer shows under Expected deliveries or in Pending; prices and items are still created. Deliveries imported before this stay `erwartet` (clean-up not done). Browser check of `/retouren` and `/wareneingaenge` as head office: both load without console errors; actions untested. Next work: Package 5 after testing returns/4b with real data; was: browser check of `/retouren` and the deliveries page, then Package 5.
+
+Also open from the vault: the Sato test of the 47 × 83 mm label, Intersport feedback on the till interface (F2) and the wireless scanner are still pending.
+
 The previously queued items below follow the redesign:
 
 1. PR for the 2026-09-29 work (N2, transfer cancel, security S1/S3–S7) into `main` — at the end of this session.

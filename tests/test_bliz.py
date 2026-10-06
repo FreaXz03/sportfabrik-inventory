@@ -12,7 +12,7 @@ import pytest
 from conftest import neue_datenbank
 from sqlalchemy import func, select
 
-from app.core.models import Bestand, Lagerbewegung, Lagerort, Variante
+from app.core.models import Bestand, Lagerbewegung, Lagerort, Variante, Wareneingang
 from app.services.importer import ImportRejected, import_invoice
 from app.services.parsers import bliz, detect_parser, parse_document, read_document
 
@@ -88,6 +88,10 @@ def test_import_legt_artikel_an_aber_bucht_keinen_bestand():
         assert session.scalar(select(func.count()).select_from(Variante)) == 3
         assert session.scalar(select(func.count()).select_from(Lagerbewegung)) == 0
         assert session.scalar(select(func.coalesce(func.sum(Bestand.menge), 0))) == 0
+        # Nur Mengen 0: nichts zu erwarten, also keine offene Lieferung (06.10.2026).
+        assert session.scalar(
+            select(func.count()).select_from(Wareneingang).where(Wareneingang.status == "erwartet")
+        ) == 0
     with pytest.raises(ImportRejected):
         import_invoice(pdf, "nochmal.pdf", hashlib.sha256(pdf).hexdigest(), sessions, sf1)
 
