@@ -9,11 +9,14 @@ from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.fedas import suggest_kategorie
+from ..core.kategorien import HAUPTGRUPPEN_MIT_SPORTBEREICH
+from ..core.stichwoerter import kategorie_aus_text, kombiniere
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import (
     Artikel,
     Bestand,
     Dokument,
+    DokumentLieferung,
     Kategorie,
     Lagerbewegung,
     Lagerort,
@@ -33,6 +36,14 @@ from .artikel import (
 from .parsers import parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
 from .hinweise import erstelle_hinweise, pruefe_und_merke
+from .lieferung import (
+    FRAGT_NACH_LIEFERUNG,
+    NEU,
+    bekannte_varianten,
+    finde_kandidaten,
+    finde_lieferant,
+    pruefe_ziel,
+)
 from .wareneingang import buche_zugang
 
 
@@ -50,30 +61,50 @@ class DeleteRejected(ValueError):
     pass
 
 
-def _backfill_artikel(session, kategorie_cache, artikel, item):
+class DeletePosted(DeleteRejected):
+    """Das Dokument hat Buchungen: es wird storniert, nicht gelöscht (Regel 2)."""
+
+
+def _backfill_artikel(session, kategorie_cache, artikel, item, dateiname=None):
     """Fehlenden FEDAS-Code und die daraus abgeleitete Kategorie nachtragen.
 
     Läuft für jeden Artikel einer Rechnungsposition - auch wenn die Variante
     über ihre EAN gefunden wurde, denn genau die migrierten Altartikel haben
-    noch keinen FEDAS-Code. Ein bereits gesetzter Wert wird nie überschrieben
-    („einmal pro Artikel, danach gemerkt") - das gilt besonders für eine von
-    Hand gewählte Kategorie (`artikel.kategorie_manuell`, Teilaufgabe B8):
-    sie ist gesetzt, also rührt der Import sie nicht an.
+    noch keinen FEDAS-Code. Die Kategorie kommt aus FEDAS, ergänzt durch
+    Stichwörter in Artikel- und Dateiname (Punkt 2, `app/core/stichwoerter.py`).
+    Gesetzt wird sie, wenn der Artikel keine hat oder nur eine Hauptgruppe ohne
+    Sportbereich (Punkt 1) und der Vorschlag sie präzisiert. Eine von Hand
+    gewählte Kategorie (`artikel.kategorie_manuell`, Teilaufgabe B8) rührt der
+    Import nie an.
     """
     if not artikel.fedas_code and item.get("fedas_code"):
         artikel.fedas_code = item["fedas_code"]
-    if artikel.kategorie_id is None:
-        artikel.kategorie_id = _resolve_kategorie_id(
-            session, kategorie_cache, artikel.fedas_code
-        )
+    if artikel.kategorie_manuell:
+        return
+    aktuell = session.get(Kategorie, artikel.kategorie_id) if artikel.kategorie_id is not None else None
+    if aktuell is not None and not (
+        aktuell.sportbereich is None and aktuell.hauptgruppe in HAUPTGRUPPEN_MIT_SPORTBEREICH
+    ):
+        return  # schon vollständig gesetzt
+    # Ein Beleg mit eigenem FEDAS-Code zählt vor dem gespeicherten.
+    vorschlag_id = _resolve_kategorie_id(
+        session, kategorie_cache, item.get("fedas_code") or artikel.fedas_code,
+        artikel.bezeichnung or item.get("description"), dateiname,
+    )
+    if vorschlag_id is None or vorschlag_id == artikel.kategorie_id:
+        return
+    vorschlag = session.get(Kategorie, vorschlag_id)
+    if aktuell is None or (vorschlag.hauptgruppe == aktuell.hauptgruppe and vorschlag.sportbereich is not None):
+        artikel.kategorie_id = vorschlag_id
 
 
-def _resolve_kategorie_id(session, cache, fedas_code):
-    """Kategorie-Vorschlag aus dem FEDAS-Code (siehe app/core/fedas.py), oder
-    None, wenn der Code (noch) nicht zugeordnet ist bzw. fehlt - dann bleibt
-    artikel.kategorie_id leer und die Kategorie wird auf der Artikelseite von
-    Hand gewählt (app/services/kategorien.py, Teilaufgabe B8)."""
-    suggestion = suggest_kategorie(fedas_code)
+def _resolve_kategorie_id(session, cache, fedas_code, bezeichnung=None, dateiname=None):
+    """Kategorie-Vorschlag aus FEDAS-Code (app/core/fedas.py) und Stichwörtern
+    in Artikel- und Dateiname (app/core/stichwoerter.py), oder None, wenn
+    nichts zuzuordnen ist - dann bleibt artikel.kategorie_id leer und die
+    Kategorie wird auf der Artikelseite von Hand gewählt
+    (app/services/kategorien.py, Teilaufgabe B8)."""
+    suggestion = kombiniere(suggest_kategorie(fedas_code), kategorie_aus_text(bezeichnung, dateiname))
     if suggestion is None:
         return None
     if suggestion not in cache:
@@ -86,6 +117,60 @@ def _resolve_kategorie_id(session, cache, fedas_code):
     return cache[suggestion]
 
 
+def _haenge_an_lieferung(
+    session, lieferung, lieferant, lagerort_id, parsed, dates, digest, filename,
+    imported_by, language,
+):
+    """Das Dokument an eine bestehende Lieferung hängen, ohne zu buchen. Nur
+    die Preise der bereits bekannten Varianten werden übernommen (Regel 10:
+    Einkaufspreis, wenn im Beleg); unbekannte Zeilen legen hier nichts an."""
+    ziel = (
+        pruefe_ziel(session, int(lieferung), lieferant.id, lagerort_id)
+        if lieferung.isascii() and lieferung.isdigit()
+        else None
+    )
+    if ziel is None:
+        raise ImportRejected(translate("errors.importer.lieferung_ungueltig", language))
+    dokument = Dokument(
+        lieferant_id=lieferant.id,
+        lagerort_id=lagerort_id,
+        typ=parsed["document_type"],
+        dokumentnummer=parsed["invoice_number"],
+        dokumentdatum=dates["invoice_date"],
+        belegdatum=dates["document_date"],
+        dateiname=(filename or "rechnung.pdf")[:500],
+        datei_hash=digest,
+        hochgeladen_am=datetime.now(timezone.utc),
+        hochgeladen_von_kassennummer=(imported_by or {}).get("kassennummer"),
+        hochgeladen_von_name=(imported_by or {}).get("name"),
+        ocr_verwendet=bool(parsed.get("ocr_used")),
+    )
+    session.add(dokument)
+    session.flush()
+    session.add(DokumentLieferung(dokument_id=dokument.id, wareneingang_id=ziel.id))
+    varianten = bekannte_varianten(session, lieferant.id, parsed["items"])
+    for index, item in enumerate(parsed["items"]):
+        variante = varianten[index]
+        if variante is not None:
+            session.add(
+                Preis(
+                    varianten_id=variante.id,
+                    uvp=Decimal(item["uvp"]),
+                    ek=Decimal(item["ek"]) if item.get("ek") else None,
+                    datum=dates["invoice_date"],
+                    dokument_id=dokument.id,
+                )
+            )
+    return dict(
+        invoice_id=dokument.id,
+        invoice_number=dokument.dokumentnummer,
+        item_count=parsed["item_count"],
+        new_products=0,
+        reused_products=0,
+        attached_to=ziel.id,
+    )
+
+
 def import_invoice(
     pdf,
     filename,
@@ -95,6 +180,7 @@ def import_invoice(
     imported_by=None,
     corrections=None,
     language: str = DEFAULT_LANGUAGE,
+    lieferung: str | None = None,
 ):
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
@@ -162,23 +248,10 @@ def import_invoice(
             # different invoices that introduce the same EAN concurrently.
             if session.bind.dialect.name == "postgresql":
                 session.execute(text("SELECT pg_advisory_xact_lock(73421061)"))
-            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT):
-            # `parser_key` verbindet Parser-Modul und Lieferanten-Stammdaten.
+            # Lieferant aus dem erkannten Layout (nicht mehr fest INTERSPORT).
             # Muss vor der Duplikatsprüfung stehen, weil die Belegnummer nur
             # beim jeweiligen Lieferanten eindeutig ist.
-            # Gehört das Dokument zu einer anderen Lieferantengruppe als der
-            # Parser (ECOM-Retoure im INTERSPORT-Layout), zählt die Gruppe.
-            if parsed.get("lieferant_typ"):
-                lieferant = session.scalar(
-                    select(Lieferant)
-                    .where(Lieferant.typ == parsed["lieferant_typ"])
-                    .order_by(Lieferant.id)
-                    .limit(1)
-                )
-            else:
-                lieferant = session.scalar(
-                    select(Lieferant).where(Lieferant.parser_key == parsed["parser_key"])
-                )
+            lieferant = finde_lieferant(session, parsed)
             if lieferant is None:
                 raise ImportRejected(
                     translate("errors.importer.supplier_not_configured", language)
@@ -206,19 +279,30 @@ def import_invoice(
                         id=existing.id,
                     )
                 )
+            # Lieferschein/Rechnung zu einer bestehenden Lieferung (Paket 1,
+            # Schritt 2): erkennt das System eine passende, fragt es immer
+            # (Q3) - gewählt wird „neu" oder die Lieferung. Angehängt wird
+            # nichts automatisch, und ein angehängtes Dokument bucht nichts.
+            if parsed["document_type"] in FRAGT_NACH_LIEFERUNG:
+                if lieferung is None:
+                    if finde_kandidaten(session, lieferant.id, lagerort_id, parsed["items"]):
+                        raise ImportRejected(
+                            translate("errors.importer.lieferung_waehlen", language)
+                        )
+                elif lieferung != NEU:
+                    return _haenge_an_lieferung(
+                        session, lieferung, lieferant, lagerort_id, parsed, dates,
+                        digest, filename, imported_by, language,
+                    )
+            elif lieferung not in (None, NEU):
+                raise ImportRejected(translate("errors.importer.lieferung_ungueltig", language))
             # Regel 6: Ware an einen externen Standort ohne Verkauf (die
             # Verarbeitungsstellen GEWA und VEBO sowie das Lager Dietikon -
             # alle `verkauf = False`) bekommt noch KEIN Eingangsdatum. Das
             # wird erst bei Ankunft in einer Filiale gesetzt, damit die
             # Reduktionsuhr (18/36 Monate) nicht schon extern zu laufen
             # beginnt. Massgeblich ist `lagerorte.verkauf`, nie der Code.
-            lagerort_verkauft = session.scalar(
-                select(Lagerort.verkauf).where(Lagerort.id == lagerort_id)
-            )
             ware_ist_da = parsed["document_type"] in TYPEN_MIT_WARE
-            eingangsdatum = (
-                dates["invoice_date"] if ware_ist_da and lagerort_verkauft else None
-            )
             now = datetime.now(timezone.utc)
             dokument = Dokument(
                 lieferant_id=lieferant.id,
@@ -240,14 +324,41 @@ def import_invoice(
             # Bestand. Eine Auftragsbestätigung/Bestellung erzeugt einen
             # *erwarteten* Wareneingang; gebucht wird erst bei bestätigter
             # Ankunft (app/services/wareneingang.py).
-            wareneingang = Wareneingang(
-                dokument_id=dokument.id,
-                lagerort_id=lagerort_id,
-                status="eingetroffen" if ware_ist_da else "erwartet",
-                eingangsdatum=eingangsdatum,
+            # Ein Plan über mehrere Filialen (Bestellplan) trägt je Position
+            # `lagerort_code`: dann entsteht je Filiale ein eigener
+            # Wareneingang. Ohne Code gilt der Lagerort des Dokuments.
+            lagerorte_nach_code = {
+                code: ort_id
+                for code, ort_id in session.execute(select(Lagerort.code, Lagerort.id))
+            }
+            eingaenge = {}
+            # Katalog/Preisliste ohne Mengen: es wird nichts erwartet, die
+            # Lieferung bliebe sonst für immer offen (06.10.2026).
+            nichts_erwartet = not ware_ist_da and all(
+                Decimal(item["quantity"]) == 0 for item in parsed["items"]
             )
-            session.add(wareneingang)
-            session.flush()
+            status = "eingetroffen" if ware_ist_da else (
+                "abgeschlossen" if nichts_erwartet else "erwartet"
+            )
+
+            def eingang_fuer(item):
+                ort_id = lagerorte_nach_code.get(item.get("lagerort_code"), lagerort_id)
+                if ort_id not in eingaenge:
+                    verkauft = session.scalar(
+                        select(Lagerort.verkauf).where(Lagerort.id == ort_id)
+                    )
+                    eingang = Wareneingang(
+                        dokument_id=dokument.id,
+                        lagerort_id=ort_id,
+                        status=status,
+                        eingangsdatum=(
+                            dates["invoice_date"] if ware_ist_da and verkauft else None
+                        ),
+                    )
+                    session.add(eingang)
+                    session.flush()
+                    eingaenge[ort_id] = eingang
+                return eingaenge[ort_id]
 
             new_varianten, reused_varianten = 0, set()
             artikel_cache = {}
@@ -255,7 +366,7 @@ def import_invoice(
             kategorie_cache = {}
             # D-F2: vor jeder ersten Buchung eines Modells in dieser Lieferung
             # merken, ob es vorher schon reduziert war (Nachlieferung).
-            nachlieferungs_cache = {}
+            nachlieferungs_caches = {}
             seen = dates["invoice_date"]
             for item in parsed["items"]:
                 ean = item["ean"] or None
@@ -282,12 +393,14 @@ def import_invoice(
                             lieferanten_artikelnr=item.get("supplier_article_no"),
                             bezeichnung=item.get("description"),
                             fedas_code=fedas_code,
-                            kategorie_id=_resolve_kategorie_id(session, kategorie_cache, fedas_code),
+                            kategorie_id=_resolve_kategorie_id(
+                                session, kategorie_cache, fedas_code, item.get("description"), filename
+                            ),
                         )
                         session.add(artikel)
                         session.flush()
                     else:
-                        _backfill_artikel(session, kategorie_cache, artikel, item)
+                        _backfill_artikel(session, kategorie_cache, artikel, item, filename)
                     if group_key:
                         artikel_cache[group_key] = artikel
 
@@ -315,7 +428,7 @@ def import_invoice(
                     # - sonst bliebe genau der migrierte Altbestand für immer
                     # ohne Kategorie.
                     _backfill_artikel(
-                        session, kategorie_cache, session.get(Artikel, variante.artikel_id), item
+                        session, kategorie_cache, session.get(Artikel, variante.artikel_id), item, filename
                     )
                 if ean:
                     variante_cache[ean] = variante
@@ -335,8 +448,13 @@ def import_invoice(
                 # (Nachlieferung) - muss vor dem Anlegen der Position
                 # passieren, sonst zählt `letzter_wareneingang` die eigene,
                 # gerade erst gebuchte Lieferung schon mit.
+                wareneingang = eingang_fuer(item)
+                ort_id = wareneingang.lagerort_id
                 if ware_ist_da:
-                    pruefe_und_merke(session, variante.artikel_id, lagerort_id, nachlieferungs_cache)
+                    pruefe_und_merke(
+                        session, variante.artikel_id, ort_id,
+                        nachlieferungs_caches.setdefault(ort_id, {}),
+                    )
 
                 quantity = Decimal(item["quantity"])
                 uvp = Decimal(item["uvp"])
@@ -364,16 +482,17 @@ def import_invoice(
                 if ware_ist_da:
                     buche_zugang(
                         session,
-                        lagerort_id=lagerort_id,
+                        lagerort_id=ort_id,
                         varianten_id=variante.id,
                         position_id=position.id,
                         menge=quantity,
-                        eingangsdatum=eingangsdatum,
+                        eingangsdatum=wareneingang.eingangsdatum,
                         benutzer=imported_by,
                         zeitpunkt=now,
                     )
 
-            erstelle_hinweise(session, lagerort_id, nachlieferungs_cache)
+            for ort_id, cache in nachlieferungs_caches.items():
+                erstelle_hinweise(session, ort_id, cache)
             result = dict(
                 invoice_id=dokument.id,
                 invoice_number=dokument.dokumentnummer,
@@ -386,6 +505,57 @@ def import_invoice(
         raise ImportRejected(
             translate("errors.importer.integrity_conflict", language)
         ) from exc
+
+
+def dokument_ist_gebucht(session, dokument_id: int) -> bool:
+    """Hat das Dokument je Ware gebucht (eine Lagerbewegung an einer Position)?"""
+    return (
+        session.scalar(
+            select(Lagerbewegung.id)
+            .join(
+                WareneingangPosition,
+                WareneingangPosition.id == Lagerbewegung.wareneingang_position_id,
+            )
+            .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
+            .where(Wareneingang.dokument_id == dokument_id)
+            .limit(1)
+        )
+        is not None
+    )
+
+
+def aktualisiere_first_last_seen(session, varianten_ids) -> None:
+    """first_seen/last_seen aus den verbleibenden, angekommenen Wareneingängen
+    neu berechnen (nach Löschen oder Stornieren eines Dokuments)."""
+    for varianten_id in varianten_ids:
+        # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
+        # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an einem
+        #   Standort ohne Verkauf leer (Regel 6) und wuerde die Werte hier
+        #   auf NULL zuruecksetzen.
+        # Datum der Lieferung: das Dokumentdatum, und bei manuell
+        # erfasster Ware (ohne Beleg, D27) das Eingangsdatum. Darum ein
+        # LEFT JOIN auf `dokumente` - sonst fielen genau diese
+        # Wareneingänge aus der Berechnung. Bleibt beides leer (von Hand
+        # an einem Standort ohne Verkauf erfasst, Regel 6), zählt dieser
+        # Wareneingang hier nicht mit - first_seen/last_seen sind reine
+        # Anzeigewerte, die Reduktionsuhr hängt an
+        # `bestand.aeltestes_eingangsdatum`.
+        datum = func.coalesce(Dokument.dokumentdatum, Wareneingang.eingangsdatum)
+        first_seen, last_seen = session.execute(
+            select(func.min(datum), func.max(datum))
+            .select_from(WareneingangPosition)
+            .join(
+                Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
+            )
+            .join(Dokument, Dokument.id == Wareneingang.dokument_id, isouter=True)
+            .where(
+                WareneingangPosition.varianten_id == varianten_id,
+                # Nur angekommene Ware zählt als Lieferung (Teilaufgabe B5).
+                WareneingangPosition.menge_eingetroffen > 0,
+            )
+        ).one()
+        variante = session.get(Variante, varianten_id)
+        variante.first_seen, variante.last_seen = first_seen, last_seen
 
 
 def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LANGUAGE) -> dict:
@@ -408,6 +578,15 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                 translate("errors.importer.invoice_not_found", language, id=invoice_id)
             )
         dokumentnummer = dokument.dokumentnummer
+        if dokument_ist_gebucht(session, invoice_id):
+            raise DeletePosted(translate("errors.importer.invoice_posted", language))
+        if session.scalar(
+            select(DokumentLieferung.dokument_id)
+            .join(Wareneingang, Wareneingang.id == DokumentLieferung.wareneingang_id)
+            .where(Wareneingang.dokument_id == invoice_id)
+            .limit(1)
+        ) is not None:
+            raise DeletePosted(translate("errors.importer.invoice_has_attached", language))
         wareneingaenge = session.scalars(
             select(Wareneingang).where(Wareneingang.dokument_id == invoice_id)
         ).all()
@@ -436,6 +615,7 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                     Lagerbewegung.wareneingang_position_id.in_(position_ids)
                 )
             )
+        session.execute(delete(DokumentLieferung).where(DokumentLieferung.dokument_id == invoice_id))
         session.execute(delete(Preis).where(Preis.dokument_id == invoice_id))
         session.execute(
             delete(WareneingangPosition).where(
@@ -452,6 +632,8 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                     select(func.coalesce(func.sum(Lagerbewegung.menge), 0)).where(
                         Lagerbewegung.varianten_id == varianten_id,
                         Lagerbewegung.lagerort_id == lagerort_id,
+                        # Rückware in Prüfung zählt nicht zum verkäuflichen Bestand (Paket 4).
+                        Lagerbewegung.bestandsart == "verkaufbar",
                     )
                 )
                 bestand = session.get(Bestand, (varianten_id, lagerort_id))
@@ -480,38 +662,15 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
                         bestand.menge = menge
                         bestand.aeltestes_eingangsdatum = aeltestes
                 elif bestand is not None:
-                    session.delete(bestand)
+                    if bestand.menge_gesperrt:
+                        # Gesperrte Rückware bleibt: Zeile behalten, verkäuflich 0.
+                        bestand.menge = 0
+                        bestand.aeltestes_eingangsdatum = None
+                    else:
+                        session.delete(bestand)
 
         all_varianten_ids = {v for ids in varianten_by_lagerort.values() for v in ids}
-        for varianten_id in all_varianten_ids:
-            # first_seen/last_seen aus dem Dokumentdatum, genau wie beim Import
-            # - nicht aus dem Eingangsdatum: das bleibt fuer Ware an einem
-            #   Standort ohne Verkauf leer (Regel 6) und wuerde die Werte hier
-            #   auf NULL zuruecksetzen.
-            # Datum der Lieferung: das Dokumentdatum, und bei manuell
-            # erfasster Ware (ohne Beleg, D27) das Eingangsdatum. Darum ein
-            # LEFT JOIN auf `dokumente` - sonst fielen genau diese
-            # Wareneingänge aus der Berechnung. Bleibt beides leer (von Hand
-            # an einem Standort ohne Verkauf erfasst, Regel 6), zählt dieser
-            # Wareneingang hier nicht mit - first_seen/last_seen sind reine
-            # Anzeigewerte, die Reduktionsuhr hängt an
-            # `bestand.aeltestes_eingangsdatum`.
-            datum = func.coalesce(Dokument.dokumentdatum, Wareneingang.eingangsdatum)
-            first_seen, last_seen = session.execute(
-                select(func.min(datum), func.max(datum))
-                .select_from(WareneingangPosition)
-                .join(
-                    Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id
-                )
-                .join(Dokument, Dokument.id == Wareneingang.dokument_id, isouter=True)
-                .where(
-                    WareneingangPosition.varianten_id == varianten_id,
-                    # Nur angekommene Ware zählt als Lieferung (Teilaufgabe B5).
-                    WareneingangPosition.menge_eingetroffen > 0,
-                )
-            ).one()
-            variante = session.get(Variante, varianten_id)
-            variante.first_seen, variante.last_seen = first_seen, last_seen
+        aktualisiere_first_last_seen(session, all_varianten_ids)
         return dict(
             invoice_id=invoice_id,
             invoice_number=dokumentnummer,

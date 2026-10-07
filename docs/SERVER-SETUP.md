@@ -66,8 +66,11 @@ so no invoices are missing between the backup and the migration.
 
 Original PDFs also live in the Windows folder `Recchnungen/` and must be
 backed up separately and transferred if needed.
-Backup automation, retention, an offsite backup location, and the
-restore test are still outstanding. A Docker volume is not a backup.
+Backup automation (systemd timers), the restore drill script and the daily
+checks are prepared in `deploy/systemd/` and `scripts/` — see
+[`ausfallsicherheit.md`](ausfallsicherheit.md) and the pilot checklist
+[`pilot-sf1.md`](pilot-sf1.md); not yet run on a server. Retention and an offsite
+backup location are still outstanding. A Docker volume is not a backup.
 
 ## Access from the four PCs
 
@@ -200,3 +203,9 @@ on container start) instead builds all tables from scratch.
 4. Test locally: `alembic upgrade head`.
 5. Commit the migration together with the code change. On the next deployment
    the container will apply it automatically.
+
+## Mail for bug reports and unknown documents (2026-10-01)
+
+The "Report a problem" button and "Send document to Fabian" send mail to **fabian_morf@icloud.com only** (fixed in `app/services/mail.py`, never taken from input). Without `SMTP_HOST` the buttons show "not set up".
+
+Environment: `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` (default `SMTP_USER`), `SMTP_STARTTLS` (1) or `SMTP_SSL=1` for port 465. The store network needs outbound access to that SMTP server; documents are sent only on an explicit click (rule 1 exception, 2026-10-01). Limit: 10 messages per account per hour.

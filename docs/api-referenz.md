@@ -34,7 +34,8 @@ redirecting to a foreign site after login (open redirect).
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/` | Overview page (dashboard) |
-| GET | `/api/dashboard` | Key figures (number of variants/documents/lines, total quantity delivered) + the last 5 imported documents; plus `lagerort` and `filiale` (pieces, sold/removed today, negative stock, expected deliveries, `reduktionen` per level with `faellig`/`bald`) for the active branch, `aktuelles` (up to 8 combined entries: `art` = `lieferung` per goods receipt and day, `umlagerung` per transfer with `von`/`nach`, `abgang` per write-off without a sale; delivery/transfer with `positionen` and `stueck`), and `stamm` (`lagerort_id`, `ohne_kategorie`, `ohne_ean`; since 2026-09-28 counted only for variants with stock in the active branch, across the whole item master only without an active branch) |
+| GET | `/api/dashboard` | Key figures (number of variants/documents/lines, total quantity delivered) + the last 5 imported documents; plus `lagerort` and `filiale` (pieces, sold/removed today, negative stock, expected deliveries, `reduktionen` per level with `faellig`/`bald`) for the active branch, `aktuelles` (up to 8 combined entries: `art` = `lieferung` per goods receipt and day, `umlagerung` per transfer with `von`/`nach`, `abgang` per write-off without a sale; delivery/transfer with `positionen` and `stueck`), and `stamm` (`ohne_kategorie`, `ohne_ean`; since 2026-09-29/30 always the whole item master, for all roles in every branch; `filiale` also has `empfehlungen_offen`, the open head-office recommendations of the active branch) |
+| GET | `/api/anstehend/anzahl` | Bell (2026-09-30): `{anzahl}` = number of Pending notices of the active branch plus the two item-master notices (one notice = one row of the Pending list) |
 
 ## Items
 
@@ -92,7 +93,10 @@ only fills in a category that is still empty.
 | GET | `/articles/{id}/history` | Item history page (including notes and price history) |
 | GET | `/api/invoices` | Invoice list; filter `q` (invoice number), pagination |
 | GET | `/api/invoices/{invoice_id}` | Invoice details including all lines; sortable (`sort_by`/`sort_dir`, see above) |
-| DELETE | `/api/invoices/{invoice_id}` | 🔒 Irrevocably delete an invoice including lines and original snapshots; affected item metrics are recalculated |
+| DELETE | `/api/invoices/{invoice_id}` | 🔒 Delete a document **without any posted movement** (e.g. an order confirmation with nothing arrived), including lines and original snapshots; `409` if it has posted goods — cancel instead |
+| GET | `/api/invoices/{invoice_id}/cancel-preview` | 🔒 Quantity effect of cancelling per variant and branch (stock now / receipt / stock after, "moved since", `hat_negativen_bestand`); books nothing |
+| POST | `/api/invoices/{invoice_id}/cancel` | 🔒 Cancel a posted document with one counter-movement per receipt line (`korrektur`, reason `storno:<movement id>`); document, snapshots and prices stay; `409` if already cancelled |
+| POST | `/api/lieferung-kandidaten` | 🔒 Form like `/validate-preview` (+ `lagerort_id`): existing deliveries of the same supplier and branch that match the document (≥ 50 % of its lines, ≤ 120 days old); `wahl_noetig` is true if any. Books nothing |
 
 ## Upload & import
 
@@ -101,7 +105,7 @@ only fills in a category that is still empty.
 | GET | `/preview` | 🔒 Upload page (supports several PDFs at once, see "Batch import" below) |
 | POST | `/upload-preview` | 🔒 Upload one PDF, recognize supplier/document type, and return the lines as a preview (max. 20 MB, no DB change) |
 | POST | `/validate-preview` | 🔒 Re-validate manually corrected lines (see `corrections`) against the same file before importing; requires `expected_hash` |
-| POST | `/import-invoice` | 🔒 Confirm the import; requires `expected_hash` (SHA-256 of the checked file), `confirmed=true`, optionally `corrections` (JSON, see below) and optionally `lagerort_id` (target of the goods receipt, see below). Without `lagerort_id`, booking goes against the account's active branch (`GET /api/me`, `lagerort`) — without a chosen branch (possible only for admin, all branches) HTTP 400 |
+| POST | `/import-invoice` | 🔒 Confirm the import; requires `expected_hash` (SHA-256 of the checked file), `confirmed=true`, optionally `corrections` (JSON, see below) and optionally `lagerort_id` (target of the goods receipt, see below) and `lieferung` (`neu` = book as new goods, or a `wareneingang_id` = attach the document to that delivery without booking). For an invoice or delivery note that matches an existing delivery, a missing `lieferung` is rejected with HTTP 409 — the user is always asked (Q3). Without `lagerort_id`, booking goes against the account's active branch (`GET /api/me`, `lagerort`) — without a chosen branch (possible only for admin, all branches) HTTP 400 |
 | GET | `/invoice-import-status` | 🔒 Checks, via file hash (`file_hash`) or via document number **at the recognized supplier** (`invoice_number` **and** `parser_key`, both from the preview response), whether an invoice has already been imported — used by the batch-import queue to skip already-imported files. Without `parser_key`, only the file hash counts: the same document number can be a completely different invoice at a different supplier |
 
 **Warnings and hints per line**: each line in the response has two
@@ -154,6 +158,7 @@ upload/validation/import flow as a single upload.
 | GET | `/wareneingaenge` | "Expected deliveries" page (any login) |
 | GET | `/api/wareneingaenge` | Open (expected) deliveries of the active branch including lines; without an active branch (admin) all of them. Since 2026-09-28 this includes transfers on their way: `dokument` is then `null` and `umlagerung` holds `von` (`{id, code, name}`) and `versanddatum`; for deliveries from documents `umlagerung` is `null` |
 | POST | `/api/wareneingaenge/{id}/ankunft` | Confirm arrival: `{"mengen": {"<line id>": "<quantity>"}, "eingangsdatum": "YYYY-MM-DD"}`. Books the receipt, sets the receipt date (retroactively if needed), and closes the delivery once no line is open anymore. The response includes `mehrlieferungen`: for each line where more arrived than expected, the line id plus expected, arrived, and surplus quantity — it is booked regardless |
+| POST | `/api/wareneingaenge/{id}/differenz` | Package 4b: explain an open remainder. JSON: `position_id`, `art`, `menge` (whole, ≤ open remainder), `notiz`. `in_klaerung` (shortage under investigation): any employee of the receiving branch, the remainder stays open. `verloren` (lost in transit) and `lieferant_storniert` (supplier will not deliver; not for transfers): 🔒 branch manager/head office; no stock movement, the remainder no longer counts as open, and the delivery becomes `abgeschlossen` when nothing is open. 403 / 409 as usual. `GET /api/wareneingaenge` now returns `differenzen` per position and, for transfers, `tage_unterwegs` and `versendet_von` |
 
 For a transfer, the confirmation books the receipt at the destination
 with the transfer date rules instead (`typ = umlagerung`, D13/D17/F10/F11,
@@ -171,7 +176,7 @@ nothing is booked in either case.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/bestand` | "Stock" page (any login) |
-| GET | `/api/bestand` | Stock per variant × storage location. Parameters: `lagerort_id` (the active branch if not given), `alle=true` (across all branches), `q` (brand, description, supplier item no., EAN), `nur_vorhanden` (default `true`, hides rows with quantity 0; the UI always sets it), `nur_negativ=true` (negative stock only), `reduktion` (50/70) with `reduktion_status` (`faellig`/`bald`, needs a branch; the same selection the overview counts under "Upcoming"), `artikel_von` (variant id; shows all sizes and colors of the same item, for the item detail page, 404 for an unknown id), `limit` (max. 500), and `offset`. Response: `zeilen` (rows; each row also has `hauptgruppe`, `artikel_id`, and `reduktion` with `empfehlung`/`manuell`/`wirksam`, `null` for external storage locations), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
+| GET | `/api/bestand` | Stock per variant × storage location. Parameters: `lagerort_id` (the active branch if not given), `alle=true` (across all branches), `q` (brand, description, supplier item no., EAN), `nur_vorhanden` (default `true`, hides rows with quantity 0; the UI always sets it), `nur_negativ=true` (negative stock only), `stufe` (30/50/70, needs a branch; variants currently in that markdown stage, same split as the overview's stage chart), `reduktion` (50/70) with `reduktion_status` (`faellig`/`bald`, needs a branch; the same selection the overview counts under "Upcoming"), `artikel_von` (variant id; shows all sizes and colors of the same item, for the item detail page, 404 for an unknown id), `limit` (max. 500), and `offset`. Response: `zeilen` (rows; each row also has `hauptgruppe`, `artikel_id`, and `reduktion` with `empfehlung`/`manuell`/`wirksam`, `null` for external storage locations), `total`, `summe`, `gewaehlt`, `lagerorte`, `limit`, `offset`, `hat_mehr` |
 
 **Any login may read all branches** (confirmed 2026-09-22) — even the
 ones the account cannot switch to. An unknown `lagerort_id` results in
@@ -187,6 +192,12 @@ negative stock is shown, not hidden.
 | POST | `/api/ausbuchen` | Write off one piece. JSON: `grund`, exactly one of `ean` or `varianten_id`, `freitext` (required for `sonstiges`), `lagerort_id` (the active branch if not given). Response: `bewegung_id`, `typ`, `grund`, item data, `lagerort`, `bestand_vorher`, `bestand_nachher`, `bestand_reicht_nicht`. 403 for an employee with any reason other than `verkauf` or a foreign branch; 409 for an unknown EAN/variant or unknown reason — nothing is booked then |
 | GET | `/api/ausbuchungen` | Sales and removals, newest first. Parameters: `lagerort_id` (the active branch if not given), `alle=true`, `limit` (max. 200), `offset`. Per row: timestamp, item, storage location, reason, person (`benutzer_name`), `storniert` |
 | POST | `/api/ausbuchen/{bewegung_id}/storno` | 🔒 Reverse a write-off via a counter-booking (`korrektur`, `storno:<id>`); 409 if already reversed or not a write-off |
+| GET | `/retouren` | Returns page (any login) |
+| GET | `/api/retouren/stammdaten` | Package 4a: return reasons (`passform`, `geschmack` are booked directly; `defekt`, `reklamation`, `sonstiges` need approval), conditions (`neuwertig`, `gebraucht`, `beschaedigt`), `darf_verwalten` |
+| GET | `/api/retouren` | Returns, newest first. Parameters: `lagerort_id`, `alle`, `status` (`beantragt`, `in_pruefung`, `abgeschlossen`, `abgelehnt`), `limit`, `offset` |
+| POST | `/api/retouren` | Book a customer return in an assigned branch (optional `X-Operation-Id`). JSON: `varianten_id`, `grund`, `zustand`, `lagerort_id`, `menge` (whole, default 1), `freitext` (required for `sonstiges`), `verkauf_bewegung_id` (must be a sale of the same variant and branch), `erstattungsreferenz`, `sofort_freigeben` (only effective for `neuwertig`). Direct reasons go to held stock (`in_pruefung`); other reasons stay `beantragt` and book nothing |
+| POST | `/api/retouren/{id}/genehmigen`, `/ablehnen` | 🔒 Approve (books into held stock) or reject a request; 409 if not `beantragt` |
+| POST | `/api/retouren/{id}/ergebnis` | Inspection outcome `{ergebnis}`: `freigeben` (held → saleable; employees only for fit/taste returns in their branches), `lieferant` (supplier return) or `abschreiben` (write-off) — the last two 🔒 branch manager/head office, booked as `ausbuchung` from held stock. 409 if not `in_pruefung` |
 
 The reason `test` belongs to the temporary "−1" button on the stock
 view and isn't listed in `gruende`.
@@ -213,6 +224,8 @@ without a document only).
 |---|---|---|
 | GET | `/umlagern` | "Transfer" page (branch manager/head office) |
 | GET | `/api/umlagerung/stammdaten` | `quellen` (bookable sources, own first), `ziele` (all storage locations), `quelle_aktiv`, `heute`; per storage location `verkauf` |
+| GET | `/api/umlagerung/unterwegs` | Transfers in transit (status `erwartet`) from the user's own branches or dispatched by the user; head office all. Optional `quelle_id` (403 if not own). Response `umlagerungen` in the same shape as `/api/wareneingaenge` (2026-09-29) |
+| POST | `/api/umlagerung/{id}/stornieren` | Cancel a transfer in transit (2026-09-29): branch manager of the source branch, the person who dispatched it, or head office (403 otherwise). Books the open rest back to the source (`umlagerung`, reason `zurueck:<destination>`, original date kept), status `storniert`. Response: `wareneingang_id`, `quelle`, `ziel`, `stueck`. 409 if not a transfer or no longer in transit |
 | POST | `/api/umlagerung` | Dispatch a transfer (since 2026-09-28 like a delivery). JSON: `quelle_id` (the active branch if not given), `ziel_id`, `versanddatum` (optional, `YYYY-MM-DD`, not in the future, default today), `positionen` (`varianten_id`, `menge` as text; identical variants are summed). Books the removal at the source right away and creates an expected goods receipt at the destination (`herkunft_lagerort_id`, `versanddatum`); the destination confirms the arrival via `POST /api/wareneingaenge/{id}/ankunft`. Response: `wareneingang_id`, `quelle`, `ziel`, `versanddatum`, `positionen` (per variant, stock at the source before/after), `fehlbestand`, `stueck`. 404 for an unknown destination; 409 for the same source and destination, a future date, an invalid quantity, or an unknown variant — nothing is booked then |
 
 Between dispatch and arrival the goods are in no stock ("in transit").
@@ -230,7 +243,7 @@ the arrival (F11).
 | GET | `/erfassen` | "Enter goods" page (any login) |
 | GET | `/api/erfassen/stammdaten` | Selection lists: bookable storage locations (own first, D26), suppliers only as five groups (`id`, `gruppe`, `code` 111/333/444/555/999; 2026-09-24), POS categories (rule 8), today's date from the server |
 | GET | `/api/erfassen/variante?ean=<ean>` | Lookup for the scanner: `{"gefunden": true, "variante": {…}}` with brand, description, color, size, unit, last UVP/EK, and the existing category as a suggestion; an unknown EAN gives `{"gefunden": false, "variante": null}` |
-| POST | `/api/erfassen` | Book all lines as **one** goods receipt without a document (D27) |
+| POST | `/api/erfassen` | Book all lines as **one** goods receipt without a document (D27). Per line optional `reduktion` (30/50/70, N2 2026-09-29): stored as manual markdown of the target branch; 403 outside own branches, 409 at external locations, 422 for other values |
 
 Body of `POST /api/erfassen`:
 
@@ -335,6 +348,15 @@ itself (`409`).
   (`status`: `uebernommen`/`abgelehnt`, `grund` required on rejection;
   same rights as manual markdown). `GET /api/reduktionen` additionally
   returns `empfehlungen` (open ones, for the active branch).
+  Since 2026-09-30: `POST /api/empfehlungen` takes either `lagerort_id` or
+  `alle_filialen: true` (exactly one, else 422); with `alle_filialen` it
+  creates one recommendation per sales branch (`lagerorte.verkauf`, also
+  branches without stock) and returns `{empfehlungen: [...]}`.
+  `POST /api/empfehlungen/{id}/zurueckziehen` (head office only) withdraws a
+  recommendation at any time, also after the answer (status
+  `zurueckgezogen`; a stage already set stays; again 422, unknown id 404).
+  A withdrawn recommendation can no longer be answered (422) and is not
+  counted as open.
 
 ## Phone pages (2026-09-28)
 
@@ -375,6 +397,29 @@ desktop APIs — there is no separate phone API.
 | GET | `/db-test` | Health check: verifies the database connection is up (no auth needed; used by the Docker healthcheck) |
 | GET | `/static/{path}` | Static files: `css/`, `js/`, `fonts/`, `img/` |
 | GET | `/docs`, `/redoc`, `/openapi.json` | Automatically generated FastAPI documentation (Swagger/ReDoc) |
+
+## Retry protection and stale counts (Package 2, 2026-10-01)
+
+**Operation ID.** `POST /api/ausbuchen`, `/api/korrektur`, `/api/umlagerung`,
+`/api/wareneingaenge/{id}/ankunft` and `/api/erfassen` accept an optional header
+`X-Operation-Id` (8–64 characters: letters, digits, `-`, `_`; otherwise `422`).
+The same ID with the same request returns the stored response with
+`"wiederholt": true` and books nothing; the same ID for another request, endpoint
+or user is `409`. A new ID is a new booking. Without the header nothing is
+protected. A rejected request is not remembered. Rows live 30 days. The
+screens send an ID per deliberate action (`static/js/operation.js`): it is kept
+after a network or 5xx failure and dropped after any other answer.
+
+**Stale count.** `GET /api/bestand` rows carry `letzte_bewegung_id` (latest
+movement of that variant at that branch, `0` if none). `POST /api/korrektur`
+accepts `stand_bewegung_id` (that marker at the start of the count) and
+`bestaetigt` (default `false`). If the stock moved since, the server books
+nothing and answers `409` with `code: "bestand_geaendert"`, `bestand_jetzt`, the
+new `stand_bewegung_id` and `seit_zaehlbeginn` (movements: `id`, `typ`, `menge`,
+`zeitpunkt`, `benutzer_name`). Recount, or send the count again with
+`bestaetigt: true` to book against the current stock. Every count is stored in
+`zaehlungen`; the response carries `zaehlung_id` (also when nothing was booked
+because the stock was already right).
 
 ## Error format
 

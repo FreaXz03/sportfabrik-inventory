@@ -162,7 +162,7 @@ code follows (Intersport 111, ECOM 555, dealer = `extern` 333,
 third-party dealer = `drittanbieter` 999, internal = Nike/adidas/The North
 Face 444; since 2026-09-24, migration `f2a3b4c5d6e7`). `typ` and
 `parser_key` (points to the matching parser module in
-`app/services/parsers/`, currently only `intersport`) drive automatic
+`app/services/parsers/`: `intersport`, `alpina`, `chrissports`, `cmp`, `bliz`, `quintet` — the last one on "The North Face") drive automatic
 supplier detection on document upload: the registry recognizes the layout
 and the importer looks up the supplier via the same `parser_key`
 (Phase B, subtask B1 — see `docs/architektur.md`, "PDF parsing"). A
@@ -250,6 +250,10 @@ active branch. A document has exactly one storage location (D20).
 `ocr_verwendet` marks documents that were read via Tesseract OCR for
 lack of a text layer.
 
+`status` (`aktiv`/`storniert`, 2026-10-01): a document that posted goods is never deleted but cancelled — each receipt line gets a counter-movement, its receipts become `storniert`, `menge_eingetroffen` of its lines is set to 0 (the arrived quantity stays in the movement and its counter-movement), and the document keeps `storniert_am`/`storniert_von_*`. Only a document without any posted movement can still be deleted.
+
+`dokument_lieferung` (2026-10-01): an invoice or delivery note that belongs to an existing delivery (the `wareneingaenge` row of e.g. an order confirmation) is imported as an *attached* document: it has no receipt, positions or movements of its own and books nothing; only the prices of already-known variants are kept. The user always chooses ("attach" or "new goods"); an order confirmation or purchase order never asks. A document with attached documents cannot be deleted.
+
 ### `wareneingaenge`
 One goods receipt per document (currently 1:1; the schema allows several
 per document later, e.g. for partial deliveries) — or **without** a
@@ -281,7 +285,11 @@ with `herkunft_lagerort_id` (source location, FK `lagerorte`) and
 `versanddatum` (dispatch date). Its `eingangsdatum` always stays empty —
 whether the arrival starts the markdown clock is recorded on the arrival
 movement (`lagerbewegungen.eingangsdatum`, see there). Both columns are
-empty for documents and manual entries.
+empty for documents and manual entries. A transfer still in transit can
+be cancelled (migration `a4b5c6d7e8f9`, 2026-09-29): status `storniert`,
+the open rest is booked back to the source. `versendet_von` (till number
+of the dispatcher, empty for documents and manual entries) allows the
+dispatcher to cancel.
 
 ### `wareneingang_positionen` (+ `wareneingang_positionen_quelle`)
 `mitgebracht_datum` (2026-09-28, transfers only): the receipt date the
@@ -327,8 +335,42 @@ with `grund = 'manuelle-erfassung'` there (a fixed key, not UI text —
 translation only happens at display time). The user is stored as a
 snapshot (as with `dokumente`/`article_notes`), not as a foreign key.
 
+### `operationen`
+Retry keys (Package 2, 2026-10-01): `operation_id` (primary key, from the
+device), `endpunkt`, `kassennummer`, `anfrage_hash`, `antwort` (JSON),
+`erstellt_am`. Written in the same transaction as the booking; rows older than
+30 days are removed when new ones are written. Not business data.
+
+### `zaehlungen`
+Every counted quantity (Package 2, 2026-10-01): branch, variant, `gezaehlt`,
+`bestand_vorher`, `differenz`, `grund`, `bewegung_id` (empty if the stock was
+already right — "counted, no difference"), `bestaetigt_trotz_aenderung` (the
+user confirmed although the stock moved since the count started), user snapshot
+and time. Serves as proof of a stock-take, e.g. the opening count of the pilot.
+
+### `lieferung_differenzen` (Package 4b, 2026-10-05)
+Explicit outcome for an open remainder of a delivery position: `art` is
+`in_klaerung` (shortage under investigation, remainder stays open),
+`verloren` (lost in transit) or `lieferant_storniert` (supplier will not
+deliver). The last two no longer count as open; no stock movement (a transfer
+in transit is in no stock, the units already left the source). `aufgeloest_am`
+marks an `in_klaerung` note replaced by a declaration. `wareneingaenge.status`
+gains `abgeschlossen` (nothing open, at least one remainder declared).
+Migration `e0f1a2b3c4d5`; downgrade refuses while differences exist.
+
+### `retouren` (Package 4a, 2026-10-05)
+Customer return: `lagerort_id`, `varianten_id`, `menge`, `grund`, `zustand`,
+`verkauf_bewegung_id` (original sale, optional), `erstattungsreferenz` (refund
+reference from the till, free text), `status` (`beantragt`, `in_pruefung`,
+`abgeschlossen`, `abgelehnt`), `ergebnis` (`freigegeben`, `lieferant`,
+`abgeschrieben`), who/when for booking and decision. Held stock itself lives in
+`bestand.menge_gesperrt`; every change is a `lagerbewegungen` row with
+`bestandsart = gesperrt` (`retoure`, `freigabe`, `ausbuchung`). A release is two
+rows (`gesperrt` −n, `verkaufbar` +n). Migration `d9e0f1a2b3c4`; downgrade
+refuses while returns exist.
+
 ### `bestand`
-Current stock per variant × branch (composite primary key), derived from
+Current stock per variant × branch (composite primary key; `menge` = saleable, `menge_gesperrt` = returns in inspection), derived from
 `lagerbewegungen` and also kept in sync there (never written directly
 except to update the running total). `aeltestes_eingangsdatum` (oldest
 receipt date) later serves the markdown logic (Phase D, 18/36 months
@@ -369,8 +411,9 @@ Three tables for the open questions D-F1/D-F2/D-F3, migration
   marked down before (no batch separation in stock, hence only a hint
   instead of a real split).
 - `reduktion_empfehlung_zentrale` (D-F3): `artikel_id`, `lagerort_id`,
-  `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`),
-  `ablehnungsgrund`, head-office and response snapshot. At most one open
+  `prozent`, `ab_datum`, `status` (`offen`/`uebernommen`/`abgelehnt`/`zurueckgezogen`),
+  `ablehnungsgrund`, head-office and response snapshot, `zurueckgezogen_von_name`,
+  `zurueckgezogen_am`. At most one open
   row per model × branch — a new recommendation replaces an older one.
 
 ### `article_notes`
@@ -451,6 +494,23 @@ above):
 | `d1e2f3a4b5c6` | Quick access (requirement 14, 2026-09-25): `users.schnellzugriffe` (JSON, chosen functions and order) |
 | `e2f3a4b5c6d7` | Phase D, open questions (2026-09-25): new tables `reduktionen_bestaetigt`, `hinweise`, `reduktion_empfehlung_zentrale` |
 | `f3a4b5c6d7e8` | Transfer as a delivery (2026-09-28): `wareneingaenge.herkunft_lagerort_id`, `wareneingaenge.versanddatum`, `wareneingang_positionen.mitgebracht_datum`; new empty columns only |
+| `a4b5c6d7e8f9` | Cancel a transfer in transit (2026-09-29): check constraint `ck_wareneingaenge_status` also allows `storniert`; new empty column `wareneingaenge.versendet_von` |
+| `b5c6d7e8f9a0` | Withdraw a head-office recommendation (2026-09-30): check constraint `ck_empfehlung_zentrale_status` also allows `zurueckgezogen`; new empty columns `zurueckgezogen_von_name`, `zurueckgezogen_am` |
+| `c6d7e8f9a0b1` | Cancel instead of delete (2026-10-01): `dokumente.status` (`aktiv`/`storniert`, check constraint `ck_dokumente_status`), `storniert_am`, `storniert_von_kassennummer`, `storniert_von_name` |
+| `d7e8f9a0b1c2` | Link documents to one delivery (2026-10-01): new table `dokument_lieferung` (`dokument_id` PK → `dokumente`, `wareneingang_id` → `wareneingaenge`) |
+| `e8f9a0b1c2d3` | Retry protection (2026-10-01): table `operationen` |
+| `f9a0b1c2d3e4` | Counts (2026-10-01): table `zaehlungen` |
+| `a0b1c2d3e4f5` | Main group without sport area as a till category (2026-10-01) |
+| `b1c2d3e4f5a6` | Several EANs per variant (2026-10-01): table `varianten_eans` |
+| `c2d3e4f5a6b7` | Redirect an expected delivery to another branch (2026-10-01): table `wareneingang_umleitungen` |
+| `d3e4f5a6b7c8` | Supplier Bliz with parser (2026-10-02): `parser_key` `bliz`, group third-party dealer (999). Data only |
+| `e4f5a6b7c8d9` | The North Face reads Quintet order information (2026-10-02): existing supplier "The North Face" (group intern, 444) gets `parser_key` `quintet` (only while still empty). Data only |
+
+| `f5a6b7c8d9e0` | Supplier Columbia with parser (2026-10-03): `parser_key` `columbia`, group third-party dealer (999). Data only |
+| `a6b7c8d9e0f1` | Supplier Gonso with parser (2026-10-05): `parser_key` `gonso`, group third-party dealer (999). Data only |
+| `b7c8d9e0f1a2` | Supplier "Bestellplan (Dritte-Händler)" with parser (2026-10-05): `parser_key` `bestellplan`, group third-party dealer (999). Data only |
+| `d9e0f1a2b3c4` | Returns and held stock (2026-10-05): `bestand.menge_gesperrt`, `lagerbewegungen.bestandsart` and types `retoure`/`freigabe`, table `retouren`. Downgrade refuses while returns exist |
+| `e0f1a2b3c4d5` | Delivery remainders (2026-10-05): table `lieferung_differenzen`, `wareneingaenge.status` gains `abgeschlossen`. Downgrade refuses while differences exist |
 
 Schema changes run exclusively through Alembic
 (`alembic revision --autogenerate`); the container automatically runs

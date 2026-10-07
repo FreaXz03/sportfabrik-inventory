@@ -4,9 +4,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+  <script src="/static/js/theme-init.js?v=2"></script>
   <title data-i18n="login.page_title">Anmelden · Sport-Fabrik</title>
-  <link rel="stylesheet" href="/static/css/app.css?v=design-2">
+  <link rel="stylesheet" href="/static/css/app.css?v=stufe-1">
 </head>
 
 <body>
@@ -30,56 +30,7 @@
   <footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
   <script src="/static/js/login-redirect.js?v=2"></script>
   <script src="/static/js/i18n.js?v=1"></script>
-  <script>
-    const $ = id => document.getElementById(id);
-    const params = new URLSearchParams(location.search);
-    const next = safeLoginRedirect(params.get('next'), location.origin);
-    let awaitingPassword = false;
-    $('login').addEventListener('submit', async event => {
-      event.preventDefault();
-      $('submit').disabled = true;
-      $('status').className = '';
-      $('status').textContent = window.SportfabrikI18n.t(awaitingPassword ? 'login.checking_password' : 'login.checking_kassennummer');
-      try {
-        const body = new URLSearchParams();
-        body.set('kassennummer', $('kassennummer').value.trim());
-        if (awaitingPassword) body.set('password', $('password').value);
-        const response = await fetch('/login', { method: 'POST', body });
-        const result = await response.json();
-        if (!response.ok) {
-          $('status').className = 'notice error';
-          $('status').textContent = typeof result.detail === 'string' ? result.detail : window.SportfabrikI18n.t('login.failed');
-          if (awaitingPassword) { $('password').value = ''; $('password').focus(); }
-          return;
-        }
-        if (result.requires_password) {
-          awaitingPassword = true;
-          $('passwordField').hidden = false;
-          $('password').focus();
-          $('status').textContent = window.SportfabrikI18n.t('login.enter_password');
-          return;
-        }
-        location.href = next;
-      } catch (error) {
-        $('status').className = 'notice error';
-        $('status').textContent = window.SportfabrikI18n.t('login.connection_lost');
-      } finally {
-        $('submit').disabled = false;
-      }
-    });
-    function highlightActiveLang() {
-      document.querySelectorAll('#langSwitch .lang-option').forEach(function (button) {
-        button.classList.toggle('active', button.dataset.lang === window.SportfabrikI18n.lang);
-      });
-    }
-    document.querySelectorAll('#langSwitch .lang-option').forEach(function (button) {
-      button.addEventListener('click', function () {
-        window.SportfabrikI18n.setLanguage(button.dataset.lang).then(highlightActiveLang);
-      });
-    });
-    document.addEventListener('sportfabrik:i18n-ready', highlightActiveLang);
-    highlightActiveLang();
-  </script>
+  <script src="/static/js/login.js?v=1"></script>
   <script src="/static/js/theme.js?v=design-1"></script>
 </body>
 

@@ -270,10 +270,11 @@ FastAPI, PostgreSQL, Alembic, Docker, vanilla JS frontend, two-stage import with
 | **B — Goods receipt v2** | Document types, supplier recognition, expected→arrived, storage location from delivery address, manual entry with scanner, add/generate EAN + label, FEDAS category suggestion | every item enters the system | done |
 | **C — Stock** | Stock movements, stock per storage location, transfer external location → branch, booking out via scan, corrections | current stock | done |
 | **D — Prices & markdown** | RRP/purchase price history, markdown levels, central recommendation, 18-/36-month notices | markdown supported | done (2026-09-25); new requirements 2026-09-25/28 pending (minimum 30 %, see end of document) |
-| **E — More suppliers** | Parsers for Alpina, Chris Sports, CMP (text + scan), external dealer; more as examples come in | upload for all known suppliers | partly: Alpina, Chris Sports, CMP (text); scans and further suppliers open |
+| **E — More suppliers** | Parsers for Alpina, Chris Sports, CMP (text + scan), external dealer; more as examples come in | upload for all known suppliers | partly: Alpina, Chris Sports, CMP (text), Bliz, INTERSPORT order confirmations, The North Face (Quintet) — 2026-10-02; scans and further suppliers open (order: Columbia, Gonso, PPS Sportsgoods, PUMA, Bliz helmet, Maier Sports) |
 | **F — Operations** | Server Volketswil, VPN, external backups, data migration; required points from the [security review](sicherheit.md): HTTPS, login rate-limiting, network separation, encrypted backups | all 4 branches in production | started: HTTPS and login lockout done locally; server, VPN, encrypted backups, S3–S8 open |
 | **G — Till** | Connection to the Intersport till (depends on clarification with Intersport) | no more manual typing | waiting for Intersport |
 | *(extra)* **Phone** | Phone web app for search, scan, count, receipt, transfer, write-off, entry, markdowns | staff work at the shelf | done (2026-09-28), remote access (VPN) open |
+| *(proposed 2026-10-01)* **Operational reliability** | Cancel instead of delete, link documents to deliveries, stale-count check, retry protection, one-branch pilot with restore test, held stock/returns, price snapshots — see [roadmap](roadmap-operational-reliability-2026-10-01.md) | one branch reconciles a full day | proposal; Q1–Q9 answered 2026-10-01 |
 
 ## 10. Open questions
 
@@ -283,7 +284,7 @@ All questions from Rev. 2 and Rev. 3 are answered (D1–D27). Still open:
 2. ~~**Barcode on the label?**~~ — confirmed on 2026-09-24: **yes**, below the mountains (the roll is currently being redesigned for it).
 3. **Till:** result of the clarification with Intersport (access/interface).
 4. ~~**Manual booking-out outside the till:** the rule for negative stock still needs clarifying here.~~ — answered on 2026-09-22 (see below): warn, allow the booking anyway, same as at the till.
-5. ~~**Open decisions of 2026-09-28**~~ — decided the same evening, see "Decisions and implementation – 2026-09-28, evening" at the end. Still open: where a markdown chosen at goods entry is stored (N2).
+5. ~~**Open decisions of 2026-09-28**~~ — decided the same evening, see "Decisions and implementation – 2026-09-28, evening" at the end. N2 decided and implemented 2026-09-29 (see the section of that date at the end).
 
 ### Confirmed answers from 2026-09-22
 
@@ -384,7 +385,7 @@ No critical or high findings; four medium and five low points are open, details 
 | Booking rights (2026-09-24) | ✅ implemented: employees record and correct only in assigned branches; booking out, cancelling, transferring only branch manager/head office (`tests/test_rechte_lager.py`); not yet on the server |
 | Work from 2026-09-24 | ✅ tests cleaned up (few flow tests), 47 × 83 mm label for pre-printed rolls, FEDAS fully mapped, ECOM recognition (555) and purchase-price storage, Alpina/Chris Sports/CMP parsers (Phase E partial), paper invoice INTERSPORT via OCR — see below |
 | D — Prices & markdown | 🔶 Part 1 implemented (2026-09-24): "Markdown" page per branch with due/soon-due items and per-item label printing. Open: recording "done", central recommendation, configurable thresholds — questions to Fabian in section 10 |
-| E–G | open (E partial: Alpina, Chris Sports, CMP done; scanned delivery notes open) |
+| E–G | open (E partial: Alpina, Chris Sports, CMP, Bliz, INTERSPORT order confirmations, The North Face/Quintet done; scanned delivery notes and further suppliers open) |
 | UI: consistent design system (all pages) | ✅ complete, branch `feature/warenwirtschaft-v2` |
 
 **Phase B — goods receipt v2, split into subtasks** (from roadmap
@@ -1378,8 +1379,146 @@ label and stock use it)? Not implemented until answered. A cancelled or
 wrongly addressed transfer in transit cannot be withdrawn yet (would need
 a "cancel dispatch" action).
 
-**Next steps:** merge into `main` (PR); answer N2; store deployment
+**Next steps:** ~~merge into `main` (PR); answer N2~~ (done 2026-09-29); store deployment
 (Phase F: PostgreSQL run incl. migration `f3a4b5c6d7e8`, network
 separation/VPN as the condition for decision 7, S1 rest, S3–S8); test
 phones in the store; remove the temporary "−1" button after the in-store
 trial.
+
+## Decisions and implementation – 2026-09-29
+
+PR #18 merged into `main`; obsolete remote branches deleted.
+
+1. **N2 — markdown at goods entry** (decision 2026-09-29): manual entry
+   (`/erfassen`, `/m/erfassen`) has an optional field per line
+   (automatic / −30 / −50 / −70 %). The choice is stored as the manual
+   markdown (`reduktionen_manuell`) of the target branch, in the same
+   transaction as the goods receipt. Empty keeps an existing choice.
+   Rights as on "Markdowns": own sales branches only, head office all;
+   external locations reject it (409). `/api/erfassen/stammdaten` reports
+   per location whether a markdown can be chosen (`reduktion`).
+2. **Cancel a transfer in transit** (decision 2026-09-29): branch manager
+   of the **source** branch, the person who **dispatched** it
+   (`wareneingaenge.versendet_von`, decided later the same day), or head
+   office. The open (not yet arrived)
+   rest of each line goes back to the source as a new `umlagerung`
+   movement (reason `zurueck:<destination>`), with the date it had at
+   dispatch (`mitgebracht_datum`); no new markdown clock. Already arrived
+   parts stay at the destination. The goods receipt gets status
+   `storniert` (migration `a4b5c6d7e8f9`). Desktop only: section
+   "In transit" on `/umlagern` with a two-click cancel.
+
+**Decided later the same day:** whoever dispatched a transfer may also
+cancel it (e.g. a branch manager who sent from GEWA). Cancelling stays
+desktop only — not needed on the phone.
+
+**Security and PostgreSQL, same day:** S1 rest (a new password ends all
+sessions of the account: HMAC of the password hash in the session), S3
+(Pillow 12.3.0), S5 (API docs off), S6 (`/db-test` only `{"ok": true}`),
+S7 (security headers, strict CSP on HTML pages; all inline scripts and
+`onsubmit` attributes moved into `/static/js`). All migrations ran on
+PostgreSQL 18 in a throwaway Docker container (upgrade, downgrade of
+`a4b5c6d7e8f9`, upgrade), plus an app smoke test (entry with markdown,
+transfer, cancel, headers). Pages checked in headless Chromium (Brave):
+16 pages without JS errors or CSP violations. Still open for the store:
+S4, S8, network separation, deployment itself.
+
+**S4, same day:** external backups are always encrypted with `age`
+(decision 2026-09-29). The server keeps only the public key
+(`backup-age-recipient.txt`, not in git); the private key stays on a USB
+stick and on paper. `scripts/backup_inventory.py --external` writes one
+`inventory-TIMESTAMP.tar.age` plus a `.sha256` file and refuses to copy
+without a valid key. Checked with a real age round trip (encrypt, checksum,
+decrypt). Setup and restore: `docs/BACKUPS.md`.
+
+## Pending visibility — decision 2026-09-29
+
+**Confirmed requirement; planned, not implemented by this documentation change.** This supersedes the earlier branch restriction for these two item-master notices only.
+
+- **Without EAN** and **without checkout category**: show the shared, cross-branch totals to **all roles in every branch**, including employees and branch managers. Do not restrict these two counts to stock in the active branch. Their links must open the matching cross-branch lists so the listed variants match the counts.
+- **All other Pending notices** (expected deliveries/transfers, negative stock, due and upcoming markdowns): keep them scoped to the selected branch. Do not turn these into cross-branch totals.
+- This changes notice visibility, not editing or booking permissions. Existing permissions remain unchanged.
+- Current checked code still filters the two item-master counts by the active branch; implementation remains a task.
+
+Source: Fabian’s direct clarification on 2026-09-29.
+
+## Head-office recommendations — planned extensions 2026-09-29
+
+**Confirmed requirements; planning only, not implemented by this update.**
+
+1. Show open head-office markdown recommendations in **Pending** on the overview, scoped to the selected recipient branch. A click should open the matching recommendations on the markdown page. This is a branch-specific notice, unlike the global missing-EAN and missing-category notices.
+2. Allow **head office to withdraw recommendations**. Withdrawn recommendations should no longer be actionable or counted as open.
+3. Allow head office to send the same recommendation **directly to all sales branches (SF1–SF4) in one action**, in addition to selecting one branch. Keep each branch’s response separate so acceptance/rejection remains visible per branch. External storage locations are not sales branches.
+
+Existing response permissions and acceptance/rejection with a reason remain unchanged. No code changes or deployment requested.
+
+**Details to settle before implementation:** whether withdrawal applies only to unanswered recommendations or also to answered ones, what happens to a markdown already accepted (do not infer automatic rollback), whether all-branch sending includes branches without stock of the model, and whether future-dated open recommendations appear immediately or only from their effective date. Preserve these as open questions rather than confirmed decisions.
+
+Source: Fabian’s direct request on 2026-09-29.
+
+### Dashboard redesign (2026-09-29)
+
+Decision (Fabian): small charts are allowed on the dashboard; `DESIGN.md` §9.3 amended. `/api/dashboard` → `filiale` now also returns `stufen` (pieces per markdown stage by age of last receipt, no manual overrides), `verlauf` (sold pieces per day, last 14 days) and `bestseller` (top 5 models, last 7 days), all for the active branch only. The page shows them as three panels (`uebersicht.js`, `.insights` in `app.css`); "Aktuelles" is grouped by day. Test: `tests/test_ablauf_dashboard.py`. Docker image must be rebuilt (`docker compose --env-file .env.server up -d --build`) to see UI changes.
+
+## Next-work decision — structural redesign, 2026-09-29
+
+Fabian selected **Sportfabrik Inventory Redesign as the next work item**, ahead of previously queued features and deployment preparation. [Full requirements](redesign-2026-09-29.md) preserve the three local references, exact menu order, sidebar, stacked logo, function search, dashboard charts and Settings modal. Existing colors/design language and role/branch permissions remain. This is a new request beyond the earlier completed redesign; no implementation performed in this update.
+
+### Redesign phases 1–3 implemented (2026-09-29)
+
+Fabian confirmed the Phase 0 points (route `/anstehend`, Settings modal contents, chart metrics, reference images). Implemented: left sidebar from 901 px (stacked logo, groups Bestand / Wareneingang / Warenausgang / Belege / Verwaltung, order per [specification](redesign-2026-09-29.md)); below 901 px the top bar with "Menü" stays. The pages are static HTML, so the shell is `nav.js` + `app.css` §5b, not a template base. Role filters unchanged; `/anstehend` and Settings are prepared in `nav.js` but hidden until phases 4 and 6. Labels: `nav.articles` = Produkte/Produits/Products, new group keys in de/fr/en. Test `tests/test_navigation.py`. Open: phases 4–8.
+
+## Decisions and implementation — 2026-09-30 (refinements after the redesign)
+
+Merged into `feature/warenwirtschaft-v2` (183 tests pass), checked locally, no store deployment.
+
+- **Sidebar and quick access (Fabian, 2026-09-30):** collapsible sidebar with a three-line icon (desktop; choice saved in the browser, set before first paint by `theme-init.js`), user name next to the user icon (expanded only), larger menu text and spacing, the separate Settings entry is removed (user icon and branch pill open the same dialog — supersedes the Settings entry of the redesign navigation). Quick-access cards moved above the greeting: title only, fixed height, stretched over the full width for any number of cards (`--anzahl`), small gear icon instead of the "Edit" text.
+- **Pending visibility (decision 2026-09-29, implemented 2026-09-30):** `stamm` counts "without EAN" / "without checkout category" across the whole item master for all roles in every branch; the links carry no branch filter, so counts and lists match. Other notices stay branch-scoped.
+- **Bell:** top right on every page (next to the function search), links to `/anstehend`, badge = number of Pending notices (one row = one notice, hidden at 0). `GET /api/anstehend/anzahl`; counting rule in `services/uebersicht.anzahl_meldungen` mirrors `anstehend-liste.js`.
+- **Preset markdown scanning:** on Runterschreiben a stage (off/−30/−50/−70 %) can be chosen before scanning; a scan that finds exactly one model sets it to that stage immediately (server checks rights per branch as before, rule 9); several models → nothing is set, the list is shown.
+- **Head-office recommendations (answers of Fabian, 2026-09-30):** (1) head office can withdraw a recommendation any time, before or after the answer; (2) no automatic rollback of a stage already set — head office sends a new recommendation with the old stage instead; (3) "send to all" goes to all sales branches including those without stock of the model, so a later delivery already finds the recommendation; (4) open recommendations show in the branch's Pending immediately, regardless of the effective date. Implemented: status `zurueckgezogen` (migration `b5c6d7e8f9a0`), `POST /api/empfehlungen/{id}/zurueckziehen`, `alle_filialen` on `POST /api/empfehlungen`, Pending notice `empfehlungen_offen` linking to `/runterschreiben#empfehlungPanel`.
+
+## Capability review and next milestone — proposal 2026-10-01
+
+Source: vault note "Sportfabrik Inventory – Capability Review and Improvement Priorities" (static review of 2026-09-30, status: recommendations not approved). Key findings re-checked in code on 2026-10-01: deleting a posted document deletes its stock movements (`importer.py:435`, conflicts with hard rule 2); counts use the balance at submission (`korrektur.py:95`); no retry protection on stock-changing requests; revenue estimates ignore manual markdowns; invoice and delivery note can both book the same goods; `bestellempfehlung` is a best-seller ranking.
+
+Proposed milestone: **one branch reconciles a complete working day, recovers from mistakes, and restores its data.** Packages 0–5, acceptance examples, and open questions Q1–Q9: [roadmap-operational-reliability-2026-10-01.md](roadmap-operational-reliability-2026-10-01.md). Business questions answered by Fabian on 2026-10-01 (see below); no code changed. Existing decisions (30/50/70 % markdowns, optional purchase price, employee corrections in own branches, negative stock allowed, online-only phone use) stay unless Fabian decides otherwise.
+
+### Answers to Q1–Q9 (Fabian, 2026-10-01)
+
+Posted documents are cancelled (not deleted) by branch manager/head office. The delivery note comes with the goods, the invoice usually later; an invoice matching booked goods always asks "attach only" or "new goods". A stale count warns and asks for a recount; no approval for large differences. Pilot: **SF1**, sales scanned in the app in addition to the till. **No data loss**, downtime of a few hours acceptable — requires continuous replication/WAL archiving beyond the nightly backups. Customer returns for fit/taste: any employee in own branch; other reasons need branch manager/head office approval (confirmed). Lost in transit: branch manager/head office. Reorderable items: manual flag per item, delivery times per supplier. Details and consequences: [roadmap](roadmap-operational-reliability-2026-10-01.md), "Decisions". Package order 0–5 approved; Fabian owns the daily SF1 reconciliation.
+
+## Inbox requirements 2026-10-01 (recorded, not implemented)
+
+Ten new points from the vault (categories, forwarding a delivery before arrival, bug-report and unknown-document mail buttons, size normalization, CMP parser, replacing an internal EAN, Overview main-group bug, hiding Statistics/Pending for GEWA/VEBO/Dietikon). Per-point status. Answers of Fabian (2026-10-01): (5) the unknown-document mail button is allowed — explicit click, only to his own mailbox, an exception to rule 1; (3) a delivery can be redirected to another branch before arrival, booking still only on arrival at the destination; (8) a later EAN is added, not replaced — both EANs lead to the same variant. `docs/anforderungen-inbox-2026-10-01.md`. Test run of the same day: the CMP re-order file is an unknown layout; an arrival bug with duplicate variants was fixed (commit `385459f`).
+
+## Parsers from real documents — 2026-10-02
+
+Survey of Fabian's folder of real documents (local only; only file names, page counts, text layer and parser results were looked at). Already read: INTERSPORT invoices, CMP, CHRIS sports, Alpina, Bliz. Order for new parsers: The North Face → Columbia (`OA…` Liq/Regulär, 6 files) → Gonso via ws4sports (SF1–SF4) → PPS Sportsgoods AG → PUMA → Bliz helmet → Maier Sports (1 PDF; the xlsx order sheet is not a PDF).
+
+Decisions (Fabian, 2026-10-02):
+
+- **The North Face pre-orders via Quintet 24** ("Bestellinformation", explicitly not an order confirmation) belong to supplier **The North Face, group intern (444)**, document type **`bestellung`** — an expected delivery, no stock (rule 3).
+- `winterhw.pdf` contains several different suppliers, all code 999 — no single parser.
+- The adidas `O.*` order PDFs from 2023 are ignored; `Sport-Fabrik F26 FREIZEIT/OUTDOOR` and an unreadable 12-page scan were removed from the sample folder.
+
+Implemented (branch `fix/intersport-trailer-page`, merged into `feature/warenwirtschaft-v2`):
+
+- **INTERSPORT trailer page:** when items end exactly at a page end, the last page only has the VAT summary, terms and footer. A page without a table header is skipped once `Total CHF inkl. MwSt.` has appeared; before the total it is still rejected. 6 real invoices that failed now parse. A PDF with several merged invoices (different numbers) stays rejected — split it.
+- **INTERSPORT order confirmation** (`Auftragsbestätigung 900-VA…`, The North Face reorder, one per branch): read by `intersport.py`, type `auftragsbestaetigung`, supplier INTERSPORT (111). Number from the title, or the shop `Auftragsnr.` when the title is drawn as graphics. 140–178 items per branch, branch suggestion correct for SF1–SF4.
+- **Rotated landscape pages:** some PDFs place the landscape page rotated on portrait A4 (rotation 0, text bottom to top). `base.read_page` rotates words back and rebuilds the page text; applies to all parsers.
+- **Quintet parser** (`quintet.py`, migration `e4f5a6b7c8d9`): one item per size; block totals and footer value checked. 3 real files: 216, 91 and 59 items, no warnings. Other brands on Quintet are reported as unknown.
+
+Open point: the same TNF product ordered via Quintet (supplier The North Face) and confirmed via an INTERSPORT order confirmation (supplier INTERSPORT) becomes two separate items, because items are kept per supplier. Clarify whether TNF reorders via INTERSPORT should also count as group intern.
+
+
+## Package 4 — returns, held stock, delivery remainders (2026-10-05)
+
+Implemented on branch `worktree-gonso-parser` (not yet in `feature/warenwirtschaft-v2`; tests: 336 passed, 13 skipped, SQLite; migrations checked up/down/up on SQLite only). Decisions Q8 (2026-10-01) plus the confirmations of 2026-10-05: an employee may release a fit/taste return after checking it; transfers count as overdue after 14 days; held stock starts no markdown clock (rule 6).
+
+- **4a Returns and held stock.** `bestand.menge` stays the saleable stock; `bestand.menge_gesperrt` is returns in inspection. Every change is a `lagerbewegungen` row with `bestandsart` (`verkaufbar` / `gesperrt`); new types `retoure` (held +n) and `freigabe` (two rows: held −n, saleable +n); write-off and supplier return are `ausbuchung` rows on the held bucket. Table `retouren` (reason, condition, quantity, optional original sale, refund reference as free text, status `beantragt` / `in_pruefung` / `abgeschlossen` / `abgelehnt`, outcome `freigegeben` / `lieferant` / `abgeschrieben`). Reasons: fit and taste are booked directly by any employee in assigned branches; defect, complaint and other are requests that book nothing until branch manager/head office approves. Release: employees only for fit/taste in their branches; supplier return and write-off are branch manager/head office. Page `/retouren`, held note in the stock list, `GET/POST /api/retouren…`. The count marker, the daily check (`pruefe_bestand`, now also reconciling held stock), the write-off list and the document-delete recompute only look at saleable movements. Migration `d9e0f1a2b3c4`; its downgrade refuses once returns exist.
+- **4b Open remainder of a delivery.** Table `lieferung_differenzen`: `in_klaerung` (any employee of the receiving branch; stays open), `verloren` (branch manager/head office), `lieferant_storniert` (branch manager/head office, supplier deliveries only). Lost and cancelled units no longer count as open and book **no** stock movement — a transfer in transit is in no stock and the units left the source at dispatch, so nothing reappears there; cancelling a transfer back to the source skips them. A delivery with nothing open becomes `abgeschlossen` (new status). `POST /api/wareneingaenge/{id}/differenz`; transit age (`tage_unterwegs`) and sender are returned for transfers; UI: "Open remainder" on the deliveries page. Migration `e0f1a2b3c4d5`. Existing transfer cancel stays for mistaken dispatches.
+- **4c Pending.** New entries `returns_request` and `transit_overdue` (urgent), `returns_inspection`, `delivery_differences`; counts per branch (`ausnahmen_filiale`), same list for the bell and dashboard. Not built: count conflicts and stale backups as entries, owner/cause per entry.
+- **Security review** (subagent, 2026-10-05): no authorization or XSS findings. Fixed: deleting a document recomputed saleable stock from held movements (and could erase held stock), `"NaN"` quantity caused a 500, held stock was not reconciled, cancelling a document did not warn about later returns/releases. Left as is (no exploit, noted): a "lost" declaration is only a `lieferung_differenzen` row, not a journal movement; several reports (`uebersicht`, `statistik`) still count held write-offs as write-offs.
+- **Gonso parser** (`gonso.py`, migration `a6b7c8d9e0f1`, 4 real samples parse): confirmed by Fabian 2026-10-05 — `ek` = Großhandel price before the 15 % discount of the page note, `uvp` = Einzelhandel, `supplier_article_no` = Stilnr., `article_no` = Farbcode, date DD/MM/YYYY. Other sample layouts are skipped for now.
+- **Not browser-verified:** `/retouren` and the deliveries page (JS syntax-checked, endpoints and page route tested).

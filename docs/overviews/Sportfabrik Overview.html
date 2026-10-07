@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sportfabrik Inventory Overview</title>
+<meta name="description" content="Interactive overview of the Sportfabrik inventory system: goods flow, markdown clock, permissions, roadmap, security.">
+<style>
+/* Self-contained: no CDN, no web fonts, no external requests (project rule 1). */
+:root{
+  --ground:#f3f6f4; --surface:#fff; --surface-2:#e8eeeb; --ink:#111c19; --ink-2:#4b5b55; --ink-3:#5b6b64;
+  --line:#d3ddd8; --line-2:#9aaaa3; --accent:#17554e; --accent-2:#1f7a70; --accent-soft:#dcebe7;
+  --warm:#a8520f; --warm-soft:#f5e6d8; --ok:#1c7a4a; --ok-soft:#dcf0e5; --bad:#b3372c; --bad-soft:#f7e0dd;
+  --y:#f2c200; --r:#d8382c; --g:#2f9e5b;
+  --hero-a:#0f3d38; --hero-b:#17554e; --hero-c:#2a8a7c;
+  --shadow:0 1px 2px rgba(16,32,28,.06),0 8px 28px rgba(16,32,28,.07);
+  --radius:14px; --maxw:1120px;
+  --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0d1412; --surface:#151e1b; --surface-2:#1d2925; --ink:#e9efec; --ink-2:#a5b5af; --ink-3:#98a9a2;
+  --line:#2c3a35; --line-2:#587068; --accent:#7fd0be; --accent-2:#5fbfa9; --accent-soft:#1a302b;
+  --warm:#e6975f; --warm-soft:#33251a; --ok:#5fd394; --ok-soft:#163427; --bad:#f08a80; --bad-soft:#3a1f1c;
+  --hero-a:#0a2622; --hero-b:#11433d; --hero-c:#1d6b60; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);}}
+:root[data-theme="dark"]{
+  --ground:#0d1412; --surface:#151e1b; --surface-2:#1d2925; --ink:#e9efec; --ink-2:#a5b5af; --ink-3:#98a9a2;
+  --line:#2c3a35; --line-2:#587068; --accent:#7fd0be; --accent-2:#5fbfa9; --accent-soft:#1a302b;
+  --warm:#e6975f; --warm-soft:#33251a; --ok:#5fd394; --ok-soft:#163427; --bad:#f08a80; --bad-soft:#3a1f1c;
+  --hero-a:#0a2622; --hero-b:#11433d; --hero-c:#1d6b60; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.6 var(--font);-webkit-font-smoothing:antialiased}
+h1,h2,h3{line-height:1.15;letter-spacing:-.02em;margin:0}
+p{margin:0}
+a{color:var(--accent)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px;border-radius:6px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.skip{position:absolute;left:-999px;top:8px;background:var(--surface);padding:8px 14px;border-radius:8px;z-index:100}
+.skip:focus{left:8px}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 82%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:14px;height:60px}
+.brand{font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:9px;white-space:nowrap;text-decoration:none;color:var(--ink)}
+.brand i{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--hero-b),var(--hero-c));display:grid;place-items:center;color:#fff;font-style:normal;font-size:14px}
+.links{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-left:6px;flex:1}
+.links::-webkit-scrollbar{display:none}
+.links a{padding:7px 11px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink-2);text-decoration:none;white-space:nowrap}
+.links a:hover{background:var(--surface-2);color:var(--ink)}
+.links a.on{background:var(--accent);color:var(--ground)}
+.tools{display:flex;gap:8px}
+.ibtn{height:38px;min-width:38px;padding:0 12px;border:1px solid var(--line);background:var(--surface);border-radius:10px;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.ibtn:hover{border-color:var(--line-2);color:var(--ink)}
+.ibtn kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:var(--surface-2)}
+.progress{position:absolute;left:0;bottom:-1px;height:2px;background:var(--accent-2);width:0}
+
+/* hero */
+.hero{position:relative;color:#f2faf7;background:radial-gradient(1200px 500px at 85% -10%,var(--hero-c),transparent 60%),linear-gradient(160deg,var(--hero-a),var(--hero-b));overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(180deg,#000,transparent 85%);-webkit-mask-image:linear-gradient(180deg,#000,transparent 85%);pointer-events:none}
+.hero .wrap{position:relative;z-index:1;padding-top:76px;padding-bottom:72px}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;padding:6px 13px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22)}
+.pill b{width:8px;height:8px;border-radius:50%;background:#ffc86b}
+.hero h1{font-size:clamp(38px,6.4vw,74px);font-weight:850;margin:22px 0 18px;max-width:14ch}
+.hero h1 em{font-style:normal;color:#ffe08a}
+.hero .lead{font-size:clamp(17px,2.1vw,21px);max-width:60ch;color:#e3f1ed}
+.hero .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:12px 20px;font-weight:700;text-decoration:none;border:1px solid transparent}
+.btn.p{background:#fff;color:#0f3d38}
+.btn.g{border-color:rgba(255,255,255,.35);color:#fff}
+.btn:hover{transform:translateY(-1px)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:54px}
+.stat{padding:18px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16)}
+.stat strong{display:block;font-size:clamp(30px,4vw,44px);font-weight:850;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{display:block;margin-top:8px;font-size:13px;color:#d3e7e1;line-height:1.35}
+
+/* sections */
+section{padding:84px 0 12px}
+.eyebrow{font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.sh{font-size:clamp(28px,4vw,42px);font-weight:820;margin:10px 0 12px}
+.sub{color:var(--ink-2);font-size:18px;max-width:64ch;margin-bottom:34px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s,transform .6s}
+.reveal.in{opacity:1;transform:none}
+
+/* now / status band */
+.now{margin-top:-34px;position:relative;z-index:2}
+.now .card{padding:24px;display:grid;gap:22px;grid-template-columns:1.3fr 1fr}
+.now h2{font-size:18px;letter-spacing:-.01em;margin-bottom:10px}
+.tag{display:inline-block;font:700 11px var(--mono);padding:3px 8px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle}
+.t-ok{background:var(--ok-soft);color:var(--ok)}.t-warm{background:var(--warm-soft);color:var(--warm)}.t-bad{background:var(--bad-soft);color:var(--bad)}.t-n{background:var(--surface-2);color:var(--ink-2)}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.list li{display:flex;gap:10px;align-items:flex-start;color:var(--ink-2);font-size:15px}
+.list li::before{content:"";flex:none;width:8px;height:8px;margin-top:8px;border-radius:50%;background:var(--accent-2)}
+.chk{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.chk label{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--surface);cursor:pointer;font-size:15px}
+.chk label:hover{border-color:var(--line-2)}
+.chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent-2);flex:none}
+.chk input:checked+span{color:var(--ink-3);text-decoration:line-through}
+.bar{height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent-2),var(--g));border-radius:99px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+
+/* flow */
+.flow{padding:26px;overflow:hidden}
+.flowgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:stretch}
+.step{position:relative;text-align:left;padding:16px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);min-height:118px;transition:.2s}
+.step:hover{border-color:var(--accent-2);transform:translateY(-2px)}
+.step[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-2) 30%,transparent)}
+.step .n{font:700 12px var(--mono);color:var(--ink-3)}
+.step h4{margin:6px 0 4px;font-size:16px}
+.step p{font-size:13px;color:var(--ink-2);line-height:1.4}
+.step:not(:last-child)::after{content:"";position:absolute;right:-11px;top:50%;width:12px;height:2px;background:var(--line-2)}
+.step.warn{border-color:var(--warm)}
+.detail{margin-top:18px;padding:20px 22px;border-radius:14px;background:var(--surface-2);border-left:4px solid var(--accent-2);min-height:112px}
+.detail h4{margin:0 0 6px;font-size:18px}
+.detail p{color:var(--ink-2)}
+.detail .rule{margin-top:10px;font-size:14px;font-weight:600;color:var(--warm)}
+.trap{margin-top:16px;padding:16px 20px;border-radius:14px;background:var(--warm-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--warm) 40%,transparent);font-size:15px}
+.trap b{color:var(--warm)}
+
+/* branches */
+.map{padding:26px;display:grid;grid-template-columns:1.1fr 1fr;gap:26px}
+.nodes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.node{padding:14px 8px;border-radius:12px;text-align:center;border:1.5px solid var(--line);background:var(--surface);font-weight:800;font-size:15px}
+.node small{display:block;font-weight:600;color:var(--ink-3);font-size:11px;margin-top:2px}
+.node.sale{border-color:var(--accent-2);background:var(--accent-soft)}
+.node.ext{border-style:dashed;background:var(--surface-2)}
+.lane{margin:8px 0 12px;font:700 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.mini{font-size:14px;color:var(--ink-2);display:grid;gap:10px}
+.mini div{padding:12px 14px;border-radius:11px;background:var(--surface-2)}
+.mini b{color:var(--ink)}
+
+/* clock */
+.clock{padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:center}
+.dial{position:relative;width:min(300px,100%);aspect-ratio:1;margin:0 auto}
+.dial svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.dial .pct{font-size:64px;font-weight:850;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.dial .mo{color:var(--ink-2);font-size:14px;margin-top:6px}
+.range{width:100%;accent-color:var(--accent-2);height:32px}
+.ticks{display:flex;justify-content:space-between;font:600 11px var(--mono);color:var(--ink-3);margin-top:-2px}
+.roll{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:var(--surface-2);margin:16px 0;transition:.3s}
+.roll i{width:34px;height:52px;border-radius:5px;border:2px solid rgba(0,0,0,.18);flex:none;transition:background .3s}
+.roll b{display:block}.roll span{color:var(--ink-2);font-size:14px}
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.seg button,.tabs button{padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:650;font-size:14px}
+.seg button[aria-pressed="true"],.tabs button[aria-selected="true"]{background:var(--accent);color:var(--ground);border-color:var(--accent)}
+.note{font-size:14px;color:var(--ink-2);margin-top:14px}
+
+/* roles */
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.matrix{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;font-size:15px}
+.matrix th,.matrix td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line)}
+.matrix th{font:700 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);background:var(--surface-2)}
+.matrix tr:last-child td{border-bottom:0}
+.matrix td.v{font-weight:700;white-space:nowrap}
+.matrix .yes{color:var(--ok)}.matrix .no{color:var(--ink-3)}.matrix .part{color:var(--warm)}
+.matrix tr.dim td:first-child{color:var(--ink-3)}
+.matrix tr{transition:background .2s}
+.matrix tr:hover{background:var(--accent-soft)}
+.scroll{overflow-x:auto}
+
+/* roadmap */
+.road{display:grid;gap:12px}
+.ph{display:grid;grid-template-columns:54px 1fr auto;gap:16px;align-items:start;padding:18px 20px}
+.ph .l{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-weight:850;font-size:20px;background:var(--surface-2);color:var(--ink-2)}
+.ph.done .l{background:var(--ok-soft);color:var(--ok)}
+.ph.next .l{background:var(--warm-soft);color:var(--warm)}
+.ph h3{font-size:18px;margin-bottom:3px}
+.ph p{color:var(--ink-2);font-size:15px}
+.ph.next{border-color:var(--warm);box-shadow:0 0 0 3px color-mix(in srgb,var(--warm) 18%,transparent),var(--shadow)}
+
+/* rules */
+.rule-card{padding:22px}
+.rule-card .ic{width:42px;height:42px;border-radius:12px;background:var(--accent-soft);display:grid;place-items:center;font-size:20px;margin-bottom:14px}
+.rule-card h3{font-size:18px;margin-bottom:6px}
+.rule-card p{color:var(--ink-2);font-size:15px}
+
+/* security */
+.sec{padding:22px}
+.srow{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:0}
+.srow code{font:700 13px var(--mono);color:var(--accent)}
+.srow p{font-size:15px;color:var(--ink-2)}
+.srow p b{color:var(--ink)}
+
+/* phone */
+.phonewrap{display:grid;grid-template-columns:auto 1fr;gap:44px;align-items:center}
+.phone{width:250px;border-radius:38px;padding:11px;background:#0e1513;box-shadow:0 30px 60px rgba(0,0,0,.28);margin:0 auto}
+.screen{border-radius:28px;background:#f3f6f4;color:#111c19;overflow:hidden;min-height:430px;display:flex;flex-direction:column}
+.screen .bar2{padding:14px 16px 10px;background:#17554e;color:#fff;font-weight:800;font-size:15px}
+.screen .bar2 small{display:block;font-weight:500;opacity:.8;font-size:11px}
+.scan{margin:14px;height:120px;border-radius:14px;background:#0e1513;position:relative;overflow:hidden}
+.scan::before{content:"";position:absolute;left:14%;right:14%;top:50%;height:2px;background:#ff5a4d;animation:scan 2.2s ease-in-out infinite}
+.scan::after{content:"";position:absolute;inset:22px 26px;border:2px solid rgba(255,255,255,.55);border-radius:10px}
+@keyframes scan{0%,100%{top:26%}50%{top:74%}}
+.pr{margin:0 14px 10px;padding:12px;border-radius:12px;background:#fff;border:1px solid #d3ddd8;font-size:13px}
+.pr b{display:block;font-size:14px}
+.pr .r{display:flex;justify-content:space-between;margin-top:6px;color:#4b5b55}
+.pr .d{display:inline-block;padding:2px 7px;border-radius:5px;background:#f2c200;color:#111;font-weight:800;font-size:11px}
+.feat{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.feat div{padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:15px;color:var(--ink-2)}
+.feat b{display:block;color:var(--ink);margin-bottom:2px}
+
+/* declined */
+.no3 .card{padding:22px}
+.no3 h3{font-size:18px;margin-bottom:6px}
+.no3 h3::before{content:"✕";display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--bad-soft);color:var(--bad);font-size:12px;margin-right:9px;vertical-align:2px}
+.no3 p{color:var(--ink-2);font-size:15px}
+
+footer{margin-top:90px;padding:34px 0 60px;border-top:1px solid var(--line);color:var(--ink-3);font-size:14px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 26px;justify-content:space-between}
+
+/* command palette */
+dialog{border:1px solid var(--line);border-radius:16px;padding:0;background:var(--surface);color:var(--ink);width:min(560px,92vw);box-shadow:0 30px 80px rgba(0,0,0,.35);margin-top:12vh}
+dialog::backdrop{background:rgba(6,14,12,.5);backdrop-filter:blur(3px)}
+dialog input{width:100%;border:0;border-bottom:1px solid var(--line);padding:18px 20px;font:inherit;font-size:17px;background:transparent;color:var(--ink);outline:0}
+dialog ul{list-style:none;margin:0;padding:8px;max-height:52vh;overflow:auto}
+dialog li a{display:flex;justify-content:space-between;gap:12px;padding:11px 13px;border-radius:10px;text-decoration:none;color:var(--ink);font-weight:600}
+dialog li a small{color:var(--ink-3);font-weight:500}
+dialog li a:hover,dialog li a.sel{background:var(--accent-soft)}
+
+@media (max-width:860px){
+  .now .card,.map,.clock,.phonewrap{grid-template-columns:1fr}
+  .flowgrid{grid-template-columns:1fr}
+  .step:not(:last-child)::after{right:auto;left:50%;top:auto;bottom:-11px;width:2px;height:12px}
+  .feat{grid-template-columns:1fr}
+  .ph{grid-template-columns:46px 1fr}.ph .tag{grid-column:2}
+  .ibtn kbd{display:none}
+  section{padding-top:64px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}.reveal{opacity:1;transform:none}}
+@media print{.nav,.hero .cta,dialog{display:none}.reveal{opacity:1;transform:none}.card{box-shadow:none}section{padding-top:28px;break-inside:avoid}.hero{color:#000;background:none}.hero h1 em{color:#000;background:none}.stat{border-color:#999}.stat span{color:#333}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><i>S</i>Sportfabrik</a>
+    <nav class="links" aria-label="Sections" id="links">
+      <a href="#status">Status</a><a href="#flow">Goods flow</a><a href="#network">Branches</a><a href="#clock">Markdown clock</a>
+      <a href="#roles">Permissions</a><a href="#roadmap">Roadmap</a><a href="#rules">Rules</a><a href="#security">Security</a><a href="#phone">Phone</a><a href="#next">Next</a>
+    </nav>
+    <div class="tools">
+      <button class="ibtn" id="search" aria-label="Search sections">Search <kbd>/</kbd></button>
+      <button class="ibtn" id="theme" aria-label="Toggle dark mode">◐</button>
+    </div>
+  </div>
+  <div class="progress" id="prog"></div>
+</header>
+
+<main id="main">
+<div class="hero" id="top">
+  <div class="wrap">
+    <span class="pill"><b></b>As of 30.09.2026 · checked locally, not yet in the store</span>
+    <h1>One truth for every <em>piece</em> on every shelf.</h1>
+    <p class="lead">Sportfabrik Inventory knows what arrived, at which price, when, and where it sits — across four branches and three external stores. Built in-house. Runs on our server. Documents never leave the building.</p>
+    <div class="cta"><a class="btn p" href="#flow">Follow a delivery →</a><a class="btn g" href="#clock">Play with the markdown clock</a></div>
+    <div class="stats" id="stats">
+      <div class="stat"><strong data-n="4">0</strong><span>branches with sales<br>SF1–SF4</span></div>
+      <div class="stat"><strong data-n="3">0</strong><span>external stores<br>GEWA · VEBO · Dietikon</span></div>
+      <div class="stat"><strong data-n="35">0</strong><span>checkout categories, 1:1 as at the till</span></div>
+      <div class="stat"><strong data-n="3">0</strong><span>languages<br>DE · FR · EN</span></div>
+      <div class="stat"><strong data-n="173">0</strong><span>automated tests passing</span></div>
+      <div class="stat"><strong data-n="0">0</strong><span>documents sent to any cloud or AI</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap now" id="status">
+  <div class="card reveal">
+    <div>
+      <h2>What is done <span class="tag t-ok">Phases A–D</span></h2>
+      <ul class="list">
+        <li><b>Goods in:</b>&nbsp;upload PDFs or scan by hand; local parser reads them, staff check the preview.</li>
+        <li><b>Stock:</b>&nbsp;every change is a movement; transfers are sent, then confirmed on arrival.</li>
+        <li><b>Markdowns:</b>&nbsp;30 % on arrival, 50 % after 18 months, 70 % after 36, per branch.</li>
+        <li><b>Phone use, item details, reports, statistics</b> and the redesigned interface.</li>
+        <li><b>New 29.09.:</b>&nbsp;markdown choice at goods entry, cancel a transfer in transit, security S1 and S3–S7.</li>
+      <li><b>New 30.09.:</b>&nbsp;new look with a left sidebar, a "Pending" page, function search, a Settings window and stock charts on the overview.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Honest status</h2>
+      <p class="note" style="margin-top:0">All checked locally and on a throwaway PostgreSQL 18. <b>No store deployment yet.</b> Parsers exist for Alpina, Chris Sports and CMP.</p>
+      <div style="margin:16px 0 6px;display:flex;justify-content:space-between;font-size:14px;font-weight:700"><span>Roadmap</span><span id="pct">4 of 7 phases</span></div>
+      <div class="bar"><i id="barfill" data-w="57"></i></div>
+      <p class="note">Planned, not built: cross-branch Pending totals; head-office recommendations to all branches in one action.</p>
+    </div>
+  </div>
+</div>
+
+<section id="flow">
+  <div class="wrap">
+    <div class="eyebrow">01 · Goods flow</div>
+    <h2 class="sh">The path of a delivery</h2>
+    <p class="sub">Every item takes the same road. Stock is only added once goods have physically arrived. Tap a step.</p>
+    <div class="card flow reveal">
+      <div class="flowgrid" id="steps" role="group" aria-label="Delivery steps">
+        <button class="step" aria-pressed="true" data-i="0"><span class="n">01</span><h4>Document</h4><p>Invoice, delivery note or order confirmation as PDF</p></button>
+        <button class="step" aria-pressed="false" data-i="1"><span class="n">02</span><h4>Local parser</h4><p>PyMuPDF and OCR on our server</p></button>
+        <button class="step" aria-pressed="false" data-i="2"><span class="n">03</span><h4>Preview</h4><p>Uncertain fields highlighted, staff confirm</p></button>
+        <button class="step warn" aria-pressed="false" data-i="3"><span class="n">04</span><h4>Arrival</h4><p>Unpack, check, confirm “goods arrived”</p></button>
+        <button class="step" aria-pressed="false" data-i="4"><span class="n">05</span><h4>Stock</h4><p>One movement per change, per branch</p></button>
+      </div>
+      <div class="detail" id="detail" aria-live="polite"></div>
+      <div class="trap"><b>Two places where it goes wrong easily.</b> An order confirmation only creates an <i>expected</i> receipt — never stock. And goods at GEWA, VEBO or Dietikon get no receipt date until they reach a branch.</div>
+    </div>
+  </div>
+</section>
+
+<section id="network">
+  <div class="wrap">
+    <div class="eyebrow">02 · Branches</div>
+    <h2 class="sh">Seven places, one item master</h2>
+    <p class="sub">Articles are shared. Stock, goods receipts and markdowns belong to a branch.</p>
+    <div class="card map reveal">
+      <div>
+        <div class="lane">Sales branches · start the markdown clock</div>
+        <div class="nodes"><div class="node sale">SF1<small>sells</small></div><div class="node sale">SF2<small>sells</small></div><div class="node sale">SF3<small>sells</small></div><div class="node sale">SF4<small>sells</small></div></div>
+        <div class="lane" style="margin-top:22px">External stores · no sales, no receipt date</div>
+        <div class="nodes" style="grid-template-columns:repeat(3,1fr)"><div class="node ext">GEWA<small>storage</small></div><div class="node ext">VEBO<small>storage</small></div><div class="node ext">Dietikon<small>storage</small></div></div>
+      </div>
+      <div class="mini">
+        <div><b>External → branch.</b> The branch confirms arrival; the receipt date is set then, retroactively if needed.</div>
+        <div><b>Branch → branch.</b> Sender dispatches, destination confirms. The original receipt date stays.</div>
+        <div><b>Cancel in transit.</b> Sending branch manager, the sender, or head office.</div>
+        <div><b>Deciding factor.</b> Always <code>lagerorte.verkauf</code>, never an individual code.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="clock">
+  <div class="wrap">
+    <div class="eyebrow">03 · Markdown clock</div>
+    <h2 class="sh">Time on the shelf sets the price</h2>
+    <p class="sub">Counted per branch and supplier item number, from the last receipt. Drag the slider.</p>
+    <div class="card clock reveal">
+      <div class="dial" aria-hidden="true">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="86" fill="none" stroke="var(--surface-2)" stroke-width="16"/>
+          <circle id="arc" cx="100" cy="100" r="86" fill="none" stroke="var(--y)" stroke-width="16" stroke-linecap="round" stroke-dasharray="540.4" stroke-dashoffset="540.4" style="transition:stroke-dashoffset .25s,stroke .3s"/>
+        </svg>
+        <div class="c"><div class="pct" id="cpct">−30 %</div><div class="mo" id="cmo">0 months on shelf</div></div>
+      </div>
+      <div>
+        <label for="mo" class="sr">Months since last receipt</label>
+        <input class="range" id="mo" type="range" min="0" max="48" value="0">
+        <div class="ticks"><span>0</span><span>18</span><span>36</span><span>48 mo</span></div>
+        <div class="roll" id="roll"><i></i><div><b id="rollname">Yellow roll</b><span id="rolltxt">Every item starts at −30 % on arrival.</span></div></div>
+        <div class="seg" id="scen">
+          <button aria-pressed="true" data-s="branch">In a branch</button>
+          <button aria-pressed="false" data-s="ext">Still at GEWA / VEBO / Dietikon</button>
+          <button aria-pressed="false" data-s="new">New delivery arrives</button>
+        </div>
+        <p class="note" id="cnote">Thresholds are fixed and identical for all branches. Labels are 47 × 83 mm on pre-printed rolls.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="roles">
+  <div class="wrap">
+    <div class="eyebrow">04 · Permissions</div>
+    <h2 class="sh">Who may do what</h2>
+    <p class="sub">Enforced server-side, not just hidden in the interface. Pick a role to highlight its rights.</p>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" aria-selected="true" data-r="1">Employee</button>
+      <button role="tab" aria-selected="false" data-r="2">Branch manager</button>
+      <button role="tab" aria-selected="false" data-r="3">Head office</button>
+    </div>
+    <div class="card scroll reveal"><table class="matrix" id="matrix"></table></div>
+    <p class="note">Read access is unchanged: everyone can read all branches. Employees book only in their assigned branches.</p>
+  </div>
+</section>
+
+<section id="roadmap">
+  <div class="wrap">
+    <div class="eyebrow">05 · Roadmap</div>
+    <h2 class="sh">Seven phases, in a deliberate order</h2>
+    <p class="sub">Without foundation no goods in. Without goods in no stock. Without stock no markdown.</p>
+    <div class="road" id="road"></div>
+  </div>
+</section>
+
+<section id="rules">
+  <div class="wrap">
+    <div class="eyebrow">06 · Principles</div>
+    <h2 class="sh">What holds everywhere</h2>
+    <p class="sub">Ten hard rules. These are the ones staff and management feel most.</p>
+    <div class="grid g3" id="rulegrid"></div>
+    <h3 style="margin:56px 0 16px;font-size:22px">What we consciously do without</h3>
+    <div class="grid g3 no3">
+      <div class="card reveal"><h3>AI on documents</h3><p>Own parser, own server. An unknown layout is reported, never guessed.</p></div>
+      <div class="card reveal"><h3>Off-the-shelf software</h3><p>It would not map our 35 categories, the 30/50/70 logic and the external stores — and it costs every month.</p></div>
+      <div class="card reveal"><h3>Assumed stock</h3><p>Booked only when goods arrive. An order confirmation is an announcement, nothing more.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <div class="wrap">
+    <div class="eyebrow">07 · Security</div>
+    <h2 class="sh">Checked, with two items still open</h2>
+    <p class="sub">No critical or high findings. Details in <code>docs/sicherheit.md</code>.</p>
+    <div class="card sec reveal" id="sec"></div>
+  </div>
+</section>
+
+<section id="phone">
+  <div class="wrap">
+    <div class="eyebrow">08 · On the shop floor</div>
+    <h2 class="sh">Your phone is the scanner</h2>
+    <p class="sub">Built early, not at the end. Open a link, add it to the home screen, scan with the camera.</p>
+    <div class="phonewrap reveal">
+      <div class="phone" aria-hidden="true"><div class="screen">
+        <div class="bar2">Search<small>SF2 · Employee</small></div>
+        <div class="scan"></div>
+        <div class="pr"><b>Alpina Pheos Jr.</b>Blue · size 54<div class="r"><span>In stock SF2: 3</span><span class="d">−30 %</span></div></div>
+        <div class="pr"><b>CMP Kids Jacket</b>Red · size 128<div class="r"><span>In stock SF2: 1</span><span class="d" style="background:#d8382c;color:#fff">−50 %</span></div></div>
+      </div></div>
+      <div class="feat">
+        <div><b>Search and scan</b>Native barcode reader or bundled ZXing. Prices, sizes, colours, store stock.</div>
+        <div><b>Count and correct</b>Count the shelf; the system books the difference.</div>
+        <div><b>Confirm arrivals</b>Everyone can confirm goods and incoming transfers.</div>
+        <div><b>Transfer and write off</b>Managers and head office only, same rights as desktop.</div>
+        <div><b>Enter goods</b>Manual entry without a document; brand, name, quantity, RRP suffice.</div>
+        <div><b>Markdowns</b>Choose the level and print the right roll colour.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="next">
+  <div class="wrap">
+    <div class="eyebrow">09 · What's next</div>
+    <h2 class="sh">Path to the first store</h2>
+    <p class="sub">Tick items off as they finish. Your ticks stay in this browser only.</p>
+    <div class="grid g2">
+      <div class="card reveal" style="padding:22px">
+        <h3 style="margin-bottom:14px">Store deployment · Phase F</h3>
+        <ul class="chk" id="todo"></ul>
+        <div style="margin-top:16px"><div class="bar"><i id="todobar"></i></div><p class="note" id="todotxt"></p></div>
+      </div>
+      <div class="card reveal" style="padding:22px">
+        <h3 style="margin-bottom:14px">Planned, not built</h3>
+        <ul class="list">
+          <li><b>Pending across branches:</b>&nbsp;missing EAN and category totals visible to all roles. No permission change.</li>
+          <li><b>Head-office recommendations:</b>&nbsp;send to all sales branches at once, each answers separately; withdrawal by head office.</li>
+          <li><b>Open questions:</b>&nbsp;withdrawal after acceptance, branches without stock, visibility before the effective date.</li>
+          <li><b>Phase G · POS:</b>&nbsp;scan at the till delivers category, RRP and markdown; a sale removes stock. Waiting on Intersport.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Sportfabrik Inventory · overview of 29.09.2026 · orientation only, not a production release.</span>
+    <span>Self-contained page: no external fonts, scripts or requests.</span>
+  </div>
+</footer>
+
+<dialog id="pal" aria-label="Search">
+  <input id="q" type="search" placeholder="Jump to… (e.g. markdown, backup, transfer)" autocomplete="off">
+  <ul id="res"></ul>
+</dialog>
+
+<script>
+"use strict";
+(function(){
+var $=function(s,r){return (r||document).querySelector(s)}, $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+var store={get:function(k){try{return localStorage.getItem(k)}catch(e){return null}},set:function(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* theme */
+var root=document.documentElement, saved=store.get("sf-theme");
+if(saved)root.setAttribute("data-theme",saved);
+$("#theme").addEventListener("click",function(){
+  var dark=root.getAttribute("data-theme")?root.getAttribute("data-theme")==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+  var n=dark?"light":"dark";root.setAttribute("data-theme",n);store.set("sf-theme",n);
+});
+
+/* reading progress + scrollspy */
+var prog=$("#prog"), links=$$("#links a"), secs=links.map(function(a){return $(a.getAttribute("href"))});
+function onScroll(){
+  var h=document.documentElement, max=h.scrollHeight-innerHeight;
+  prog.style.width=(max>0?h.scrollTop/max*100:0)+"%";
+  var cur=-1;secs.forEach(function(s,i){if(s.getBoundingClientRect().top<innerHeight*.35)cur=i});
+  links.forEach(function(a,i){a.classList.toggle("on",i===cur);if(i===cur)a.setAttribute("aria-current","true");else a.removeAttribute("aria-current")});
+}
+addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+/* reveal + counters + bars */
+var io=("IntersectionObserver" in window)?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}})},{threshold:.12}):null;
+$$(".reveal").forEach(function(el){io?io.observe(el):el.classList.add("in")});
+function count(el){
+  var t=+el.dataset.n,s=performance.now(),d=1100;
+  (function f(now){var p=Math.min(1,(now-s)/d);el.textContent=Math.round(t*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)})(s);
+}
+$$("[data-n]").forEach(count);
+setTimeout(function(){$("#barfill").style.width=$("#barfill").dataset.w+"%"},250);
+
+/* flow */
+var FLOW=[
+ ["Document","Upload invoice, delivery note or order confirmation as PDF — several at once. Supplier, document type and destination location are recognised and proposed. Or skip the document and enter goods by hand with the scanner.","Own parsers only. An unknown layout is reported, never guessed."],
+ ["Local parser","Text PDFs go through PyMuPDF; scans through Tesseract and OpenCV OCR. Everything runs on the server in Volketswil. Parsers exist for Alpina, Chris Sports and CMP.","No language model and no cloud ever sees document data."],
+ ["Preview","Every position is shown before anything is booked. Uncertain fields are highlighted. Staff correct and confirm. Over-delivery triggers a warning.","EAN is optional: supplier + item number + colour + size is the key."],
+ ["Arrival","An order confirmation only creates an expected receipt; open quantities stay open. Anyone can confirm “goods arrived” — after unpacking and checking.","Only book stock once goods have arrived. Same for transfers."],
+ ["Stock","Each change is one line in the movements table: receipt, sale, write-off, correction, transfer. Stock per branch and variant is derived from it. The receipt date starts the markdown clock.","Never overwrite stock directly."]
+];
+function showFlow(i){
+  $$(".step").forEach(function(b){b.setAttribute("aria-pressed",String(+b.dataset.i===i))});
+  var d=FLOW[i];$("#detail").innerHTML="<h4></h4><p></p><p class='rule'></p>";
+  $("#detail h4").textContent=(i+1)+". "+d[0];$("#detail p").textContent=d[1];$("#detail .rule").textContent=d[2];
+}
+$$(".step").forEach(function(b){b.addEventListener("click",function(){showFlow(+b.dataset.i)})});showFlow(0);
+
+/* clock */
+var mo=$("#mo"), scen="branch", C=2*Math.PI*86;
+function lvl(m){return m>=36?70:m>=18?50:30}
+var COL={30:["var(--y)","#f2c200","Yellow roll"],50:["var(--r)","#d8382c","Red roll"],70:["var(--g)","#2f9e5b","Green roll"]};
+function clock(){
+  var m=+mo.value, arc=$("#arc"), roll=$("#roll");
+  if(scen==="ext"){
+    $("#cpct").textContent="—";$("#cmo").textContent="no receipt date yet";arc.style.strokeDashoffset=C;
+    roll.querySelector("i").style.background="var(--surface)";$("#rollname").textContent="No label change";
+    $("#rolltxt").textContent="Goods outside a sales branch raise no markdown notice. The clock starts when a branch confirms arrival.";
+    $("#cnote").textContent="Rule: what matters is always lagerorte.verkauf, never the individual location code.";mo.disabled=true;return;
+  }
+  mo.disabled=false;var L=lvl(m),c=COL[L];
+  $("#cpct").textContent="−"+L+" %";$("#cmo").textContent=m+" month"+(m===1?"":"s")+" on shelf";
+  arc.style.stroke=c[0];arc.style.strokeDashoffset=C*(1-m/48);
+  roll.querySelector("i").style.background=c[1];$("#rollname").textContent=c[2];
+  var nx=m<18?18-m:m<36?36-m:0;
+  $("#rolltxt").textContent=L===30?"Starts at −30 % on arrival. −50 % in "+nx+" months.":L===50?"−50 % now. −70 % in "+nx+" months.":"Final stage: −70 %.";
+  $("#cnote").textContent=scen==="new"?"A new delivery of the same item number at this branch restarts the clock. A delivery elsewhere does not.":"Thresholds are fixed and identical for all branches. Labels are 47 × 83 mm on pre-printed rolls.";
+}
+mo.addEventListener("input",clock);
+$$("#scen button").forEach(function(b){b.addEventListener("click",function(){
+  scen=b.dataset.s;$$("#scen button").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});
+  if(scen==="new"){var f=+mo.value,t=Math.round(f/3);mo.value=Math.max(0,f);(function step(){var v=+mo.value;if(v>0){mo.value=Math.max(0,v-Math.max(1,Math.round(t/6)));clock();setTimeout(step,35)}})()}
+  clock();
+})});clock();
+
+/* roles */
+var ROLES=[
+ ["Book in goods manually","Own branches","Own branches","All branches"],
+ ["Correct stock (count)","Own branches","Own branches","All branches"],
+ ["Book out — sale","Own branches","Own branches","All branches"],
+ ["Book out — any other reason","—","Own branches","All branches"],
+ ["Cancel a booking","—","Own branches","All branches"],
+ ["Transfer between locations","—","Yes","Yes"],
+ ["Cancel a transfer in transit","Sender only","Sending branch","Yes"],
+ ["Confirm “goods arrived”","Yes","Yes","Yes"],
+ ["Book a customer return (fit / taste) and release it","Own branches","Own branches","All branches"],
+ ["Approve other returns, supplier return, write off held stock","—","Yes","Yes"],
+ ["Declare a delivery remainder lost","—","Yes","Yes"],
+ ["Change markdown","—","Own branches","All branches"],
+ ["Upload, edit, delete documents","—","Yes","Yes"],
+ ["Delete a manually entered item","—","Yes","Yes"],
+ ["Statistics","—","Yes","Yes"],
+ ["Manage accounts","—","—","Yes"]
+];
+function cls(v){return v==="—"?"no":(v==="Yes"||v.indexOf("All")===0)?"yes":"part"}
+function roles(r){
+  var h="<thead><tr><th>Action</th><th>Employee</th><th>Branch manager</th><th>Head office</th></tr></thead><tbody>";
+  ROLES.forEach(function(row){
+    var ok=row[r]!=="—";h+="<tr"+(ok?"":" class='dim'")+"><td>"+row[0]+"</td>";
+    for(var c=1;c<4;c++){var v=row[c];h+="<td class='v "+cls(v)+"' style='opacity:"+(c===r?1:.42)+"'>"+(v==="—"?"—":(cls(v)==="yes"?"✓ ":"◐ ")+v)+"</td>"}
+    h+="</tr>";
+  });
+  $("#matrix").innerHTML=h+"</tbody>";
+}
+$$("#tabs button").forEach(function(b){b.addEventListener("click",function(){
+  $$("#tabs button").forEach(function(x){x.setAttribute("aria-selected",String(x===b))});roles(+b.dataset.r);
+})});roles(1);
+
+/* roadmap */
+var PH=[["A","Foundation","Branches, roles, languages, data model, legacy migration","done","Done"],
+["B","Goods in v2","Document types, supplier detection, expected → arrived, manual entry, EAN and labels, FEDAS categories","done","Done"],
+["C","Stock levels","Over-delivery warning, per-location stock, transfers, removals by scan, corrections","done","Done"],
+["D","Prices and markdowns","RRP history, 18/36-month notices per branch, confirmation, head-office recommendation","done","Done"],
+["E","More suppliers","Alpina, Chris Sports, CMP live; more layouts and ECOM detection on demand","","Ongoing"],
+["F","Operation","Server in Volketswil, VPN, encrypted off-site backups, data move. HTTPS already built.","next","Next"],
+["G","POS","Till scan returns category, RRP, markdown; a sale removes stock. Waiting on Intersport.","","Open"]];
+$("#road").innerHTML=PH.map(function(p){return "<div class='card ph reveal "+p[3]+"'><div class='l'>"+p[0]+"</div><div><h3>"+p[1]+"</h3><p>"+p[2]+"</p></div><span class='tag "+(p[3]==="done"?"t-ok":p[3]==="next"?"t-warm":"t-n")+"'>"+p[4]+"</span></div>"}).join("");
+
+/* rules */
+var RU=[["📄","Documents stay local","Only our parser reads them. No AI, no cloud. The interface loads nothing from the internet."],
+["🧾","Stock is never overwritten","Each change is a movement line. Stock derives from the history."],
+["📦","Book on arrival","Order confirmations and transfers in transit are announcements, not stock."],
+["🏷️","EAN is optional","Variants without EAN work. Internal EANs use the GS1 20–29 range with a valid check digit."],
+["🏬","Shared item master","One master record; stock, receipts and markdowns per branch. It stays even when sold out."],
+["🗂️","Till categories exactly","Main group × sport area. Bike and food have no sport area."],
+["🌍","Three languages","DE default, FR, EN. Item data from suppliers is not translated."],
+["💶","Purchase price optional","Saved when the document has it. Never required."],
+["⏱️","Clock per branch","A new delivery restarts it; a transfer between branches never rejuvenates goods."]];
+$("#rulegrid").innerHTML=RU.map(function(r){return "<div class='card rule-card reveal'><div class='ic'>"+r[0]+"</div><h3>"+r[1]+"</h3><p>"+r[2]+"</p></div>"}).join("");
+
+/* security */
+var SE=[["S1","done","HTTPS built. A new password ends all sessions of that account."],["S2","done","5 wrong passwords lock the account for 20 minutes. 6-character passwords allowed only behind store Wi-Fi or VPN."],
+["S3","done","Pillow upgraded to 12.3.0."],["S4","done","External backups always encrypted with age. Private key never on the server."],
+["S5–S7","done","API docs off, health check answers “ok” only, security headers and strict CSP."],["S8","open","Hash pins for packages, with the store deployment."],["S9","done","Overview pages no longer load Google Fonts."]];
+$("#sec").innerHTML=SE.map(function(s){return "<div class='srow'><code>"+s[0]+"</code><p>"+s[2]+"</p><span class='tag "+(s[1]==="done"?"t-ok":"t-warm")+"'>"+(s[1]==="done"?"Done":"Open")+"</span></div>"}).join("")+
+"<div class='srow'><code>VPN</code><p><b>Network separation / VPN</b> still to set up — required for the 6-character password rule.</p><span class='tag t-warm'>Open</span></div>";
+
+/* todo */
+var TD=["Merge the 29.09. pull request into main","Create the age key pair on a separate PC; private key on USB stick plus paper","Run migrations on the store server database","Set up network separation or VPN","Add S8 hash pins","First external backup and a restore test","Test phones in the store with real labels (iPhone and Android)","Remove the temporary “−1” stock button after the trial","Everyone logs in once after the update (S1)"];
+var done={};try{done=JSON.parse(store.get("sf-todo")||"{}")}catch(e){}
+function todo(){
+  var n=TD.filter(function(_,i){return done[i]}).length;
+  $("#todobar").style.width=(n/TD.length*100)+"%";$("#todotxt").textContent=n+" of "+TD.length+" done";
+}
+var ul=$("#todo");TD.forEach(function(t,i){
+  var li=document.createElement("li"),lb=document.createElement("label"),cb=document.createElement("input"),sp=document.createElement("span");
+  cb.type="checkbox";cb.checked=!!done[i];sp.textContent=t;
+  cb.addEventListener("change",function(){done[i]=cb.checked;store.set("sf-todo",JSON.stringify(done));todo()});
+  lb.appendChild(cb);lb.appendChild(sp);li.appendChild(lb);ul.appendChild(li);
+});todo();
+
+/* palette */
+var pal=$("#pal"),q=$("#q"),res=$("#res"),sel=0,idx=[];
+$$("main section, #status").forEach(function(s){var h=$(".sh",s)||$("h3",s);idx.push({id:s.id,t:h?h.textContent:s.id,k:s.textContent.toLowerCase().slice(0,4000)})});
+function render(){
+  var t=q.value.toLowerCase().trim(),m=idx.filter(function(x){return !t||x.t.toLowerCase().indexOf(t)>-1||x.k.indexOf(t)>-1});
+  res.innerHTML="";sel=0;
+  m.forEach(function(x,i){var li=document.createElement("li"),a=document.createElement("a");a.href="#"+x.id;a.innerHTML="<span></span><small>#"+x.id+"</small>";a.firstChild.textContent=x.t;if(i===0)a.className="sel";a.addEventListener("click",function(){pal.close()});li.appendChild(a);res.appendChild(li)});
+  if(!m.length)res.innerHTML="<li style='padding:14px;color:var(--ink-3)'>No match</li>";
+}
+function open(){if(!pal.open){pal.showModal();q.value="";render();q.focus()}}
+$("#search").addEventListener("click",open);
+addEventListener("keydown",function(e){
+  var typing=/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  if((e.key==="k"&&(e.metaKey||e.ctrlKey))||(e.key==="/"&&!typing)){e.preventDefault();open()}
+});
+q.addEventListener("input",render);
+q.addEventListener("keydown",function(e){
+  var as=$$("a",res);if(!as.length)return;
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();as[sel].classList.remove("sel");sel=(sel+(e.key==="ArrowDown"?1:-1)+as.length)%as.length;as[sel].classList.add("sel");as[sel].scrollIntoView({block:"nearest"})}
+  if(e.key==="Enter"){e.preventDefault();as[sel].click()}
+});
+pal.addEventListener("click",function(e){if(e.target===pal)pal.close()});
+})();
+</script>
+</body>
+</html>

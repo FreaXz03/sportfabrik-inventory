@@ -57,9 +57,10 @@ def artikel_von_variante(session, varianten_id: int) -> int | None:
     return session.scalar(select(Variante.artikel_id).where(Variante.id == varianten_id))
 
 
-def setzen(session, artikel_id: int, lagerort_id: int, prozent: int | None, benutzer) -> dict:
-    """Stufe von Hand setzen (30/50/70) oder mit `None` zurück zur
-    Empfehlung. Pro Modell und Filiale gibt es höchstens eine Zeile."""
+def merke(session, artikel_id: int, lagerort_id: int, prozent: int | None, kassennummer, name) -> None:
+    """Wahl von Hand speichern (30/50/70) oder mit `None` löschen - ohne
+    Commit, damit auch die Erfassung sie in ihrer Transaktion setzen kann
+    (N2, 29.09.2026). Pro Modell und Filiale gibt es höchstens eine Zeile."""
     eintrag = session.scalar(
         select(ReduktionManuell).where(
             ReduktionManuell.artikel_id == artikel_id,
@@ -69,15 +70,21 @@ def setzen(session, artikel_id: int, lagerort_id: int, prozent: int | None, benu
     if prozent is None:
         if eintrag is not None:
             session.delete(eintrag)
-    else:
-        if eintrag is None:
-            eintrag = ReduktionManuell(artikel_id=artikel_id, lagerort_id=lagerort_id)
-            session.add(eintrag)
-        eintrag.prozent = prozent
-        eintrag.benutzer_kassennummer = benutzer.kassennummer
-        eintrag.benutzer_name = benutzer.name
-        # Neu gesetzt: auch der Zeitpunkt ist neu.
-        eintrag.gesetzt_am = datetime.now(timezone.utc)
+        return
+    if eintrag is None:
+        eintrag = ReduktionManuell(artikel_id=artikel_id, lagerort_id=lagerort_id)
+        session.add(eintrag)
+    eintrag.prozent = prozent
+    eintrag.benutzer_kassennummer = kassennummer
+    eintrag.benutzer_name = name
+    # Neu gesetzt: auch der Zeitpunkt ist neu.
+    eintrag.gesetzt_am = datetime.now(timezone.utc)
+
+
+def setzen(session, artikel_id: int, lagerort_id: int, prozent: int | None, benutzer) -> dict:
+    """Stufe von Hand setzen (30/50/70) oder mit `None` zurück zur
+    Empfehlung."""
+    merke(session, artikel_id, lagerort_id, prozent, benutzer.kassennummer, benutzer.name)
     session.commit()
     return stufen(session, lagerort_id, [artikel_id])[artikel_id]
 

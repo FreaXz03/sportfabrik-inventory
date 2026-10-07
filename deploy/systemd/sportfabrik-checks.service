@@ -1,0 +1,13 @@
+[Unit]
+Description=Sportfabrik Inventory daily checks (stock vs movements, backup age)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=sportfabrik
+WorkingDirectory=/opt/sportfabrik-inventory
+# Both checks always run, so a failing stock check cannot hide a stale backup:
+# rule 2 (bestand = sum of lagerbewegungen) and "newest backup < 26 hours".
+# The unit fails if either fails.
+ExecStart=/bin/sh -c 'rc=0; /usr/bin/docker compose --env-file .env.server exec -T app python scripts/betrieb.py pruefe || rc=1; /opt/sportfabrik-inventory/scripts/check_backup_age.sh || rc=1; exit $rc'

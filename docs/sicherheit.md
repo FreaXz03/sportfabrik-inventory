@@ -9,10 +9,10 @@ permissions, configuration (Docker, headers, endpoints), dependencies
 **Result:** no critical and no high findings. Four medium items
 should be done **before deployment in the store** (roadmap phase F — operations),
 plus five low ones. Fixed: the login lockout from S2 (2026-09-24), HTTPS
-from S1 (2026-09-28, locally), and S9 (2026-09-28). Still open before the
-store: rest of S1 (sessions on password change), S3, S4, network
+from S1 (2026-09-28, locally; sessions on password change 2026-09-29), S9 (2026-09-28), S3–S7 (2026-09-29). Still open before the
+store: network
 separation (required for the 6-character password decision of
-2026-09-28), S5–S8.
+2026-09-28), S8.
 
 **New since the review (2026-09-28):** phone logins are limited
 server-side to the agreed phone features (`phone_gate`, allowlist in
@@ -25,13 +25,13 @@ This file is updated on every fix (status column).
 
 | # | Level | Topic | Measure | Status |
 |---|---|---|---|---|
-| S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). Still open: invalidating sessions on password change |
+| S1 | medium | Login over HTTP, 5-year session | HTTPS via local reverse proxy (e.g. Caddy with an internal certificate), cookie with `https_only=True`; invalidate sessions server-side on password change | **HTTPS done** (2026-09-28: Caddy with local CA, `Secure` cookie, app port no longer published; checked locally, not yet on the store server). **Sessions end on password change** (2026-09-29): the session holds an HMAC of the password hash, checked on every request; after the update everyone logs in once more |
 | S2 | medium | Login with no limit on failed attempts | Lock account for 20 minutes after 5 wrong passwords (decision 2026-09-24); server reachable only on the store network. **Decided 2026-09-28:** minimum password length stays 6 — on condition that only the private store Wi-Fi or the VPN can reach the server. Open: uniform error message | **lockout implemented** (2026-09-24, migration `b9c0d1e2f3a4`); network separation on server migration is now a **hard prerequisite** for the 6-character rule |
-| S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | open |
-| S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | open |
-| S5 | low | API docs with no login | Disable `/docs`, `/redoc`, `/openapi.json` in operation | open |
-| S6 | low | `/db-test` with no login | Return only `{"ok": true}` (needed by the Docker health check) | open |
-| S7 | low | No security headers | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'self'` | open |
+| S3 | medium | Pillow 12.2.0 with 13 known vulnerabilities | Update to 12.3.0 (`requirements-server.txt`, `requirements.txt`) | **done** 2026-09-29 (pins updated, tests pass; server image rebuilt at deployment) |
+| S4 | medium | Backups unencrypted | Encrypt backup before copying to external media (`age` or `gpg --symmetric`), store key separately | **done** 2026-09-29: `age` with public key on the server, private key on USB stick + paper (`docs/BACKUPS.md`); no unencrypted external copy possible |
+| S5 | low | API docs with no login | Disable `/docs`, `/redoc`, `/openapi.json` in operation | **done** 2026-09-29 (always off) |
+| S6 | low | `/db-test` with no login | Return only `{"ok": true}` (needed by the Docker health check) | **done** 2026-09-29 |
+| S7 | low | No security headers | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'self'` | **done** 2026-09-29: headers on every response, CSP on HTML pages (`default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`); inline scripts and `onsubmit` attributes moved into `/static/js` (test `test_seiten_ohne_inline_skripte`); checked in headless Chromium: 16 pages without CSP violations |
 | S8 | low | Server packages without transitive pins/hashes, images without digest | `pip-compile --generate-hashes`, `pip install --require-hashes`, pin images with `@sha256:` | open |
 | S9 | low | Overview pages load Google Fonts | Remove links in the overview pages (now `docs/overviews/*.html`, and the vault versions), use a system font | **done** (2026-09-28: links removed, system-font fallback; the German copies in `docs/aktualisiert/` were replaced by the English `docs/overviews/`) |
 
@@ -49,8 +49,15 @@ With HTTPS on the store network, interception is practically ruled out.
 `compose.yaml` (Caddy, `Caddyfile`, `tls internal`). The session cookie is
 `Secure` when `SESSION_HTTPS_ONLY=true`; plain HTTP only redirects and serves
 the root certificate. Setup and device trust: `docs/SERVER-SETUP.md`, section
-"HTTPS". The 5-year session and the missing revocation on password change are
-unchanged.
+"HTTPS".
+
+*Update 2026-09-29:* a new password (`scripts/manage_users.py set-password`)
+ends all existing sessions of that account: at login the session stores an
+HMAC (with `SESSION_SECRET`) of the password hash, and every request compares
+it with the current hash. Sessions from before this change have no marker,
+so everyone logs in once more after the update. Still unchanged: the 5-year
+session, and a copied cookie stays valid after a plain logout (no
+server-side session list).
 
 **S2 — Login.** *Implemented on 2026-09-24:* after 5 wrong passwords, an account is locked for 20 minutes (response 429, also for the correct password; counted per account in the database, `app/services/anmeldung.py`). Before that, `/login` didn't count failed attempts. Each password attempt
 costs the server about half a second of compute time due to PBKDF2 (600,000 rounds),
@@ -82,6 +89,10 @@ supplier documents, purchase prices, and accounts.
 - Booking rights since 2026-09-24: employees enter and correct stock only in
   their assigned branches; booking out, cancelling, and transferring only for
   branch managers and head office (checked server-side, `tests/test_rechte_lager.py`).
+- Returns and delivery remainders (package 4, 2026-10-05): employees book and release fit/taste returns in
+  their branches and may flag a shortage; approving, supplier return, write-off and declaring a remainder
+  lost are branch manager/head office, checked server-side (`tests/test_retoure.py`,
+  `tests/test_lieferung_differenz.py`). Reviewed by a security subagent 2026-10-05, findings fixed.
 - Test passwords exist only in the tests.
 
 ## What's good
@@ -109,3 +120,7 @@ supplier documents, purchase prices, and accounts.
 - Run `pip-audit -r requirements-server.txt` before every server update.
 - HTTPS, network separation, and encrypted backups are mandatory items for
   phase F (operations).
+
+## Mail dispatch (2026-10-01)
+
+`POST /api/fehlermeldung` (any logged-in user) and `POST /api/dokument-melden` (branch managers/head office) send mail to a fixed address. Checks: recipient not user-controlled; subject stripped of line breaks (no header injection); images checked by type and content, max 4 × 5 MB; documents must be PDFs ≤ 10 MB; 10 messages per hour per account. Nothing is sent automatically, including on unknown layouts.

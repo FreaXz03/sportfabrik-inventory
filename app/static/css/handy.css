@@ -15,7 +15,6 @@ body.phone header {
 }
 
 body.phone .brand img { width: 112px; }
-body.phone .store-pill .store-select { max-width: 150px; }
 
 body.phone main {
   max-width: 560px;
@@ -279,3 +278,8 @@ body.phone .notice { margin: 0 0 var(--space-4); }
 
 /* Two fields sharing a row (manual entry: colour + size, quantity + unit, UVP + EK). */
 .m-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-3); margin-top: var(--space-4); }
+
+/* Veraltete Zählung (Paket 2): Warnung, Bewegungen seither, „Trotzdem buchen" - untereinander. */
+#staleBox { display: grid; gap: 8px; }
+#staleBox[hidden] { display: none; }
+#staleBox ul { margin: 0; padding-left: 18px; }
