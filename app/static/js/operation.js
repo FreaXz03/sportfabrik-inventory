@@ -5,7 +5,7 @@
 // echten Antwort gilt die nächste Aktion als neu (neue ID), auch derselbe Scan.
 // Nur bei Netzwerkfehlern und Serverfehlern (5xx) bleibt die ID bestehen.
 (function () {
-  var PFAD = /^\/api\/(ausbuchen|korrektur|umlagerung|erfassen)$|^\/api\/wareneingaenge\/\d+\/ankunft$/;
+  var PFAD = /^\/api\/(ausbuchen|korrektur|umlagerung|erfassen|retouren)$|^\/api\/wareneingaenge\/\d+\/ankunft$/;
   var offen = {};
 
   function neueId() {
