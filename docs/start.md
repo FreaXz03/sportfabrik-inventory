@@ -26,7 +26,7 @@ All 12 example files were run on the dev database (parse, import, confirm arriva
 
 ## Done 2026-10-23 (in-store run, stability)
 
-Fabian ran the app in the store for a few hours: works well. Afterwards: Pillow 13.0.0 (security), OCR limited to 2 documents at a time, PostgreSQL pool and timeouts (details in `docs/sicherheit.md`). Tests: 358 passed, 14 skipped. Not yet checked on PostgreSQL.
+Fabian ran the app in the store for a few hours: works well. Afterwards: Pillow 13.0.0 (security), OCR limited to 2 documents at a time, PostgreSQL pool and timeouts (details in `docs/sicherheit.md`). Tests: 358 passed, 14 skipped; timeouts and migrations checked on a throwaway PostgreSQL 18.
 
 ## Next steps
 

@@ -77,7 +77,7 @@ directly with Pillow. The update is small.
 (`docs/BACKUPS.md`). A lost storage medium would contain all
 supplier documents, purchase prices, and accounts.
 
-**Update 2026-10-23:** Pillow 13.0.0 (12.3.0 had 35 known vulnerabilities; `pip-audit` now clean). Stability for several users: at most 2 documents are read/OCR'd at the same time (`MAX_PARALLELE_DOKUMENTE`, `app/services/parsers/__init__.py`, also on import); PostgreSQL pool 10+10 with `statement_timeout` 120 s, `lock_timeout` 60 s, `idle_in_transaction_session_timeout` 5 min (`engine_argumente` in `app/core/database.py`). Test: `tests/test_parallele_last.py`. Not yet checked on PostgreSQL.
+**Update 2026-10-23:** Pillow 13.0.0 (12.3.0 had 35 known vulnerabilities; `pip-audit` now clean). Stability for several users: at most 2 documents are read/OCR'd at the same time (`MAX_PARALLELE_DOKUMENTE`, `app/services/parsers/__init__.py`, also on import); PostgreSQL pool 10+10 with `statement_timeout` 120 s, `lock_timeout` 60 s, `idle_in_transaction_session_timeout` 5 min (`engine_argumente` in `app/core/database.py`). Test: `tests/test_parallele_last.py`. Checked 2026-10-23 on a throwaway PostgreSQL 18: migrations to head, all three timeouts active, a slow query is cancelled, pool 10.
 
 ## Notes requiring no action
 
