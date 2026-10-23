@@ -33,7 +33,7 @@ from .artikel import (
     finde_variante_ohne_ean,
     finde_variante_per_ean,
 )
-from .parsers import parse_with_parser, read_and_detect
+from .parsers import lese_slot, parse_with_parser, read_and_detect
 from .corrections import apply_corrections, CorrectionError
 from .hinweise import erstelle_hinweise, pruefe_und_merke
 from .lieferung import (
@@ -188,8 +188,9 @@ def import_invoice(
     # Ein Lese-/OCR-Durchgang für alles: Lieferanten-Erkennung, Positionen und
     # Datumsfelder arbeiten auf demselben eingelesenen Dokument (siehe
     # app/services/parsers/).
-    document, parser = read_and_detect(pdf, language)
-    parsed = parse_with_parser(parser, document, language)
+    with lese_slot:
+        document, parser = read_and_detect(pdf, language)
+        parsed = parse_with_parser(parser, document, language)
     if corrections:
         try:
             parsed = apply_corrections(parsed, corrections, imported_by, language)

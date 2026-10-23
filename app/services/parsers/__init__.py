@@ -17,6 +17,8 @@ Ablauf:
    lesen (projekt-kontext.md Abschnitt 6, Punkt 1).
 """
 
+import threading
+
 from . import alpina, bestellplan, bliz, chrissports, cmp, columbia, gonso, intersport, quintet
 from ...core.lieferanten import LIEFERANTEN_SEED
 from .base import Document, DocumentParseError, decimal_value, read_document
@@ -122,12 +124,19 @@ def read_and_detect(pdf_data: bytes, language: str = DEFAULT_LANGUAGE):
     return document, detect_parser(document, language)
 
 
+# Lesen/OCR ist CPU-lastig: höchstens so viele Dokumente gleichzeitig, weitere
+# warten. Sonst bremst ein langer Scan die Kasse aller Filialen.
+MAX_PARALLELE_DOKUMENTE = 2
+lese_slot = threading.BoundedSemaphore(MAX_PARALLELE_DOKUMENTE)
+
+
 def parse_document(
     pdf_data: bytes, language: str = DEFAULT_LANGUAGE, lagerorte=()
 ) -> dict:
     """Dokument lesen, Layout erkennen und Positionen auslesen (Vorschau)."""
-    document, parser = read_and_detect(pdf_data, language)
-    return parse_with_parser(parser, document, language, lagerorte)
+    with lese_slot:
+        document, parser = read_and_detect(pdf_data, language)
+        return parse_with_parser(parser, document, language, lagerorte)
 
 
 __all__ = [

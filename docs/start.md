@@ -24,6 +24,10 @@ Assumptions to confirm: (1) "newest messages" = the first five Pending items, be
 
 All 12 example files were run on the dev database (parse, import, confirm arrival; local only). 11 imported without warnings; `CMP Nachbest. SF1 15.08.26.pdf` is an unknown layout (parser not built yet; needs the document shown explicitly, rule 1). Bug found and fixed: confirming arrival failed with a unique-constraint error on `bestand` when a document lists the same variant twice, because `SessionLocal` has no autoflush — `buche_zugang` now flushes after adding the stock row (test `tests/test_zugang_doppelte_variante.py`). A generic "database error" on arrival usually means pending migrations on the local DB: run `alembic upgrade head` after pulling. Open: `SF3 Regensdorf.PDF` was suggested for SF1 — check by hand. Tests: 219 passed, 12 skipped.
 
+## Done 2026-10-23 (in-store run, stability)
+
+Fabian ran the app in the store for a few hours: works well. Afterwards: Pillow 13.0.0 (security), OCR limited to 2 documents at a time, PostgreSQL pool and timeouts (details in `docs/sicherheit.md`). Tests: 358 passed, 14 skipped. Not yet checked on PostgreSQL.
+
 ## Next steps
 
 **First: Sportfabrik Inventory Redesign**, explicitly prioritized on 2026-09-29. Follow [the redesign specification](redesign-2026-09-29.md): structural sidebar layout on all pages, stacked existing logo, exact navigation, function search, dashboard charts and Settings modal; preserve current colors and design elements. All 8 phases are done (merged into `feature/warenwirtschaft-v2`); the follow-up refinements of 2026-09-30 are listed above.
