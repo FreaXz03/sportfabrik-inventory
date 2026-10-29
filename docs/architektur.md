@@ -618,15 +618,17 @@ is the **registry** that decides who's responsible:
 
 | Component | Role |
 |---|---|
-| `base.py` | `read_document()` reads the whole PDF **once** (words with coordinates per page, via OCR for pages without a text layer), plus the recurring building blocks `lines()`, `joined()`, `decimal_value()` |
+| `base.py` | `read_document()` reads the whole PDF **once** (words with coordinates per page, via OCR for pages without a text layer), plus the recurring building blocks `lines()`, `joined()`, `decimal_value()`. A landscape page placed rotated on portrait A4 (page rotation 0, at least 80 % of the text running bottom to top) is turned back: words are rotated and the page text is rebuilt from them (2026-10-02) |
 | `<supplier>.py` | `KEY` (= `lieferanten.parser_key`), `LIEFERANT_NAME`, `detect(doc)`, `parse(doc, lang)`, `dates(doc, lang)` |
 | `__init__.py` | `PARSERS` list, `detect_parser()`, `parse_document()`, `UnknownLayoutError` |
 
-**Registered layouts (2026-09-24):**
+**Registered layouts (2026-10-02):**
 
 | Module | Supplier | Documents | Special cases |
 |---|---|---|---|
-| `intersport.py` | INTERSPORT Schweiz AG | Invoice | FEDAS code; reference "ret.Ecom" → supplier ECOM (code 555); "Preis" column = purchase price |
+| `intersport.py` | INTERSPORT Schweiz AG | Invoice, order confirmation | FEDAS code; reference "ret.Ecom" → supplier ECOM (code 555); "Preis" column = purchase price. A last page without item table after `Total CHF inkl. MwSt.` is skipped. Order confirmation (`Auftragsbestätigung 900-VA…`, e.g. The North Face reorder): recognized by its header (no EAN, `EP`, `Liefertermin`), colour/size `(…)/<size>` from the first description line, number from the title or else the shop `Auftragsnr.`, date `Auftragsdatum` |
+| `quintet.py` | The North Face (group intern, 444) | Order information (Quintet 24, `bestellung`) | one block per article and colour, size grid → one item per size (quantity matched by x position, wrapped size labels joined); block total and footer `Wert:` checked (5 Rappen tolerance); only accepted when "The North Face" appears — other Quintet brands stay unknown |
+| `bliz.py` | Bliz | Order form / price list (`bestellung`) | no number or date: generated `BLIZ-<date>-<hash>`, date = today; quantities 0 create items without stock |
 | `alpina.py` | ALPINA SPORTS Schweiz AG | Order confirmation | no EAN; article = model (first 5 characters of the product number), color and size from the description; quantity × unit price = line total checked |
 | `chrissports.py` | CHRIS sports AG | Order confirmation | "Preis" = RRP (D12), purchase price = amount/quantity; brand without a segment ("Giro"); "Total Menge" checked |
 | `cmp.py` | CMP (F.lli Campagnolo S.p.A.) | Order confirmation | size grid, values assigned by the right edge of the size column; cancelled blocks skipped; each block total checked |
@@ -730,20 +732,30 @@ decision E8), but two scripts are included across all pages:
   `app.css` (follows the system setting by default, can be switched
   manually, remembered via `localStorage`) and provides the toggle
   button as a factory function.
-- `nav.js` builds the main navigation in **one** place (the templates
-  only contain an empty `<nav>`): Overview, Stock, "Goods" group (Enter,
-  Deliveries, Transfer, Write off), Articles, "Documents" group (All
-  documents, Upload document). The groups expand with a short
-  explanation per entry; the active page carries `aria-current="page"`.
-  "Upload document" is only visible to branch managers and head office
-  (rule 9). Below 900 px width, everything sits behind the "Menu"
-  button.
-- `session.js` builds the right side of the header: the **branch pill**
-  (active branch, a select if several are available) and the **account
-  menu** behind the initials button (name, till number, role, language,
-  light/dark, Excel export on the article page, log out). It fires the
+- `nav.js` builds the sidebar navigation in **one** place (the templates
+  only contain an empty `<nav>`), order per `docs/redesign-2026-09-29.md`:
+  Overview, Products, Stock (Stock, Mark down), Goods in (Deliveries,
+  Record), Goods out (Book out), Transfer, Documents (All documents,
+  Upload document), Statistics, Pending (`/anstehend`),
+  Administration (Accounts, Recommendations), Settings (a button that
+  opens the settings dialog, no page). Groups open on click and
+  stay open when they contain the active page (`aria-current="page"`).
+  Entries with `nur` are role-filtered (rule 9); the server still checks
+  every page. Below 901 px the sidebar becomes the top bar and everything
+  sits behind the "Menu" button, with groups shown as headings.
+  `nav.js` also adds the **function search** at the top of every page's
+  `<main>` (matches label, group and description of the entries the role may
+  see; it only opens links).
+  `tests/test_navigation.py` reads the entry list from the file.
+- `session.js` builds the tools of the header: the **branch pill** (shows the
+  active branch) and the initials button; both, and the "Settings" menu entry
+  (event `sportfabrik:settings-open`), open the **settings dialog** (native
+  `<dialog>`): account, language, light/dark, branch switch (users with
+  several branches), Excel export on the article page, log out. It fires the
   login as a `sportfabrik:me` event so `nav.js` can filter by role, and
   hides the upload tile on the overview for employees.
+- `anstehend-liste.js` renders the "Pending" list (used by the overview and
+  the `/anstehend` page, both fed by `/api/dashboard`).
 
 For older or visually impaired staff, article search additionally offers
 a column picker (hide individual columns) and larger text in the results
@@ -796,7 +808,10 @@ rules. Anyone who wants to change a color changes it in exactly one
 place. `color-scheme` is set as well, so native controls (date fields,
 scrollbars) match the mode too.
 
-Since 2026-09-23 the header has been **single-line** and stays fixed
+Since 2026-09-29 the header is a **fixed sidebar** from 901 px
+(`app.css` §5b: logo, navigation, branch pill and account menu at the
+bottom; scoped to `body:has(> header > nav)`, so login and phone pages
+are unaffected). Older note: since 2026-09-23 the header had been **single-line** and stays fixed
 while scrolling (`sticky` with `backdrop-filter`): the brand on the left,
 next to it the navigation from `nav.js`, and on the right the branch pill
 and account menu from `session.js`. Expandable menus are controlled via
@@ -880,6 +895,37 @@ in the Excel export (`article_export.py`, its own document format, still
 open).
 
 
+## Returns, held stock and delivery remainders (package 4, 2026-10-05)
+
+```mermaid
+flowchart LR
+    R["Customer return<br/>POST /api/retouren"] -->|"fit / taste: employee"| H["Held stock<br/>bestand.menge_gesperrt<br/>(retoure, gesperrt)"]
+    R -->|"other reason"| Q["Request beantragt<br/>books nothing"]
+    Q -->|"approve: branch manager / head office"| H
+    Q -->|"reject"| X["abgelehnt"]
+    H -->|"release (freigabe: held -n, saleable +n)"| S["Saleable stock<br/>bestand.menge"]
+    H -->|"supplier return / write-off<br/>(ausbuchung on held stock)"| E["Gone"]
+```
+
+`app/services/retoure.py`, `app/routers/retoure.py`, page `/retouren`. Saleable
+stock is unchanged until a release, so sales, markdown and reports keep working
+on `bestand.menge`; the movements carry `bestandsart` (`verkaufbar` /
+`gesperrt`). Readers that must only see saleable movements (count marker, daily
+check, document-delete recompute, write-off list) filter on it; held stock is
+reconciled separately in `pruefe_bestand`. Released goods start no markdown
+clock (rule 6).
+
+Open remainder of a delivery or transfer (`app/services/lieferung_differenz.py`,
+`POST /api/wareneingaenge/{id}/differenz`): after a partial arrival the rest is
+explained explicitly — `in_klaerung` (any employee of the receiving branch),
+`verloren` or `lieferant_storniert` (branch manager/head office; the latter not
+for transfers). Lost and cancelled units book no movement (a transfer in transit
+is in no stock; the units left the source at dispatch) and no longer count as
+open; with nothing open the delivery becomes `abgeschlossen`. Cancelling a
+transfer back to the source skips units declared lost. Pending lists returns
+awaiting approval or inspection, transfers in transit for 14 days or more
+(`uebersicht.TRANSIT_UEBERFAELLIG_TAGE`) and shortages under investigation.
+
 ## Booking rights as of 2026-09-24, refined 2026-09-28
 
 Employees may manually book in goods, correct stock, and book out sales
@@ -898,6 +944,7 @@ the reason per role. The
 write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
 `GET /api/erfassen/stammdaten` offers employees only their assigned
 branches; entry/correction also check this boundary server-side.
+Returns (package 4): employees book fit/taste returns and release them in their assigned branches; approving requests, supplier return, write-off from held stock and declaring a remainder lost or supplier-cancelled are branch manager/head office; flagging a shortage "under investigation" is open to employees of the receiving branch.
 `GET /api/bestand` additionally returns `rechte.ausbuchen` and
 `rechte.korrektur_lagerorte`, which determine which actions are shown.
 

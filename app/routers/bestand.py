@@ -20,7 +20,7 @@ from ..services.bestand import STANDARD_LIMIT, liste_bestand
 from ..services.lagerorte import list_all_lagerorte, list_wareneingang_lagerorte
 from ..services import reduktion_manuell
 from ..services.reduktion import STUFEN
-from ..services.uebersicht import reduktions_varianten
+from ..services.uebersicht import reduktions_varianten, stufen_varianten
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -47,6 +47,7 @@ def api_bestand(
     nur_negativ: bool = False,
     reduktion: int | None = None,
     reduktion_status: Literal["faellig", "bald"] = "faellig",
+    stufe: int | None = None,
     artikel_von: int | None = None,
     limit: int = STANDARD_LIMIT,
     offset: int = 0,
@@ -75,6 +76,12 @@ def api_bestand(
         if str(reduktion) not in {str(prozent) for _, prozent in STUFEN} or gewaehlt is None:
             raise HTTPException(422, translate("errors.bestand.unknown_reduction", language))
         varianten_ids = reduktions_varianten(session, gewaehlt)[str(reduktion)][reduktion_status]
+
+    # Stufen der Übersicht (2026-10-01): Varianten, die jetzt in dieser Stufe liegen.
+    if stufe is not None:
+        if stufe not in (30, 50, 70) or gewaehlt is None:
+            raise HTTPException(422, translate("errors.bestand.unknown_reduction", language))
+        varianten_ids = stufen_varianten(session, gewaehlt, stufe)
 
     # Artikeldetails (24.09.2026): alle Grössen und Farben des Artikels, zu
     # dem die angeklickte Variante gehört.

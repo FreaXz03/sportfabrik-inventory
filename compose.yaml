@@ -38,7 +38,7 @@ services:
       start_period: 30s
     networks: [backend]
   proxy:
-    image: caddy:2.10.2-alpine
+    image: caddy:2.11.7-alpine
     restart: unless-stopped
     environment:
       APP_HOST: ${APP_HOST:?Set APP_HOST in .env.server}

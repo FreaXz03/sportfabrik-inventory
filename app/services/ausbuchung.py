@@ -32,6 +32,7 @@ from sqlalchemy import func, select, text
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.models import Artikel, Bestand, Lagerbewegung, Lagerort, Variante
 from .artikel import EAN_MUSTER, finde_variante_per_ean
+from . import operation
 from .wareneingang import ADVISORY_LOCK_ID
 
 # Reihenfolge = Reihenfolge in der Auswahl; Verkauf zuerst, er ist der
@@ -65,6 +66,7 @@ def buche_bewegung(
     eingangsdatum: date | None = None,
     aeltestes: date | None = None,
     position_id: int | None = None,
+    bestandsart: str = "verkaufbar",
 ) -> tuple[Lagerbewegung, Decimal, Decimal]:
     """Eine Bewegung ausser dem Zugang schreiben und den Bestand nachführen
     (Regel 2). `menge` ist vorzeichenbehaftet: negativ für einen Abgang.
@@ -73,7 +75,9 @@ def buche_bewegung(
     ist. Nur eine Umlagerung gibt `eingangsdatum` (startet die Reduktionsuhr,
     siehe app/services/umlagerung.py) und `aeltestes` (das Datum, das die Ware
     mitbringt, D17) mit. Gibt die Bewegung und den Bestand vorher/nachher
-    zurück.
+    zurück. `bestandsart = "gesperrt"` bucht auf die Rückware in Prüfung
+    (`bestand.menge_gesperrt`, Paket 4); vorher/nachher gelten dann für diesen
+    gesperrten Bestand.
     """
     bewegung = Lagerbewegung(
         lagerort_id=lagerort_id,
@@ -81,6 +85,7 @@ def buche_bewegung(
         typ=typ,
         menge=menge,
         grund=grund,
+        bestandsart=bestandsart,
         eingangsdatum=eingangsdatum,
         wareneingang_position_id=position_id,
         benutzer_kassennummer=(benutzer or {}).get("kassennummer"),
@@ -96,6 +101,11 @@ def buche_bewegung(
             varianten_id=varianten_id, lagerort_id=lagerort_id, menge=Decimal("0")
         )
         session.add(bestand)
+    if bestandsart == "gesperrt":
+        vorher = Decimal(bestand.menge_gesperrt or 0)
+        bestand.menge_gesperrt = vorher + menge
+        session.flush()
+        return bewegung, vorher, Decimal(bestand.menge_gesperrt)
     vorher = Decimal(bestand.menge or 0)
     bestand.menge = vorher + menge
     if aeltestes and (
@@ -181,6 +191,7 @@ def ausbuchen(
     freitext: str | None = None,
     benutzer: dict | None = None,
     language: str = DEFAULT_LANGUAGE,
+    operation_id: str | None = None,
 ) -> dict:
     """Ein Stück einer Variante am Lagerort ausbuchen (F15).
 
@@ -193,6 +204,14 @@ def ausbuchen(
     typ = "verkauf" if grund == "verkauf" else "ausbuchung"
     with session_factory() as session, session.begin():
         sperren(session)
+        op = operation.starte(
+            session, operation_id, "ausbuchen", benutzer,
+            {"lagerort_id": lagerort_id, "grund": grund, "ean": ean,
+             "varianten_id": varianten_id, "freitext": freitext},
+            language,
+        )
+        if op.gespeichert is not None:
+            return op.gespeichert
         if session.get(Lagerort, lagerort_id) is None:
             raise AusbuchungRejected(translate("errors.bestand.unknown_lagerort", language))
         variante = _finde_variante(session, ean, varianten_id, language)
@@ -208,7 +227,7 @@ def ausbuchen(
         )
         ergebnis = _antwort(session, bewegung, variante, vorher, nachher)
         ergebnis["bestand_reicht_nicht"] = vorher < EIN_STUECK
-        return ergebnis
+        return op.abschliessen(ergebnis)
 
 
 def storniere(
@@ -221,7 +240,11 @@ def storniere(
     with session_factory() as session, session.begin():
         sperren(session)
         bewegung = session.get(Lagerbewegung, bewegung_id)
-        if bewegung is None or bewegung.typ not in ("verkauf", "ausbuchung"):
+        if (
+            bewegung is None
+            or bewegung.typ not in ("verkauf", "ausbuchung")
+            or bewegung.bestandsart != "verkaufbar"
+        ):
             raise AusbuchungRejected(
                 translate("errors.ausbuchung.not_cancellable", language)
             )
@@ -261,7 +284,10 @@ def liste_ausbuchungen(
     `storniert` sagt, ob die Buchung schon rückgängig gemacht wurde."""
     limit = max(1, min(int(limit), MAX_LISTE))
     offset = max(0, int(offset))
-    filter_ = [Lagerbewegung.typ.in_(("verkauf", "ausbuchung"))]
+    filter_ = [
+        Lagerbewegung.typ.in_(("verkauf", "ausbuchung")),
+        Lagerbewegung.bestandsart == "verkaufbar",
+    ]
     if lagerort_id is not None:
         filter_.append(Lagerbewegung.lagerort_id == lagerort_id)
     gesamt = session.scalar(select(func.count()).select_from(Lagerbewegung).where(*filter_))

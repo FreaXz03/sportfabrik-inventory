@@ -43,6 +43,10 @@
     var verkauf = !lagerort || lagerort.verkauf;
     dateField.hidden = !verkauf;
     if (verkauf && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+    // N2: Reduktion nur in eigenen Filialen mit Verkauf wählbar.
+    var reduktion = !lagerort || lagerort.reduktion;
+    document.getElementById('reduktionFeld').hidden = !reduktion;
+    if (!reduktion) feld('reduktion').value = '';
   }
 
   async function loadStammdaten() {
@@ -74,6 +78,7 @@
     TEXTFELDER.concat(['uvp', 'ek']).forEach(function (id) { feld(id).value = ''; });
     feld('menge').value = '1';
     kategorieSelect.value = '';
+    feld('reduktion').value = '';
   }
 
   function artikelName(item) {
@@ -131,6 +136,7 @@
     if (wert('ek')) position.ek = wert('ek').replace(',', '.');
     TEXTFELDER.forEach(function (id) { if (wert(id)) position[id] = wert(id); });
     if (wert('kategorie')) position.kategorie_id = Number(wert('kategorie'));
+    if (wert('reduktion')) position.reduktion = Number(wert('reduktion'));
     return { position: position };
   }
 
@@ -146,7 +152,8 @@
         el('span', 'm-sub', [
           [position.farbe, position.groesse].filter(Boolean).join(' · '),
           position.menge + (position.einheit ? ' ' + position.einheit : ''),
-          position.uvp ? P.money(position.uvp) : null
+          position.uvp ? P.money(position.uvp) : null,
+          position.reduktion ? '−' + position.reduktion + ' %' : null
         ].filter(Boolean).join(' · '))
       );
       var field = el('div', 'm-position-field');

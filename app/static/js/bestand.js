@@ -17,6 +17,7 @@
   const adresse = new URLSearchParams(location.search);
   let vorgabe = null;
   if (adresse.get('nur_negativ') === 'true') vorgabe = { nur_negativ: 'true' };
+  else if (['30', '50', '70'].includes(adresse.get('stufe'))) vorgabe = { stufe: adresse.get('stufe') };
   else if (adresse.get('reduktion')) {
     vorgabe = { reduktion: adresse.get('reduktion'), reduktion_status: adresse.get('reduktion_status') === 'bald' ? 'bald' : 'faellig' };
   }
@@ -69,6 +70,9 @@
     tr.append(node('td', zeile.groesse || '—'));
     tr.append(node('td', zeile.lagerort.code + ' · ' + zeile.lagerort.name));
     const mengenZelle = node('td', menge(zeile.menge));
+    if (Number(zeile.gesperrt) > 0) {
+      mengenZelle.append(document.createElement('br'), node('span', t('bestand.held', { menge: menge(zeile.gesperrt) }), 'muted'));
+    }
     tr.append(mengenZelle);
     tr.append(datumsZelle(zeile));
     // Wirksame Reduktion (24.09.2026): von Hand gewählt oder Empfehlung.
@@ -100,7 +104,7 @@
       knopf.disabled = true;
       knopf.classList.add('is-loading');
       try {
-        const antwort = await fetch('/api/ausbuchen', {
+        const antwort = await SportfabrikOp.fetch('/api/ausbuchen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -202,7 +206,17 @@
     abbrechen.type = 'button';
     abbrechen.addEventListener('click', () => editor.remove());
 
-    form.append(mengenLabel, grundLabel, textLabel, buchen, abbrechen);
+    // Veraltete Zählung (Paket 2): hat sich der Bestand seit dem Öffnen bewegt,
+    // bucht der Server nichts. Neu zählen, oder die letzte Zählung ausdrücklich
+    // gegen den Stand von jetzt buchen.
+    let marke = zeile.letzte_bewegung_id;
+    let ausstehend = null;
+    const erzwingen = node('button', '', 'secondary');
+    erzwingen.type = 'button';
+    erzwingen.hidden = true;
+    erzwingen.addEventListener('click', () => senden(ausstehend, true));
+
+    form.append(mengenLabel, grundLabel, textLabel, buchen, erzwingen, abbrechen);
     // Enter im Mengenfeld bucht - ausdrücklich, wie beim Scanfeld.
     for (const eingabe of [feld, text]) {
       eingabe.addEventListener('keydown', (ereignis) => {
@@ -211,24 +225,45 @@
         form.requestSubmit();
       });
     }
-    form.addEventListener('submit', async (ereignis) => {
+    form.addEventListener('submit', (ereignis) => {
       ereignis.preventDefault();
+      senden(feld.value.trim(), false);
+    });
+    async function senden(wert, bestaetigt) {
       buchen.disabled = true;
       buchen.classList.add('is-loading');
+      erzwingen.hidden = true;
       try {
-        const antwort = await fetch('/api/korrektur', {
+        const antwort = await SportfabrikOp.fetch('/api/korrektur', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             varianten_id: zeile.varianten_id,
             lagerort_id: zeile.lagerort.id,
-            gezaehlt: feld.value.trim(),
+            gezaehlt: wert,
             grund: auswahl.value,
-            freitext: auswahl.value === 'sonstiges' ? text.value.trim() : null
+            freitext: auswahl.value === 'sonstiges' ? text.value.trim() : null,
+            stand_bewegung_id: marke,
+            bestaetigt
           })
         });
         const ergebnis = await antwort.json().catch(() => ({}));
         if (!antwort.ok) {
+          if (ergebnis.code === 'bestand_geaendert') {
+            zeile.menge = ergebnis.bestand_jetzt;
+            mengenZelle.textContent = menge(zeile.menge);
+            marke = ergebnis.stand_bewegung_id;
+            ausstehend = wert;
+            const bewegungen = (ergebnis.seit_zaehlbeginn || []).map((b) => `${t('phone.move_type.' + b.typ)} ${Number(b.menge) > 0 ? '+' : ''}${menge(b.menge)}`).join(', ');
+            $('status').textContent = t('bestand.count_stale', { n: menge(ergebnis.bestand_jetzt), moves: bewegungen });
+            erzwingen.textContent = t('phone.count_force', { n: wert });
+            erzwingen.hidden = false;
+            feld.value = '';
+            feld.focus();
+            buchen.disabled = false;
+            buchen.classList.remove('is-loading');
+            return;
+          }
           throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('common.errors.request_failed'));
         }
         zeile.menge = ergebnis.bestand_nachher;
@@ -251,7 +286,7 @@
         buchen.disabled = false;
         buchen.classList.remove('is-loading');
       }
-    });
+    }
     zelle.append(form);
     editor.append(zelle);
     tr.after(editor);
@@ -296,8 +331,10 @@
     if (!vorgabe) return;
     const key = vorgabe.nur_negativ
       ? 'bestand.filter_active.negative'
-      : 'bestand.filter_active.' + (vorgabe.reduktion_status === 'bald' ? 'reduction_soon' : 'reduction_due');
-    $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(key, { stufe: vorgabe.reduktion });
+      : vorgabe.stufe
+        ? 'bestand.filter_active.stage'
+        : 'bestand.filter_active.' + (vorgabe.reduktion_status === 'bald' ? 'reduction_soon' : 'reduction_due');
+    $('vorgabeText').textContent = t('filter_active.label') + ' ' + t(key, { stufe: vorgabe.stufe || vorgabe.reduktion });
   }
 
   function vorgabeWeg() {
@@ -365,7 +402,7 @@
   $('lagerort').addEventListener('change', function () {
     wahl = $('lagerort').value;
     // Die Reduktion gilt je Filiale - bei einem Wechsel wieder alles zeigen.
-    if (vorgabe && vorgabe.reduktion) vorgabeWeg();
+    if (vorgabe && (vorgabe.reduktion || vorgabe.stufe)) vorgabeWeg();
     neuLaden();
   });
   $('suche').addEventListener('input', function () {

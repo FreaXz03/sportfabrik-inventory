@@ -13,6 +13,7 @@ from conftest import ANNA, CHEF, ZENTRALE
 from sqlalchemy import func, select, update
 from testbelege import POSITIONEN, importieren, kopf, rechnung_pdf
 
+from app.core.i18n import translate
 from app.core.models import Bestand, Lagerbewegung, Variante, WareneingangPosition
 from app.services.reduktion import letzter_wareneingang
 from app.services.uebersicht import aktuelles
@@ -258,21 +259,19 @@ def test_anstehend_fuehrt_zur_gefilterten_liste(welt):
         assert antwort.status_code == 200, (pfad, antwort.text)
         return antwort.json()["total"]
 
-    sf1 = codes["SF1"]
-    assert stamm["lagerort_id"] == sf1
-    assert treffer(f"/api/articles?ohne_ean=true&lagerort_id={sf1}") == stamm["ohne_ean"]
-    assert treffer(f"/api/articles?kategorie_fehlt=true&lagerort_id={sf1}") == stamm["ohne_kategorie"]
+    assert treffer("/api/articles?ohne_ean=true") == stamm["ohne_ean"]
+    assert treffer("/api/articles?kategorie_fehlt=true") == stamm["ohne_kategorie"]
     assert treffer("/api/bestand?nur_negativ=true") == filiale["negativ"]
 
-    # Entscheid 28.09.2026: „Anstehend" je Filiale - dieselbe Lücke in SF2
-    # zählt in SF1 nicht mit; nur die Zentrale ohne Filialwahl sieht alles.
+    # Entscheid 29.09.2026: „ohne EAN" und „ohne Kategorie" zählen den ganzen
+    # Stamm, für alle Rollen in jeder Filiale; Liste und Zahl stimmen überein.
     client.post("/api/erfassen", json={"lagerort_id": codes["SF2"], "positionen": [{"marke": "CMP", "bezeichnung": "Weste", "menge": "1", "uvp": "59"}]})
-    stamm = client.get("/api/dashboard").json()["stamm"]
-    assert stamm["ohne_ean"] == 1 and stamm["ohne_kategorie"] == 1
-    welt.anmelden(ZENTRALE)
-    alles = client.get("/api/dashboard").json()["stamm"]
-    assert alles["lagerort_id"] is None and alles["ohne_ean"] == 2 and alles["ohne_kategorie"] == 2
-    assert treffer("/api/articles?ohne_ean=true") == 2
+    for konto in (CHEF, ANNA, ZENTRALE):
+        welt.anmelden(konto)
+        stamm = client.get("/api/dashboard").json()["stamm"]
+        assert stamm["ohne_ean"] == 2 and stamm["ohne_kategorie"] == 2, konto
+        assert treffer("/api/articles?ohne_ean=true") == 2
+        assert treffer("/api/articles?kategorie_fehlt=true") == 2
     welt.anmelden(CHEF)
     for stufe in ("50", "70"):
         for stand in ("faellig", "bald"):
@@ -324,3 +323,111 @@ def test_aktuelles_fasst_lieferungen_und_umlagerungen_zusammen(welt):
         ueberall = aktuelles(session, None)
     assert [(e["art"], e["von"], e["nach"], e["stueck"]) for e in in_sf2] == [("umlagerung", "SF1", "SF2", "3.00")]
     assert [e["art"] for e in ueberall] == ["abgang", "umlagerung", "lieferung"]
+
+
+def test_umlagerung_unterwegs_stornieren(welt):
+    """Umlagerung unterwegs stornieren (Entscheid 29.09.2026): Filialleiter
+    der Quelle, wer versendet hat, oder Zentrale. Der noch offene Rest geht an die Quelle zurück,
+    mit seinem alten Datum; schon Angekommenes bleibt am Ziel."""
+    client, sessions, codes = welt.client, welt.sessions, welt.codes
+    sf1, sf3 = codes["SF1"], codes["SF3"]
+    welt.anmelden(CHEF)
+    assert importieren(client, rechnung_pdf(), lagerort_id=str(sf1)).status_code == 200
+    polo = client.get(f"/api/erfassen/variante?ean={POLO_M}").json()["variante"]["varianten_id"]
+    uhr_vorher = _uhr(sessions, polo, sf1)
+    versand = client.post(
+        "/api/umlagerung",
+        json={"quelle_id": sf1, "ziel_id": sf3, "positionen": [{"varianten_id": polo, "menge": "3"}]},
+    ).json()
+    umlagerung_id = versand["wareneingang_id"]
+    assert _menge(sessions, polo, sf1) == Decimal("2")
+
+    # Unterwegs-Liste der Quelle zeigt die Umlagerung.
+    unterwegs = client.get(f"/api/umlagerung/unterwegs?quelle_id={sf1}").json()["umlagerungen"]
+    assert [u["id"] for u in unterwegs] == [umlagerung_id]
+
+    # 1 Stück kommt an der SF3 an, der Rest ist noch unterwegs.
+    with sessions() as session:
+        position_id = session.scalar(
+            select(WareneingangPosition.id).where(WareneingangPosition.wareneingang_id == umlagerung_id)
+        )
+    teil = client.post(f"/api/wareneingaenge/{umlagerung_id}/ankunft", json={"mengen": {str(position_id): "1"}})
+    assert teil.status_code == 200, teil.text
+
+    # Mitarbeiterin darf nicht stornieren (Regel 9).
+    welt.anmelden(ANNA)
+    assert client.post(f"/api/umlagerung/{umlagerung_id}/stornieren").status_code == 403
+
+    # Filialleiter ohne die Quelle als eigene Filiale darf nicht.
+    welt.anmelden(ZENTRALE)
+    fremd = client.post(
+        "/api/umlagerung",
+        json={"quelle_id": sf3, "ziel_id": sf1, "positionen": [{"varianten_id": polo, "menge": "1"}]},
+    ).json()["wareneingang_id"]
+    welt.anmelden(CHEF)
+    assert client.post(f"/api/umlagerung/{fremd}/stornieren").status_code == 403
+
+    storno = client.post(f"/api/umlagerung/{umlagerung_id}/stornieren")
+    assert storno.status_code == 200, storno.text
+    assert storno.json()["stueck"] == "2.00"
+    assert _menge(sessions, polo, sf1) == Decimal("4")
+    # Das angekommene Stück ging nicht zurück; die Zentrale hat es oben
+    # schon wieder Richtung SF1 verschickt.
+    assert _menge(sessions, polo, sf3) == Decimal("0")
+    assert _uhr(sessions, polo, sf1) == uhr_vorher  # keine neue Uhr an der Quelle
+    assert client.get(f"/api/umlagerung/unterwegs?quelle_id={sf1}").json()["umlagerungen"] == []
+    welt.anmelden(ZENTRALE)
+    offen = [w["id"] for w in client.get("/api/wareneingaenge").json()["wareneingaenge"]]
+    assert umlagerung_id not in offen and fremd in offen
+
+    # Zweimal stornieren, danach ankommen oder eine Lieferung stornieren: abgelehnt.
+    assert client.post(f"/api/umlagerung/{umlagerung_id}/stornieren").status_code == 409
+    ankunft = client.post(
+        f"/api/wareneingaenge/{umlagerung_id}/ankunft", json={"mengen": {str(position_id): "1"}}
+    )
+    assert ankunft.status_code == 409
+    assert ankunft.json()["detail"] == translate("errors.wareneingang.cancelled", "de")
+    with sessions() as session:
+        lieferung = session.scalar(
+            select(WareneingangPosition.wareneingang_id).where(WareneingangPosition.id != position_id).limit(1)
+        )
+    assert client.post(f"/api/umlagerung/{lieferung}/stornieren").status_code == 409
+    # Zentrale darf jede Quelle.
+    assert client.post(f"/api/umlagerung/{fremd}/stornieren").status_code == 200
+
+    # Wer versendet hat, darf auch stornieren - auch aus einer fremden
+    # Quelle (Entscheid 29.09.2026, z. B. Filialleiter versendet ab GEWA).
+    welt.anmelden(CHEF)
+    eigene = client.post(
+        "/api/umlagerung",
+        json={"quelle_id": codes["GEWA"], "ziel_id": sf3, "positionen": [{"varianten_id": polo, "menge": "1"}]},
+    ).json()["wareneingang_id"]
+    assert eigene in [u["id"] for u in client.get("/api/umlagerung/unterwegs").json()["umlagerungen"]]
+    assert client.post(f"/api/umlagerung/{eigene}/stornieren").status_code == 200
+    _bestand_ist_summe_der_bewegungen(sessions)
+
+
+def test_bestand_filter_nach_aktueller_stufe(welt):
+    """2026-10-01: die Stufen-Beschriftungen der Übersicht öffnen den Bestand,
+    gefiltert auf die Varianten in genau dieser Stufe - dieselbe Einteilung wie
+    `stufen_verteilung`, inklusive der 30-%-Stufe ab Eingang."""
+    client, codes = welt.client, welt.codes
+    heute = date.today()
+    vor_40_monaten = date(heute.year - 3, heute.month, 1) - timedelta(days=150)
+    vor_20_monaten = date(heute.year - 2, heute.month, 1) + timedelta(days=150)
+    welt.anmelden(CHEF)
+    for nummer, datum, positionen in (
+        ("9000000031", vor_40_monaten, POSITIONEN[:2]),
+        ("9000000032", vor_20_monaten, POSITIONEN[2:3]),
+        ("9000000033", heute, [["Nike", "424100", "C3", "9988770013", "4006632041265", "Jacke", "4", "Stk", "89.00", "50.00"]]),
+    ):
+        pdf = rechnung_pdf(header_lines=kopf(nummer=nummer, datum=datum.strftime("%d.%m.%Y")), rows=positionen)
+        assert importieren(client, pdf, lagerort_id=str(codes["SF1"])).status_code == 200
+    verteilung = client.get("/api/dashboard").json()["filiale"]["stufen"]
+    for stufe in ("30", "50", "70"):
+        antwort = client.get(f"/api/bestand?stufe={stufe}")
+        assert antwort.status_code == 200, antwort.text
+        stueck = sum(Decimal(str(z["menge"])) for z in antwort.json()["zeilen"])
+        assert stueck == Decimal(str(verteilung[stufe])) and stueck > 0, stufe
+    assert client.get("/api/bestand?stufe=40").status_code == 422
+    assert client.get("/api/bestand?stufe=50&alle=true").status_code == 422

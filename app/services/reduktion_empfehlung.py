@@ -18,7 +18,7 @@ from ..core.models import Artikel, Lagerort, ReduktionEmpfehlungZentrale
 from . import reduktion_manuell
 
 PROZENTE = (30, 50, 70)
-STATUS = ("offen", "uebernommen", "abgelehnt")
+STATUS = ("offen", "uebernommen", "abgelehnt", "zurueckgezogen")
 GRUND_MAX = 200
 
 
@@ -27,6 +27,46 @@ class EmpfehlungRejected(ValueError):
 
 
 def setzen(session, *, artikel_id: int, lagerort_id: int, prozent: int, ab_datum, benutzer) -> dict:
+    eintrag = _setzen(
+        session, artikel_id=artikel_id, lagerort_id=lagerort_id, prozent=prozent, ab_datum=ab_datum, benutzer=benutzer
+    )
+    session.commit()
+    return _daten(eintrag)
+
+
+def setzen_alle(session, *, artikel_id: int, prozent: int, ab_datum, benutzer) -> list[dict]:
+    """Dieselbe Empfehlung an alle Verkaufsfilialen in einer Aktion (30.09.2026),
+    auch an Filialen ohne Bestand des Modells - kommt später Ware an, liegt die
+    Empfehlung schon bereit. Jede Filiale antwortet einzeln; externe Standorte
+    ohne Verkauf bekommen keine."""
+    lagerorte = session.scalars(select(Lagerort).where(Lagerort.verkauf.is_(True)).order_by(Lagerort.code)).all()
+    eintraege = [
+        _setzen(
+            session, artikel_id=artikel_id, lagerort_id=lagerort.id, prozent=prozent, ab_datum=ab_datum, benutzer=benutzer
+        )
+        for lagerort in lagerorte
+    ]
+    session.commit()
+    return [_daten(eintrag) for eintrag in eintraege]
+
+
+def zurueckziehen(session, empfehlung_id: int, *, benutzer) -> dict | None:
+    """Die Zentrale zieht eine Empfehlung jederzeit zurück - vor und nach der
+    Antwort. Eine schon gesetzte Stufe bleibt (kein Rollback); wer sie ändern
+    will, sendet eine neue Empfehlung."""
+    eintrag = session.get(ReduktionEmpfehlungZentrale, empfehlung_id)
+    if eintrag is None:
+        return None
+    if eintrag.status == "zurueckgezogen":
+        raise EmpfehlungRejected("Diese Empfehlung wurde bereits zurückgezogen.")
+    eintrag.status = "zurueckgezogen"
+    eintrag.zurueckgezogen_von_name = benutzer.name
+    eintrag.zurueckgezogen_am = datetime.now(timezone.utc)
+    session.commit()
+    return _daten(eintrag)
+
+
+def _setzen(session, *, artikel_id: int, lagerort_id: int, prozent: int, ab_datum, benutzer):
     if prozent not in PROZENTE:
         raise EmpfehlungRejected(f"Prozent muss einer von {PROZENTE} sein.")
     eintrag = session.scalar(
@@ -47,8 +87,9 @@ def setzen(session, *, artikel_id: int, lagerort_id: int, prozent: int, ab_datum
     eintrag.gesetzt_am = datetime.now(timezone.utc)
     eintrag.beantwortet_von_name = None
     eintrag.beantwortet_am = None
-    session.commit()
-    return _daten(eintrag)
+    eintrag.zurueckgezogen_von_name = None
+    eintrag.zurueckgezogen_am = None
+    return eintrag
 
 
 def _daten(eintrag: ReduktionEmpfehlungZentrale) -> dict:
@@ -64,6 +105,8 @@ def _daten(eintrag: ReduktionEmpfehlungZentrale) -> dict:
         "gesetzt_am": eintrag.gesetzt_am.isoformat() if eintrag.gesetzt_am else None,
         "beantwortet_von": eintrag.beantwortet_von_name,
         "beantwortet_am": eintrag.beantwortet_am.isoformat() if eintrag.beantwortet_am else None,
+        "zurueckgezogen_von": eintrag.zurueckgezogen_von_name,
+        "zurueckgezogen_am": eintrag.zurueckgezogen_am.isoformat() if eintrag.zurueckgezogen_am else None,
     }
 
 
@@ -115,6 +158,8 @@ def antworten(session, empfehlung_id: int, *, status: str, grund: str | None, be
     eintrag = session.get(ReduktionEmpfehlungZentrale, empfehlung_id)
     if eintrag is None:
         return None
+    if eintrag.status == "zurueckgezogen":
+        raise EmpfehlungRejected("Diese Empfehlung wurde zurückgezogen.")
     if eintrag.status != "offen":
         raise EmpfehlungRejected("Diese Empfehlung wurde bereits beantwortet.")
     if status == "abgelehnt":

@@ -1,0 +1,9 @@
+[Unit]
+Description=Sportfabrik Inventory daily checks, before opening
+
+[Timer]
+OnCalendar=*-*-* 06:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

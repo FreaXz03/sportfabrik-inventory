@@ -34,7 +34,7 @@ from sqlalchemy import select
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
 from ..core.lieferanten import etikett_code
-from ..core.models import Artikel, Lieferant, Preis, ReduktionManuell, Variante
+from ..core.models import Artikel, Lieferant, Preis, ReduktionManuell, Variante, VarianteEan
 from .barcode import (
     RUHEZONE_LINKS,
     RUHEZONE_RECHTS,
@@ -122,6 +122,8 @@ class Etikett:
     reduktion: int = 0
     ean: str | None = None
     ean_intern: bool = False
+    # Weitere EANs der Variante (Punkt 8); gedruckt wird nur `ean`.
+    weitere_eans: tuple = ()
     anzahl: int = 1
     # Kurzer Zusatz für den Fall, dass kein Strichcode gedruckt werden kann
     # (z. B. „ohne EAN"). Kommt schon übersetzt herein - hier wird nicht
@@ -193,6 +195,12 @@ def sammle_etikett(
         reduktion=stufe(eingang, heute) if reduktion is None else reduktion,
         ean=variante.ean,
         ean_intern=bool(variante.ean_intern),
+        weitere_eans=tuple(
+            {"ean": e.ean, "ean_intern": bool(e.ean_intern)}
+            for e in session.scalars(
+                select(VarianteEan).where(VarianteEan.varianten_id == variante.id).order_by(VarianteEan.id)
+            )
+        ),
         anzahl=anzahl,
         hinweis=None if variante.ean else hinweis_ohne_ean,
     )

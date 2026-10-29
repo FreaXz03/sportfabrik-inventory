@@ -24,13 +24,22 @@ LIEFERANTEN_SEED = [
     {"name": "Dritte-Händler (Marke direkt)", "typ": "drittanbieter", "parser_key": None},
     {"name": "Nike", "typ": "intern", "parser_key": None},
     {"name": "adidas", "typ": "intern", "parser_key": None},
-    {"name": "The North Face", "typ": "intern", "parser_key": None},
+    # Quintet-Bestellinformation (Migration e4f5a6b7c8d9, 02.10.2026).
+    {"name": "The North Face", "typ": "intern", "parser_key": "quintet"},
     # Lieferanten mit eigenem Parser (Phase E, Migration a8b9c0d1e2f3). Alle
     # drei sind Direktbestellungen bei der Marke bzw. beim Verteiler: Code 999
     # (Fabian, 24.09.2026).
     {"name": "ALPINA SPORTS Schweiz AG", "typ": "drittanbieter", "parser_key": "alpina"},
     {"name": "CHRIS sports AG", "typ": "drittanbieter", "parser_key": "chrissports"},
     {"name": "CMP (F.lli Campagnolo S.p.A.)", "typ": "drittanbieter", "parser_key": "cmp"},
+    # Bliz-Bestellformular (Migration d3e4f5a6b7c8, 02.10.2026).
+    {"name": "Bliz", "typ": "drittanbieter", "parser_key": "bliz"},
+    # Columbia-Auftragsempfangsbestätigung (Migration f5a6b7c8d9e0, 03.10.2026).
+    {"name": "Columbia", "typ": "drittanbieter", "parser_key": "columbia"},
+    # Gonso-Auftrag aus dem Elastic-Portal von ws4sports (Migration a6b7c8d9e0f1, 05.10.2026).
+    {"name": "Gonso", "typ": "drittanbieter", "parser_key": "gonso"},
+    # Interner Bestellplan Winter (Migration b7c8d9e0f1a2, 05.10.2026).
+    {"name": "Bestellplan (Dritte-Händler)", "typ": "drittanbieter", "parser_key": "bestellplan"},
 ]
 
 # Lieferantengruppe (= `lieferanten.typ`) → Code auf dem Etikett

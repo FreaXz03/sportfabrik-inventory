@@ -12,6 +12,7 @@ seit 24.09.2026 nur auf ihre zugewiesenen Filialen.
 
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
@@ -24,12 +25,13 @@ from ..core.i18n import translate
 from ..core.lieferanten import etikett_code
 from ..core.models import Lieferant
 from ..services.kategorien import liste_kategorien
-from ..services.lagerorte import list_wareneingang_lagerorte
+from ..services.lagerorte import list_reduktion_lagerorte, list_wareneingang_lagerorte
 from ..services.manuelle_erfassung import (
     ErfassungRejected,
     erfasse_wareneingang,
     variante_per_ean,
 )
+from .operation_id import operation_id_aus_header
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -59,6 +61,7 @@ def api_stammdaten(
     heutige Datum vom Server - die Kasse im Laden muss dafür keine richtige
     Uhr haben."""
     lagerorte = list_wareneingang_lagerorte(session, user)
+    reduktion_ids = {lo.id for lo in list_reduktion_lagerorte(session, user)}
     # Auswahl nur nach Lieferantengruppe (24.09.2026): je Gruppe ein Eintrag,
     # keine einzelnen Marken. Gebucht wird auf den ältesten Lieferanten der
     # Gruppe - für das Etikett zählt ohnehin nur der Code der Gruppe.
@@ -75,6 +78,8 @@ def api_stammdaten(
                 "name": eintrag.name,
                 # Regel 6/D13: Lager ohne Verkauf bekommt kein Eingangsdatum.
                 "verkauf": bool(eintrag.verkauf),
+                # N2: Reduktion wählbar nur in eigenen Filialen mit Verkauf.
+                "reduktion": bool(eintrag.verkauf) and eintrag.id in reduktion_ids,
             }
             for eintrag in lagerorte
         ],
@@ -121,6 +126,8 @@ class ErfassungPosition(BaseModel):
     ek: str | None = None
     # Kassenkategorie freiwillig gleich mitgeben (Teilaufgabe B8, D23).
     kategorie_id: int | None = None
+    # Reduktion gleich mitgeben (N2, 29.09.2026): 30, 50 oder 70.
+    reduktion: Literal[30, 50, 70] | None = None
 
 
 class ErfassungBody(BaseModel):
@@ -137,6 +144,7 @@ async def api_erfassen(
     user=Depends(require_login_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
+    operation_id: str | None = Depends(operation_id_aus_header),
 ):
     from sqlalchemy.exc import SQLAlchemyError
 
@@ -145,6 +153,11 @@ async def api_erfassen(
     lagerort = resolve_wareneingang_lagerort(
         request, session, user, body.lagerort_id, language
     )
+    # N2: wer eine Reduktion wählt, braucht die Rechte wie auf
+    # „Runterschreiben" - nur eigene Filialen, die Zentrale alle.
+    if any(p.reduktion is not None for p in body.positionen) and lagerort.verkauf:
+        if all(lo.id != lagerort.id for lo in list_reduktion_lagerorte(session, user)):
+            raise HTTPException(403, translate("errors.auth.no_lagerort_access", language))
     eingangsdatum = None
     if body.eingangsdatum:
         try:
@@ -163,6 +176,7 @@ async def api_erfassen(
             eingangsdatum=eingangsdatum,
             lieferant_id=body.lieferant_id,
             language=language,
+            operation_id=operation_id,
         )
     except ErfassungRejected as exc:
         raise HTTPException(409, str(exc)) from exc

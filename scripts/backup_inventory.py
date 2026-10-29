@@ -1,16 +1,27 @@
-"""Create verified local backups of the Docker DB and original PDFs."""
+"""Create verified local backups of the Docker DB and original PDFs.
+
+The copy for the external drive is always encrypted with age (security S4,
+decision 2026-09-29): only the public key (recipient, `age1...`) is on the
+server, in `backup-age-recipient.txt` or via `--recipient`. The private key
+stays on a USB stick and on paper - see docs/BACKUPS.md for restoring.
+"""
 
 import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
+import tarfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+RECIPIENT_FILE = ROOT / "backup-age-recipient.txt"
+AGE_RECIPIENT = re.compile(r"age1[0-9a-z]{58}")
+AGE_HEADER = b"age-encryption.org/v1"
 
 
 def sha256(path):
@@ -21,7 +32,63 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def backup(external=None):
+def load_recipient(value=None):
+    """Public age key from `--recipient` or `backup-age-recipient.txt`."""
+    if value:
+        return value.strip()
+    if RECIPIENT_FILE.is_file():
+        for line in RECIPIENT_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                return line
+    return None
+
+
+def externe_kopie(final, target_root, recipient, age):
+    """Encrypt the finished backup folder into one `.tar.age` file and copy
+    it to the external drive, verified by checksum. Never writes anything
+    unencrypted to the drive. Returns the path of the encrypted file."""
+    if not recipient or not AGE_RECIPIENT.fullmatch(recipient):
+        raise RuntimeError(
+            "Kein gültiger öffentlicher age-Schlüssel (backup-age-recipient.txt oder --recipient)."
+        )
+    if not age:
+        raise RuntimeError("Das Programm age fehlt (Installation: docs/BACKUPS.md).")
+    target_root = Path(target_root)
+    if not target_root.is_dir():
+        raise RuntimeError("Externes Ziel nicht erreichbar.")
+    name = final.name + ".tar.age"
+    with tempfile.TemporaryDirectory(prefix=".encrypt-", dir=final.parent) as temporary:
+        archive = Path(temporary) / (final.name + ".tar")
+        with tarfile.open(archive, "w") as tar:
+            tar.add(final, arcname=final.name)
+        encrypted = Path(temporary) / name
+        result = subprocess.run(
+            [age, "-r", recipient, "-o", str(encrypted), str(archive)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=1800,
+        )
+        if result.returncode or not encrypted.is_file():
+            raise RuntimeError(
+                "Verschlüsselung fehlgeschlagen: " + result.stderr.decode(errors="replace")
+            )
+        with encrypted.open("rb") as stream:
+            if not stream.read(len(AGE_HEADER)) == AGE_HEADER:
+                raise RuntimeError("Die verschlüsselte Datei ist keine age-Datei.")
+        digest = sha256(encrypted)
+        partial = target_root / (name + ".partial")
+        shutil.copyfile(encrypted, partial)
+        if sha256(partial) != digest:
+            partial.unlink(missing_ok=True)
+            raise RuntimeError("Prüfsumme der externen Kopie stimmt nicht.")
+        target = target_root / name
+        partial.rename(target)
+    (target_root / (name + ".sha256")).write_text(f"{digest}  {name}\n", encoding="utf-8")
+    return target
+
+
+def backup(external=None, recipient=None):
     docker = shutil.which("docker")
     if not docker:
         candidate = (
@@ -105,20 +172,12 @@ def backup(external=None):
             json.dumps(manifest, indent=2), encoding="utf-8"
         )
         folder.rename(final)
+    external_file = None
     if external:
-        target_root = Path(external)
-        if not target_root.is_dir():
-            raise RuntimeError(
-                f"Lokales Backup gespeichert: {final}. Externes Ziel nicht erreichbar."
-            )
-        target = target_root / final.name
         try:
-            shutil.copytree(final, target)
-            for name, digest in hashes.items():
-                if sha256(target / name) != digest:
-                    raise RuntimeError("Prüfsumme der externen Kopie stimmt nicht.")
-            if sha256(target / "manifest.json") != sha256(final / "manifest.json"):
-                raise RuntimeError("Manifest der externen Kopie stimmt nicht.")
+            external_file = externe_kopie(
+                final, external, load_recipient(recipient), shutil.which("age")
+            )
         except Exception as exc:
             raise RuntimeError(
                 f"Lokales Backup gespeichert: {final}. Externe Kopie fehlgeschlagen: {exc}"
@@ -126,15 +185,16 @@ def backup(external=None):
     return {
         "backup": str(final),
         "pdf_count": pdf_count,
-        "external_copy": bool(external),
+        "external_copy": None if external_file is None else str(external_file),
     }
 
 
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--external", type=Path, help="Existing external backup directory")
+    cli.add_argument("--recipient", help="Public age key (age1...) for the external copy")
     args = cli.parse_args()
     try:
-        print(json.dumps(backup(args.external), ensure_ascii=False))
+        print(json.dumps(backup(args.external, args.recipient), ensure_ascii=False))
     except Exception as exc:
         raise SystemExit(str(exc))

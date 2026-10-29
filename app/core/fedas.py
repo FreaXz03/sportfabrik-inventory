@@ -105,7 +105,9 @@ FOOD_WARENGRUPPEN = {"10020"}
 
 def suggest_kategorie(fedas_code: str | None) -> tuple[str, str | None] | None:
     """(hauptgruppe, sportbereich) für einen FEDAS-Code, oder None, wenn er
-    fehlt oder nicht zugeordnet ist. Velo und Food haben keinen Sportbereich."""
+    fehlt oder die Produktart unbekannt ist. Velo und Food haben keinen
+    Sportbereich. Ist nur der Erlebnisbereich nicht zugeordnet, kommt die
+    Hauptgruppe allein (Sportbereich `None`, Punkt 1, 2026-10-01)."""
     if not fedas_code or len(fedas_code) < 3:
         return None
     warengruppe = fedas_code[:5]
@@ -115,6 +117,6 @@ def suggest_kategorie(fedas_code: str | None) -> tuple[str, str | None] | None:
         return "Food", None
     hauptgruppe = HAUPTGRUPPE_NACH_PRODUKTART.get(fedas_code[0])
     sportbereich = SPORTBEREICH_NACH_ERLEBNISBEREICH.get(fedas_code[1:3])
-    if hauptgruppe is None or sportbereich is None:
+    if hauptgruppe is None:
         return None
     return hauptgruppe, sportbereich

@@ -24,7 +24,7 @@ Jinja2==3.1.6
 markdown-it-py==4.2.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
-Pillow==12.2.0
+Pillow==13.0.0
 psycopg==3.3.5
 psycopg-binary==3.3.5
 pydantic==2.13.5
@@ -53,3 +53,5 @@ uvicorn==0.52.4
 watchfiles==1.2.0
 websockets==17.1
 openpyxl==3.1.5
+
+zxing-cpp==3.1.1

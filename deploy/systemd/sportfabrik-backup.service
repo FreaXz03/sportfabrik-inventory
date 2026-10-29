@@ -1,0 +1,13 @@
+[Unit]
+Description=Sportfabrik Inventory backup (database dump, PDFs, encrypted external copy)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=sportfabrik
+WorkingDirectory=/opt/sportfabrik-inventory
+# External target (USB drive or NAS mount). If it is missing, the local backup
+# is still kept and this unit fails - which shows up in `systemctl --failed`.
+Environment=EXTERNAL_DIR=/mnt/sportfabrik-backup
+ExecStart=/usr/bin/python3 scripts/backup_inventory.py --external ${EXTERNAL_DIR}

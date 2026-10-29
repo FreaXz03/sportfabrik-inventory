@@ -11,11 +11,11 @@
      <meta name="apple-mobile-web-app-title" content="SF Inventory">
      <link rel="manifest" href="/static/manifest.webmanifest">
      <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
-     <script>(function () { try { var t = localStorage.getItem('sportfabrikTheme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) { } })();</script>
+     <script src="/static/js/theme-init.js?v=2"></script>
      <script src="/static/js/i18n.js?v=1"></script>
      <title data-i18n="erfassen.page_title">Ware erfassen · Sport-Fabrik</title>
-     <link rel="stylesheet" href="/static/css/app.css?v=design-2">
-     <link rel="stylesheet" href="/static/css/handy.css?v=3">
+     <link rel="stylesheet" href="/static/css/app.css?v=stufe-1">
+     <link rel="stylesheet" href="/static/css/handy.css?v=4">
 </head>
 
 <body class="phone">
@@ -82,6 +82,16 @@
           <input id="lieferanten_artikelnr" type="text" autocomplete="off" maxlength="100">
           <label for="kategorie" data-i18n="fields.kategorie">Kategorie</label>
           <select id="kategorie"></select>
+          <div id="reduktionFeld">
+               <label for="reduktion" data-i18n="fields.reduktion">Reduktion</label>
+               <select id="reduktion">
+                    <option value="" data-i18n="erfassen.reduktion_auto">Automatisch</option>
+                    <option value="30">−30 %</option>
+                    <option value="50">−50 %</option>
+                    <option value="70">−70 %</option>
+               </select>
+               <p class="m-hint" data-i18n="erfassen.reduktion_hint">Reduktion freiwillig – gilt als Wahl von Hand für diese Filiale.</p>
+          </div>
           <p class="m-hint" data-i18n="erfassen.required_hint">* Pflichtfeld</p>
 
           <p id="addError" class="error" role="alert" hidden></p>
@@ -96,10 +106,12 @@
           <button type="button" class="large m-wide" id="book" disabled data-i18n="erfassen.book">Wareneingang buchen</button>
      </main>
      <script src="/static/js/kategorien.js?v=1"></script>
-     <script src="/static/js/handy-core.js?v=1"></script>
+     <script src="/static/js/operation.js?v=1"></script>
+     <script src="/static/js/handy-core.js?v=op-1"></script>
      <script src="/static/js/handy-scan.js?v=1"></script>
-     <script src="/static/js/handy-erfassen.js?v=1"></script>
-     <script src="/static/js/session.js?v=header-2"></script>
+     <script src="/static/js/handy-erfassen.js?v=2"></script>
+     <script src="/static/js/session.js?v=settings-2"></script>
+     <script src="/static/js/meldung.js?v=2"></script>
      <script src="/static/js/theme.js?v=design-1"></script>
 </body>
 

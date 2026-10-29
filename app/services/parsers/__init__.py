@@ -17,14 +17,17 @@ Ablauf:
    lesen (projekt-kontext.md Abschnitt 6, Punkt 1).
 """
 
-from . import alpina, chrissports, cmp, intersport
+import threading
+
+from . import alpina, bestellplan, bliz, chrissports, cmp, columbia, gonso, intersport, quintet
 from ...core.lieferanten import LIEFERANTEN_SEED
 from .base import Document, DocumentParseError, decimal_value, read_document
 from ..lieferadresse import erkenne_lagerort
+from ...core.groessen import normalisiere_groesse
 from ...core.i18n import DEFAULT_LANGUAGE, translate
 
 # Reihenfolge ohne Bedeutung - es gewinnt die höchste Punktzahl aus detect().
-PARSERS = (intersport, alpina, chrissports, cmp)
+PARSERS = (intersport, alpina, chrissports, cmp, bliz, quintet, columbia, gonso, bestellplan)
 
 
 class UnknownLayoutError(DocumentParseError):
@@ -80,6 +83,13 @@ def parse_with_parser(
     """
     treffer = erkenne_lagerort(document.text, lagerorte)
     parsed = parser.parse(document, language)
+    # Punkt 6: Grössen vereinheitlichen (D38 → 38, US/UK → EU). Die Original-
+    # grösse bleibt in `size_original`, damit nachvollziehbar ist, was im Beleg stand.
+    for item in parsed.get("items", []):
+        neu = normalisiere_groesse(item.get("size"), item.get("description"))
+        if neu != item.get("size"):
+            item["size_original"] = item["size"]
+            item["size"] = neu
     return {
         **parsed,
         "parser_key": parser.KEY,
@@ -114,12 +124,19 @@ def read_and_detect(pdf_data: bytes, language: str = DEFAULT_LANGUAGE):
     return document, detect_parser(document, language)
 
 
+# Lesen/OCR ist CPU-lastig: höchstens so viele Dokumente gleichzeitig, weitere
+# warten. Sonst bremst ein langer Scan die Kasse aller Filialen.
+MAX_PARALLELE_DOKUMENTE = 2
+lese_slot = threading.BoundedSemaphore(MAX_PARALLELE_DOKUMENTE)
+
+
 def parse_document(
     pdf_data: bytes, language: str = DEFAULT_LANGUAGE, lagerorte=()
 ) -> dict:
     """Dokument lesen, Layout erkennen und Positionen auslesen (Vorschau)."""
-    document, parser = read_and_detect(pdf_data, language)
-    return parse_with_parser(parser, document, language, lagerorte)
+    with lese_slot:
+        document, parser = read_and_detect(pdf_data, language)
+        return parse_with_parser(parser, document, language, lagerorte)
 
 
 __all__ = [

@@ -102,3 +102,76 @@ def test_empfehlung_setzen_uebernehmen_und_ablehnen(welt):
     assert client.post(
         "/api/empfehlungen", json={"artikel_id": 999999, "lagerort_id": codes["SF1"], "prozent": 50, "ab_datum": "2026-10-01"}
     ).status_code == 404
+
+
+def test_empfehlung_an_alle_zurueckziehen_und_anstehend(welt):
+    """2026-09-30: die Zentrale sendet eine Empfehlung an alle Verkaufsfilialen
+    in einer Aktion (auch ohne Bestand, jede Filiale antwortet einzeln), sie
+    erscheint sofort unter „Anstehend" der Filiale, und die Zentrale kann jede
+    Empfehlung jederzeit zurückziehen - vor und nach der Antwort, ohne dass
+    eine schon gesetzte Stufe zurückgenommen wird."""
+    client, codes = welt.client, welt.codes
+    welt.anmelden(CHEF)
+    pdf = rechnung_pdf(
+        header_lines=kopf(nummer="9500000002", datum="01.01.2026"),
+        rows=[_zeile("A2", "1", "4006632041241", "Poloshirt", "5")],
+    )
+    assert importieren(client, pdf, lagerort_id=str(codes["SF1"])).status_code == 200
+    with welt.sessions() as session:
+        artikel_id = session.scalar(select(Artikel.id).where(Artikel.lieferanten_artikelnr == "A2"))
+        varianten_id = session.scalar(select(Variante.id).where(Variante.artikel_id == artikel_id))
+    verkaufsfilialen = {"SF1", "SF2", "SF3", "SF4"}
+    body = {"artikel_id": artikel_id, "prozent": 50, "ab_datum": "2099-01-01"}
+
+    # Nur die Zentrale; genau ein Ziel: eine Filiale oder alle.
+    assert client.post("/api/empfehlungen", json={**body, "alle_filialen": True}).status_code == 403
+    welt.anmelden(ZENTRALE)
+    assert client.post("/api/empfehlungen", json=body).status_code == 422
+    assert client.post("/api/empfehlungen", json={**body, "alle_filialen": True, "lagerort_id": codes["SF1"]}).status_code == 422
+
+    antwort = client.post("/api/empfehlungen", json={**body, "alle_filialen": True})
+    assert antwort.status_code == 200, antwort.text
+    angelegt = antwort.json()["empfehlungen"]
+    assert {e["lagerort_id"] for e in angelegt} == {codes[c] for c in verkaufsfilialen}
+    assert {e["status"] for e in angelegt} == {"offen"}
+    ids = {e["lagerort_id"]: e["id"] for e in angelegt}
+
+    # Sofort unter „Anstehend" der Filiale - auch mit Datum in der Zukunft,
+    # auch ohne Bestand (SF2); in der Zahl der Glocke enthalten.
+    welt.anmelden(ANNA)
+    assert client.get("/api/dashboard").json()["filiale"]["empfehlungen_offen"] == 1
+    assert client.get("/api/anstehend/anzahl").json()["anzahl"] >= 1
+    welt.anmelden(BEAT)
+    assert client.get("/api/dashboard").json()["filiale"]["empfehlungen_offen"] == 1
+
+    # SF1 übernimmt; danach zieht die Zentrale zurück: Status zurückgezogen,
+    # die von Hand gesetzte Stufe bleibt (kein Rollback).
+    welt.anmelden(ANNA)
+    assert client.post(f"/api/empfehlungen/{ids[codes['SF1']]}/antwort", json={"status": "uebernommen"}).status_code == 200
+    welt.anmelden(CHEF)
+    assert client.post(f"/api/empfehlungen/{ids[codes['SF1']]}/zurueckziehen").status_code == 403
+    welt.anmelden(ZENTRALE)
+    zurueck = client.post(f"/api/empfehlungen/{ids[codes['SF1']]}/zurueckziehen")
+    assert zurueck.status_code == 200, zurueck.text
+    assert zurueck.json()["status"] == "zurueckgezogen"
+    stand = client.get(f"/api/articles/{varianten_id}/reduktion").json()["filialen"]
+    assert next(f for f in stand if f["lagerort"]["code"] == "SF1")["manuell"] == 50
+
+    # SF2: vor der Antwort zurückgezogen - verschwindet aus „Anstehend" und
+    # lässt sich nicht mehr beantworten.
+    assert client.post(f"/api/empfehlungen/{ids[codes['SF2']]}/zurueckziehen").status_code == 200
+    welt.anmelden(BEAT)
+    assert client.get("/api/dashboard").json()["filiale"]["empfehlungen_offen"] == 0
+    assert client.get("/api/reduktionen").json()["empfehlungen"] == []
+    assert client.post(f"/api/empfehlungen/{ids[codes['SF2']]}/antwort", json={"status": "uebernommen"}).status_code == 422
+
+    # Nochmals zurückziehen / unbekannte Id; die Zentrale sieht den Status.
+    welt.anmelden(ZENTRALE)
+    assert client.post(f"/api/empfehlungen/{ids[codes['SF2']]}/zurueckziehen").status_code == 422
+    assert client.post("/api/empfehlungen/999999/zurueckziehen").status_code == 404
+    uebersicht = {e["lagerort"]["code"]: e["status"] for e in client.get("/api/empfehlungen").json()["empfehlungen"]}
+    assert uebersicht == {"SF1": "zurueckgezogen", "SF2": "zurueckgezogen", "SF3": "offen", "SF4": "offen"}
+
+    # Keine Rücknahme: stattdessen eine neue Empfehlung - sie ist wieder offen.
+    neu = client.post("/api/empfehlungen", json={**body, "lagerort_id": codes["SF2"], "prozent": 30})
+    assert neu.status_code == 200 and neu.json()["status"] == "offen"

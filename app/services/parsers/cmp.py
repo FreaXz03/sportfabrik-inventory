@@ -21,6 +21,7 @@ Keine EAN (Regel 5: Hinweis). Einheit Stück.
 import re
 from datetime import date
 
+from . import cmp_bestellung
 from .base import Document, DocumentParseError, ergebnis, pruefe_position
 from .base import lines as _zeilen
 from ...core.i18n import DEFAULT_LANGUAGE, translate
@@ -40,9 +41,22 @@ TOLERANZ = 8  # Punkte zwischen rechtem Rand von Grösse und Wert
 
 def detect(document: Document) -> int | None:
     text = document.text
+    if _ist_bestellung(text):
+        return 4
     if "Campagnolo" not in text or "Farb-Beschreibung" not in text:
         return None
     return 4
+
+
+def _ist_bestellung(text: str) -> bool:
+    """Zweites Layout (Punkt 7): Bestellung aus dem Campagnolo-Portal, ein
+    Bildschirmausdruck mit „Preise (CHF)"-Zeilen und ohne „Farb-Beschreibung"."""
+    return (
+        "Farb-Beschreibung" not in text
+        and bool(re.search(r"campagnolo", text, re.IGNORECASE))
+        and bool(cmp_bestellung.BESTELLUNG.search(text))
+        and bool(re.search(r"Preise\s*\(CHF\)", text))
+    )
 
 
 def _groessenzeile(zeile) -> bool:
@@ -56,6 +70,8 @@ def _zu_groesse(wort, groessen):
 
 
 def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
+    if _ist_bestellung(document.text):
+        return cmp_bestellung.parse(document, language)
     items, warnings = [], []
     kopf = NUMMER.search(document.text)
     groessen = None
@@ -160,6 +176,8 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
 
 
 def dates(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
+    if _ist_bestellung(document.text):
+        return cmp_bestellung.dates(document, language)
     kopf = NUMMER.search(document.text)
     if not kopf:
         raise DocumentParseError(translate("errors.importer.invoice_date_missing_or_ambiguous", language))

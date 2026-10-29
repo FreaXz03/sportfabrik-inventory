@@ -20,7 +20,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
 from ..core.i18n import DEFAULT_LANGUAGE, translate
-from ..core.models import Variante
+from ..core.models import Variante, VarianteEan
 from .wareneingang import ADVISORY_LOCK_ID
 
 # GS1-Bereich für den Hausgebrauch (D10). Die erste Stelle ist immer 2, die
@@ -140,13 +140,7 @@ def setze_ean(
         else:
             neue_ean = pruefe_nachgetragene_ean(ean or "", language)
             intern = ist_intern(neue_ean)
-        belegt = session.scalar(
-            select(Variante.id).where(
-                Variante.ean == neue_ean, Variante.id != variante.id
-            )
-        )
-        if belegt:
-            raise EanError(translate("errors.ean.taken", language, ean=neue_ean))
+        _pruefe_frei(session, neue_ean, variante.id, language)
         variante.ean = neue_ean
         variante.ean_intern = intern
         try:
@@ -158,3 +152,53 @@ def setze_ean(
             "ean": variante.ean,
             "ean_intern": variante.ean_intern,
         }
+
+
+def _pruefe_frei(session, ean: str, varianten_id: int, language: str) -> None:
+    """Die EAN darf an keiner anderen Variante hängen - weder als Hauptnummer
+    noch als weitere EAN (Punkt 8) - und nicht schon an dieser."""
+    belegt = session.scalar(
+        select(Variante.id).where(Variante.ean == ean, Variante.id != varianten_id)
+    ) or session.scalar(select(VarianteEan.varianten_id).where(VarianteEan.ean == ean))
+    if belegt:
+        raise EanError(translate("errors.ean.taken", language, ean=ean))
+
+
+def fuege_ean_hinzu(
+    varianten_id: int,
+    session_factory,
+    *,
+    ean: str,
+    language: str = DEFAULT_LANGUAGE,
+) -> dict:
+    """Einer Variante später eine weitere EAN nachtragen (Punkt 8, 2026-10-01).
+
+    Eine Ergänzung, kein Ersatz: die vorhandene Hauptnummer (Etikett) bleibt,
+    die neue führt zur selben Variante - z. B. die Original-EAN neben der
+    internen, die bereits auf der Ware klebt. Hat die Variante noch gar keine
+    EAN, wird die neue zur Hauptnummer (wie `setze_ean`). Prüfziffer und
+    Eindeutigkeit wie dort; die interne Markierung (Regel 5) hängt an der EAN.
+    """
+    with session_factory() as session, session.begin():
+        if session.bind.dialect.name == "postgresql":
+            session.execute(text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})"))
+        variante = session.get(Variante, varianten_id)
+        if variante is None:
+            raise EanNichtGefunden(
+                translate("errors.ean.variante_not_found", language, id=varianten_id)
+            )
+        neue_ean = pruefe_nachgetragene_ean(ean, language)
+        intern = ist_intern(neue_ean)
+        if variante.ean == neue_ean:
+            raise EanError(translate("errors.ean.taken", language, ean=neue_ean))
+        _pruefe_frei(session, neue_ean, variante.id, language)
+        if variante.ean is None:
+            variante.ean = neue_ean
+            variante.ean_intern = intern
+        else:
+            session.add(VarianteEan(varianten_id=variante.id, ean=neue_ean, ean_intern=intern))
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            raise EanError(translate("errors.ean.taken", language, ean=neue_ean)) from exc
+        return {"varianten_id": variante.id, "ean": neue_ean, "ean_intern": intern}

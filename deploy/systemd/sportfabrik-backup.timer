@@ -1,0 +1,10 @@
+[Unit]
+Description=Sportfabrik Inventory backup, daily after closing
+
+[Timer]
+OnCalendar=*-*-* 22:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

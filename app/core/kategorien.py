@@ -1,6 +1,8 @@
 """Seed-Daten für die Kassenkategorien: Hauptgruppe × Sportbereich, exakt wie
 in der Kasse (Regel 8). Textil/Hartware/Schuhe haben dieselben 11
-Sportbereiche, Velo und Food keinen. 35 Kombinationen total. Einzige Quelle
+Sportbereiche, Velo und Food keinen. Seit 2026-10-01 (Punkt 1, Erweiterung
+von Regel 8) gibt es Textil/Hartware/Schuhe zusätzlich nur als Hauptgruppe
+(Sportbereich noch offen): 38 Kombinationen total. Einzige Quelle
 für diese Daten - Migration und Tests nutzen sie, damit beide garantiert
 übereinstimmen (siehe app/core/lagerorte.py für dasselbe Muster).
 """
@@ -33,7 +35,7 @@ KATEGORIEN_SEED = [
     for sportbereich in SPORTBEREICHE
 ] + [
     {"hauptgruppe": hauptgruppe, "sportbereich": None}
-    for hauptgruppe in HAUPTGRUPPEN_OHNE_SPORTBEREICH
+    for hauptgruppe in HAUPTGRUPPEN_MIT_SPORTBEREICH + HAUPTGRUPPEN_OHNE_SPORTBEREICH
 ]
 
 

@@ -1,6 +1,8 @@
-// Rechte Seite der Kopfzeile: Filiale und Konto-Menü (23.09.2026 neu
-// gestaltet - vorher eine eigene zweite Zeile). Meldet die Anmeldung als
-// Ereignis `sportfabrik:me`, damit nav.js Einträge nach Rolle zeigen kann.
+// Kopfzeile: aktive Filiale und Konto (23.09.2026 neu gestaltet) und seit
+// 30.09.2026 das Einstellungsfenster (Redesign Phase 6): Sprache, Darstellung,
+// Filialwechsel, Artikelexport, Abmelden. Filiale, Konto und der Menüpunkt
+// „Einstellungen" (Ereignis `sportfabrik:settings-open`) öffnen es. Meldet die
+// Anmeldung als Ereignis `sportfabrik:me`, damit nav.js Einträge nach Rolle zeigt.
 (function(){
   function t(key,vars){return window.SportfabrikI18n?window.SportfabrikI18n.t(key,vars):key;}
   function onLang(fn){document.addEventListener('sportfabrik:i18n-ready',fn);}
@@ -11,45 +13,49 @@
     return (teile[0][0]+(teile.length>1?teile[teile.length-1][0]:'')).toUpperCase();
   }
 
+  // Anzeige der aktiven Filiale; ein Klick öffnet die Einstellungen (dort wechselt man sie).
   function filiale(me){
-    var huelle=document.createElement('div');
-    huelle.className='store-pill';
+    var knopf=document.createElement('button');
+    knopf.type='button';
+    knopf.className='store-pill';
+    knopf.setAttribute('aria-haspopup','dialog');
     var punkt=document.createElement('span');
     punkt.className='store-dot';
     punkt.setAttribute('aria-hidden','true');
-    huelle.append(punkt);
-    if(me.lagerorte&&(me.lagerorte.length>1||me.kann_alle_filialen_waehlen)){
-      var auswahl=document.createElement('select');
-      auswahl.className='store-select';
-      function aria(){auswahl.setAttribute('aria-label',t('session.switch_lagerort_aria'));}
-      aria();onLang(aria);
-      if(me.kann_alle_filialen_waehlen){
-        var alle=document.createElement('option');
-        alle.value='';alle.textContent=t('session.all_lagerorte');
-        onLang(function(){alle.textContent=t('session.all_lagerorte');});
-        auswahl.append(alle);
-      }
-      me.lagerorte.forEach(function(lo){
-        var option=document.createElement('option');
-        option.value=String(lo.id);option.textContent=lo.code+' · '+lo.name;
-        auswahl.append(option);
-      });
-      auswahl.value=me.lagerort?String(me.lagerort.id):'';
-      auswahl.addEventListener('change',function(){
-        fetch('/api/active-lagerort',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({lagerort_id:auswahl.value?Number(auswahl.value):null})
-        }).then(function(){location.reload();});
-      });
-      huelle.append(auswahl);
-    }else{
-      var text=document.createElement('span');
-      text.className='store-name';
-      text.textContent=me.lagerort?me.lagerort.code+' · '+me.lagerort.name:t('session.all_lagerorte');
-      huelle.append(text);
+    var text=document.createElement('span');
+    text.className='store-name';
+    function beschriften(){text.textContent=me.lagerort?me.lagerort.code+' · '+me.lagerort.name:t('session.all_lagerorte');}
+    beschriften();onLang(beschriften);
+    knopf.append(punkt,text);
+    knopf.addEventListener('click',oeffnen);
+    return knopf;
+  }
+
+  function filialWahl(me){
+    var auswahl=document.createElement('select');
+    auswahl.className='settings-select';
+    auswahl.setAttribute('aria-label',t('session.switch_lagerort_aria'));
+    onLang(function(){auswahl.setAttribute('aria-label',t('session.switch_lagerort_aria'));});
+    if(me.kann_alle_filialen_waehlen){
+      var alle=document.createElement('option');
+      alle.value='';alle.textContent=t('session.all_lagerorte');
+      onLang(function(){alle.textContent=t('session.all_lagerorte');});
+      auswahl.append(alle);
     }
-    return huelle;
+    me.lagerorte.forEach(function(lo){
+      var option=document.createElement('option');
+      option.value=String(lo.id);option.textContent=lo.code+' · '+lo.name;
+      auswahl.append(option);
+    });
+    auswahl.value=me.lagerort?String(me.lagerort.id):'';
+    auswahl.addEventListener('change',function(){
+      fetch('/api/active-lagerort',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({lagerort_id:auswahl.value?Number(auswahl.value):null})
+      }).then(function(){location.reload();});
+    });
+    return auswahl;
   }
 
   function sprachwahl(){
@@ -92,21 +98,54 @@
     return knopf;
   }
 
-  function kontoMenue(me){
-    var huelle=document.createElement('div');
-    huelle.className='account-menu';
+  // Rund mit Initialen, in der ausgeklappten Seitenleiste mit Namen daneben
+  // (30.09.2026); öffnet die Einstellungen.
+  function kontoKnopf(me){
     var knopf=document.createElement('button');
     knopf.type='button';
-    knopf.className='account-toggle';
-    knopf.textContent=initialen(me);
-    knopf.setAttribute('aria-haspopup','true');
-    knopf.setAttribute('aria-expanded','false');
+    knopf.className='account-row';
+    var kreis=document.createElement('span');
+    kreis.className='account-toggle';
+    kreis.textContent=initialen(me);
+    kreis.setAttribute('aria-hidden','true');
+    var name=document.createElement('span');
+    name.className='account-name';
+    name.textContent=me.name||me.kassennummer;
+    knopf.append(kreis,name);
+    knopf.setAttribute('aria-haspopup','dialog');
     function aria(){knopf.setAttribute('aria-label',t('session.account_aria'));knopf.title=t('session.account_aria');}
     aria();onLang(aria);
+    knopf.addEventListener('click',oeffnen);
+    return knopf;
+  }
 
-    var panel=document.createElement('div');
-    panel.className='account-panel';
-    panel.hidden=true;
+  function zeile(schluessel,inhalt){
+    var huelle=document.createElement('div');
+    huelle.className='settings-row';
+    var titel=document.createElement('span');
+    titel.className='settings-label';
+    function beschriften(){titel.textContent=t(schluessel);}
+    beschriften();onLang(beschriften);
+    huelle.append(titel,inhalt);
+    return huelle;
+  }
+
+  function einstellungenBauen(me){
+    var d=document.createElement('dialog');
+    d.className='settings-dialog';
+    d.setAttribute('aria-labelledby','einstellungenTitel');
+    var kopf=document.createElement('div');
+    kopf.className='settings-head';
+    var titel=document.createElement('h2');
+    titel.id='einstellungenTitel';
+    function beschriften(){titel.textContent=t('nav.settings');}
+    beschriften();onLang(beschriften);
+    var zu=document.createElement('button');
+    zu.type='button';zu.className='secondary settings-close';
+    function zuText(){zu.textContent=t('settings.close');}
+    zuText();onLang(zuText);
+    zu.addEventListener('click',function(){d.close();});
+    kopf.append(titel,zu);
     var wer=document.createElement('div');
     wer.className='account-who';
     var name=document.createElement('strong');
@@ -115,42 +154,42 @@
     function detailText(){details.textContent=t('session.kassennummer_prefix')+me.kassennummer+' · '+t('role.'+me.role);}
     detailText();onLang(detailText);
     wer.append(name,details);
-    panel.append(wer);
-    if(window.SportfabrikI18n)panel.append(sprachwahl());
-    if(window.SportfabrikTheme)panel.append(window.SportfabrikTheme.createToggleButton());
-    if(location.pathname.replace(/\/$/,'')==='/articles')panel.append(exportKnopf());
+    d.append(kopf,wer);
+    if(window.SportfabrikI18n)d.append(zeile('settings.language',sprachwahl()));
+    if(window.SportfabrikTheme)d.append(zeile('settings.theme',window.SportfabrikTheme.createToggleButton()));
+    if(me.lagerorte&&(me.lagerorte.length>1||me.kann_alle_filialen_waehlen))d.append(zeile('settings.branch',filialWahl(me)));
+    if(location.pathname.replace(/\/$/,'')==='/articles'&&window.articleExportParams)d.append(exportKnopf());
     var abmelden=document.createElement('button');
-    abmelden.type='button';abmelden.className='secondary account-logout';
+    abmelden.type='button';abmelden.className='secondary settings-logout';
     abmelden.textContent=t('session.logout');
     onLang(function(){abmelden.textContent=t('session.logout');});
     abmelden.addEventListener('click',function(){fetch('/logout',{method:'POST'}).then(function(){location.href='/login';});});
-    panel.append(abmelden);
-
-    function zu(){panel.hidden=true;knopf.setAttribute('aria-expanded','false');}
-    knopf.addEventListener('click',function(ereignis){
-      ereignis.stopPropagation();
-      var auf=panel.hidden;
-      panel.hidden=!auf;
-      knopf.setAttribute('aria-expanded',String(auf));
-    });
-    document.addEventListener('click',function(ereignis){if(!panel.hidden&&!huelle.contains(ereignis.target))zu();});
-    document.addEventListener('keydown',function(ereignis){
-      if(ereignis.key==='Escape'&&!panel.hidden){zu();knopf.focus();}
-    });
-    huelle.append(knopf,panel);
-    return huelle;
+    d.append(abmelden);
+    // Klick auf den abgedunkelten Rand schliesst; Esc und Fokusfalle kommen vom <dialog>.
+    d.addEventListener('click',function(ereignis){if(ereignis.target===d)d.close();});
+    return d;
   }
+
+  var angemeldet=null;
+  var einstellungen=null;
+  function oeffnen(){
+    if(!angemeldet)return;
+    if(!einstellungen){einstellungen=einstellungenBauen(angemeldet);document.body.append(einstellungen);}
+    if(!einstellungen.open)einstellungen.showModal();
+  }
+  document.addEventListener('sportfabrik:settings-open',oeffnen);
 
   fetch('/api/me').then(function(r){return r.ok?r.json():null;}).then(function(me){
     if(!me) return;
     if(window.SportfabrikI18n&&me.language)window.SportfabrikI18n.syncFromAccount(me.language);
     document.querySelectorAll('[data-chef-only]').forEach(function(el){el.hidden = !['chef', 'admin'].includes(me.role);});
+    angemeldet=me;
     document.dispatchEvent(new CustomEvent('sportfabrik:me',{detail:me}));
     var header=document.querySelector('header');
     if(!header) return;
     var werkzeuge=document.createElement('div');
     werkzeuge.className='header-tools';
-    werkzeuge.append(filiale(me),kontoMenue(me));
+    werkzeuge.append(filiale(me),kontoKnopf(me));
     header.append(werkzeuge);
     if(me.role==='mitarbeiter'){
       var uploadHero=document.getElementById('uploadHero');

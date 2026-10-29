@@ -213,3 +213,47 @@ def test_nur_von_hand_erfasste_artikel_sind_loeschbar(welt):
     with sessions() as session:
         assert session.get(Variante, manuell) is None
         assert session.get(Variante, beleg) is not None
+
+
+def test_reduktion_gleich_beim_erfassen(welt):
+    """N2 (29.09.2026): die beim Erfassen gewählte Reduktion gilt als Wahl von
+    Hand der Zielfiliale. Leer lässt eine bestehende Wahl stehen. Extern gibt
+    es keine Reduktion; Rechte wie auf „Runterschreiben"."""
+    client, codes = welt.client, welt.codes
+    welt.anmelden(ANNA)
+    assert client.post(
+        "/api/erfassen", json={"positionen": [_position(ean="4006632041234", reduktion=40)]}
+    ).status_code == 422
+    antwort = client.post(
+        "/api/erfassen", json={"positionen": [_position(ean="4006632041234", reduktion=50)]}
+    )
+    assert antwort.status_code == 200, antwort.text
+    variante = _variante_id(client, "4006632041234")
+    filialen = {
+        e["lagerort"]["code"]: e
+        for e in client.get(f"/api/articles/{variante}/reduktion").json()["filialen"]
+    }
+    assert filialen["SF1"]["manuell"] == 50
+    assert filialen["SF1"]["wirksam"] == 50
+
+    # Ohne Wahl bleibt die bestehende stehen.
+    assert client.post(
+        "/api/erfassen", json={"positionen": [_position(ean="4006632041234")]}
+    ).status_code == 200
+    filialen = {
+        e["lagerort"]["code"]: e
+        for e in client.get(f"/api/articles/{variante}/reduktion").json()["filialen"]
+    }
+    assert filialen["SF1"]["manuell"] == 50
+
+    # Filialleiter darf auf SF3 erfassen, aber dort keine Reduktion wählen.
+    welt.anmelden(CHEF)
+    fremd = {"positionen": [_position(ean="4006632041234", reduktion=70)], "lagerort_id": codes["SF3"]}
+    assert client.post("/api/erfassen", json=fremd).status_code == 403
+    extern = {"positionen": [_position(ean="4006632041234", reduktion=70)], "lagerort_id": codes["GEWA"]}
+    assert client.post("/api/erfassen", json=extern).status_code == 409
+    with welt.sessions() as session:
+        # Abgelehnt heisst: nichts gebucht.
+        assert session.scalar(
+            select(Wareneingang.id).where(Wareneingang.lagerort_id.in_([codes["SF3"], codes["GEWA"]]))
+        ) is None

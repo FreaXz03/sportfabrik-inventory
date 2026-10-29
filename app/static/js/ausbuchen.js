@@ -44,7 +44,7 @@
   }
 
   async function post(url, daten) {
-    const antwort = await fetch(url, {
+    const antwort = await SportfabrikOp.fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: daten === undefined ? undefined : JSON.stringify(daten)

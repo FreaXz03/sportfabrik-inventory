@@ -17,9 +17,9 @@ Altdaten nach genau derselben Regel gruppiert hat).
 
 import re
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, or_, select
 
-from ..core.models import Artikel, Variante
+from ..core.models import Artikel, Variante, VarianteEan
 
 # Format einer echten EAN: EAN-8, UPC-12, EAN-13 oder EAN-14 (Umkarton).
 # Steht hier, damit Vorschau-Korrekturen und manuelle Erfassung dieselbe
@@ -72,4 +72,23 @@ def finde_variante_ohne_ean(
 def finde_variante_per_ean(session, ean: str | None) -> Variante | None:
     if not ean:
         return None
-    return session.scalar(select(Variante).where(Variante.ean == ean))
+    # Hauptnummer zuerst, dann die weiteren EANs (Punkt 8): jede führt zur selben Variante.
+    variante = session.scalar(select(Variante).where(Variante.ean == ean))
+    if variante is not None:
+        return variante
+    return session.scalar(
+        select(Variante).join(VarianteEan, VarianteEan.varianten_id == Variante.id).where(VarianteEan.ean == ean)
+    )
+
+
+def hat_ean(muster, *, genau: bool = False, escape: str | None = None):
+    """SQL-Bedingung „Variante hat eine EAN, die passt" - Hauptnummer oder
+    weitere (Punkt 8). `muster` ist ein fertiges ILIKE-Muster, bei `genau` die
+    exakte EAN. Für Suchen und Filter."""
+    if genau:
+        hauptnummer = Variante.ean == muster
+        weitere = VarianteEan.ean == muster
+    else:
+        hauptnummer = Variante.ean.ilike(muster, escape=escape)
+        weitere = VarianteEan.ean.ilike(muster, escape=escape)
+    return or_(hauptnummer, exists().where(VarianteEan.varianten_id == Variante.id, weitere))

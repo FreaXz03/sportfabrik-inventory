@@ -25,7 +25,28 @@ if os.getenv("DB_HOST"):
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL wurde nicht gefunden.")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+
+def engine_argumente(url) -> dict:
+    """Pool und Zeitlimits für mehrere gleichzeitige Benutzer: eine hängende
+    Anfrage soll nicht alle anderen blockieren. Grosse Importe brauchen bis zu
+    einige zehn Sekunden, deshalb großzügige Limits (Millisekunden)."""
+    argumente: dict = {"pool_pre_ping": True}
+    if str(url).startswith("postgresql"):
+        argumente.update(
+            pool_size=10,
+            max_overflow=10,
+            pool_timeout=30,
+            pool_recycle=1800,
+            connect_args={
+                "options": "-c statement_timeout=120000"
+                " -c lock_timeout=60000"
+                " -c idle_in_transaction_session_timeout=300000"
+            },
+        )
+    return argumente
+
+
+engine = create_engine(DATABASE_URL, **engine_argumente(DATABASE_URL))
 
 SessionLocal = sessionmaker(
     bind=engine,

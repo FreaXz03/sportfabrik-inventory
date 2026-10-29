@@ -47,7 +47,7 @@ def test_migrationen_offline_fuer_postgres_und_online_auf_sqlite(tmp_path):
         codes = [row[0] for row in db.execute("SELECT code FROM lagerorte ORDER BY code")]
         assert codes == ["DIETIKON", "GEWA", "SF1", "SF2", "SF3", "SF4", "VEBO"]
         parser = {row[0] for row in db.execute("SELECT parser_key FROM lieferanten WHERE parser_key IS NOT NULL")}
-        assert parser == {"intersport", "alpina", "chrissports", "cmp"}
+        assert parser == {"intersport", "alpina", "chrissports", "cmp", "bliz", "quintet", "columbia", "gonso", "bestellplan"}
         spalten = {row[1] for row in db.execute("PRAGMA table_info(users)")}
         assert {"fehlversuche", "gesperrt_bis"} <= spalten  # Login-Sperre (S2)
 
@@ -127,7 +127,22 @@ def test_datenmigrationen_passen_zu_den_stammdaten():
     assert filialcodes.RICHTIG == {e["ort"]: e["code"] for e in LAGERORTE_SEED if e["code"] in ("SF2", "SF3", "SF4")}
     gruppen = _migration("f2a3b4c5d6e7_lieferantengruppen")
     parser = _migration("a8b9c0d1e2f3_lieferanten_mit_parser")
-    assert [LIEFERANTEN_SEED[0]] + gruppen._NEUE_LIEFERANTEN + parser._NEUE_LIEFERANTEN == LIEFERANTEN_SEED
+    bliz = _migration("d3e4f5a6b7c8_lieferant_bliz")
+    quintet = _migration("e4f5a6b7c8d9_tnf_quintet_parser")
+    columbia = _migration("f5a6b7c8d9e0_lieferant_columbia")
+    gonso = _migration("a6b7c8d9e0f1_lieferant_gonso")
+    bestellplan = _migration("b7c8d9e0f1a2_lieferant_bestellplan")
+    nach_migrationen = [
+        dict(eintrag, parser_key=quintet.PARSER_KEYS.get(eintrag["name"], eintrag["parser_key"]))
+        for eintrag in [LIEFERANTEN_SEED[0]]
+        + gruppen._NEUE_LIEFERANTEN
+        + parser._NEUE_LIEFERANTEN
+        + bliz._NEUE_LIEFERANTEN
+        + columbia._NEUE_LIEFERANTEN
+        + gonso._NEUE_LIEFERANTEN
+        + bestellplan._NEUE_LIEFERANTEN
+    ]
+    assert nach_migrationen == LIEFERANTEN_SEED
 
 
 def test_filialcodes_werden_im_ring_getauscht():
@@ -192,3 +207,80 @@ def test_server_reaches_app_only_through_https_proxy():
     caddyfile = (ROOT / "Caddyfile").read_text("utf-8")
     assert "tls internal" in caddyfile
     assert "reverse_proxy" in caddyfile
+
+
+def test_betrieb_ohne_offene_schnittstellen_und_mit_schutz_headern(welt):
+    """S5–S7 (docs/sicherheit.md): ohne Login keine API-Doku und kein
+    Datenbank-Detail; jede Antwort mit Schutz-Headern, HTML-Seiten mit einer
+    Content-Security-Policy, die nur eigene Skripte erlaubt."""
+    client = welt.client
+    assert client.get("/db-test").json() == {"ok": True}
+    for pfad in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(pfad).status_code == 404, pfad
+    seite = client.get("/login")
+    assert seite.headers["x-frame-options"] == "DENY"
+    assert seite.headers["x-content-type-options"] == "nosniff"
+    csp = seite.headers["content-security-policy"]
+    assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp
+    assert "unsafe-inline" not in csp
+    daten = client.get("/db-test")
+    assert daten.headers["x-content-type-options"] == "nosniff"
+
+
+def test_seiten_ohne_inline_skripte():
+    """S7: die CSP erlaubt nur Skripte aus /static - also keine Inline-Skripte
+    und keine on…-Attribute in den Seiten."""
+    for datei in sorted(TEMPLATES.glob("*.html")):
+        html = datei.read_text("utf-8")
+        assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), datei.name
+        assert not re.search(r"\son[a-z]+=\"", html), datei.name
+        assert "style=\"" not in html and "<style" not in html, datei.name
+
+
+def _backup_skript():
+    spec = importlib.util.spec_from_file_location("backup_inventory", ROOT / "scripts" / "backup_inventory.py")
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def test_externe_sicherung_nur_verschluesselt(tmp_path):
+    """S4: die Kopie auf den externen Datenträger ist immer mit age
+    verschlüsselt (nur der öffentliche Schlüssel liegt auf dem Server);
+    ohne Schlüssel oder ohne age gibt es keine unverschlüsselte Kopie."""
+    skript = _backup_skript()
+    lokal = tmp_path / "inventory-20260929T200000Z"
+    lokal.mkdir()
+    (lokal / "database.dump").write_bytes(b"dump")
+    (lokal / "manifest.json").write_text("{}")
+    extern = tmp_path / "usb"
+    extern.mkdir()
+    empfaenger = "age1" + "q" * 58
+
+    with pytest.raises(RuntimeError):
+        skript.externe_kopie(lokal, extern, None, "age")
+    with pytest.raises(RuntimeError):
+        skript.externe_kopie(lokal, extern, "kein-schluessel", "age")
+    assert list(extern.iterdir()) == []
+
+    # Ein Ersatz-age, das den Aufruf prüft und eine age-Datei schreibt.
+    falsches_age = tmp_path / "age"
+    falsches_age.write_text(
+        "#!" + sys.executable + "\n"
+        "import sys\n"
+        "args = sys.argv[1:]\n"
+        f"assert args[:2] == ['-r', '{empfaenger}'] and args[2] == '-o', args\n"
+        "daten = open(args[4], 'rb').read()\n"
+        "open(args[3], 'wb').write(b'age-encryption.org/v1\\n' + daten[:0] + b'x' * 10)\n"
+    )
+    falsches_age.chmod(0o755)
+    datei = skript.externe_kopie(lokal, extern, empfaenger, str(falsches_age))
+    assert datei == extern / "inventory-20260929T200000Z.tar.age"
+    assert datei.read_bytes().startswith(b"age-encryption.org/v1")
+    pruefsumme = (extern / "inventory-20260929T200000Z.tar.age.sha256").read_text()
+    assert pruefsumme.split()[0] == skript.sha256(datei)
+    # Nichts Unverschlüsseltes auf dem Datenträger.
+    assert sorted(p.name for p in extern.iterdir()) == [
+        "inventory-20260929T200000Z.tar.age",
+        "inventory-20260929T200000Z.tar.age.sha256",
+    ]

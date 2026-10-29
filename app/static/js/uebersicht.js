@@ -1,5 +1,5 @@
 // Übersicht (neu gestaltet 24.09.2026): Begrüssung, Schnellzugriffe,
-// Kennzahlen der aktiven Filiale, Anstehendes und Aktuelles.
+// Bestandsdiagramme der aktiven Filiale, Anstehendes und Aktuelles.
 // Alle Texte über window.SportfabrikI18n.t() - keine harten Zeichenketten (Regel 7).
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -48,8 +48,7 @@
   }
 
   function zahl(wert) {
-    const n = Number(wert);
-    return Number.isFinite(n) ? new Intl.NumberFormat(sprache()).format(n) : '—';
+    return window.SportfabrikDiagramme.zahl(wert);
   }
 
   function datum(wert) {
@@ -87,74 +86,83 @@
       : heute;
   }
 
-  // Ein Punkt „Anstehend": Zahl, Text, Ziel. Nur was etwas zu tun gibt.
-  function punkt(anzahl, text, href, dringend) {
-    const li = node('li', null, dringend ? 'todo is-urgent' : 'todo');
-    const a = node('a');
-    a.href = href;
-    a.append(node('span', zahl(anzahl), 'todo-count'), node('span', text, 'todo-text'));
-    li.append(a);
-    return li;
+  function anstehend() {
+    window.SportfabrikAnstehend.zeichnen(daten, $('anstehend'), $('nichtsAnstehend'));
   }
 
-  function anstehend() {
-    const liste = $('anstehend');
+  // Redesign 29.09.2026 (DESIGN.md 9.3): kleine Diagramme - Stufenverteilung,
+  // Bestandsverlauf, Kategorien. Farbe nie allein: jede Zahl steht auch als Text.
+  // Verkaufsdiagramme (Verlauf 14 Tage, Bestseller) sind seit 2026-10-01 auf /statistiken.
+  const D = window.SportfabrikDiagramme;
+  const summe = D.summe;
+
+  function stufen(f) {
+    const je = f.stufen || {};
+    const gesamt = summe(['30', '50', '70'].map((stufe) => Number(je[stufe] || 0)));
+    const balken = $('stufenBalken');
+    const liste = $('stufenListe');
+    balken.replaceChildren();
     liste.replaceChildren();
-    const f = daten.filiale;
-    if (f) {
-      if (f.erwartet_total) liste.append(punkt(f.erwartet_total, t('dashboard.todo_expected'), '/wareneingaenge', false));
-      // Jeder Punkt führt zur Liste mit genau den gezählten Einträgen (24.09.2026).
-      if (f.negativ) liste.append(punkt(f.negativ, t('dashboard.todo_negative'), '/bestand?nur_negativ=true', true));
-      const r = f.reduktionen || {};
-      for (const stufe of ['70', '50']) {
-        const eintrag = r[stufe] || {};
-        const ziel = '/bestand?reduktion=' + stufe + '&reduktion_status=';
-        if (eintrag.faellig) liste.append(punkt(eintrag.faellig, t('dashboard.todo_reduction_due', { stufe: stufe }), ziel + 'faellig', true));
-        if (eintrag.bald) liste.append(punkt(eintrag.bald, t('dashboard.todo_reduction_soon', { stufe: stufe }), ziel + 'bald', false));
-      }
+    balken.hidden = liste.hidden = gesamt === 0;
+    $('stufenLeer').hidden = gesamt !== 0;
+    if (gesamt === 0) return;
+    for (const stufe of ['30', '50', '70']) {
+      const menge = Number(je[stufe] || 0);
+      const segment = node('span', null, 'stage-seg');
+      segment.dataset.stage = stufe;
+      segment.style.setProperty('--w', String(menge / gesamt));
+      balken.append(segment);
+      const li = node('li', null, 'stage-row');
+      const chip = node('a', null, 'chip chip-stage chip-link');
+      chip.href = '/bestand?stufe=' + stufe;
+      chip.title = t('dashboard.stages_open', { stufe: stufe });
+      chip.dataset.stage = stufe;
+      const punkt = node('span', null, 'chip-dot');
+      punkt.setAttribute('aria-hidden', 'true');
+      chip.append(punkt, '−' + stufe + ' %');
+      li.append(chip, node('span', t('dashboard.stages_pieces', { anzahl: zahl(menge) }), 'stage-qty'),
+        node('span', Math.round(menge / gesamt * 100) + ' %', 'stage-share muted'));
+      liste.append(li);
     }
-    const s = daten.stamm || {};
-    // Je Filiale (28.09.2026): die Liste zeigt dieselbe Auswahl wie die Zahl.
-    const filiale = s.lagerort_id && daten.lagerort
-      ? '&' + new URLSearchParams({ lagerort_id: String(s.lagerort_id), filiale: daten.lagerort.code })
-      : '';
-    if (s.ohne_kategorie) liste.append(punkt(s.ohne_kategorie, t('dashboard.todo_no_category'), '/articles?kategorie_fehlt=true' + filiale, false));
-    if (s.ohne_ean) liste.append(punkt(s.ohne_ean, t('dashboard.todo_no_ean'), '/articles?ohne_ean=true' + filiale, false));
-    $('nichtsAnstehend').hidden = liste.children.length > 0;
+  }
+
+  // Bestand und neu erfasste Varianten über den gewählten Zeitraum (2026-10-01),
+  // mit vergleich zur Periode davor. Bestand gehört zur aktiven Filiale, die neuen
+  // Varianten zum ganzen Artikelstamm.
+  const VORPERIODE = { 7: 'week', 30: 'month', 180: 'half_year' };
+  let periode = '30';
+  let verlaufAnfrage = 0;
+
+  async function verlaeufeLaden() {
+    const nummer = ++verlaufAnfrage;
+    try {
+      const antwort = await fetch('/api/uebersicht/verlaeufe?tage=' + periode);
+      const ergebnis = await antwort.json();
+      if (!antwort.ok || nummer !== verlaufAnfrage) return;
+      const vor = VORPERIODE[periode];
+      const bestand = ergebnis.bestand;
+      if (bestand) {
+        $('stockNow').textContent = t('dashboard.stock_now', { anzahl: zahl(bestand.jetzt) });
+        D.linie($('stockChart'), bestand.reihe.map((p) => ({ tag: p.tag, wert: Number(p.bestand) })), t('dashboard.stock_aria'));
+        D.vergleich($('stockDelta'), bestand.prozent, vor);
+      }
+      const neu = ergebnis.neu;
+      $('neuNow').textContent = t('dashboard.new_now', { anzahl: zahl(neu.summe) });
+      D.linie($('neuChart'), neu.reihe.map((p) => ({ tag: p.tag, wert: p.anzahl })), t('dashboard.new_aria'));
+      D.vergleich($('neuDelta'), neu.prozent, vor);
+    } catch (fehler) {
+      // Die Diagramme sind Beiwerk: bei Verbindungsproblemen bleiben sie leer, der Rest der Seite arbeitet.
+    }
+  }
+
+  // Bestand nach Hauptgruppe der Kassenkategorie als Ring; jede Zahl steht auch in der Liste.
+  function kategorien(f) {
+    D.donut($('catsDonut'), $('catsListe'), $('catsLeer'),
+      (f.kategorien || []).map((e) => ({ name: e.hauptgruppe, menge: Number(e.stueck) })));
   }
 
   function aktuelles() {
-    const liste = $('aktuelles');
-    liste.replaceChildren();
-    for (const e of daten.aktuelles || []) {
-      const li = node('li', null, 'news');
-      const zeit = new Date(e.zeitpunkt);
-      li.append(node('time', zeit.toLocaleDateString(sprache(), { day: '2-digit', month: '2-digit' }) + ' ' +
-        zeit.toLocaleTimeString(sprache(), { hour: '2-digit', minute: '2-digit' }), 'news-time'));
-      const text = node('span', null, 'news-text');
-      let menge;
-      if (e.art === 'abgang') {
-        const artikel = [e.marke, e.bezeichnung].filter(Boolean).join(' ');
-        const variante = [e.farbe, e.groesse].filter(Boolean).join(' / ');
-        const grund = e.grund ? t('ausbuchen.reason.' + e.grund) : '';
-        text.append(node('strong', t('dashboard.news.abgang')), ' ' + artikel + (variante ? ' (' + variante + ')' : '') + (grund ? ' – ' + grund : ''));
-        menge = node('span', zahl(e.menge), 'news-qty is-out');
-      } else if (e.art === 'umlagerung') {
-        text.append(node('strong', t('dashboard.news.umlagerung')), ' ' + t('dashboard.news.von_nach', { von: e.von, nach: e.nach }) +
-          ' · ' + t('dashboard.news.artikel', { anzahl: e.positionen }));
-        menge = node('span', zahl(e.stueck) + ' ' + t('dashboard.news.stueck'), 'news-qty');
-      } else {
-        const beleg = [e.lieferant, e.dokumentnummer].filter(Boolean).join(' ');
-        text.append(node('strong', t('dashboard.news.lieferung')), ' ' + (beleg || t('dashboard.news.von_hand')) +
-          ' → ' + e.lagerort + ' · ' + t('dashboard.news.artikel', { anzahl: e.positionen }));
-        menge = node('span', '+' + zahl(e.stueck) + ' ' + t('dashboard.news.stueck'), 'news-qty');
-      }
-      li.append(text);
-      li.append(menge);
-      li.append(node('span', e.person || '—', 'news-person muted'));
-      liste.append(li);
-    }
-    $('nichtsNeues').hidden = liste.children.length > 0;
+    window.SportfabrikAnstehend.aktuelles(daten, $('aktuelles'), $('nichtsNeues'));
   }
 
   // Rendert die gewählten Schnellzugriffe als Knöpfe (Punkt 14). Gleiche Höhe
@@ -168,9 +176,11 @@
       if (!eintrag) continue;
       const a = node('a', null, 'quick-action');
       a.href = eintrag.href;
-      a.append(node('strong', t(eintrag.label)), node('span', t(eintrag.info)));
+      a.append(node('strong', t(eintrag.label)));
       nav.append(a);
     }
+    // Immer die ganze Breite füllen, egal wie viele gewählt sind (30.09.2026).
+    nav.style.setProperty('--anzahl', String(Math.max(nav.children.length, 1)));
   }
 
   // --- Schnellzugriffe bearbeiten (Punkt 14): Auswahl per Klick, Reihenfolge
@@ -290,7 +300,7 @@
       td.append(a);
       tr.append(td);
       const von = (i.imported_by_name || i.imported_by_kassennummer || '—') + (i.ocr_used ? ' ' + t('dashboard.ocr_scan_suffix') : '');
-      for (const wert of [datum(i.invoice_date), i.supplier, datum(i.uploaded_at), von]) tr.append(node('td', wert ?? '—'));
+      for (const wert of [datum(i.invoice_date), i.supplier, i.lagerort, datum(i.uploaded_at), von]) tr.append(node('td', wert ?? '—'));
       fragment.append(tr);
     }
     $('rows').replaceChildren(fragment);
@@ -305,13 +315,9 @@
     document.querySelectorAll('.filiale-only').forEach((el) => { el.hidden = !f; });
     $('ohneFiliale').hidden = !!f;
     if (f) {
-      $('stueck').textContent = zahl(f.stueck);
-      $('variantenText').textContent = t('dashboard.metric_stock_variants', { anzahl: zahl(f.varianten) });
-      $('verkauftHeute').textContent = zahl(f.verkauft_heute);
-      $('abgaengeText').textContent = t('dashboard.metric_removed_today', { anzahl: zahl(f.abgaenge_heute) });
+      stufen(f);
+      kategorien(f);
     }
-    $('products').textContent = zahl(daten.products);
-    $('invoices').textContent = zahl(daten.invoices);
     schnellzugriffeZeichnen();
     anstehend();
     aktuelles();
@@ -347,6 +353,7 @@
       if (!antwort.ok) throw new Error(typeof ergebnis.detail === 'string' ? ergebnis.detail : t('dashboard.load_error'));
       daten = ergebnis;
       zeichnen();
+      verlaeufeLaden();
       $('status').textContent = '';
     } catch (fehler) {
       $('status').textContent = fehler.message === 'Failed to fetch' ? t('common.connection_lost') : fehler.message;
@@ -359,13 +366,16 @@
     name = (me.name || '').trim().split(/\s+/)[0] || null;
     if (daten) begruessen();
     schnellzugriffeZeichnen(me.schnellzugriffe);
+    // Punkt 10: an Orten ohne Verkauf (GEWA, VEBO, Dietikon) gibt es kein Anstehend.
+    $('anstehendPanel').hidden = !!(me.lagerort && me.lagerort.verkauf === false);
   });
   $('retry').addEventListener('click', laden);
+  $('periode').addEventListener('change', () => { periode = $('periode').value; verlaeufeLaden(); });
   $('schnellzugriffeBearbeiten').addEventListener('click', editorOeffnen);
   $('schnellzugriffeAbbrechen').addEventListener('click', () => { $('schnellzugriffeEditor').hidden = true; });
   $('schnellzugriffeSpeichern').addEventListener('click', editorSpeichern);
   window.SportfabrikI18n.ready.then(() => {
     laden();
-    document.addEventListener('sportfabrik:i18n-ready', zeichnen);
+    document.addEventListener('sportfabrik:i18n-ready', () => { zeichnen(); verlaeufeLaden(); });
   });
 })();

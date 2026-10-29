@@ -1,5 +1,5 @@
 """Statistikseite (Anforderung 9, 24.09.2026): verkaufte Stück je
-Kassenkategorie, geschätzte Einnahmen und eine Bestellempfehlung, je Zeitraum.
+Kassenkategorie, geschätzte Einnahmen und die meistverkauften Artikel mit Bestand, je Zeitraum.
 Nur Filialleiter/Zentrale dürfen sie sehen (Router prüft das).
 
 **Einnahmen sind ausdrücklich eine Schätzung** (Entscheid 24.09.2026): für

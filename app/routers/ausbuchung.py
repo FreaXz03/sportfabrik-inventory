@@ -28,6 +28,7 @@ from ..services.ausbuchung import (
     storniere,
 )
 from ..services.lagerorte import list_wareneingang_lagerorte
+from .operation_id import operation_id_aus_header
 from .auth import (
     get_active_lagerort,
     get_language,
@@ -116,6 +117,7 @@ async def api_ausbuchen(
     user=Depends(require_login_api),
     session=Depends(get_session),
     language: str = Depends(get_language),
+    operation_id: str | None = Depends(operation_id_aus_header),
 ):
     """Ein Stück ausbuchen (F15). Die Antwort meldet `bestand_reicht_nicht`,
     wenn der Bestand vorher unter einem Stück lag - gebucht ist trotzdem."""
@@ -138,6 +140,7 @@ async def api_ausbuchen(
                 freitext=body.freitext,
                 benutzer={"kassennummer": user.kassennummer, "name": user.name},
                 language=language,
+                operation_id=operation_id,
             )
         )
     except AusbuchungRejected as exc:

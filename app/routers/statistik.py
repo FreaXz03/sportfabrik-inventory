@@ -8,13 +8,13 @@ from fastapi.responses import FileResponse
 from ..core.database import get_session
 from ..services.lagerorte import list_all_lagerorte
 from ..services.statistik import UnbekannterZeitraum, ZEITRAEUME, auswertung
-from .auth import require_chef_api, require_chef_page
+from .auth import require_chef_api, require_chef_page, require_verkaufsort_page
 
 router = APIRouter()
 
 
 @router.get("/statistiken", include_in_schema=False)
-def statistiken_page(user=Depends(require_chef_page)):
+def statistiken_page(user=Depends(require_chef_page), _verkauf=Depends(require_verkaufsort_page)):
     return FileResponse(
         Path(__file__).resolve().parents[1] / "templates" / "statistiken.html"
     )
