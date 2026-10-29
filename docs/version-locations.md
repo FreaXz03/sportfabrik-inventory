@@ -1,29 +1,32 @@
-# Source and deployment locations
+# Development and production workflow
 
-Verified 29 October 2026 via read-only SSH and local comparison.
+Owner decision and setup: 29 October 2026.
 
-## Development source
+## Locations and branches
 
-The Mac repository at `/Users/fabianmorf/Documents/Sportfabrik-inventory`, branch `feature/warenwirtschaft-v2`, now combines local commit `7bfe0ca` and the additional source recovered from the running server directory. Existing uncommitted instruction/agent changes were preserved separately.
+| Location | Branch | Purpose |
+| --- | --- | --- |
+| Mac: `/Users/fabianmorf/Documents/Sportfabrik-inventory` | `working/entwicklung` | Development; commit and push verified completed tasks. |
+| sfserver: `/home/sfadmin/projects/sportfabrik-inventory` | `working/entwicklung` | Development by integrated Codex/Claude service; same completion rule. |
+| sfserver: `/home/sfadmin/homeserver/sportfabrik-inventory` | `main` | Production source linked to GitHub. No development here. |
+| sfserver: `/opt/sportfabrik-inventory` | Historical | Old unused clone retained for recovery; do not use. |
 
-Recovered work includes INTERSPORT delivery parsing, local OCR and barcode EAN decoding, explicit cancelled-document replacement (migration `a20261028`), and unified article search. A local fix makes the new migration support PostgreSQL offline SQL generation; it has not been deployed. Install requirements before running. Apply pending migrations to a backed-up local development database before local app use; reconciliation did not modify any database.
+The service receives a scoped Sportfabrik workflow reminder on every turn, including existing chats and both providers. Its existing UI authorization still controls mutations. Completed, verified implementation tasks are committed and pushed to `origin/working/entwicklung` without a new push request. Failed checks or push attempts must be reported; read-only questions cause no push.
 
-## Server locations
+Read `AGENTS.md` and `CLAUDE.md`. Before changes: inspect status, fetch, verify the working branch and fast-forward when clean. Stage only the task files, preserve unrelated edits and never force-push. Never publish PDFs, databases or credentials.
 
-| Path on sfserver | Role and observed status |
-| --- | --- |
-| `/home/sfadmin/homeserver/sportfabrik-inventory` | Running deployment source; no Git metadata. Contains additional work from 28 October. Preserve this directory, `.env.server`, backups and Compose project `sportfabrik`. |
-| `/home/sfadmin/projects/sportfabrik-inventory` | Stale development clone at `8de830d`; do not use as latest source until explicitly synchronized. |
-| `/opt/sportfabrik-inventory` | Historical clone at `94e5085`; not the Compose working directory of the running app. Retained for recovery. |
+## Push guard
 
-The running image was created on 28 October 2026 at 14:49 UTC. Reconciliation did not change server files, containers, images, databases, volumes or services. No migration was run against production.
+Run `sh scripts/install-push-guard.sh` in each development clone. It installs `.githooks/pre-push` as the repository pre-push hook while preserving existing post-checkout/post-commit hooks. It permits only `working/entwicklung` to the same remote branch and blocks main, tags and deletion. The production clone has the same guard and cannot push from main. This prevents ordinary accidental pushes; administrators can still change local hooks.
 
-## Recovery and workflow
+## Releases
 
-Original server source, original local source and local Git history were saved in `/Users/fabianmorf/Documents/Sportfabrik-reconciliation-20261029`. Archives exclude production data, uploads and credentials.
+A working-branch push does not deploy. Merge to main only when explicitly requested. Update production only on a separate deployment request: preserve server environment, backup the database and files, inspect pending migrations, then deliberately pull/build/migrate/restart and verify health. Never put an automatic production pull or restart in a development completion hook.
 
-Use Git to transfer reviewed development changes between machines. Keep production deployment separate and deploy only deliberately, after backups and migration checks. Do not develop directly in the deployment directory. The older server clones remain in place until their consumers and backup references have been checked; no deletion or directory move was performed.
+The Git linkage itself did not rebuild/restart Sportfabrik or run any database migration. The already-running image remains the image built on 28 October; the production source is attached to main, with the offline migration-script fix aligned separately. A future deliberate deployment will rebuild from that source.
 
-GitHub has not been updated by this reconciliation. At inspection, the remote working branch was `8de830d` and main was `884c36c`.
+## Recovery
 
-Validation on the isolated combined source: **378 passed, 15 skipped** (SQLite). Private document regressions were not enabled. PostgreSQL production migrations were not rerun. App and database remained healthy after reconciliation.
+Original server source, original Mac source and Git history: `/Users/fabianmorf/Documents/Sportfabrik-reconciliation-20261029`. Branch deletion snapshot: `before-branch-cleanup.bundle`. Server Git-link backups: `/home/sfadmin/backups-sportfabrik/git-link-20261029`. KI gateway backup is stored beside that service under `backup-git-workflow-*`. Keys and secrets are never stored in the repository.
+
+Validation: combined application source previously passed 378 SQLite tests, 15 skipped. Workflow setup checks cover shell syntax and accepted/rejected push destinations. No production database writes are part of this setup.

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Development pushes are restricted to the designated working branch.
+set -eu
+branch=$(git symbolic-ref --quiet --short HEAD) || { echo "Push blocked: use working/entwicklung." >&2; exit 1; }
+[ "$branch" = "working/entwicklung" ] || { echo "Push blocked: production/main cannot push." >&2; exit 1; }
+while read -r local_ref local_oid remote_ref remote_oid; do
+  [ "$local_ref" = "refs/heads/working/entwicklung" ] &&
+  [ "$remote_ref" = "refs/heads/working/entwicklung" ] || {
+    echo "Push blocked: only working/entwicklung -> working/entwicklung is allowed." >&2
+    exit 1
+  }
+done

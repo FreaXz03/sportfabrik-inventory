@@ -37,7 +37,7 @@
 - New business logic: write a meaningful failing test first, then implement. Few end-to-end flow tests; individual tests for hard rules. No tests for pure text changes.
 - Before code commits: `DATABASE_URL=sqlite:// .venv/bin/pytest -q`. For pure documentation/tooling maintenance, run targeted checks only; no unnecessary application test run. Report PostgreSQL/production testing separately.
 - Documents stay outside the public repo. Parser tests with real documents only via explicit local paths/environment variables.
-- Work on the branch `feature/warenwirtschaft-v2`, not directly on main. Small, traceable commits; no push without being asked.
+- Work only on `working/entwicklung`. After completed, verified work, commit and push the task changes to `origin/working/entwicklung` without asking again (Fabian, 2026-10-29). Never push to main or deploy automatically. Follow `AGENTS.md` for the shared Git workflow.
 - Don't invent answers to open business questions about branch workflows. Security status: `docs/sicherheit.md`; check open mandatory measures before store deployment.
 
 ## Keeping knowledge current, keeping context small
