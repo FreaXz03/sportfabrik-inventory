@@ -30,3 +30,7 @@ The Git linkage itself did not rebuild/restart Sportfabrik or run any database m
 Original server source, original Mac source and Git history: `/Users/fabianmorf/Documents/Sportfabrik-reconciliation-20261029`. Branch deletion snapshot: `before-branch-cleanup.bundle`. Server Git-link backups: `/home/sfadmin/backups-sportfabrik/git-link-20261029`. KI gateway backup is stored beside that service under `backup-git-workflow-*`. Keys and secrets are never stored in the repository.
 
 Validation: combined application source previously passed 378 SQLite tests, 15 skipped. Workflow setup checks cover shell syntax and accepted/rejected push destinations. No production database writes are part of this setup.
+
+## Session record and later production overrides
+
+See [the reconciliation/setup record](reconciliation-2026-10-29.md) for commits, backups, checks and limitations. A later read-only check confirmed uncommitted HTTPS changes in the production clone (`Caddyfile`, `compose.yaml`); preserve them before any release update. The clone is on main but its deployment configuration is therefore not byte-for-byte identical to GitHub.

@@ -24,6 +24,10 @@ Deployed and verified in the running homeserver app. Fixed the table boundary: o
 
 Validation: full isolated suite 341 passed, 40 skipped, one test initially failed because its test-only YAML dependency was absent; that test passed separately with its dependency and configuration fixtures mounted. Final targeted parser regression run: 63 passed, 14 skipped. No production credentials/database were used by the test containers. Affected: `app/services/parsers/intersport_delivery.py`, new `intersport_delivery_ocr.py`, `tests/test_intersport_delivery.py`, DE/FR/EN hint catalogs. Recovery image: `sportfabrik-app:before-column-ocr-20261026`.
 
+## Repository and deployment workflow — 2026-10-29
+
+Development now uses `working/entwicklung` on the Mac and in `/home/sfadmin/projects/sportfabrik-inventory`; the production clone is linked to `main`. Completed, verified tasks are committed and pushed to working by default; merges/deployments remain explicit. See [current workflow](version-locations.md) and [verified reconciliation/setup record](reconciliation-2026-10-29.md). Preserve the production clone's later uncommitted HTTPS overrides in `Caddyfile` and `compose.yaml` before deployment. Older branch/status paragraphs below are dated history.
+
 ## Goal and current status
 
 Inventory management for four Sportfabrik branches; GEWA, VEBO, and Dietikon are external storage locations without sales. Documents are parsed locally on-site. Item master shared across branches, stock and booking rights are branch-specific. Later: POS integration and online shop.
