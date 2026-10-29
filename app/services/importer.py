@@ -181,6 +181,7 @@ def import_invoice(
     corrections=None,
     language: str = DEFAULT_LANGUAGE,
     lieferung: str | None = None,
+    replace_cancelled_id: int | None = None,
 ):
     digest = hashlib.sha256(pdf).hexdigest()
     if digest != expected_hash:
@@ -191,6 +192,19 @@ def import_invoice(
     with lese_slot:
         document, parser = read_and_detect(pdf, language)
         parsed = parse_with_parser(parser, document, language)
+    if replace_cancelled_id is not None:
+        from .reimport import replacement_rows
+        try:
+            with session_factory() as prior_session:
+                prior = replacement_rows(prior_session,replace_cancelled_id,digest,parsed,lagerort_id,language)
+                reviewed = {str(item['row_number']):{
+                    field: str(prior[item['row_number']][1].get(field) or '')
+                    for field in ('article_no','supplier_article_no','color','size')}
+                    for item in parsed['items'] if item['warnings']}
+            parsed = apply_corrections(parsed,reviewed,imported_by,language)
+        except ValueError as exc:
+            raise ImportRejected(str(exc)) from exc
+        lieferung = NEU
     if corrections:
         try:
             parsed = apply_corrections(parsed, corrections, imported_by, language)
@@ -264,6 +278,7 @@ def import_invoice(
             # dürfen dieselbe Nummer verwenden (siehe Migration e5f6a7b8c9d0).
             existing = session.scalar(
                 select(Dokument).where(
+                    Dokument.status == "aktiv" if replace_cancelled_id is not None else text("true"),
                     or_(
                         Dokument.datei_hash == digest,
                         and_(
@@ -282,6 +297,12 @@ def import_invoice(
                         id=existing.id,
                     )
                 )
+            replacement = None
+            if replace_cancelled_id is not None:
+                try:
+                    replacement = replacement_rows(session,replace_cancelled_id,digest,parsed,lagerort_id,language)
+                except ValueError as exc:
+                    raise ImportRejected(str(exc)) from exc
             # Lieferschein/Rechnung zu einer bestehenden Lieferung (Paket 1,
             # Schritt 2): erkennt das System eine passende, fragt es immer
             # (Q3) - gewählt wird „neu" oder die Lieferung. Angehängt wird
@@ -308,6 +329,7 @@ def import_invoice(
             ware_ist_da = parsed["document_type"] in TYPEN_MIT_WARE
             now = datetime.now(timezone.utc)
             dokument = Dokument(
+                ersetzt_dokument_id=replace_cancelled_id,
                 lieferant_id=lieferant.id,
                 lagerort_id=lagerort_id,
                 typ=parsed["document_type"],
@@ -381,6 +403,17 @@ def import_invoice(
                     if variante is not None:
                         reused_varianten.add(variante.id)
 
+                if replacement is not None:
+                    previous_id = replacement[item['row_number']][0].varianten_id
+                    previous = session.get(Variante,previous_id)
+                    if (variante is not None and variante.id != previous_id) or (ean and previous.ean and previous.ean!=ean):
+                        raise ImportRejected(translate('errors.importer.replacement_ean_conflict',language))
+                    variante = previous
+                    if ean and not variante.ean:
+                        variante.ean = ean
+                        variante.ean_intern = False
+                        session.flush()
+                    reused_varianten.add(variante.id)
                 if variante is None:
                     group_key = artikel_group_key(
                         item.get("brand"), item.get("supplier_article_no")

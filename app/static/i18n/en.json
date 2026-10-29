@@ -1,4 +1,12 @@
 {
+  "preview.progress.uploading": "Uploading document …",
+  "preview.progress.reading": "Reading document …",
+  "preview.progress.checking": "Checking corrections …",
+  "preview.progress.elapsed": "{seconds} s elapsed",
+  "preview.progress.remaining": "About {seconds} s remaining",
+  "preview.progress.unknown": "Remaining time can be estimated after the first read",
+  "preview.progress.longer": "Taking longer than the first read; please wait …",
+  "preview.progress.complete": "Completed in {seconds} s",
   "common.footer": "Sport-Fabrik Inventory",
   "common.brand_name": "Sport-Fabrik Inventory",
 
@@ -312,6 +320,8 @@
   "articles.page_title": "Article search · Sport-Fabrik",
   "articles.heading": "Article search",
   "articles.intro": "All articles imported so far, in one place. Search by EAN, brand or description.",
+  "articles.filter.search_all": "Search articles",
+  "articles.filter.search_all_placeholder": "Scan EAN or enter brand, article number, description, colour, size …",
   "articles.filter.quick_search": "Quick search",
   "articles.filter.quick_search_placeholder": "Article, colour, size …",
   "articles.filter.all_brands": "All brands",
@@ -1242,5 +1252,11 @@
   "preview.add_size_hint": "A size missing? Copies this line - then enter the size and quantity and validate.",
   "errors.parser.columbia_scan_review": "Scanned catalogue: verify all article numbers, colours, sizes, lengths and prices against the original before importing. No quantities or monetary totals are printed; quantities are zero. Handwritten notes are not applied.",
   "errors.parser.columbia_scan_row": "Uncertain OCR, size/length range, missing colour name or purchase price: check this row against the original; size ranges have not been expanded.",
-  "errors.parser.columbia_scan_index": "Style index is uncertain, missing, incomplete or differs from parsed models. Missing models: {missing}; models not confirmed by the index: {extra}."
+  "errors.parser.columbia_scan_index": "Style index is uncertain, missing, incomplete or differs from parsed models. Missing models: {missing}; models not confirmed by the index: {extra}.",
+  "hints.parser.local_ocr_recovered": "Recovered locally from the scan; original text retained for review.",
+  "hints.parser.barcode_recovered": "EAN decoded from the barcode and validated by check digit.",
+  "errors.parser.barcode_ambiguous": "Multiple different EAN barcodes detected in this row; please review.",
+  "errors.importer.replacement_mismatch": "The cancelled document does not match the file and location.",
+  "errors.importer.replacement_rows_changed": "The rows do not match the cancelled document.",
+  "errors.importer.replacement_ean_conflict": "A decoded EAN already belongs to a different variant."
 }

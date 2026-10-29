@@ -1000,11 +1000,10 @@ label > textarea { margin-top: 7px; }
 
 .filters > button { flex: none; }
 
-/* Artikelsuche (23.09.2026): zuerst scannen, dann frei suchen - gross und
-   gut lesbar; alle übrigen Filter hinter „Weitere Filter". */
+/* Unified article search, with advanced filters below. */
 .search-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px 16px;
   align-items: end;
 }
@@ -3247,3 +3246,8 @@ button.pv-link[aria-expanded="true"] { color: var(--text-muted); }
 .settings-dialog label { display: grid; gap: 6px; font-size: var(--fs-sm); }
 .settings-dialog textarea { width: 100%; resize: vertical; font: inherit; }
 .report-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+
+/* Upload / correction checking progress, also readable on small screens. */
+.operation-progress { margin: 16px 0; padding: 16px; border: 1px solid var(--border); border-radius: 8px; }
+.operation-progress progress { display: block; width: 100%; height: 18px; margin: 10px 0; accent-color: var(--primary, #167349); }
+.operation-progress p { margin: 0; font-variant-numeric: tabular-nums; }

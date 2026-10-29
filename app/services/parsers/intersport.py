@@ -27,6 +27,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime
 import re
 
+from . import intersport_delivery
 from .base import (
     Document,
     DocumentParseError,
@@ -129,6 +130,8 @@ def detect(document: Document) -> int | None:
     zusätzliche Bestätigung, damit ein fremdes Layout mit zufällig ähnlicher
     Kopfzeile nicht gleich gewinnt.
     """
+    if intersport_delivery.detect(document):
+        return 6
     if not any(_header_rows(lines(page.words)) for page in document.pages):
         return None
     score = 2
@@ -146,6 +149,8 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
     Entdoppelung. Unsichere Zeilen bleiben mit Warnung in der Vorschau,
     unkritische Auffälligkeiten (z. B. keine EAN) nur als Hinweis.
     """
+    if intersport_delivery.detect(document):
+        return intersport_delivery.parse(document, language)
     items, warnings, counts = [], [], []
     table_closed = False
     ab = _ist_auftragsbestaetigung(document)
@@ -450,6 +455,8 @@ def dates(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
     immer in der Reihenfolge des digitalen Exports (der Kopfblock mit diesen
     Daten kann auf einer späteren Seite landen).
     """
+    if intersport_delivery.detect(document):
+        return intersport_delivery.dates(document, language)
     if _ist_auftragsbestaetigung(document):
         # Die Auftragsbestätigung kennt nur das Auftragsdatum.
         treffer = AB_DATE_PATTERN.search(document.text)

@@ -130,7 +130,13 @@ def read_page(page, number: int, language: str = DEFAULT_LANGUAGE) -> Page:
     words = page.get_text("words")
     if words:
         height = page.rect.height
-        if not _text_laeuft_aufwaerts(page):
+        if page.rotation:
+            words = [
+                (*tuple(pymupdf.Rect(w[:4]) * page.rotation_matrix), *w[4:])
+                for w in words
+            ]
+            text = "\n".join(joined(row) for row in lines(words))
+        elif not _text_laeuft_aufwaerts(page):
             text = page.get_text()
         else:
             # Querformat-Seite gedreht auf ein Hochformat-Blatt gelegt (die

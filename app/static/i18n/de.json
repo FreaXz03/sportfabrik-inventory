@@ -1,4 +1,12 @@
 {
+  "preview.progress.uploading": "Beleg wird übertragen …",
+  "preview.progress.reading": "Beleg wird eingelesen …",
+  "preview.progress.checking": "Korrekturen werden geprüft …",
+  "preview.progress.elapsed": "{seconds} s vergangen",
+  "preview.progress.remaining": "Geschätzt noch {seconds} s",
+  "preview.progress.unknown": "Restzeit wird nach dem ersten Einlesen schätzbar",
+  "preview.progress.longer": "Dauert länger als beim ersten Einlesen; bitte warten …",
+  "preview.progress.complete": "Abgeschlossen nach {seconds} s",
   "common.footer": "Sport-Fabrik Inventory",
   "common.brand_name": "Sport-Fabrik Inventory",
 
@@ -312,6 +320,8 @@
   "articles.page_title": "Artikelsuche · Sport-Fabrik",
   "articles.heading": "Artikelsuche",
   "articles.intro": "Alle bisher importierten Artikel an einem Ort. Suchen Sie nach EAN, Marke oder Bezeichnung.",
+  "articles.filter.search_all": "Artikel suchen",
+  "articles.filter.search_all_placeholder": "EAN scannen oder Marke, Artikelnummer, Bezeichnung, Farbe, Grösse eingeben …",
   "articles.filter.quick_search": "Schnellsuche",
   "articles.filter.quick_search_placeholder": "Artikel, Farbe, Grösse …",
   "articles.filter.all_brands": "Alle Marken",
@@ -1242,5 +1252,11 @@
   "preview.add_size_hint": "Fehlt eine Grösse? Kopiert diese Zeile - dann Grösse und Menge eintragen und prüfen.",
   "errors.parser.columbia_scan_review": "Gescannter Katalog: Artikelnummern, Farben, Grössen, Längen und Preise vor dem Import am Original prüfen. Keine Mengen oder Geldsummen gedruckt; Mengen sind null. Handschriftliche Notizen werden nicht angewendet.",
   "errors.parser.columbia_scan_row": "Unsichere OCR, Grössen-/Längenbereich, fehlender Farbname oder Einkaufspreis: Position am Original prüfen; Grössenbereiche wurden nicht erweitert.",
-  "errors.parser.columbia_scan_index": "Stilindex ist unsicher, fehlt, ist unvollständig oder weicht von den gelesenen Modellen ab. Fehlende Modelle: {missing}; nicht im Index bestätigte Modelle: {extra}."
+  "errors.parser.columbia_scan_index": "Stilindex ist unsicher, fehlt, ist unvollständig oder weicht von den gelesenen Modellen ab. Fehlende Modelle: {missing}; nicht im Index bestätigte Modelle: {extra}.",
+  "hints.parser.local_ocr_recovered": "Aus dem Scan lokal neu erkannt; Originaltext bleibt zur Prüfung erhalten.",
+  "hints.parser.barcode_recovered": "EAN aus dem Barcode gelesen und mit Prüfziffer bestätigt.",
+  "errors.parser.barcode_ambiguous": "Mehrere unterschiedliche EAN-Barcodes in dieser Zeile erkannt; bitte prüfen.",
+  "errors.importer.replacement_mismatch": "Der stornierte Beleg passt nicht zu Datei und Filiale.",
+  "errors.importer.replacement_rows_changed": "Die Positionen stimmen nicht mit dem stornierten Beleg überein.",
+  "errors.importer.replacement_ean_conflict": "Eine erkannte EAN gehört bereits zu einer anderen Variante."
 }

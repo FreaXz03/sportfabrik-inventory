@@ -120,7 +120,7 @@ for (const key of Object.keys(VORGABEN)) {
     filters.set(key, 'true');
   }
 }
-// Suchtext aus dem Alles-Finder oben (2026-10-01): in die Schnellsuche eintragen und filtern.
+// Suchtext aus dem Alles-Finder oben (2026-10-01): in das gemeinsame Suchfeld eintragen und filtern.
 const startSuche = (adresse.get('q') || '').slice(0, 200);
 if (startSuche) {
   filters.set('q', startSuche);
@@ -166,22 +166,22 @@ $('filters').addEventListener('submit', (event) => {
 });
 
 // Scanner schicken nach dem Barcode ein Enter - sofort suchen und das
-// Feld für den nächsten Scan markieren (23.09.2026: EAN-Feld zuerst).
-$('eanSuche').addEventListener('keydown', (event) => {
+// gemeinsame Suchfeld für den nächsten Scan markieren.
+$('articleSuche').addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
   event.preventDefault();
   $('filters').requestSubmit();
-  $('eanSuche').select();
+  $('articleSuche').select();
 });
 
 // `autofocus` greift nicht in jedem Browser, wenn die Seite aus dem Menü
-// geöffnet wird - das EAN-Feld hier ausdrücklich aktiv setzen (23.09.2026).
-$('eanSuche').focus();
+// geöffnet wird - das Suchfeld hier ausdrücklich aktiv setzen (23.09.2026).
+$('articleSuche').focus();
 
 $('resetBtn').addEventListener('click', () => {
   $('filters').reset();
   if (vorgabe) vorgabeWeg();
-  $('eanSuche').focus();
+  $('articleSuche').focus();
   filters = new URLSearchParams();
   page = 1;
   load();

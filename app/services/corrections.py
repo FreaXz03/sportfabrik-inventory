@@ -122,6 +122,10 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
         errors = []
         # Revalidate field warnings, but retain unknown parser warnings.
         for warning in original["warnings"]:
+            if warning == translate("errors.parser.barcode_ambiguous",language) and "ean" in patch:
+                from .parsers.intersport_delivery_barcodes import valid_ean
+                if not item.get("ean") or valid_ean(item["ean"]):
+                    continue
             if warning.startswith(reparsed_prefixes):
                 continue
             if warning.startswith(color_size_prefix) and all(
@@ -133,6 +137,8 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
             hint
             for hint in original.get("hints", [])
             if not hint.startswith(recomputed_hint_prefixes)
+            and not ("ean" in patch and item.get("ean") != original.get("ean")
+                     and hint == translate("hints.parser.barcode_recovered",language))
         ]
         for key, limit in FIELDS.items():
             value = item.get(key)
@@ -197,6 +203,15 @@ def apply_corrections(parsed, corrections=None, actor=None, language: str = DEFA
         result["warnings"] = ohne_gegenrechnung(result["warnings"], language) + gegenrechnung_dokument(
             result["items"], result["check_totals"], language
         )
+    if "delivery_total" in result:
+        from .parsers.intersport_delivery import validate_codes
+        from .parsers.base import gleiche_summe
+        for item in result["items"]:
+            validate_codes(item, language)
+        result["warnings"] = ohne_gegenrechnung(result["warnings"], language)
+        total = result["delivery_total"]
+        result["warnings"] += gleiche_summe(total, result["items"], language) if total is not None else [
+            translate("errors.parser.total_mismatch",language,summe="?",beleg="?")]
     counts = Counter(i["ean"] for i in result["items"] if i.get("ean"))
     result["duplicate_eans"] = {k: v for k, v in counts.items() if v > 1}
     result["rows_with_warnings"] = sum(bool(i["warnings"]) for i in result["items"])

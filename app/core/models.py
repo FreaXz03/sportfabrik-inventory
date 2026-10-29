@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Integer,
+    Index,
     ForeignKey,
     Numeric,
     String,
@@ -201,9 +202,10 @@ class Dokument(Base):
         # B2, Migration e5f6a7b8c9d0). Der Importer prüft zusätzlich selbst auf
         # Duplikate, damit der Benutzer eine verständliche Meldung bekommt
         # statt eines Datenbankfehlers.
-        UniqueConstraint(
-            "lieferant_id", "dokumentnummer", name="uq_dokumente_lieferant_dokumentnummer"
-        ),
+        Index("uq_dokumente_active_number", "lieferant_id", "dokumentnummer", unique=True,
+              postgresql_where=text("status = 'aktiv'"),sqlite_where=text("status = 'aktiv'")),
+        Index("uq_dokumente_active_hash", "datei_hash", unique=True,
+              postgresql_where=text("status = 'aktiv'"),sqlite_where=text("status = 'aktiv'")),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -222,7 +224,8 @@ class Dokument(Base):
     belegdatum: Mapped[date | None] = mapped_column(Date)
 
     dateiname: Mapped[str | None] = mapped_column(String(500))
-    datei_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    datei_hash: Mapped[str | None] = mapped_column(String(64))
+    ersetzt_dokument_id: Mapped[int | None] = mapped_column(ForeignKey("dokumente.id"), nullable=True)
 
     hochgeladen_am: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
