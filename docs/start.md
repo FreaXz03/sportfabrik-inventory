@@ -2,7 +2,7 @@
 
 ## Separate homeserver development app — 30 October 2026
 
-The explicitly requested development deployment is available privately at `https://sfserver.tailb8a158.ts.net:8454`, built from `working/entwicklung`. It has its own PostgreSQL 18 database, network, file volume, credentials and session cookie. Production on `main` was not changed. The database starts empty except reference data; the first account/role is pending the owner's decision. Updates require deliberate rebuilds of this development stack. Operation, recovery and verification: [development-instance.md](development-instance.md). Full suite: 391 passed, 16 skipped; isolated PostgreSQL receipt smoke passed. Signed-in access awaits account setup.
+The explicitly requested development deployment is available privately at `https://sfserver.tailb8a158.ts.net:8454`, built from `working/entwicklung`. It has its own PostgreSQL 18 database, network, file volume, credentials and session cookie. Production on `main` was not changed. The database contains reference data and the explicitly requested Zentrale test account 910100; no production data was copied. Updates require deliberate rebuilds of this development stack. Operation, recovery and verification: [development-instance.md](development-instance.md). Full suite: 391 passed, 16 skipped; isolated PostgreSQL receipt smoke passed. Authenticated HTTPS access for the test account was verified.
 
 ## Current development milestone — 30 October 2026
 

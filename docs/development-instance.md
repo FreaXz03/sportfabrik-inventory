@@ -16,7 +16,7 @@ Installed on 30 October 2026 on explicit user request. Production remains separa
 - `SESSION_COOKIE_NAME=sportfabrik_dev_session` and an independent session secret prevent the browser from mixing development and production sessions on the same hostname. Ports alone do not isolate cookies. The default cookie name remains `session`, and Secure/HttpOnly/SameSite behavior is unchanged.
 - The app's current upload flow does not permanently retain source PDFs; the dedicated volume does not change that behavior.
 
-The initial database contains reference data from migrations but no articles, documents, movements or user accounts. Existing accounts/credentials were not copied. Account identity and role were requested from the owner and remain pending; no new account or administrative rights were silently granted. A password must be set interactively on the server, not sent in chat.
+The initial database contained only reference data. The owner subsequently explicitly requested Zentrale test account `910100` (display name `Zentrale`), which was created through the existing account-management command in the development container. Existing production accounts/credentials were not copied. The requested test password was supplied in memory only and is not recorded here. HTTPS login, authenticated `/api/me` role `admin`, the Secure development session cookie and logout were verified. No articles, documents or movements were created by account setup.
 
 The containers restart after a host reboot, but code updates are deliberate. There is no automatic branch watcher, Git pull, production deployment or background change agent.
 
@@ -68,4 +68,9 @@ To remove only its Tailscale route, an authorized server administrator can run `
 - Full isolated application suite: **391 passed, 16 skipped**, one upstream Starlette deprecation warning. No private document fixtures were supplied.
 - Vault files were not edited. Production was not rebuilt, restarted, migrated or updated.
 
-Account provisioning and a signed-in browser walkthrough remain pending the owner's account/role decision. Physical phone, scanner and POS acceptance are separate checks; this PostgreSQL smoke test is not a complete PostgreSQL concurrency or restore test suite.
+Account provisioning and authenticated HTTPS checks are complete. A full signed-in browser workflow remains a separate check. Physical phone, scanner and POS acceptance are separate checks; this PostgreSQL smoke test is not a complete PostgreSQL concurrency or restore test suite.
+
+
+## Test account verification — 30 October 2026
+
+Account `910100`, display name `Zentrale`, role `admin`, was created only in the development database after explicit approval of that identity and role. The existing account-management and password-hashing functions were used without changing authentication logic. HTTPS login and authenticated role checks passed; the test session was logged out. No password or credential material was written to repository files. This account-only follow-up required no app rebuild, migration, restart or application-code changes; verification used the live development endpoint rather than rerunning the earlier full suite. Production remained unchanged.
