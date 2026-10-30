@@ -1,7 +1,9 @@
 """Explicit, branch-scoped, preview-bound revisions of unreceived winter orders."""
 import hashlib
 import json
+import re
 import unicodedata
+from difflib import SequenceMatcher
 from collections import defaultdict
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -31,6 +33,46 @@ def candidates(session, allowed):
         .join(Lagerort,Lagerort.id==Wareneingang.lagerort_id).join(Lieferant,Lieferant.id==Dokument.lieferant_id)
         .where(Wareneingang.status=='erwartet',Dokument.status=='aktiv',Dokument.typ=='bestellung',
                Lieferant.parser_key=='bestellplan',Wareneingang.lagerort_id.in_(allowed)))]
+
+
+def _numbers(value):
+    return sorted(re.findall(r'\d+(?:\.\d+)?', normalized(value)))
+
+
+def suggest(entries, old):
+    """Propose an existing open article for each new group (never applied automatically).
+
+    confidence: exact (same name), high (very similar, same numbers, unambiguous), medium (similar but
+    uncertain: reasons say why), none (nothing similar; a new article is proposed). Articles with received
+    goods are never proposed and every old article is proposed at most once."""
+    taken = {e['target_id'] for e in entries if e.get('target_id')}
+    pool = [o for o in old.values() if o['id'] not in taken and not o['blocked']]
+    scores = {}
+    for e in entries:
+        if e.get('target_id'):
+            continue
+        ranked = sorted(((SequenceMatcher(None, normalized(e['name']), normalized(o['name'])).ratio(), o['id']) for o in pool), reverse=True)
+        scores[e['key']] = [r for r in ranked if r[0] >= 0.75]
+    assigned = {}
+    for ratio, key, oid in sorted(((r, k, i) for k, rs in scores.items() for r, i in rs), reverse=True):
+        if key not in assigned and oid not in {v[0] for v in assigned.values()}:
+            assigned[key] = (oid, ratio)
+    for e in entries:
+        e.update(suggested_id=e.get('target_id'), confidence='exact' if e.get('target_id') else 'none',
+                 similarity=1.0 if e.get('target_id') else 0.0, reasons=[], alternatives=[])
+        if e.get('target_id') or e['key'] not in assigned:
+            continue
+        oid, ratio = assigned[e['key']]
+        ranked = scores[e['key']]
+        others = [i for r, i in ranked if i != oid and ratio - r < 0.04]
+        reasons = []
+        if _numbers(e['name']) != _numbers(old[oid]['name']):
+            reasons.append('number')
+        if others:
+            reasons.append('ambiguous')
+        e.update(suggested_id=oid, similarity=round(ratio, 2), reasons=reasons,
+                 alternatives=[old[i]['name'] for i in others[:2]],
+                 confidence='high' if ratio >= 0.93 and not reasons else 'medium')
 
 
 def snapshot(session, receipt_id, parsed, allowed, language):
@@ -77,6 +119,7 @@ def snapshot(session, receipt_id, parsed, allowed, language):
         matches=[o['id'] for o in old.values() if normalized(o['name'])==normalized(entry['name'])]
         entry['target_id']=matches[0] if len(matches)==1 else None
         entry['quantity']=str(entry['quantity']);entry['sizes']={k:str(v) for k,v in entry['sizes'].items()}
+    suggest(list(new.values()),old)
     audits=list(session.scalars(select(WinterAbgleich).where(WinterAbgleich.wareneingang_id==receipt_id).order_by(WinterAbgleich.id)))
     consumed={key for a in audits if a.data["source"]==parsed["groups"] for key in a.data["selection"]}
     for entry in new.values():

@@ -1326,5 +1326,13 @@
   "winter.withdraw": "Supprimé",
   "winter.withdraw_title": "Retirer les anciens articles de la commande ouverte (absents de la nouvelle liste)",
   "winter.select_all": "Sélectionner la refonte : créer les lignes sans correspondance, retirer les autres anciens articles",
-  "winter.revision_summary": "Créés : {created} groupes ({createdTotal} pièces). Supprimés : {removed} anciens articles ({removedTotal} pièces)."
+  "winter.revision_summary": "Créés : {created} groupes ({createdTotal} pièces). Supprimés : {removed} anciens articles ({removedTotal} pièces).",
+  "winter.suggest_exact": "Associé automatiquement : même nom.",
+  "winter.suggest_high": "Associé automatiquement : nom très proche. À vérifier brièvement.",
+  "winter.suggest_medium": "Association incertaine (similarité {percent} %). À vérifier avant de la sélectionner.",
+  "winter.suggest_none": "Aucun ancien article similaire. Proposé : nouvel article (correction de commande motivée requise).",
+  "winter.suggest_number": "Attention : un nombre ou numéro de modèle diffère dans le nom.",
+  "winter.suggest_ambiguous": "Attention : plusieurs anciens articles sont similaires : {others}",
+  "winter.manual_note": "Modifié manuellement.",
+  "winter.suggest_summary": "Proposition : {exact} même nom, {high} très proche, {medium} incertain, {none} sans correspondance. {unmatched} anciens articles absents de la nouvelle liste."
 }

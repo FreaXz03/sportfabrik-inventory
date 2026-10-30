@@ -1326,5 +1326,13 @@
   "winter.withdraw": "Dropped",
   "winter.withdraw_title": "Remove previous articles from the open order (article is not in the new list)",
   "winter.select_all": "Select full revision: create unmatched rows as new, remove all other previous articles",
-  "winter.revision_summary": "Created: {created} groups ({createdTotal} pieces). Dropped: {removed} previous articles ({removedTotal} pieces)."
+  "winter.revision_summary": "Created: {created} groups ({createdTotal} pieces). Dropped: {removed} previous articles ({removedTotal} pieces).",
+  "winter.suggest_exact": "Matched automatically: same name.",
+  "winter.suggest_high": "Matched automatically: very similar name. Please check briefly.",
+  "winter.suggest_medium": "Uncertain match ({percent}% similar). Please check before selecting it.",
+  "winter.suggest_none": "No similar previous article found. Proposed: new article (order correction with a reason required).",
+  "winter.suggest_number": "Warning: a number or model number in the name differs.",
+  "winter.suggest_ambiguous": "Warning: several previous articles are similar: {others}",
+  "winter.manual_note": "Changed manually.",
+  "winter.suggest_summary": "Proposal: {exact} same name, {high} very similar, {medium} uncertain, {none} without match. {unmatched} previous articles are not in the new list."
 }

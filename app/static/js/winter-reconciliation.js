@@ -30,6 +30,15 @@
         c.message.append(node('span', t('winter.compare', { old: original.quantity, current: c.group.quantity })));
         if (original.blocked) c.message.append(node('span', ' ' + t('winter.already_received')));
       }
+      const suggestedId = c.group.suggested_id ?? c.group.target_id;
+      if (id !== (c.group.confidence === 'none' ? 0 : suggestedId)) c.message.append(node('p', t('winter.manual_note')));
+      else {
+        const note = node('p', t('winter.suggest_' + (c.group.confidence || 'none'), { percent: Math.round(c.group.similarity * 100) }));
+        if (['medium', 'none'].includes(c.group.confidence)) note.style.fontWeight = '600';
+        c.message.append(note);
+        if (c.group.reasons.includes('number')) c.message.append(node('p', t('winter.suggest_number')));
+        if (c.group.reasons.includes('ambiguous')) c.message.append(node('p', t('winter.suggest_ambiguous', { others: c.group.alternatives.join('; ') })));
+      }
       if (c.check.checked) {
         selected++;
         if (isNew) { created++; createdTotal += Number(c.group.quantity); }
@@ -73,21 +82,26 @@
     const fragment = document.createDocumentFragment();
     for (const group of view.groups) {
       const row = node('tr'), choose = node('td'), check = node('input'); check.type = 'checkbox'; check.setAttribute('aria-label', t('winter.choose') + ': ' + group.name);
-      const original = view.originals.find(o => o.id === group.target_id);
-      check.checked = !!original && original.quantity * 1 === group.quantity * 1 && !original.blocked && !group.applied && !group.warnings.length;
+      const suggestedId = group.suggested_id ?? group.target_id;
+      const original = view.originals.find(o => o.id === suggestedId);
+      // Only confident suggestions are pre-ticked; uncertain ones are filled in but wait for the user.
+      check.checked = !!original && ['exact', 'high'].includes(group.confidence) && !original.blocked && !group.applied && !group.warnings.length;
       check.disabled = group.applied || !!group.warnings.length;
       choose.append(check); row.append(choose);
       const description = node('td'); description.append(node('strong', group.name));
       for (const source of group.rows) description.append(node('p', t('winter.source', { page: source.page, paired: source.paired_page, section: source.section, number: source.printed_article_no || '—' })));
       row.append(description, node('td', Object.entries(group.sizes).map(([size, q]) => size + ': ' + q).join(' · ') || '0'));
       const target = node('td'), input = node('input'); input.type = 'text'; input.setAttribute('list', 'winterTargets'); input.setAttribute('aria-label', t('winter.target') + ': ' + group.name);
-      input.value = labels.get(group.target_id) || ''; target.append(input); row.append(target);
+      input.value = labels.get(suggestedId) || (group.confidence === 'none' ? newLabel : ''); target.append(input); row.append(target);
       const message = node('td'); row.append(message);
       controls.push({ group, check, input, message });
       check.addEventListener('change', () => update()); input.addEventListener('input', () => update()); fragment.append(row);
     }
     $('winterRows').replaceChildren(fragment);
-    $('winterTotals').textContent = t('winter.totals', { branch: view.branch, old: view.original_total, current: view.new_total });
+    const count = level => view.groups.filter(g => (g.confidence || 'none') === level).length;
+    const used = new Set(view.groups.map(g => g.suggested_id).filter(id => id));
+    $('winterTotals').textContent = t('winter.totals', { branch: view.branch, old: view.original_total, current: view.new_total }) + ' '
+      + t('winter.suggest_summary', { exact: count('exact'), high: count('high'), medium: count('medium'), none: count('none'), unmatched: view.originals.filter(o => !used.has(o.id)).length });
     $('winterHistory').replaceChildren();
     for (const h of view.history) {
       const detail = node('details'); detail.append(node('summary', h.filename + ' · ' + h.date + ' · ' + (h.actor || '—')));

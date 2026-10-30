@@ -1326,5 +1326,13 @@
   "winter.withdraw": "Entfällt",
   "winter.withdraw_title": "Bisherige Artikel aus der offenen Bestellung nehmen (Artikel entfällt in der neuen Liste)",
   "winter.select_all": "Neufassung auswählen: ohne Zuordnung neu anlegen, übrige bisherige Artikel entfernen",
-  "winter.revision_summary": "Neu angelegt: {created} Gruppen ({createdTotal} Stück). Entfallen: {removed} bisherige Artikel ({removedTotal} Stück)."
+  "winter.revision_summary": "Neu angelegt: {created} Gruppen ({createdTotal} Stück). Entfallen: {removed} bisherige Artikel ({removedTotal} Stück).",
+  "winter.suggest_exact": "Automatisch zugeordnet: gleicher Name.",
+  "winter.suggest_high": "Automatisch zugeordnet: Name sehr ähnlich. Bitte kurz prüfen.",
+  "winter.suggest_medium": "Unsichere Zuordnung (Ähnlichkeit {percent} %). Bitte prüfen, bevor sie ausgewählt wird.",
+  "winter.suggest_none": "Kein ähnlicher bisheriger Artikel gefunden. Vorgeschlagen: neuer Artikel (Bestellkorrektur mit Begründung nötig).",
+  "winter.suggest_number": "Achtung: Zahl oder Modellnummer im Namen unterscheidet sich.",
+  "winter.suggest_ambiguous": "Achtung: mehrere bisherige Artikel sind ähnlich: {others}",
+  "winter.manual_note": "Manuell geändert.",
+  "winter.suggest_summary": "Vorschlag: {exact} gleicher Name, {high} sehr ähnlich, {medium} unsicher, {none} ohne Treffer. {unmatched} bisherige Artikel kommen in der neuen Liste nicht vor."
 }
