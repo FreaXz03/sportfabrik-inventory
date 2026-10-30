@@ -111,12 +111,13 @@ def test_glocke_zaehlt_meldungen_wie_die_anstehend_liste(welt):
     assert client.get("/api/anstehend/anzahl").status_code == 401
     welt.anmelden(CHEF)
     assert client.get("/api/anstehend/anzahl").json() == {"anzahl": 0, "meldungen": []}
-    # Von Hand ohne EAN und ohne Kategorie: zwei Punkte (Stamm, alle Filialen).
+    # Missing EAN/category plus the newly retained expected receipt: three notices.
     client.post("/api/erfassen", json={"positionen": [{"marke": "CMP", "bezeichnung": "Jacke", "menge": "1", "uvp": "99"}]})
     glocke = client.get("/api/anstehend/anzahl").json()
-    assert glocke["anzahl"] == 2
+    assert glocke["anzahl"] == 3
     # Popup der Glocke (2026-10-01): die Punkte selbst, mit Ziel - gleiche Reihenfolge wie die Liste.
     assert glocke["meldungen"] == [
+        {"art": "expected", "anzahl": 1, "href": "/wareneingaenge", "dringend": False},
         {"art": "no_category", "anzahl": 1, "href": "/articles?kategorie_fehlt=true", "dringend": False},
         {"art": "no_ean", "anzahl": 1, "href": "/articles?ohne_ean=true", "dringend": False},
     ]
@@ -137,8 +138,8 @@ def test_verlaeufe_mit_vergleich(welt):
     welt.anmelden(CHEF)
     assert client.get("/api/uebersicht/verlaeufe?tage=5").status_code == 422
     assert "180" in client.get("/api/uebersicht/verlaeufe?tage=5").json()["detail"]
-    for bezeichnung in ("Jacke", "Hose"):
-        assert client.post("/api/erfassen", json={"positionen": [{"marke": "CMP", "bezeichnung": bezeichnung, "menge": "5", "uvp": "99"}]}).status_code == 200
+    for bezeichnung, ean in (("Jacke", "5901234123457"), ("Hose", "4006632041234")):
+        assert client.post("/api/erfassen", json={"positionen": [{"marke": "CMP", "bezeichnung": bezeichnung, "ean": ean, "menge": "5", "uvp": "99"}]}).status_code == 200
     jetzt = client.get("/api/uebersicht/verlaeufe?tage=7").json()
     assert jetzt["tage"] == 7
     assert len(jetzt["bestand"]["reihe"]) == 7 and len(jetzt["neu"]["reihe"]) == 7

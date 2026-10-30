@@ -348,7 +348,7 @@ without a document and for suppliers whose layout no parser knows yet.
 D27: goods without a document are a **direct goods receipt without a
 document** — no entry is created in `dokumente`,
 `wareneingaenge.dokument_id` stays empty (migration `a7b8c9d0e1f2`, which
-also adds `artikel.lieferant_id`). Booking happens immediately (rule 3:
+also adds `artikel.lieferant_id`). Booking happens immediately only when every positively submitted variant has an eligible EAN (rule 3:
 only what you're physically holding gets manually entered), through the
 **same** `buche_zugang()` and the same lock as import and arrival
 confirmation.
@@ -356,7 +356,7 @@ confirmation.
 | Field | Required? | Note |
 |---|---|---|
 | Brand, description, quantity, RRP | yes (D23) | nothing more is required |
-| EAN | no (rule 5) | a known EAN fills in the form; an unknown one is accepted |
+| EAN | required for stock, optional for master data | a known EAN fills in the form; missing EANs retain an expected receipt without stock |
 | Color, size | no | together with the item number, the key when there's no EAN |
 | Unit, supplier item number, purchase price | no | purchase price only saved if present (rule 10) |
 | Supplier | no | applies to the whole goods receipt, not per line item |
@@ -386,7 +386,7 @@ movement gets the reason `manuelle-erfassung` — a fixed key, not UI text.
 
 ## Internal EAN and label
 
-Rule 5/D10: the EAN is optional; many suppliers don't provide one. So
+Rule 5 (updated 30 October 2026): EAN is optional for master data, but required for supplier/manual stock receipts. Many suppliers do not provide one. So
 such an article can still be scanned at the till, the system generates,
 on request (D24), an **internal EAN-13 in the GS1 range 20-29**
 (`app/services/ean.py`). Structure: `20` + a ten-digit variant id +
@@ -974,3 +974,12 @@ and a bundled ZXing library otherwise (no CDN, per rule 1); a code counts
 only after two identical reads with a valid check digit. Full feature
 list and decisions: `docs/projekt-kontext.md`, "Mobile phone use –
 implemented 2026-09-28"; original requirements: `docs/handynutzung.md`.
+
+
+## Receipt validation and deferred persistence — 30 October 2026
+
+`services/receipt_ean.py` shares identifier eligibility, actionable error construction and unique identity resolution. It preserves the existing supplier format rule (8/12/13/14 ASCII digits); manual assignment and complementary original EANs also use the existing check-digit validation. Known manufacturer EANs remain distinct variants even where supplier colour/size is absent. Missing source identifiers reuse only an unambiguous supplier/item/colour/size identity; multiple candidates fail rather than selecting the first.
+
+Import/manual entry first resolves and stores all rows, then preflights the complete submitted stock receipt. Missing identifiers convert the whole submitted batch into expected receipt(s), with zero received quantities and no date, first/last delivery change or stock movement. Prices and input audit remain. Arrival checks only positively requested rows before mutating them, and keeps the existing transaction/advisory lock and operation-ID retry handling. A manually chosen markdown is retained in the existing source snapshot and applied on the first actual receipt of that row. Internal identifiers are generated only through deliberate user action; a later valid original identifier can supplement a unique internal variant without replacing the printed label.
+
+This boundary covers supplier/manual receiving, including cancelled-document replacement. It does not redefine transfers, returns/releases, corrections or cancellation counter-movements. No database schema change is needed. The nullable EAN and all existing stock/history remain intact. See [receipt-ean-2026-10-30.md](receipt-ean-2026-10-30.md) for scope and evidence.

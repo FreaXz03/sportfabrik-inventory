@@ -22,7 +22,16 @@ def test_cancelled_reimport_backfills_eans_without_duplicate_variants(monkeypatc
         return result
     monkeypatch.setattr(importer,'parse_with_parser',legacy)
     first=importer.import_invoice(pdf,'test.pdf',digest,sessions,location)
+    assert first['receipt_blocked'] is True
+    with sessions() as s:
+        assert s.scalar(select(func.count()).select_from(Bestand)) == 0
     storniere_dokument(first['invoice_id'],sessions)
+    blocked=importer.import_invoice(pdf,'test.pdf',digest,sessions,location,
+        lieferung='neu',replace_cancelled_id=first['invoice_id'])
+    assert blocked['receipt_blocked'] is True
+    with sessions() as s:
+        assert s.scalar(select(func.count()).select_from(Bestand)) == 0
+    storniere_dokument(blocked['invoice_id'],sessions)
     monkeypatch.setattr(importer,'parse_with_parser',original)
     with pytest.raises(importer.ImportRejected):
         importer.import_invoice(pdf,'test.pdf',digest,sessions,location,replace_cancelled_id=999999)

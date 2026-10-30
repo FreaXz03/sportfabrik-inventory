@@ -56,12 +56,12 @@ from .artikel import (
     EAN_MUSTER,
     artikel_group_key,
     finde_artikel,
-    finde_variante_ohne_ean,
     finde_variante_per_ean,
 )
 from .kategorien import kategorie_daten, merke_kategorie
 from .reduktion_manuell import MANUELLE_STUFEN, merke
 from . import operation
+from .receipt_ean import missing_receipt_eans, resolve_receipt_variant
 from .wareneingang import ADVISORY_LOCK_ID, buche_zugang
 
 # Grund der Lagerbewegung: ein fester Schlüssel, kein UI-Text - übersetzt wird
@@ -380,6 +380,7 @@ def erfasse_wareneingang(
 
             neue_varianten, bekannte_varianten = 0, set()
             artikel_cache, variante_cache = {}, {}
+            bookings = []
             for eintrag in geprueft:
                 ean = eintrag["ean"]
                 variante = variante_cache.get(ean) if ean else None
@@ -407,10 +408,10 @@ def erfasse_wareneingang(
                     if group_key:
                         artikel_cache[group_key] = artikel
 
-                    if not ean:
-                        variante = finde_variante_ohne_ean(
-                            session, artikel.id, eintrag["farbe"], eintrag["groesse"]
-                        )
+                    variante = resolve_receipt_variant(
+                        session, artikel.id, eintrag["farbe"], eintrag["groesse"],
+                        ean, ErfassungRejected, language,
+                    )
                     if variante is None:
                         variante = Variante(
                             artikel_id=artikel.id,
@@ -433,31 +434,11 @@ def erfasse_wareneingang(
                 merke_kategorie(
                     session.get(Artikel, variante.artikel_id), eintrag["kategorie_id"]
                 )
-                # N2: gewählte Reduktion = Wahl von Hand der Zielfiliale; ohne
-                # Wahl bleibt eine bestehende stehen.
-                if eintrag["reduktion"] is not None:
-                    merke(
-                        session,
-                        variante.artikel_id,
-                        lagerort.id,
-                        eintrag["reduktion"],
-                        (benutzer or {}).get("kassennummer"),
-                        (benutzer or {}).get("name"),
-                    )
-
-                # Von Hand erfasste Ware ist da - sie zählt wie eine Lieferung.
-                variante.first_seen = (
-                    min(variante.first_seen, gesehen) if variante.first_seen else gesehen
-                )
-                variante.last_seen = (
-                    max(variante.last_seen, gesehen) if variante.last_seen else gesehen
-                )
-
                 position = WareneingangPosition(
                     wareneingang_id=wareneingang.id,
                     varianten_id=variante.id,
                     menge=eintrag["menge"],
-                    menge_eingetroffen=eintrag["menge"],
+                    menge_eingetroffen=Decimal(0),
                     einheit=eintrag["einheit"],
                     uvp=eintrag["uvp"],
                     ek=eintrag["ek"],
@@ -493,19 +474,30 @@ def erfasse_wareneingang(
                         dokument_id=None,
                     )
                 )
-                buche_zugang(
-                    session,
-                    lagerort_id=lagerort.id,
-                    varianten_id=variante.id,
-                    position_id=position.id,
-                    menge=eintrag["menge"],
-                    eingangsdatum=datum,
-                    benutzer=benutzer,
-                    zeitpunkt=jetzt,
-                    grund=GRUND,
-                )
+                bookings.append((variante, position, eintrag))
+
+            missing = missing_receipt_eans(session, [v for v, _, _ in bookings], language)
+            if missing:
+                wareneingang.status = "erwartet"
+                wareneingang.eingangsdatum = None
+                datum = None
+            else:
+                for variante, position, eintrag in bookings:
+                    if eintrag["reduktion"] is not None:
+                        merke(session, variante.artikel_id, lagerort.id, eintrag["reduktion"],
+                              (benutzer or {}).get("kassennummer"), (benutzer or {}).get("name"))
+                    variante.first_seen = min(variante.first_seen, gesehen) if variante.first_seen else gesehen
+                    variante.last_seen = max(variante.last_seen, gesehen) if variante.last_seen else gesehen
+                    position.menge_eingetroffen = eintrag["menge"]
+                    buche_zugang(
+                        session, lagerort_id=lagerort.id, varianten_id=variante.id,
+                        position_id=position.id, menge=eintrag["menge"], eingangsdatum=datum,
+                        benutzer=benutzer, zeitpunkt=jetzt, grund=GRUND,
+                    )
 
             ergebnis = {
+                "receipt_blocked": bool(missing),
+                "missing_eans": missing,
                 "wareneingang_id": wareneingang.id,
                 "lagerort": {
                     "id": lagerort.id,

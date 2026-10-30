@@ -65,7 +65,17 @@ def test_erfassen_ean_etikett_kategorie(welt):
     )
     assert antwort.status_code == 200, antwort.text
     assert antwort.json()["positionen"] == 2
-    assert antwort.json()["eingangsdatum"] == date.today().isoformat()
+    assert antwort.json()["receipt_blocked"] is True
+    assert antwort.json()["eingangsdatum"] is None
+    with sessions() as session:
+        assert not session.scalars(select(Lagerbewegung)).all()
+        jacke_v = session.scalar(select(Variante.id).where(Variante.groesse == "152"))
+    # Manual confirmation generates an internal label, then the pending receipt is booked.
+    assert client.post(f"/api/varianten/{jacke_v}/ean", json={"generieren": True}).status_code == 200
+    pending = client.get("/api/wareneingaenge").json()["wareneingaenge"][0]
+    assert client.post(f"/api/wareneingaenge/{pending['id']}/ankunft", json={
+        "mengen": {str(p['id']): p['menge_offen'] for p in pending['positionen']}
+    }).status_code == 200
 
     # Ware ohne Beleg hat keinen Wareneingang mit Dokument - der UVP kommt bei
     # der Artikelsuche trotzdem, aus der Preishistorie (`preise`, Regel 10).
@@ -100,8 +110,8 @@ def test_erfassen_ean_etikett_kategorie(welt):
     welt.anmelden(ANNA)
     # EAN nachtragen: Prüfziffer muss stimmen, sonst intern erzeugen (D10/D24).
     assert client.post(f"/api/varianten/{jacke}/ean", json={"ean": "5901234123458"}).status_code == 409
-    intern = client.post(f"/api/varianten/{jacke}/ean", json={"generieren": True})
-    assert intern.status_code == 200, intern.text
+    intern = client.get(f"/api/varianten/{jacke}/etikett")
+    assert intern.status_code == 200
     assert intern.json()["ean_intern"] is True and intern.json()["ean"].startswith("2")
     assert client.post(f"/api/varianten/{jacke}/ean", json={"generieren": True}).status_code == 409
 
@@ -163,6 +173,10 @@ def test_etikett_fuer_die_vorgedruckte_rolle(welt):
         schuh = session.scalar(select(Variante.id))
     ean = client.post(f"/api/varianten/{schuh}/ean", json={"generieren": True}).json()["ean"]
 
+    pending = client.get("/api/wareneingaenge").json()["wareneingaenge"][0]
+    assert client.post(f"/api/wareneingaenge/{pending['id']}/ankunft", json={
+        "mengen": {str(p['id']): p['menge_offen'] for p in pending['positionen']}
+    }).status_code == 200
     daten = client.get(f"/api/varianten/{schuh}/etikett").json()
     assert daten["lieferant_code"] == "999" and daten["uvp"] == "499.00"
     assert daten["groessen"] == ["47x83"]

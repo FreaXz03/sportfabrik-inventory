@@ -1522,3 +1522,10 @@ Implemented on branch `worktree-gonso-parser` (not yet in `feature/warenwirtscha
 - **Security review** (subagent, 2026-10-05): no authorization or XSS findings. Fixed: deleting a document recomputed saleable stock from held movements (and could erase held stock), `"NaN"` quantity caused a 500, held stock was not reconciled, cancelling a document did not warn about later returns/releases. Left as is (no exploit, noted): a "lost" declaration is only a `lieferung_differenzen` row, not a journal movement; several reports (`uebersicht`, `statistik`) still count held write-offs as write-offs.
 - **Gonso parser** (`gonso.py`, migration `a6b7c8d9e0f1`, 4 real samples parse): confirmed by Fabian 2026-10-05 — `ek` = Großhandel price before the 15 % discount of the page note, `uvp` = Einzelhandel, `supplier_article_no` = Stilnr., `article_no` = Farbcode, date DD/MM/YYYY. Other sample layouts are skipped for now.
 - **Not browser-verified:** `/retouren` and the deliveries page (JS syntax-checked, endpoints and page route tested).
+
+
+## Receipt EAN boundary — 30 October 2026
+
+Fabian confirmed that only the positively submitted quantities of a partial receipt need EANs. Internal generated EANs are acceptable after manual confirmation; later original EANs remain additional identifiers for the same variant. Missing identifiers must not discard item masters: imports/manual entries persist prices, original source audit and an expected receipt without booking any submitted stock. The boundary for other stock increases/reversals remains undecided; those paths are unchanged.
+
+Implementation and evidence are recorded in [receipt-ean-2026-10-30.md](receipt-ean-2026-10-30.md). This supersedes the historical optional-EAN rule only at supplier/manual stock receipt. It is development work, not a production release or an inventory cleanup. Vault files were deliberately not edited, as explicitly instructed in the chat.

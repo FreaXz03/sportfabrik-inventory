@@ -33,6 +33,11 @@ def test_zweite_ean_fuehrt_zur_selben_variante(welt):
     assert etikett["ean"] == intern["ean"]  # Etiketten-EAN bleibt die erste
     assert [e["ean"] for e in etikett["weitere_eans"]] == [ORIGINAL]
 
+    pending = client.get("/api/wareneingaenge").json()["wareneingaenge"][0]
+    assert client.post(f"/api/wareneingaenge/{pending['id']}/ankunft", json={
+        "mengen": {str(p['id']): p['menge_offen'] for p in pending['positionen']}
+    }).status_code == 200
+
     # Scan, Erfassung und Suche finden die Variante über jede der beiden.
     assert client.get(f"/api/erfassen/variante?ean={ORIGINAL}").json()["variante"]["varianten_id"] == polo
     assert client.get(f"/api/erfassen/variante?ean={intern['ean']}").json()["variante"]["varianten_id"] == polo

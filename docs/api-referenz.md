@@ -453,3 +453,12 @@ write-off list (`GET /api/ausbuchungen`) stays readable for everyone.
 branches; entry/correction also enforce this boundary server-side.
 `GET /api/bestand` additionally returns `rechte.ausbuchen` and
 `rechte.korrektur_lagerorte`, which determine which actions are shown.
+
+
+## Receipt EAN prerequisite — 30 October 2026
+
+`POST /import-invoice` and `POST /api/erfassen` now include `receipt_blocked` (boolean) and `missing_eans` (variant/article IDs, description, colour and size). HTTP 200 with `receipt_blocked=true` means that master records, prices, original input and an **expected** receipt were saved, while **no stock**, received quantities or arrival date were saved. Do not retry as a new import: use the existing expected receipt after EAN correction. Existing operation IDs deduplicate manual retries; normal document hash/number checks still prevent duplicate imports.
+
+`GET /api/wareneingaenge` positions include `artikel_id`, `varianten_id` and `ean_fehlt`. Manual expected receipts have `dokument=null` and `umlagerung=null`. Desktop and phone render this explicitly.
+
+`POST /api/wareneingaenge/{id}/ankunft` validates all positively submitted positions before any receipt/stock changes. Missing or malformed identifiers produce HTTP 409 with affected description/colour/size. Omitted/zero quantities do not require identifiers. Transfers keep their existing path. Correct EANs in the existing computer item details, then resubmit the retained quantities; phone EAN editing is not enabled. Internal generation asks for explicit browser confirmation. A later original EAN can be added alongside the internal label using the existing additional-EAN API, or resolved during import/manual entry for a unique matching internal variant; check digit and ownership rules apply to additions.

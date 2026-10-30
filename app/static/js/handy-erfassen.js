@@ -218,12 +218,18 @@
       });
       positionen = [];
       renderList();
-      notice.textContent = t('erfassen.booked', {
+      notice.textContent = result.receipt_blocked ? t('receipt.saved_pending') : t('erfassen.booked', {
         positionen: result.positionen,
         lagerort: result.lagerort.code + ' · ' + result.lagerort.name,
         neu: result.neue_varianten,
         bekannt: result.bekannte_varianten
       }) + (result.eingangsdatum ? '' : ' ' + t('erfassen.booked_no_date'));
+      if (result.receipt_blocked) {
+        const link = document.createElement('a');
+        link.href = '/m/lieferungen';
+        link.textContent = t('nav.wareneingaenge');
+        notice.append(document.createTextNode(' '), link);
+      }
       notice.hidden = false;
       scanStatus.textContent = '';
     } catch (error) {

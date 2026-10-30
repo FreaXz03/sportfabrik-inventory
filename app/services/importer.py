@@ -30,7 +30,6 @@ from ..core.models import (
 from .artikel import (
     artikel_group_key,
     finde_artikel,
-    finde_variante_ohne_ean,
     finde_variante_per_ean,
 )
 from .parsers import lese_slot, parse_with_parser, read_and_detect
@@ -45,6 +44,7 @@ from .lieferung import (
     pruefe_ziel,
 )
 from .wareneingang import buche_zugang
+from .receipt_ean import missing_receipt_eans, resolve_receipt_variant
 
 
 # D6/Regel 3: Rechnung und Lieferschein begleiten die Ware - sie ist da.
@@ -392,6 +392,7 @@ def import_invoice(
             # D-F2: vor jeder ersten Buchung eines Modells in dieser Lieferung
             # merken, ob es vorher schon reduziert war (Nachlieferung).
             nachlieferungs_caches = {}
+            bookings = []
             seen = dates["invoice_date"]
             for item in parsed["items"]:
                 ean = item["ean"] or None
@@ -440,11 +441,10 @@ def import_invoice(
                     if group_key:
                         artikel_cache[group_key] = artikel
 
-                    variante = None
-                    if not ean:
-                        variante = finde_variante_ohne_ean(
-                            session, artikel.id, item.get("color"), item.get("size")
-                        )
+                    variante = resolve_receipt_variant(
+                        session, artikel.id, item.get("color"), item.get("size"),
+                        ean, ImportRejected, language,
+                    )
                     if variante is None:
                         variante = Variante(
                             artikel_id=artikel.id,
@@ -469,36 +469,15 @@ def import_invoice(
                 if ean:
                     variante_cache[ean] = variante
 
-                # „Erste/letzte Lieferung" zählt nur angekommene Ware - eine
-                # Ankündigung ist keine Lieferung (siehe wareneingang.py).
-                if ware_ist_da:
-                    variante.first_seen = (
-                        min(variante.first_seen, seen) if variante.first_seen else seen
-                    )
-                    variante.last_seen = (
-                        max(variante.last_seen, seen) if variante.last_seen else seen
-                    )
-
-                # D-F2: vor der ersten Buchung dieses Modells in dieser
-                # Lieferung merken, ob es hier schon einmal reduziert war
-                # (Nachlieferung) - muss vor dem Anlegen der Position
-                # passieren, sonst zählt `letzter_wareneingang` die eigene,
-                # gerade erst gebuchte Lieferung schon mit.
                 wareneingang = eingang_fuer(item)
                 ort_id = wareneingang.lagerort_id
-                if ware_ist_da:
-                    pruefe_und_merke(
-                        session, variante.artikel_id, ort_id,
-                        nachlieferungs_caches.setdefault(ort_id, {}),
-                    )
-
                 quantity = Decimal(item["quantity"])
                 uvp = Decimal(item["uvp"])
                 position = WareneingangPosition(
                     wareneingang_id=wareneingang.id,
                     varianten_id=variante.id,
                     menge=quantity,
-                    menge_eingetroffen=quantity if ware_ist_da else Decimal(0),
+                    menge_eingetroffen=Decimal(0),
                     einheit=item["unit"],
                     uvp=uvp,
                 )
@@ -516,20 +495,33 @@ def import_invoice(
                     )
                 )
                 if ware_ist_da:
+                    bookings.append((variante, position, wareneingang, quantity))
+
+            missing = missing_receipt_eans(session, [v for v, _, _, q in bookings if q > 0], language)
+            if missing:
+                for eingang in eingaenge.values():
+                    eingang.status = "erwartet"
+                    eingang.eingangsdatum = None
+            else:
+                for variante, position, wareneingang, quantity in bookings:
+                    ort_id = wareneingang.lagerort_id
+                    pruefe_und_merke(session, variante.artikel_id, ort_id,
+                                     nachlieferungs_caches.setdefault(ort_id, {}))
+                    position.menge_eingetroffen = quantity
+                    variante.first_seen = min(variante.first_seen, seen) if variante.first_seen else seen
+                    variante.last_seen = max(variante.last_seen, seen) if variante.last_seen else seen
                     buche_zugang(
-                        session,
-                        lagerort_id=ort_id,
-                        varianten_id=variante.id,
-                        position_id=position.id,
-                        menge=quantity,
+                        session, lagerort_id=ort_id, varianten_id=variante.id,
+                        position_id=position.id, menge=quantity,
                         eingangsdatum=wareneingang.eingangsdatum,
-                        benutzer=imported_by,
-                        zeitpunkt=now,
+                        benutzer=imported_by, zeitpunkt=now,
                     )
 
             for ort_id, cache in nachlieferungs_caches.items():
                 erstelle_hinweise(session, ort_id, cache)
             result = dict(
+                receipt_blocked=bool(missing),
+                missing_eans=missing,
                 invoice_id=dokument.id,
                 invoice_number=dokument.dokumentnummer,
                 item_count=parsed["item_count"],

@@ -237,7 +237,13 @@
         neu: ergebnis.neue_varianten,
         bekannt: ergebnis.bekannte_varianten
       });
-      $('bookStatus').textContent = ergebnis.eingangsdatum ? meldung : meldung + ' ' + t('erfassen.booked_no_date');
+      $('bookStatus').textContent = ergebnis.receipt_blocked ? t('receipt.saved_pending') : (ergebnis.eingangsdatum ? meldung : meldung + ' ' + t('erfassen.booked_no_date'));
+      if (ergebnis.receipt_blocked) {
+        const link = document.createElement('a');
+        link.href = '/wareneingaenge';
+        link.textContent = t('nav.wareneingaenge');
+        $('bookStatus').append(document.createTextNode(' '), link);
+      }
       letzterWareneingang = ergebnis.wareneingang_id;
       $('printBox').hidden = false;
       $('addStatus').textContent = '';

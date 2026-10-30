@@ -33,6 +33,13 @@
     if (nummer) {
       zelle.append(document.createElement('br'), node('span', nummer, 'muted'));
     }
+    if (position.ean_fehlt) {
+      const link = node('a', t('receipt.add_ean'));
+      link.href = '/articles/' + position.varianten_id + '/history';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      zelle.append(document.createElement('br'), link);
+    }
     return zelle;
   }
 
@@ -78,14 +85,14 @@
     const u = lieferung.umlagerung;
     const titel = u
       ? t('wareneingaenge.transfer_line', { von: u.von.code })
-      : t('wareneingaenge.document_line', { typ: t('document_types.' + lieferung.dokument.typ), nummer: lieferung.dokument.nummer });
+      : lieferung.dokument ? t('wareneingaenge.document_line', { typ: t('document_types.' + lieferung.dokument.typ), nummer: lieferung.dokument.nummer }) : t('receipt.manual');
     panel.append(node('h2', titel));
     const zeile = (u
       ? [lieferung.lagerort.code + ' · ' + lieferung.lagerort.name, t('wareneingaenge.sent_on', { datum: datum(u.versanddatum) }), u.tage_unterwegs !== null && u.tage_unterwegs !== undefined ? t('wareneingaenge.transit_days', { tage: u.tage_unterwegs }) : null]
       : [
-        lieferung.dokument.lieferant ? t('wareneingaenge.supplier_prefix') + lieferung.dokument.lieferant : null,
+        lieferung.dokument?.lieferant ? t('wareneingaenge.supplier_prefix') + lieferung.dokument.lieferant : null,
         lieferung.lagerort.code + ' · ' + lieferung.lagerort.name,
-        datum(lieferung.dokument.datum)
+        datum(lieferung.dokument?.datum)
       ]).filter(Boolean).join(' · ');
     panel.append(node('p', zeile, 'muted'));
     panel.append(tabelle(lieferung));

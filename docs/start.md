@@ -1,5 +1,15 @@
 # Sportfabrik Inventory — Getting started
 
+## Current development milestone — 30 October 2026
+
+Develop only in `/home/sfadmin/projects/sportfabrik-inventory` on `working/entwicklung`; production remains separate on `main`. The older dated entries below are history, not current branch/deployment instructions.
+
+**Receipt EAN prerequisite:** implemented in the development clone for direct document import, expected receipt confirmation and manual desktop/phone entry. Only positively booked lines of the submitted receipt need EANs; future partial deliveries may remain open. A mixed import/manual entry saves master records, prices, source audit and an expected receipt with no stock, arrival date or received quantities. Add identifiers, then confirm the chosen receipt quantities. Internal EAN generation requires manual UI confirmation; an original EAN can later complement the internal label on an unambiguous variant. Existing supplier format rules remain; manually assigned/additional identifiers also require a correct check digit.
+
+Phone receipt confirmation uses the same server rule. EAN correction stays in the existing computer interface; phone permissions are unchanged. Transfers, returns/releases, positive corrections and cancellation reversals retain existing behavior until their scope is decided. Existing stock is untouched. No migration or deployment is part of this milestone.
+
+Detailed behavior and verification: [receipt-ean-2026-10-30.md](receipt-ean-2026-10-30.md). Later packages remain complementary documents, history/replacement UI, SF1 pilot and price/reporting snapshots. This task does not establish physical POS/scanner acceptance.
+
 Status: 2026-10-01. This overview is orientation, not confirmation of a production deployment.
 
 ## Cancelled Adidas delivery replacement — 2026-10-28

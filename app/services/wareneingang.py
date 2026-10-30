@@ -38,8 +38,10 @@ from ..core.models import (
     Variante,
     Wareneingang,
     WareneingangPosition,
+    WareneingangPositionQuelle,
     WareneingangUmleitung,
 )
+from .receipt_ean import missing_receipt_eans, receipt_error
 from . import operation
 from .hinweise import erstelle_hinweise, pruefe_und_merke
 
@@ -210,6 +212,9 @@ def liste_erwartete(
                 "positionen": [
                     {
                         "id": position.id,
+                        "artikel_id": artikel.id,
+                        "varianten_id": variante.id,
+                        "ean_fehlt": bool(missing_receipt_eans(session, [variante])),
                         "marke": artikel.marke,
                         "bezeichnung": artikel.bezeichnung,
                         "lieferanten_artikelnr": artikel.lieferanten_artikelnr,
@@ -331,6 +336,11 @@ def bestaetige_ankunft(
                 eingangsdatum or date.today(), benutzer, jetzt,
             )
             return op.abschliessen(_abschluss(session, wareneingang, positionen, gebucht, mehr))
+        missing = missing_receipt_eans(session, [
+            session.get(Variante, positionen[pid].varianten_id) for pid in gebucht
+        ], language)
+        if missing:
+            raise AnkunftRejected(receipt_error(missing, language))
         dokumentdatum = session.scalar(
             select(Dokument.dokumentdatum).where(
                 Dokument.id == wareneingang.dokument_id
@@ -341,6 +351,18 @@ def bestaetige_ankunft(
         nachlieferungs_cache = {}
         for position_id, menge in gebucht.items():
             position = positionen[position_id]
+            # Deferred manual input retains the explicitly chosen markdown.
+            if lagerort_verkauft and wareneingang.dokument_id is None and not position.menge_eingetroffen:
+                quelle = session.scalar(select(WareneingangPositionQuelle).where(
+                    WareneingangPositionQuelle.position_id == position.id
+                ))
+                prozent = (quelle.data.get("eingabe", {}).get("reduktion")
+                           if quelle and quelle.data.get("quelle") == "manuelle-erfassung" else None)
+                if prozent is not None:
+                    from .reduktion_manuell import merke
+                    variante = session.get(Variante, position.varianten_id)
+                    merke(session, variante.artikel_id, wareneingang.lagerort_id, prozent,
+                          (benutzer or {}).get("kassennummer"), (benutzer or {}).get("name"))
             position.menge_eingetroffen = (position.menge_eingetroffen or 0) + menge
             # Gemessen wird am Gesamtstand der Position, nicht an dieser einen
             # Buchung: über die erwartete Menge hinaus kommt man auch mit einer
@@ -371,16 +393,17 @@ def bestaetige_ankunft(
             )
             # first_seen/last_seen zählen nur angekommene Ware - eine blosse
             # Ankündigung ist keine Lieferung (siehe app/services/importer.py).
-            if dokumentdatum:
+            gesehen = dokumentdatum or eingangsdatum or date.today()
+            if gesehen:
                 variante.first_seen = (
-                    min(variante.first_seen, dokumentdatum)
+                    min(variante.first_seen, gesehen)
                     if variante.first_seen
-                    else dokumentdatum
+                    else gesehen
                 )
                 variante.last_seen = (
-                    max(variante.last_seen, dokumentdatum)
+                    max(variante.last_seen, gesehen)
                     if variante.last_seen
-                    else dokumentdatum
+                    else gesehen
                 )
 
         erstelle_hinweise(session, wareneingang.lagerort_id, nachlieferungs_cache)

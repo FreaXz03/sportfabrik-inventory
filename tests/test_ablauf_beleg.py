@@ -230,6 +230,13 @@ def test_positionen_ohne_ean_und_kategorie_von_hand(welt):
     with sessions() as session:
         varianten = session.scalars(select(Variante).order_by(Variante.id)).all()
         assert [(v.farbe, v.groesse, v.ean) for v in varianten] == [("Weiss", "M", None), ("Weiss", "L", None)]
+    assert _bestand(sessions, welt.codes["SF1"]) == []
+    for v in varianten:
+        assert client.post(f"/api/varianten/{v.id}/ean", json={"generieren": True}).status_code == 200
+    pending = client.get("/api/wareneingaenge").json()["wareneingaenge"][0]
+    assert client.post(f"/api/wareneingaenge/{pending['id']}/ankunft", json={
+        "mengen": {str(p['id']): p['menge_offen'] for p in pending['positionen']}
+    }).status_code == 200
     assert _bestand(sessions, welt.codes["SF1"]) == ["10.00", "5.00"]
 
     # Kategorie von Hand: Schuhe statt des FEDAS-Vorschlags Textil.

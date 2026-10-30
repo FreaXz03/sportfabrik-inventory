@@ -25,6 +25,7 @@
       return { title: t('wareneingaenge.transfer_line', { von: u.von.code }), sub: sent, meta: sent };
     }
     var d = delivery.dokument;
+    if (!d) return { title: t('receipt.manual'), sub: '', meta: '' };
     return {
       title: t('wareneingaenge.document_line', { typ: t('document_types.' + d.typ), nummer: d.nummer }),
       sub: [d.lieferant, formatDate(d.datum)].filter(Boolean).join(' · '),
@@ -68,6 +69,7 @@
       el('strong', null, [position.marke, position.bezeichnung].filter(Boolean).join(' ') || '—'),
       el('span', 'm-sub', [position.farbe, position.groesse].filter(Boolean).join(' · '))
     );
+    if (position.ean_fehlt && !state.delivery.umlagerung) head.append(el('span', 'muted', t('receipt.phone_ean_hint')));
     var counts = el('div', 'm-position-counts');
     counts.append(
       el('span', null, t('wareneingaenge.table_expected') + ' ' + P.qty(position.menge_erwartet)),

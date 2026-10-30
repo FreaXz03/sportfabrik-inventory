@@ -164,7 +164,9 @@
     }
   }
 
-  $('generateEan').addEventListener('click', () => eanSetzen({ generieren: true }, $('generateEan')));
+  $('generateEan').addEventListener('click', () => {
+    if (window.confirm(t('receipt.confirm_internal'))) eanSetzen({ generieren: true }, $('generateEan'));
+  });
   $('saveEan').addEventListener('click', () => eanSetzen({ ean: $('eanInput').value.trim() }, $('saveEan')));
   $('eanInput').addEventListener('keydown', (ereignis) => {
     if (ereignis.key !== 'Enter') return;

@@ -16,3 +16,8 @@ Built earlier than planned, as commits `7a9c7eb`…`2b655ea` on `feature/warenwi
 - **Later implementation:** first try out mobile search and camera scanning on Fabian's iPhone, then add the booking workflows and test on iPhone/Android. Test camera scanning with real labels; prevent unintended duplicate bookings of the same barcode.
 
 Source: Fabian's confirmation in the conversation of 2026-09-24. This plan is not an order to build mobile usage now.
+
+
+## Receipt EAN boundary — 30 October 2026
+
+Manual phone entry without EANs saves item masters and an expected receipt with no stock. The result links to `/m/lieferungen`. This list now also renders manual receipts without a document. Each missing identifier is labelled with a hint to correct it on a computer. Arrival confirmation validates only positively submitted rows; rejection retains the phone inputs. After a computer operator adds EANs, the same phone submission can succeed without recreating the receipt. Existing phone API permissions remain unchanged: EAN assignment/generation and label tools are still computer features. No physical phone/POS hardware acceptance is implied by browser emulation.
