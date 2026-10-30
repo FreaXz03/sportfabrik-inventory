@@ -229,3 +229,50 @@ def test_later_document_original_ean_complements_internal_variant(welt):
         assert finde_variante_per_ean(session, row[4]).id == vid
         assert finde_variante_per_ean(session, generated['ean']).id == vid
         assert session.get(Bestand, (vid, welt.codes['SF1'])).menge == 2
+
+
+def test_bulk_receipt_eans_scoped_idempotent_and_no_stock(welt):
+    from conftest import BEAT
+    from app.services.ean import pruefziffer_stimmt
+    result = _manual(welt)
+    rid = result['wareneingang_id']
+    with welt.sessions() as session:
+        positions = session.scalars(select(WareneingangPosition).order_by(WareneingangPosition.id)).all()
+        known, missing = positions
+        ids = known.id, missing.id, missing.varianten_id
+    url = f'/api/wareneingaenge/{rid}/eans/generieren'
+    body = {'mengen': {str(ids[0]): '2', str(ids[1]): '0'}}
+    assert welt.client.post(url, json=body).json()['generated'] == 0
+    welt.anmelden(BEAT)
+    body['mengen'][str(ids[1])] = '1'
+    assert welt.client.post(url, json=body).status_code == 403
+    welt.anmelden(ANNA)
+    assert welt.client.post(url, json={'mengen': {'999999': '1'}}).status_code == 409
+    assert welt.client.post(url, json=body).json()['generated'] == 1
+    assert welt.client.post(url, json=body).json()['generated'] == 0
+    with welt.sessions() as session:
+        variant = session.get(Variante, ids[2])
+        assert variant.ean_intern and pruefziffer_stimmt(variant.ean)
+        assert not session.scalars(select(Lagerbewegung)).all()
+        assert not session.scalars(select(Bestand)).all()
+        assert session.get(Wareneingang, rid).eingangsdatum is None
+        assert all(p.menge_eingetroffen == 0 for p in session.scalars(select(WareneingangPosition)))
+    assert welt.client.post(f'/api/wareneingaenge/{rid}/ankunft', json=body).status_code == 200
+
+
+def test_bulk_receipt_eans_collision_rolls_back(welt):
+    from app.services.ean import interne_ean
+    result = _manual(welt)
+    with welt.sessions.begin() as session:
+        variants = session.scalars(select(Variante).order_by(Variante.id)).all()
+        known, missing = variants
+        known.ean = None
+        session.add(Variante(artikel_id=known.artikel_id, groesse="Outside receipt", ean=interne_ean(missing.id)))
+        known_id, missing_id = known.id, missing.id
+        positions = session.scalars(select(WareneingangPosition)).all()
+        body = {'mengen': {str(p.id): '1' for p in positions}}
+    response = welt.client.post(f"/api/wareneingaenge/{result['wareneingang_id']}/eans/generieren", json=body)
+    assert response.status_code == 409
+    with welt.sessions() as session:
+        assert session.get(Variante, missing_id).ean is None
+        assert session.get(Variante, known_id).ean is None

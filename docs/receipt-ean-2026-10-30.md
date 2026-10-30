@@ -39,3 +39,13 @@ Decide the EAN boundary for other stock increases and reversals. Verify physical
 ## Later PostgreSQL verification during development deployment
 
 The separately authorized homeserver development instance subsequently passed a focused receiving smoke check on an isolated temporary PostgreSQL 18 database, including atomic rejection and retry behavior. This supplements the original SQLite/browser evidence; it does not establish full PostgreSQL concurrency or physical POS acceptance. See [development-instance.md](development-instance.md). Production remained unchanged.
+
+## Bulk internal EANs from receiving — 30 October 2026
+
+Desktop receiving provides “Generate all required EANs” per open supplier/manual receipt. An explicit confirmation precedes assignment. Only variants on this receipt with a positive entered arrival quantity are selected; existing eligible identifiers are retained, repeated requests are harmless, and collisions roll back the complete assignment. Invalid existing identifiers require manual review. Existing receipt location permissions apply; phone restrictions and transfer behavior stay unchanged.
+
+The operation uses the shared transaction lock and creates no stock, arrival quantities or dates. Receiving inputs and the selected date remain visible after refreshing identifiers. Arrival remains a separate explicit action. Imported documents in the preview queue link directly to receiving, including orders saved without stock. No schema migration is required.
+
+Bulk verification: initial endpoint regression tests failed before implementation. Scope/permissions, repeated requests, no stock/date/quantity changes and atomic collision rollback pass. Chromium confirms dialog cancellation/acceptance, retained partial quantity/date and separate successful arrival. Full SQLite suite: **369 passed, 41 skipped** (Node absent from the initial PATH); all **34** operating/frontend checks then passed with the existing Playwright Node runtime on PATH. The three focused bulk cases passed separately after strengthening the rollback fixture. No private document fixture was used.
+
+The owner requested continued work in the separate development app. Its winter order was already imported as four expected receipts; aggregate inspection found 237 variants without primary EANs and zero stock movements before this update. The development app alone was rebuilt/recreated; the previous image is retained as `sportfabrik-inventory-dev:before-bulk-ean-20261030`. Database health and HTTPS asset hash match were verified; unauthenticated access to the new endpoint returned 401. No real EANs or stock were assigned during verification. No migrations or production updates were performed.

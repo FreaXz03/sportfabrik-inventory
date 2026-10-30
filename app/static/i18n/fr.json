@@ -1,4 +1,10 @@
 {
+  "receipt.generate_all": "Générer tous les EAN nécessaires",
+  "receipt.confirm_all_internal": "Générer les EAN internes manquants pour les lignes avec une quantité reçue saisie ? Les EAN existants sont conservés. Aucun stock ne sera encore enregistré.",
+  "receipt.generated_all": "{count} EAN internes générés. Confirmer ensuite séparément la réception des marchandises.",
+  "errors.receipt.bulk_unavailable": "Les EAN ne peuvent être générés que pour les réceptions fournisseur ou manuelles ouvertes. Vérifier les identifiants invalides existants dans la fiche article.",
+  "errors.receipt.bulk_forbidden": "La génération des EAN de réception est interdite pour cet emplacement.",
+  "receipt.open_receipts": "Ouvrir les réceptions / ajouter les EAN",
   "receipt.phone_ean_hint": "EAN manquant : l’ajouter dans la fiche article sur un ordinateur, puis confirmer à nouveau ici.",
   "errors.receipt.ean_required": "EAN manquant ou invalide : {articles}. Aucun stock enregistré. Ajouter un EAN dans la fiche article, puis confirmer à nouveau la réception.",
   "errors.receipt.identity_conflict": "L’identité de l’article est ambiguë ou en conflit avec son EAN. Vérifier d’abord la fiche article.",

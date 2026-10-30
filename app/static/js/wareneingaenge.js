@@ -116,6 +116,44 @@
     rueckmeldung.setAttribute('role', 'status');
     knopf.addEventListener('click', () => bestaetigen(lieferung, panel, datumsfeld, knopf, rueckmeldung));
     steuerung.append(knopf);
+    if (!lieferung.umlagerung && lieferung.positionen.some(p => p.ean_fehlt)) {
+      const generate = node('button', t('receipt.generate_all'), 'secondary');
+      generate.type = 'button';
+      generate.addEventListener('click', async () => {
+        if (!window.confirm(t('receipt.confirm_all_internal'))) return;
+        const quantities = {};
+        for (const input of panel.querySelectorAll('input[data-position]')) {
+          if (input.value !== '') quantities[input.dataset.position] = input.value;
+        }
+        generate.disabled = true;
+        knopf.disabled = true;
+        try {
+          const response = await fetch('/api/wareneingaenge/' + lieferung.id + '/eans/generieren', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mengen: quantities })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : t('wareneingaenge.load_error'));
+          // Refresh just the identifiers; preserve quantities, date and other panels.
+          const fresh = await fetch('/api/wareneingaenge');
+          if (!fresh.ok) throw new Error(t('wareneingaenge.load_error'));
+          const current = (await fresh.json()).wareneingaenge.find(r => r.id === lieferung.id);
+          if (current) {
+            lieferung.positionen = current.positionen;
+            const rows = panel.querySelectorAll('tbody tr');
+            current.positionen.forEach((position, index) => rows[index]?.firstElementChild.replaceWith(artikelZelle(position)));
+            generate.hidden = !current.positionen.some(p => p.ean_fehlt);
+          }
+          rueckmeldung.textContent = t('receipt.generated_all', { count: result.generated });
+        } catch (error) {
+          rueckmeldung.textContent = error.message === 'Failed to fetch' ? t('common.connection_lost') : error.message;
+        } finally {
+          generate.disabled = false;
+          knopf.disabled = false;
+        }
+      });
+      steuerung.append(generate);
+    }
     panel.append(steuerung, rueckmeldung);
     const umleitung = umleitenBereich(lieferung);
     if (umleitung) panel.append(umleitung);

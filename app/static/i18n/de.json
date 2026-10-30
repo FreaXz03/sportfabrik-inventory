@@ -1,4 +1,10 @@
 {
+  "receipt.generate_all": "Alle nötigen EANs generieren",
+  "receipt.confirm_all_internal": "Fehlende interne EANs für alle Positionen mit eingetragener Ankunftsmenge erzeugen? Vorhandene EANs bleiben erhalten. Es wird noch kein Bestand gebucht.",
+  "receipt.generated_all": "{count} interne EANs erzeugt. Die Warenankunft kann jetzt separat bestätigt werden.",
+  "errors.receipt.bulk_unavailable": "EANs können nur für offene Lieferanten- oder manuelle Wareneingänge erzeugt werden. Bestehende ungültige Nummern bitte in den Artikeldetails prüfen.",
+  "errors.receipt.bulk_forbidden": "Für diesen Standort dürfen keine EANs im Wareneingang erzeugt werden.",
+  "receipt.open_receipts": "Zum Wareneingang / EANs ergänzen",
   "receipt.phone_ean_hint": "EAN fehlt: Bitte am Computer in den Artikeldetails ergänzen. Danach hier erneut bestätigen.",
   "errors.receipt.ean_required": "EAN fehlt oder ist ungültig: {articles}. Es wurde nichts gebucht. EAN in den Artikeldetails ergänzen und den Wareneingang erneut bestätigen.",
   "errors.receipt.identity_conflict": "Die Artikelzuordnung ist mehrdeutig oder widerspricht der EAN. Bitte zuerst den Artikelstamm prüfen.",

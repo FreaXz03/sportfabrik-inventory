@@ -4,6 +4,10 @@
 
 The explicitly requested development deployment is available privately at `https://sfserver.tailb8a158.ts.net:8454`, built from `working/entwicklung`. It has its own PostgreSQL 18 database, network, file volume, credentials and session cookie. Production on `main` was not changed. The database contains reference data and the explicitly requested Zentrale test account 910100; no production data was copied. Updates require deliberate rebuilds of this development stack. Operation, recovery and verification: [development-instance.md](development-instance.md). Full suite: 391 passed, 16 skipped; isolated PostgreSQL receipt smoke passed. Authenticated HTTPS access for the test account was verified.
 
+## Bulk internal EANs in receiving — 30 October 2026
+
+Desktop receiving now offers a confirmed bulk action for missing internal EANs on the positively entered receipt lines. Existing identifiers, quantities and dates are preserved; arrival remains separate. Imported preview entries link to receiving. Implementation and scope: [receipt-ean-2026-10-30.md](receipt-ean-2026-10-30.md). This development update does not change the production release.
+
 ## Current development milestone — 30 October 2026
 
 Develop only in `/home/sfadmin/projects/sportfabrik-inventory` on `working/entwicklung`; production remains separate on `main`. The older dated entries below are history, not current branch/deployment instructions.

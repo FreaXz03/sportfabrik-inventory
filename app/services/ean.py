@@ -202,3 +202,52 @@ def fuege_ean_hinzu(
         except IntegrityError as exc:
             raise EanError(translate("errors.ean.taken", language, ean=neue_ean)) from exc
         return {"varianten_id": variante.id, "ean": neue_ean, "ean_intern": intern}
+
+
+def generate_receipt_eans(receipt_id, quantities, session_factory, allowed_locations, language="de"):
+    """Assign missing identifiers atomically, without receiving any goods."""
+    from decimal import InvalidOperation
+    from ..core.models import Wareneingang, WareneingangPosition
+    from .wareneingang import _menge, AnkunftRejected
+    from .receipt_ean import missing_receipt_eans
+
+    with session_factory() as session, session.begin():
+        if session.bind.dialect.name == "postgresql":
+            session.execute(text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})"))
+        receipt = session.get(Wareneingang, receipt_id)
+        if receipt is None or receipt.status != "erwartet" or receipt.herkunft_lagerort_id is not None:
+            raise EanError(translate("errors.receipt.bulk_unavailable", language))
+        if receipt.lagerort_id not in allowed_locations:
+            raise PermissionError(translate("errors.receipt.bulk_forbidden", language))
+        positions = {str(p.id): p for p in session.scalars(select(WareneingangPosition).where(
+            WareneingangPosition.wareneingang_id == receipt_id))}
+        selected = set()
+        for key, value in quantities.items():
+            if key not in positions:
+                raise EanError(translate("errors.wareneingang.unknown_position", language))
+            try:
+                amount = _menge(value, language)
+                if not amount.is_finite():
+                    raise InvalidOperation
+            except (AnkunftRejected, InvalidOperation, ValueError) as exc:
+                raise EanError(translate("errors.wareneingang.invalid_quantity", language)) from exc
+            if amount > 0:
+                selected.add(positions[key].varianten_id)
+        variants = list(session.scalars(select(Variante).where(Variante.id.in_(selected)).order_by(Variante.id)))
+        missing = missing_receipt_eans(session, variants, language)
+        missing_ids = {row["varianten_id"] for row in missing}
+        generated = []
+        for variant in variants:
+            if variant.id not in missing_ids:
+                continue
+            # An existing malformed identifier needs manual correction, never replacement.
+            if variant.ean:
+                raise EanError(translate("errors.ean.already_set", language, ean=variant.ean))
+            new_ean = interne_ean(variant.id)
+            _pruefe_frei(session, new_ean, variant.id, language)
+            variant.ean, variant.ean_intern = new_ean, True
+            generated.append({"varianten_id": variant.id, "ean": new_ean})
+        session.flush()
+        if missing_receipt_eans(session, variants, language):
+            raise EanError(translate("errors.receipt.bulk_unavailable", language))
+        return {"generated": len(generated), "identifiers": generated}

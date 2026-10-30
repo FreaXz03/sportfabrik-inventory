@@ -1,4 +1,10 @@
 {
+  "receipt.generate_all": "Generate all required EANs",
+  "receipt.confirm_all_internal": "Generate missing internal EANs for all lines with an entered arrival quantity? Existing EANs are retained. No stock will be booked yet.",
+  "receipt.generated_all": "{count} internal EANs generated. Confirm the goods arrival separately when ready.",
+  "errors.receipt.bulk_unavailable": "EANs can only be generated for open supplier or manual receipts. Check existing invalid identifiers in article details.",
+  "errors.receipt.bulk_forbidden": "Generating receipt EANs is not permitted for this location.",
+  "receipt.open_receipts": "Open goods receipts / add EANs",
   "receipt.phone_ean_hint": "EAN missing: add it in the item details on a computer, then confirm here again.",
   "errors.receipt.ean_required": "EAN missing or invalid: {articles}. Nothing was booked. Add an EAN in the item details, then confirm receipt again.",
   "errors.receipt.identity_conflict": "The item identity is ambiguous or conflicts with its EAN. Check the item master first.",

@@ -107,3 +107,56 @@ def test_pending_receipt_ui_and_manual_ean_confirmation(welt, path, mobile):
             assert sum(session.scalars(select(Bestand.menge))) == 2
         assert not errors, errors
         browser.close()
+
+
+def test_bulk_eans_confirmation_preserves_receipt_inputs(welt):
+    from test_receipt_ean import _manual
+    from app.core.models import Variante
+    from urllib.parse import urlsplit
+    playwright = pytest.importorskip('playwright.sync_api')
+    from playwright.sync_api import expect
+    _manual(welt)
+    with playwright.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except playwright.Error as exc:
+            pytest.skip(f'Chromium unavailable: {type(exc).__name__}')
+        context = browser.new_context(reduced_motion='reduce')
+        def serve(route):
+            request = route.request
+            url = urlsplit(request.url)
+            assert url.hostname == 'testserver'
+            response = welt.client.request(request.method, url.path + ('?' + url.query if url.query else ''),
+                content=request.post_data_buffer, headers={k: v for k, v in request.headers.items()
+                if k not in ('host', 'cookie', 'content-length')})
+            route.fulfill(status=response.status_code, body=response.content, headers={k: v for k, v in response.headers.items()
+                if k not in ('content-length', 'content-encoding', 'transfer-encoding')})
+        context.route('**/*', serve)
+        page = context.new_page()
+        errors = []
+        page.on('pageerror', lambda error: errors.append(str(error)))
+        page.goto('http://testserver/wareneingaenge')
+        panel = page.locator('#list section')
+        quantities = panel.locator('input[data-position]')
+        expect(quantities).to_have_count(2)
+        quantities.last.fill('1')
+        panel.locator('input[type=date]').fill('2026-10-20')
+        generate = panel.get_by_role('button', name='Alle nötigen EANs generieren')
+        page.once('dialog', lambda dialog: dialog.dismiss())
+        generate.click()
+        with welt.sessions() as session:
+            assert session.scalar(select(Variante.ean).where(Variante.groesse == 'L')) is None
+        page.once('dialog', lambda dialog: dialog.accept())
+        generate.click()
+        expect(panel.get_by_role('status').first).to_contain_text('1 interne EANs erzeugt')
+        expect(generate).to_be_hidden()
+        expect(quantities.last).to_have_value('1')
+        expect(panel.locator('input[type=date]')).to_have_value('2026-10-20')
+        with welt.sessions() as session:
+            assert not session.scalars(select(Lagerbewegung)).all()
+        panel.get_by_role('button', name='Ankunft bestätigen', exact=True).click()
+        expect(page.locator('#status')).to_contain_text('Teillieferung gebucht')
+        with welt.sessions() as session:
+            assert sum(session.scalars(select(Bestand.menge))) == 3
+        assert not errors, errors
+        browser.close()
