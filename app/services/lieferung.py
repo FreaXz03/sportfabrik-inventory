@@ -98,7 +98,8 @@ def finde_kandidaten(
         in_lieferung = set(
             session.scalars(
                 select(WareneingangPosition.varianten_id).where(
-                    WareneingangPosition.wareneingang_id == wareneingang.id
+                    WareneingangPosition.wareneingang_id == wareneingang.id,
+                    WareneingangPosition.ersetzt_durch_abgleich_id.is_(None),
                 )
             )
         )

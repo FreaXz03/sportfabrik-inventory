@@ -55,6 +55,8 @@ def geschlossene_menge(session, position_id: int) -> Decimal:
 
 
 def offene_menge(session, position: WareneingangPosition) -> Decimal:
+    if position.ersetzt_durch_abgleich_id is not None:
+        return Decimal(0)
     return (
         Decimal(position.menge or 0)
         - Decimal(position.menge_eingetroffen or 0)
@@ -69,7 +71,7 @@ def schliesse_wenn_erledigt(session, wareneingang: Wareneingang) -> None:
     if wareneingang.status != "erwartet":
         return
     positionen = session.scalars(
-        select(WareneingangPosition).where(WareneingangPosition.wareneingang_id == wareneingang.id)
+        select(WareneingangPosition).where(WareneingangPosition.wareneingang_id == wareneingang.id, WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))
     ).all()
     if any(offene_menge(session, position) > 0 for position in positionen):
         return

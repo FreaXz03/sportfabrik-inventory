@@ -92,6 +92,7 @@ def prices(
             .where(
                 WareneingangPosition.varianten_id.in_(group_ids),
                 WareneingangPosition.uvp.is_not(None),
+                WareneingangPosition.ersetzt_durch_abgleich_id.is_(None),
             )
             .group_by(
                 Dokument.id,

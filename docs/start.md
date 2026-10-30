@@ -4,6 +4,10 @@
 
 The explicitly requested development deployment is available privately at `https://sfserver.tailb8a158.ts.net:8454`, built from `working/entwicklung`. It has its own PostgreSQL 18 database, network, file volume, credentials and session cookie. Production on `main` was not changed. The database contains reference data and the explicitly requested Zentrale test account 910100; no production data was copied. Updates require deliberate rebuilds of this development stack. Operation, recovery and verification: [development-instance.md](development-instance.md). Full suite: 391 passed, 16 skipped; isolated PostgreSQL receipt smoke passed. Authenticated HTTPS access for the test account was verified.
 
+## Winter size reconciliation — 30 October 2026
+
+New manager page `/winter-abgleich` replaces open ONESIZE winter order lines by size lines from a branch size matrix, with preview, explicit confirmation, history and no stock booking. Details and checks: [winter-reconciliation-2026-10-30.md](winter-reconciliation-2026-10-30.md). Not deployed; migration `b20261030` pending for the development instance.
+
 ## Bulk internal EANs in receiving — 30 October 2026
 
 Desktop receiving now offers a confirmed bulk action for missing internal EANs on the positively entered receipt lines. Existing identifiers, quantities and dates are preserved; arrival remains separate. A confirmed delete action reverses generated internal labels on unused variants, scoped to positive entered quantities; booked variants and manufacturer identifiers are protected. Imported preview entries link to receiving. Implementation and scope: [receipt-ean-2026-10-30.md](receipt-ean-2026-10-30.md). This development update does not change the production release.

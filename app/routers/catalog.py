@@ -199,7 +199,7 @@ def articles(
                     WareneingangPosition.einheit,
                     func.sum(WareneingangPosition.menge),
                 )
-                .where(WareneingangPosition.varianten_id.in_(ids))
+                .where(WareneingangPosition.varianten_id.in_(ids), WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))
                 .group_by(WareneingangPosition.varianten_id, WareneingangPosition.einheit)
             ):
                 totals.setdefault(varianten_id, []).append(

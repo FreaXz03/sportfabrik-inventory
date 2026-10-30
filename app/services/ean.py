@@ -220,7 +220,7 @@ def generate_receipt_eans(receipt_id, quantities, session_factory, allowed_locat
         if receipt.lagerort_id not in allowed_locations:
             raise PermissionError(translate("errors.receipt.bulk_forbidden", language))
         positions = {str(p.id): p for p in session.scalars(select(WareneingangPosition).where(
-            WareneingangPosition.wareneingang_id == receipt_id))}
+            WareneingangPosition.wareneingang_id == receipt_id, WareneingangPosition.ersetzt_durch_abgleich_id.is_(None)))}
         selected = set()
         for key, value in quantities.items():
             if key not in positions:
@@ -267,7 +267,7 @@ def remove_receipt_eans(receipt_id, identifiers, session_factory, allowed_locati
             raise PermissionError(translate("errors.receipt.bulk_forbidden", language))
         variants = {str(v.id): v for v in session.scalars(select(Variante).join(
             WareneingangPosition, WareneingangPosition.varianten_id == Variante.id
-        ).where(WareneingangPosition.wareneingang_id == receipt_id)).unique()}
+        ).where(WareneingangPosition.wareneingang_id == receipt_id, WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))).unique()}
         removed = 0
         for key, expected in identifiers.items():
             variant = variants.get(key)

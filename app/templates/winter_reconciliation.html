@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-i18n="winter.title">Winterbestellung abgleichen</title>
+<script src="/static/js/theme-init.js?v=2"></script><script src="/static/js/i18n.js?v=1"></script>
+<link rel="stylesheet" href="/static/css/app.css?v=stufe-1">
+</head>
+<body>
+<header><a class="brand" href="/"><img src="/static/img/sportfabrik-logo.png" alt="SPORT-FABRIK"><span>INVENTORY</span></a><nav data-i18n-aria-label="nav.main_aria"></nav></header>
+<main><h1 data-i18n="winter.title">Winterbestellung abgleichen</h1>
+<p data-i18n="winter.intro">Filialliste einlesen, zuordnen und prüfen. Erst die bestätigte Übernahme ersetzt offene Positionen. Bestand wird nicht gebucht.</p>
+<section class="panel"><form id="winterUpload">
+<label><span data-i18n="winter.order">Ursprüngliche Bestellung / Filiale</span><select id="winterOrder" required></select></label>
+<label><span data-i18n="winter.file">Größenliste der Filiale (PDF)</span><input id="winterFile" type="file" accept="application/pdf,.pdf" required></label>
+<button id="winterRead" data-i18n="winter.read">Abgleich anzeigen</button>
+</form></section>
+<p id="winterStatus" role="status" aria-live="polite"></p>
+<section id="winterReview" class="panel" hidden>
+<p id="winterTotals"></p><p data-i18n="winter.match_hint">Die Artikelnummer im PDF ist nur ein Hinweis. Zuordnung, Farbe und Modell prüfen. Nicht ausgewählte Artikel bleiben unverändert. Doppelte Zeilen werden zusammengezählt.</p>
+<datalist id="winterTargets"></datalist>
+<div class="tablewrap"><table><thead><tr>
+<th data-i18n="winter.choose">Übernehmen</th><th data-i18n="winter.new_article">Artikel / Quelle</th><th data-i18n="winter.sizes">Neue Größen / Mengen</th><th data-i18n="winter.target">Bestehenden Artikel zuordnen</th><th data-i18n="winter.result">Prüfung</th>
+</tr></thead><tbody id="winterRows"></tbody></table></div>
+<p id="winterSelected"></p>
+<details><summary data-i18n="winter.unchanged">Bestehende Artikel – ohne Auswahl unverändert</summary><ul id="winterOriginals"></ul></details>
+<label><input id="winterRevise" type="checkbox"><span data-i18n="winter.revise">Abweichende Bestellmengen ausdrücklich übernehmen (Bestellkorrektur)</span></label>
+<label><span data-i18n="winter.reason">Begründung der Bestellkorrektur (mindestens 10 Zeichen)</span><input id="winterReason" type="text" maxlength="500" disabled></label>
+<label><input id="winterConfirmed" type="checkbox"><span data-i18n="winter.confirm">Zuordnungen, Größen und ausgewählte Mengen geprüft. Nur die Auswahl übernehmen.</span></label>
+<button id="winterApply" type="button" disabled data-i18n="winter.apply">Auswahl übernehmen</button>
+<details><summary data-i18n="winter.history">Bisherige Abgleiche</summary><div id="winterHistory"></div></details>
+</section>
+<a href="/wareneingaenge" data-i18n="receipt.open_receipts">Zum Wareneingang / EANs ergänzen</a>
+</main><footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
+<script src="/static/js/winter-reconciliation.js?v=1"></script>
+<script src="/static/js/nav.js?v=14"></script><script src="/static/js/session.js?v=settings-2"></script><script src="/static/js/theme.js?v=design-1"></script>
+</body></html>

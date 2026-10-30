@@ -95,6 +95,11 @@
         datum(lieferung.dokument?.datum)
       ]).filter(Boolean).join(' · ');
     panel.append(node('p', zeile, 'muted'));
+    if (darfVerwalten && lieferung.dokument?.typ === "bestellung") {
+      const reconcile = node("a", t("winter.title"));
+      reconcile.href = "/winter-abgleich?receipt=" + lieferung.id;
+      panel.append(reconcile);
+    }
     panel.append(tabelle(lieferung));
 
     const steuerung = node('div', null, 'filters lagerort-choice');

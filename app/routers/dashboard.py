@@ -41,7 +41,7 @@ def dashboard(
         ziele = uebersicht.ziel_filialen(session, [d.id for d, _ in rows])
         filiale = None if lagerort is None else uebersicht.filiale(session, lagerort.id)
         stamm = uebersicht.stamm(session)
-        delivered_quantity = session.scalar(select(func.sum(WareneingangPosition.menge)))
+        delivered_quantity = session.scalar(select(func.sum(WareneingangPosition.menge)).where(WareneingangPosition.ersetzt_durch_abgleich_id.is_(None)))
         return dict(
             **counts,
             delivered_quantity=(

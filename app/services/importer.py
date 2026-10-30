@@ -192,6 +192,8 @@ def import_invoice(
     with lese_slot:
         document, parser = read_and_detect(pdf, language)
         parsed = parse_with_parser(parser, document, language)
+        if parsed.get("winter_sizes"):
+            raise ImportRejected(translate("winter.use_reconciliation", language))
     if replace_cancelled_id is not None:
         from .reimport import replacement_rows
         try:
@@ -619,6 +621,9 @@ def delete_invoice(invoice_id: int, session_factory, language: str = DEFAULT_LAN
             select(Wareneingang).where(Wareneingang.dokument_id == invoice_id)
         ).all()
         wareneingang_ids = [w.id for w in wareneingaenge]
+        from ..core.models import WinterAbgleich
+        if session.scalar(select(WinterAbgleich.id).where(WinterAbgleich.wareneingang_id.in_(wareneingang_ids)).limit(1)) is not None:
+            raise DeleteRejected(translate("winter.history_protected", language))
         position_rows = session.execute(
             select(
                 WareneingangPosition.id,

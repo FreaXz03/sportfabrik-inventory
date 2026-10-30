@@ -74,7 +74,7 @@ def invoices(
             select(func.count(WareneingangPosition.id))
             .select_from(WareneingangPosition)
             .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
-            .where(Wareneingang.dokument_id == Dokument.id)
+            .where(Wareneingang.dokument_id == Dokument.id, WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))
             .scalar_subquery()
         )
         rows = session.execute(
@@ -159,7 +159,7 @@ def positions(
         select(func.count())
         .select_from(WareneingangPosition)
         .join(Wareneingang, Wareneingang.id == WareneingangPosition.wareneingang_id)
-        .where(condition)
+        .where(condition, WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))
     )
     stmt = (
         select(WareneingangPosition, Variante, Artikel, Wareneingang, Dokument, WareneingangPositionQuelle)
@@ -171,7 +171,7 @@ def positions(
             WareneingangPositionQuelle,
             WareneingangPositionQuelle.position_id == WareneingangPosition.id,
         )
-        .where(condition)
+        .where(condition, WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))
     )
     ordering = (
         (Dokument.dokumentdatum.desc().nulls_last(), Dokument.id.desc(), WareneingangPosition.id)

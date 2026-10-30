@@ -163,7 +163,7 @@ def liste_erwartete(
             select(WareneingangPosition, Variante, Artikel)
             .join(Variante, Variante.id == WareneingangPosition.varianten_id)
             .join(Artikel, Artikel.id == Variante.artikel_id)
-            .where(WareneingangPosition.wareneingang_id == wareneingang.id)
+            .where(WareneingangPosition.wareneingang_id == wareneingang.id, WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))
             .order_by(WareneingangPosition.id)
         ).all()
         # Import hier: lieferung_differenz importiert ausbuchung, das wiederum
@@ -284,7 +284,8 @@ def bestaetige_ankunft(
             position.id: position
             for position in session.scalars(
                 select(WareneingangPosition).where(
-                    WareneingangPosition.wareneingang_id == wareneingang.id
+                    WareneingangPosition.wareneingang_id == wareneingang.id,
+                    WareneingangPosition.ersetzt_durch_abgleich_id.is_(None),
                 )
             ).all()
         }

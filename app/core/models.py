@@ -431,6 +431,8 @@ class WareneingangPosition(Base):
     einheit: Mapped[str | None] = mapped_column(String(30))
     uvp: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     ek: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    ersetzt_durch_abgleich_id: Mapped[int | None] = mapped_column(ForeignKey("winter_abgleiche.id"), nullable=True)
+
     # Nur bei einer Umlagerung: das Eingangsdatum der Ware an der Quelle beim
     # Versand (D17 - Filiale -> Filiale behält ihr Datum).
     mitgebracht_datum: Mapped[date | None] = mapped_column(Date)
@@ -742,3 +744,17 @@ class Zaehlung(Base):
     zeitpunkt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class WinterAbgleich(Base):
+    """Permanent before/after audit for an explicitly confirmed winter order revision."""
+    __tablename__ = 'winter_abgleiche'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    wareneingang_id: Mapped[int] = mapped_column(ForeignKey('wareneingaenge.id'), index=True)
+    datei_hash: Mapped[str] = mapped_column(String(64), index=True)
+    anfrage_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    dateiname: Mapped[str] = mapped_column(String(500))
+    data: Mapped[dict] = mapped_column(JSON)
+    benutzer_kassennummer: Mapped[str | None] = mapped_column(String(20))
+    benutzer_name: Mapped[str | None] = mapped_column(String(100))
+    zeitpunkt: Mapped[datetime] = mapped_column(DateTime(timezone=True))

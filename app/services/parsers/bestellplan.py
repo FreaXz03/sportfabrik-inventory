@@ -61,6 +61,9 @@ SPALTEN = [
 
 
 def detect(document: Document) -> int | None:
+    from .winter_sizes import is_layout
+    if is_layout(document):
+        return 7
     kopf = {w[4] for page in document.pages for w in page.words}
     return 5 if KOPF_WORTE <= kopf else None
 
@@ -99,6 +102,9 @@ def _betrag(text: str) -> Decimal:
 
 
 def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
+    from .winter_sizes import is_layout, parse as parse_sizes
+    if is_layout(document):
+        return parse_sizes(document, language)
     items, warnings = [], []
     soll_menge, ist_ep, soll_ep = Decimal(0), Decimal(0), None
     for page in document.pages:
