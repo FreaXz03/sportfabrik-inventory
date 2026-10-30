@@ -1,4 +1,9 @@
 {
+  "receipt.remove_internal": "Interne EANs löschen",
+  "receipt.confirm_remove_internal": "Intern erzeugte EANs für die Positionen mit positiver Ankunftsmenge löschen? Die Nummern entfallen im gemeinsamen Artikelstamm auch für andere Filialen. Bereits gedruckte Etiketten mit diesen Nummern nicht verwenden. Bereits gebuchte Varianten sind geschützt; Hersteller-EANs bleiben erhalten.",
+  "receipt.removed_internal": "{count} interne EANs gelöscht. Vor dem Wareneingang bitte EANs ergänzen oder neu generieren.",
+  "errors.receipt.remove_internal_only": "Es können nur unveränderte, vom System erzeugte interne EANs gelöscht werden. Bitte die Anzeige aktualisieren.",
+  "errors.receipt.remove_used": "Mindestens eine Variante wurde bereits gebucht. Ihre interne EAN kann nicht mehr über den Wareneingang gelöscht werden. Es wurde nichts gelöscht.",
   "receipt.generate_all": "Alle nötigen EANs generieren",
   "receipt.confirm_all_internal": "Fehlende interne EANs für alle Positionen mit eingetragener Ankunftsmenge erzeugen? Vorhandene EANs bleiben erhalten. Es wird noch kein Bestand gebucht.",
   "receipt.generated_all": "{count} interne EANs erzeugt. Die Warenankunft kann jetzt separat bestätigt werden.",

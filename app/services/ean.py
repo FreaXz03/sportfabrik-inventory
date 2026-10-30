@@ -251,3 +251,38 @@ def generate_receipt_eans(receipt_id, quantities, session_factory, allowed_locat
         if missing_receipt_eans(session, variants, language):
             raise EanError(translate("errors.receipt.bulk_unavailable", language))
         return {"generated": len(generated), "identifiers": generated}
+
+
+def remove_receipt_eans(receipt_id, identifiers, session_factory, allowed_locations, language="de"):
+    """Undo generated primary labels on unused variants, with stale-value protection."""
+    from ..core.models import Lagerbewegung, Wareneingang, WareneingangPosition
+
+    with session_factory() as session, session.begin():
+        if session.bind.dialect.name == "postgresql":
+            session.execute(text(f"SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})"))
+        receipt = session.get(Wareneingang, receipt_id)
+        if receipt is None or receipt.status != "erwartet" or receipt.herkunft_lagerort_id is not None:
+            raise EanError(translate("errors.receipt.bulk_unavailable", language))
+        if receipt.lagerort_id not in allowed_locations:
+            raise PermissionError(translate("errors.receipt.bulk_forbidden", language))
+        variants = {str(v.id): v for v in session.scalars(select(Variante).join(
+            WareneingangPosition, WareneingangPosition.varianten_id == Variante.id
+        ).where(WareneingangPosition.wareneingang_id == receipt_id)).unique()}
+        removed = 0
+        for key, expected in identifiers.items():
+            variant = variants.get(key)
+            if variant is None:
+                raise EanError(translate("errors.wareneingang.unknown_position", language))
+            if expected != interne_ean(variant.id):
+                raise EanError(translate("errors.receipt.remove_internal_only", language))
+            if variant.ean is None:
+                continue  # A retry must not remove a subsequently added original EAN.
+            if variant.ean != expected or not variant.ean_intern:
+                raise EanError(translate("errors.receipt.remove_internal_only", language))
+            if session.scalar(select(Lagerbewegung.id).where(
+                Lagerbewegung.varianten_id == variant.id).limit(1)) is not None:
+                raise EanError(translate("errors.receipt.remove_used", language))
+            variant.ean, variant.ean_intern = None, False
+            removed += 1
+        session.flush()
+        return {"removed": removed}

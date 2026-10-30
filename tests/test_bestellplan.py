@@ -69,7 +69,7 @@ def test_erkennt_layout_und_liest_eine_position_je_filiale():
     ]
     erste = ergebnis["items"][0]
     assert erste["brand"] == "Head"
-    assert erste["description"] == "Head Edge 7 W HV R102mm"
+    assert erste["description"] == "Edge 7 W HV R102mm"
     assert erste["supplier_article_no"] == "Head Edge 7 W HV R102mm"
     assert erste["size"] == "ONESIZE"
     assert erste["uvp"] == "335.00"
@@ -122,3 +122,15 @@ def test_import_bucht_je_filiale_eine_erwartete_lieferung_ohne_bestand():
         assert session.scalar(select(func.coalesce(func.sum(Bestand.menge), 0))) == 0
     with pytest.raises(ImportRejected):
         import_invoice(pdf, "nochmal.pdf", hashlib.sha256(pdf).hexdigest(), sessions, sf1)
+
+
+def test_brand_separated_without_changing_source_identity():
+    row = ("Body Glove Test Model", *ABSCHNITT[0][1:])
+    result = parse_document(plan(zeilen=[row], gesamt_ep="7416.00"))
+    item = result["items"][0]
+    assert item["brand"] == "Body Glove"
+    assert item["description"] == "Test Model"
+    assert item["supplier_article_no"] == "Body Glove Test Model"
+    assert item["article_no"] == "Body Glove Test Model"
+    assert "Body Glove Test Model" in item["raw_lines"][0]
+    assert result["warnings"] == []

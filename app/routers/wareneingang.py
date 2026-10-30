@@ -213,3 +213,31 @@ async def api_receipt_eans(
         raise HTTPException(409, str(exc)) from exc
     except SQLAlchemyError as exc:
         raise HTTPException(503, translate("errors.preview.import_db_error", language)) from exc
+
+
+class RemoveReceiptEansBody(BaseModel):
+    identifiers: dict[str, str] = Field(default_factory=dict)
+
+
+@router.post("/api/wareneingaenge/{wareneingang_id}/eans/entfernen")
+async def api_remove_receipt_eans(
+    wareneingang_id: int,
+    body: RemoveReceiptEansBody,
+    user=Depends(require_login_api),
+    session=Depends(get_session),
+    language: str = Depends(get_language),
+):
+    from ..core.database import SessionLocal
+    from ..services.ean import EanError, remove_receipt_eans
+    from sqlalchemy.exc import SQLAlchemyError
+
+    allowed = {location.id for location in list_wareneingang_lagerorte(session, user)}
+    try:
+        return await run_in_threadpool(remove_receipt_eans, wareneingang_id,
+                                       body.identifiers, SessionLocal, allowed, language)
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+    except EanError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, translate("errors.preview.import_db_error", language)) from exc

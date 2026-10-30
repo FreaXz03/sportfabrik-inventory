@@ -154,6 +154,24 @@ def test_bulk_eans_confirmation_preserves_receipt_inputs(welt):
         expect(panel.locator('input[type=date]')).to_have_value('2026-10-20')
         with welt.sessions() as session:
             assert not session.scalars(select(Lagerbewegung)).all()
+        remove = panel.get_by_role('button', name='Interne EANs löschen')
+        expect(remove).to_be_visible()
+        page.once('dialog', lambda dialog: dialog.dismiss())
+        remove.click()
+        with welt.sessions() as session:
+            assert session.scalar(select(Variante.ean).where(Variante.groesse == 'L')) is not None
+        page.once('dialog', lambda dialog: dialog.accept())
+        remove.click()
+        expect(panel.get_by_role('status').first).to_contain_text('1 interne EANs gelöscht')
+        expect(generate).to_be_visible()
+        expect(remove).to_be_hidden()
+        expect(quantities.last).to_have_value('1')
+        expect(panel.locator('input[type=date]')).to_have_value('2026-10-20')
+        panel.get_by_role('button', name='Ankunft bestätigen', exact=True).click()
+        expect(panel.get_by_role('status').first).to_contain_text('Es wurde nichts gebucht')
+        page.once('dialog', lambda dialog: dialog.accept())
+        generate.click()
+        expect(remove).to_be_visible()
         panel.get_by_role('button', name='Ankunft bestätigen', exact=True).click()
         expect(page.locator('#status')).to_contain_text('Teillieferung gebucht')
         with welt.sessions() as session:

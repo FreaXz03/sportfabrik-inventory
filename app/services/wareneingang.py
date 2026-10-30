@@ -221,6 +221,7 @@ def liste_erwartete(
                         "farbe": variante.farbe,
                         "groesse": variante.groesse,
                         "ean": variante.ean,
+                        "ean_intern": variante.ean_intern,
                         "einheit": position.einheit,
                         "menge_erwartet": _zahl(position.menge),
                         "menge_eingetroffen": _zahl(position.menge_eingetroffen),

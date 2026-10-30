@@ -276,3 +276,54 @@ def test_bulk_receipt_eans_collision_rolls_back(welt):
     with welt.sessions() as session:
         assert session.get(Variante, missing_id).ean is None
         assert session.get(Variante, known_id).ean is None
+
+
+def test_remove_generated_receipt_ean_preserves_original_and_requires_ean_again(welt):
+    from conftest import BEAT
+    from app.core.models import VarianteEan
+    result = _manual(welt)
+    rid = result["wareneingang_id"]
+    with welt.sessions() as session:
+        variants = session.scalars(select(Variante).order_by(Variante.id)).all()
+        known_id, missing_id = [v.id for v in variants]
+        position_id = session.scalar(select(WareneingangPosition.id).where(WareneingangPosition.varianten_id == missing_id))
+    generated = welt.client.post(f"/api/varianten/{missing_id}/ean", json={"generieren": True}).json()["ean"]
+    url = f"/api/wareneingaenge/{rid}/eans/entfernen"
+    body = {"identifiers": {str(missing_id): generated}}
+    welt.anmelden(BEAT)
+    assert welt.client.post(url, json=body).status_code == 403
+    welt.anmelden(ANNA)
+    assert welt.client.post(url, json={"identifiers": {str(known_id): "4006632041234"}}).status_code == 409
+    assert welt.client.post(url, json={"identifiers": {str(missing_id): "2000000000008"}}).status_code == 409
+    assert welt.client.post(url, json=body).json()["removed"] == 1
+    assert welt.client.post(url, json=body).json()["removed"] == 0
+    with welt.sessions() as session:
+        assert session.get(Variante, missing_id).ean is None
+        assert not session.get(Variante, missing_id).ean_intern
+        assert session.get(Variante, known_id).ean == "4006632041234"
+        assert not session.scalars(select(Lagerbewegung)).all()
+    assert welt.client.post(f"/api/wareneingaenge/{rid}/ankunft", json={"mengen": {str(position_id): "1"}}).status_code == 409
+    # A later original identifier survives removal of the internal primary label.
+    assert welt.client.post(f"/api/varianten/{missing_id}/ean", json={"generieren": True}).status_code == 200
+    assert welt.client.post(f"/api/varianten/{missing_id}/eans", json={"ean": "5901234123457"}).status_code == 200
+    assert welt.client.post(url, json=body).json()["removed"] == 1
+    with welt.sessions() as session:
+        assert session.scalar(select(VarianteEan.ean).where(VarianteEan.varianten_id == missing_id)) == "5901234123457"
+    assert welt.client.post(f"/api/wareneingaenge/{rid}/ankunft", json={"mengen": {str(position_id): "1"}}).status_code == 200
+
+
+def test_remove_generated_receipt_eans_used_variant_rejects_whole_batch(welt):
+    from app.services.ean import interne_ean
+    result = _manual(welt)
+    rid = result["wareneingang_id"]
+    with welt.sessions.begin() as session:
+        variants = session.scalars(select(Variante).order_by(Variante.id)).all()
+        for v in variants:
+            v.ean, v.ean_intern = interne_ean(v.id), True
+        body = {"identifiers": {str(v.id): v.ean for v in variants}}
+        positions = session.scalars(select(WareneingangPosition).order_by(WareneingangPosition.id)).all()
+        used_position = positions[-1].id
+    assert welt.client.post(f"/api/wareneingaenge/{rid}/ankunft", json={"mengen": {str(used_position): "1"}}).status_code == 200
+    assert welt.client.post(f"/api/wareneingaenge/{rid}/eans/entfernen", json=body).status_code == 409
+    with welt.sessions() as session:
+        assert all(v.ean for v in session.scalars(select(Variante)))

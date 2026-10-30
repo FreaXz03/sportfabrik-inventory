@@ -1,4 +1,9 @@
 {
+  "receipt.remove_internal": "Supprimer les EAN internes",
+  "receipt.confirm_remove_internal": "Supprimer les EAN internes générés pour les lignes avec une quantité reçue positive ? Ces numéros seront retirés des articles communs à toutes les filiales. Ne pas utiliser les étiquettes déjà imprimées avec ces numéros. Les variantes déjà enregistrées en stock sont protégées ; les EAN fabricant sont conservés.",
+  "receipt.removed_internal": "{count} EAN internes supprimés. Compléter ou régénérer les EAN avant la réception.",
+  "errors.receipt.remove_internal_only": "Seuls les EAN internes inchangés générés par le système peuvent être supprimés. Actualiser la page.",
+  "errors.receipt.remove_used": "Au moins une variante a déjà été enregistrée en stock. Son EAN interne ne peut plus être supprimé depuis la réception. Aucun EAN supprimé.",
   "receipt.generate_all": "Générer tous les EAN nécessaires",
   "receipt.confirm_all_internal": "Générer les EAN internes manquants pour les lignes avec une quantité reçue saisie ? Les EAN existants sont conservés. Aucun stock ne sera encore enregistré.",
   "receipt.generated_all": "{count} EAN internes générés. Confirmer ensuite séparément la réception des marchandises.",

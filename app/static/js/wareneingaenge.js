@@ -116,21 +116,32 @@
     rueckmeldung.setAttribute('role', 'status');
     knopf.addEventListener('click', () => bestaetigen(lieferung, panel, datumsfeld, knopf, rueckmeldung));
     steuerung.append(knopf);
-    if (!lieferung.umlagerung && lieferung.positionen.some(p => p.ean_fehlt)) {
+    if (!lieferung.umlagerung) {
       const generate = node('button', t('receipt.generate_all'), 'secondary');
-      generate.type = 'button';
-      generate.addEventListener('click', async () => {
-        if (!window.confirm(t('receipt.confirm_all_internal'))) return;
+      const remove = node('button', t('receipt.remove_internal'), 'secondary');
+      generate.type = remove.type = 'button';
+      const visibility = () => {
+        generate.hidden = !lieferung.positionen.some(p => p.ean_fehlt);
+        remove.hidden = !lieferung.positionen.some(p => p.ean && p.ean_intern);
+      };
+      visibility();
+      async function identifiersAction(deleting) {
+        if (!window.confirm(t(deleting ? 'receipt.confirm_remove_internal' : 'receipt.confirm_all_internal'))) return;
         const quantities = {};
         for (const input of panel.querySelectorAll('input[data-position]')) {
           if (input.value !== '') quantities[input.dataset.position] = input.value;
         }
-        generate.disabled = true;
-        knopf.disabled = true;
+        const identifiers = {};
+        for (const position of lieferung.positionen) {
+          if (Number(quantities[position.id]) > 0 && position.ean && position.ean_intern) {
+            identifiers[position.varianten_id] = position.ean;
+          }
+        }
+        generate.disabled = remove.disabled = knopf.disabled = true;
         try {
-          const response = await fetch('/api/wareneingaenge/' + lieferung.id + '/eans/generieren', {
+          const response = await fetch('/api/wareneingaenge/' + lieferung.id + '/eans/' + (deleting ? 'entfernen' : 'generieren'), {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mengen: quantities })
+            body: JSON.stringify(deleting ? { identifiers } : { mengen: quantities })
           });
           const result = await response.json();
           if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : t('wareneingaenge.load_error'));
@@ -142,17 +153,20 @@
             lieferung.positionen = current.positionen;
             const rows = panel.querySelectorAll('tbody tr');
             current.positionen.forEach((position, index) => rows[index]?.firstElementChild.replaceWith(artikelZelle(position)));
-            generate.hidden = !current.positionen.some(p => p.ean_fehlt);
+            visibility();
           }
-          rueckmeldung.textContent = t('receipt.generated_all', { count: result.generated });
+          rueckmeldung.textContent = t(deleting ? 'receipt.removed_internal' : 'receipt.generated_all', {
+            count: deleting ? result.removed : result.generated
+          });
         } catch (error) {
           rueckmeldung.textContent = error.message === 'Failed to fetch' ? t('common.connection_lost') : error.message;
         } finally {
-          generate.disabled = false;
-          knopf.disabled = false;
+          generate.disabled = remove.disabled = knopf.disabled = false;
         }
-      });
-      steuerung.append(generate);
+      }
+      generate.addEventListener('click', () => identifiersAction(false));
+      remove.addEventListener('click', () => identifiersAction(true));
+      steuerung.append(generate, remove);
     }
     panel.append(steuerung, rueckmeldung);
     const umleitung = umleitenBereich(lieferung);

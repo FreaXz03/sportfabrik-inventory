@@ -462,3 +462,10 @@ branches; entry/correction also enforce this boundary server-side.
 `GET /api/wareneingaenge` positions include `artikel_id`, `varianten_id` and `ean_fehlt`. Manual expected receipts have `dokument=null` and `umlagerung=null`. Desktop and phone render this explicitly.
 
 `POST /api/wareneingaenge/{id}/ankunft` validates all positively submitted positions before any receipt/stock changes. Missing or malformed identifiers produce HTTP 409 with affected description/colour/size. Omitted/zero quantities do not require identifiers. Transfers keep their existing path. Correct EANs in the existing computer item details, then resubmit the retained quantities; phone EAN editing is not enabled. Internal generation asks for explicit browser confirmation. A later original EAN can be added alongside the internal label using the existing additional-EAN API, or resolved during import/manual entry for a unique matching internal variant; check digit and ownership rules apply to additions.
+
+
+## Receiving internal EAN actions — 30 October 2026
+
+`POST /api/wareneingaenge/{id}/eans/generieren` accepts `{"mengen": {"position_id": "quantity"}}` and returns `generated` plus `identifiers`. Only positive submitted receipt lines are considered; existing eligible identifiers remain.
+
+`POST /api/wareneingaenge/{id}/eans/entfernen` accepts `{"identifiers": {"variant_id": "displayed_internal_ean"}}` and returns `removed`. Each variant must belong to this open supplier/manual receipt. Only unchanged deterministic internal primary identifiers can be removed; manufacturer/additional identifiers are retained. Any historical stock movement on an affected variant rejects the entire batch (409). Already missing identifiers are harmless on retry, but a subsequently changed identifier is protected. Location permissions apply (403), and phone sessions retain their existing restriction. Both actions use the shared transaction lock and never change stock, arrival quantities or dates. The desktop UI confirms both actions and preserves inputs.

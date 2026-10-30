@@ -14,8 +14,9 @@ Gegenrechnung EP × Total = EP Total fängt einen Fehler ab.
 
 Der Plan trägt weder Lieferant noch Belegnummer noch Datum, keine Grösse und keine
 EAN. Er stammt von Dritt-Lieferanten direkt (Fabian, 05.10.2026: Code 999,
-Marke = erstes Wort). Erzeugt werden: Nummer „Bestellung Winter HW26-<Hash>",
-Datum = heute, Grösse ONESIZE, Lieferantenartikel = Bezeichnung. Typ
+Marke = erstes Wort; bekannte mehrteilige Marken bleiben zusammen). Erzeugt werden: Nummer „Bestellung Winter HW26-<Hash>",
+Datum = heute, Grösse ONESIZE, Lieferantenartikel = Originalbezeichnung.
+Die Artikelbezeichnung enthält die führende Marke nicht nochmals. Typ
 „bestellung": je Produkt und Filiale mit Menge > 0 eine Position mit
 `lagerort_code` - erwartete Lieferung an diese Filiale, kein Bestand (Regel 3).
 Der Liefertermin je Zeile bleibt im Originaltext der Vorschau.
@@ -140,12 +141,14 @@ def parse(document: Document, language: str = DEFAULT_LANGUAGE) -> dict:
             for code in FILIALEN:
                 if code not in mengen or int(mengen[code]) == 0:
                     continue
+                brand = next((b for b in ("Body Glove",) if name.casefold().startswith(b.casefold() + " ")), name.split()[0])
+                description = name[len(brand):].strip() or name
                 item = dict(
-                    brand=name.split()[0],
+                    brand=brand,
                     supplier_article_no=name,
                     article_no=name,
                     ean="",
-                    description=name,
+                    description=description,
                     color=None,
                     size="ONESIZE",
                     quantity=mengen[code],
