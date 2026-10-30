@@ -100,8 +100,16 @@ def parse(document, language='de'):
                 prices = dict(zip(price_order, (_number(first[0]),_number(second[0]))))
                 vp_totals = [w[4] for w in partner if w[0] < 110]
                 price_ok = prices['EP']*count == line_ep and len(vp_totals)==1 and _number(vp_totals[0]) == prices['VP']*count
+                # Known print quirk (Skistöcke): the two total columns are swapped while the unit prices are right.
+                # Accept it only when the swapped totals are exactly consistent; the printed EP total column stays the reference.
+                price_ok = price_ok or (prices['VP']*count == line_ep and len(vp_totals)==1 and _number(vp_totals[0]) == prices['EP']*count)
             except (ValueError, ArithmeticError, KeyError):
                 error()
+            # Owner-confirmed: the "2" under the One-Size header of the goggle section belongs to the model name.
+            flyte = re.fullmatch(r'(McKinley Flyte JR) (Revo\b.*)', name, re.I)
+            if flyte and 'ONESIZE' in labels.values() and set(quantities) == {'2'}:
+                name = f'{flyte[1]} 2 {flyte[2]}'
+                quantities = {'ONESIZE': quantities['2']}
             raw = ' '.join(w[4] for w in row)
             row_key = f'{left.number}:{len(groups)+1}'
             row_warnings = [] if price_ok else [translate('winter.price_conflict',language)]
