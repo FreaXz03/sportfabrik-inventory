@@ -1,0 +1,50 @@
+# Explicit opt-in development stack; never combine with production compose.yaml.
+name: sportfabrik-inventory-dev
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inventory_dev
+      POSTGRES_USER: inventory_dev
+      POSTGRES_PASSWORD: ${DEV_POSTGRES_PASSWORD:?Development database password required}
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventory_dev -d inventory_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [development]
+  app:
+    image: sportfabrik-inventory-dev:working
+    build: .
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: inventory_dev
+      DB_USER: inventory_dev
+      DB_PASSWORD: ${DEV_POSTGRES_PASSWORD:?Development database password required}
+      SESSION_SECRET: ${DEV_SESSION_SECRET:?Separate development session secret required}
+      SESSION_COOKIE_NAME: sportfabrik_dev_session
+      SESSION_HTTPS_ONLY: "true"
+    ports:
+      - "127.0.0.1:8097:8000"
+    volumes:
+      - dev_files:/srv/inventory/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/db-test', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [development]
+networks:
+  development:
+volumes:
+  dev_postgres_data:
+  dev_files:

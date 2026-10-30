@@ -34,3 +34,8 @@ Updated repository working rules, orientation, architecture, API, phone document
 ## Remaining work
 
 Decide the EAN boundary for other stock increases and reversals. Verify physical phone/till/scanner workflows and, when separately authorized, prepare a production release. Later packages remain complementary document matching, history/replacement UI, the SF1 pilot and historical price snapshots/reporting. Missing quantities versus genuine zero-quantity catalogues are part of that later document workflow, not changed here.
+
+
+## Later PostgreSQL verification during development deployment
+
+The separately authorized homeserver development instance subsequently passed a focused receiving smoke check on an isolated temporary PostgreSQL 18 database, including atomic rejection and retry behavior. This supplements the original SQLite/browser evidence; it does not establish full PostgreSQL concurrency or physical POS acceptance. See [development-instance.md](development-instance.md). Production remained unchanged.

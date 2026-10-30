@@ -284,3 +284,20 @@ def test_externe_sicherung_nur_verschluesselt(tmp_path):
         "inventory-20260929T200000Z.tar.age",
         "inventory-20260929T200000Z.tar.age.sha256",
     ]
+
+
+def test_session_cookie_name_can_isolate_development_without_changing_security():
+    code = (
+        "from app.main import app\n"
+        "m = next(m for m in app.user_middleware if m.cls.__name__ == 'SessionMiddleware')\n"
+        "print(m.kwargs.get('session_cookie', 'session'), m.kwargs['https_only'], m.kwargs['same_site'])\n"
+    )
+    for name, expected in ((None, 'session'), ('sportfabrik_dev_session', 'sportfabrik_dev_session')):
+        environment = {k: v for k, v in os.environ.items() if k != 'SESSION_COOKIE_NAME'}
+        environment.update(SESSION_SECRET='synthetic-test', DATABASE_URL='sqlite://', SESSION_HTTPS_ONLY='true')
+        if name:
+            environment['SESSION_COOKIE_NAME'] = name
+        result = subprocess.run([sys.executable, '-c', code], cwd=ROOT, env=environment,
+                                capture_output=True, timeout=60)
+        assert result.returncode == 0, result.stderr.decode()
+        assert result.stdout.decode().strip() == expected + ' True lax'

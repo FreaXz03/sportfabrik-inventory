@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -74,6 +75,7 @@ async def schutz_header(request: Request, call_next):
 app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,
+    session_cookie=os.getenv("SESSION_COOKIE_NAME", "session"),
     max_age=SESSION_MAX_AGE,
     same_site="lax",
     https_only=SESSION_HTTPS_ONLY,

@@ -34,3 +34,8 @@ Validation: combined application source previously passed 378 SQLite tests, 15 s
 ## Session record and later production overrides
 
 See [the reconciliation/setup record](reconciliation-2026-10-29.md) for commits, backups, checks and limitations. A later read-only check confirmed uncommitted HTTPS changes in the production clone (`Caddyfile`, `compose.yaml`); preserve them before any release update. The clone is on main but its deployment configuration is therefore not byte-for-byte identical to GitHub.
+
+
+## Separate development runtime — 30 October 2026
+
+The user explicitly requested a second running app from `working/entwicklung`. It is installed from the development source via the separate `compose.development.yaml` project, with its private configuration under `/home/sfadmin/homeserver/sportfabrik-inventory-dev`. Private HTTPS access: `https://sfserver.tailb8a158.ts.net:8454`. Independent database, files, network, credentials and cookie; no production mounts or updates. A push alone never updates either running app. Details: [development-instance.md](development-instance.md). Initial account setup remains pending an explicit account/role choice.
