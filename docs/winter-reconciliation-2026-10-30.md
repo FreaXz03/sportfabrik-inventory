@@ -21,3 +21,7 @@ Real-data check (throwaway copy of the development database, PDF `winterhw_sf1.p
 - **Vector poles (Skistöcke):** the section prints the two total columns swapped while the unit prices are correct. The row is accepted only when the swapped totals are exactly consistent (VP × quantity in the first total column, EP × quantity in the VP total). The listed VP (69.90 / 39.90) is used; any other inconsistency still blocks.
 - **McKinley Flyte JR Revo:** the "2" under the One-Size header is part of the model name. These rows are read as `McKinley Flyte JR 2 Revo <colour>` with size ONESIZE. The rule is limited to this name; other digit columns next to ONESIZE stay blocked.
 - Real SF1 list after the change: 235 lines, 2,600 pieces, no blocked groups, EP footer total still matches. Synthetic regression tests: `tests/test_winter_parser_exceptions.py`.
+
+## SF2 list: per-size total line omits one article (30 October 2026)
+
+In the real SF2 list the sections *Winterschuhe Men* and *Winterschuhe Lady* print a "Total pro Grösse" line that leaves out one listed article (Scarpa Rush Polar GTX: 17 and 16 pieces). Row totals and the printed grand totals (120 and 97) are right. The parser now accepts a section only if the difference between the computed and the printed per-size totals equals exactly one listed row and the printed grand total equals the sum of all rows. Any other difference still blocks. Real SF2 list: 202 lines, 2,324 pieces, no warnings, EP footer matches. Tests: `tests/test_winter_parser_exceptions.py`.

@@ -31,6 +31,7 @@ def parse(document, language='de'):
     groups, items, warnings = [], [], []
     labels, section, price_order = {}, '', ('VP', 'EP')
     section_totals = [Decimal(0)] * 15
+    section_rows = []
     ep_total = Decimal(0)
     for left, right in zip(document.pages[:half], document.pages[half:]):
         right_rows = _zeilen(right.words)
@@ -53,6 +54,7 @@ def parse(document, language='de'):
                 if any(section_totals):
                     error()  # A section must close with its printed subtotal.
                 section, price_order = name, (first[0],second[0])
+                section_rows = []
                 labels = {k: ('ONESIZE' if v.casefold() == 'one size' else v) for k,v in cells.items()}
                 if not labels or len(set(labels.values())) != len(labels):
                     error()
@@ -60,11 +62,21 @@ def parse(document, language='de'):
             if name.startswith('Total pro Grösse'):
                 try:
                     actual = [_number(cells.get(i,'0')) for i in range(15)]
-                    if actual != section_totals or not total or sum(actual) != _number(total[0]):
+                    if not total:
+                        error()
+                    if actual != section_totals:
+                        # Known print quirk (Winterschuhe): the per-size total line omits exactly one listed article.
+                        # Accept only if the difference equals one row's quantities and the printed grand total
+                        # equals the sum of all rows; any other difference still blocks.
+                        gap = [s - a for s, a in zip(section_totals, actual)]
+                        if gap not in section_rows or sum(section_totals) != _number(total[0]):
+                            error()
+                    elif sum(actual) != _number(total[0]):
                         error()
                 except (ValueError, ArithmeticError):
                     error()
                 section_totals = [Decimal(0)] * 15
+                section_rows = []
                 continue
             numeric = lambda vs: bool(vs) and bool(re.fullmatch(r'\d+(?:\.\d+)?',vs[0]))
             if not (name and numeric(first) and numeric(second) and numeric(sf) and numeric(total)):
@@ -93,6 +105,7 @@ def parse(document, language='de'):
                     section_totals[i] += q
                     if q:
                         quantities[labels[i]] = q
+                section_rows.append([_number(cells.get(i,'0')) for i in range(15)])
                 count = _number(total[0])
                 if count != sum(quantities.values()) or count != _number(sf[0]) or not amount:
                     error()
