@@ -1320,5 +1320,11 @@
   "errors.parser.barcode_ambiguous": "Multiple different EAN barcodes detected in this row; please review.",
   "errors.importer.replacement_mismatch": "The cancelled document does not match the file and location.",
   "errors.importer.replacement_rows_changed": "The rows do not match the cancelled document.",
-  "errors.importer.replacement_ean_conflict": "A decoded EAN already belongs to a different variant."
+  "errors.importer.replacement_ean_conflict": "A decoded EAN already belongs to a different variant.",
+  "winter.new_option": "➕ New article (order correction)",
+  "winter.new_note": "New article; an order correction with a reason is required.",
+  "winter.withdraw": "Dropped",
+  "winter.withdraw_title": "Remove previous articles from the open order (article is not in the new list)",
+  "winter.select_all": "Select full revision: create unmatched rows as new, remove all other previous articles",
+  "winter.revision_summary": "Created: {created} groups ({createdTotal} pieces). Dropped: {removed} previous articles ({removedTotal} pieces)."
 }

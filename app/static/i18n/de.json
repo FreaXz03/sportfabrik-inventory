@@ -1320,5 +1320,11 @@
   "errors.parser.barcode_ambiguous": "Mehrere unterschiedliche EAN-Barcodes in dieser Zeile erkannt; bitte prüfen.",
   "errors.importer.replacement_mismatch": "Der stornierte Beleg passt nicht zu Datei und Filiale.",
   "errors.importer.replacement_rows_changed": "Die Positionen stimmen nicht mit dem stornierten Beleg überein.",
-  "errors.importer.replacement_ean_conflict": "Eine erkannte EAN gehört bereits zu einer anderen Variante."
+  "errors.importer.replacement_ean_conflict": "Eine erkannte EAN gehört bereits zu einer anderen Variante.",
+  "winter.new_option": "➕ Neuer Artikel (Bestellkorrektur)",
+  "winter.new_note": "Neuer Artikel; Bestellkorrektur mit Begründung nötig.",
+  "winter.withdraw": "Entfällt",
+  "winter.withdraw_title": "Bisherige Artikel aus der offenen Bestellung nehmen (Artikel entfällt in der neuen Liste)",
+  "winter.select_all": "Neufassung auswählen: ohne Zuordnung neu anlegen, übrige bisherige Artikel entfernen",
+  "winter.revision_summary": "Neu angelegt: {created} Gruppen ({createdTotal} Stück). Entfallen: {removed} bisherige Artikel ({removedTotal} Stück)."
 }

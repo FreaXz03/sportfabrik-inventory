@@ -1320,5 +1320,11 @@
   "errors.parser.barcode_ambiguous": "Plusieurs codes-barres EAN différents détectés sur cette ligne ; veuillez vérifier.",
   "errors.importer.replacement_mismatch": "Le document annulé ne correspond pas au fichier et au site.",
   "errors.importer.replacement_rows_changed": "Les lignes ne correspondent pas au document annulé.",
-  "errors.importer.replacement_ean_conflict": "Un EAN reconnu appartient déjà à une autre variante."
+  "errors.importer.replacement_ean_conflict": "Un EAN reconnu appartient déjà à une autre variante.",
+  "winter.new_option": "➕ Nouvel article (correction de commande)",
+  "winter.new_note": "Nouvel article ; une correction de commande motivée est requise.",
+  "winter.withdraw": "Supprimé",
+  "winter.withdraw_title": "Retirer les anciens articles de la commande ouverte (absents de la nouvelle liste)",
+  "winter.select_all": "Sélectionner la refonte : créer les lignes sans correspondance, retirer les autres anciens articles",
+  "winter.revision_summary": "Créés : {created} groupes ({createdTotal} pièces). Supprimés : {removed} anciens articles ({removedTotal} pièces)."
 }

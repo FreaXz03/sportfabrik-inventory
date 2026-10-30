@@ -111,8 +111,9 @@ def parse(document, language='de'):
                          printed_article_no=refs[0] if refs else None, page=left.number, paired_page=right.number,
                          row_y=y, raw_lines=[raw,' '.join(w[4] for w in partner)], warnings=row_warnings,
                          uvp=str(prices['VP']),ek=str(prices['EP']))
-            groups.append(group)
             brand = next((b for b in ('Body Glove','Gizmo Riders','Alpen Gaudi','Nordic Grip') if name.casefold().startswith(b.casefold()+' ')),name.split()[0])
+            group.update(brand=brand,description=name[len(brand):].strip() or name)
+            groups.append(group)
             for size,quantity in quantities.items():
                 item = pruefe_position(dict(brand=brand, supplier_article_no=name,article_no=name,ean='',
                     description=name[len(brand):].strip() or name,color=None,size=size,quantity=str(quantity),unit='Stk',

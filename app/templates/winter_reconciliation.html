@@ -22,7 +22,9 @@
 <div class="tablewrap"><table><thead><tr>
 <th data-i18n="winter.choose">Übernehmen</th><th data-i18n="winter.new_article">Artikel / Quelle</th><th data-i18n="winter.sizes">Neue Größen / Mengen</th><th data-i18n="winter.target">Bestehenden Artikel zuordnen</th><th data-i18n="winter.result">Prüfung</th>
 </tr></thead><tbody id="winterRows"></tbody></table></div>
+<p><button id="winterSelectAll" type="button" data-i18n="winter.select_all">Neufassung auswählen: ohne Zuordnung neu anlegen, übrige bisherige Artikel entfernen</button></p>
 <p id="winterSelected"></p>
+<details><summary data-i18n="winter.withdraw_title">Bisherige Artikel aus der offenen Bestellung nehmen (Artikel entfällt in der neuen Liste)</summary><ul id="winterWithdraw"></ul></details>
 <details><summary data-i18n="winter.unchanged">Bestehende Artikel – ohne Auswahl unverändert</summary><ul id="winterOriginals"></ul></details>
 <label><input id="winterRevise" type="checkbox"><span data-i18n="winter.revise">Abweichende Bestellmengen ausdrücklich übernehmen (Bestellkorrektur)</span></label>
 <label><span data-i18n="winter.reason">Begründung der Bestellkorrektur (mindestens 10 Zeichen)</span><input id="winterReason" type="text" maxlength="500" disabled></label>
@@ -32,6 +34,6 @@
 </section>
 <a href="/wareneingaenge" data-i18n="receipt.open_receipts">Zum Wareneingang / EANs ergänzen</a>
 </main><footer data-i18n="common.footer">Sport-Fabrik Inventory</footer>
-<script src="/static/js/winter-reconciliation.js?v=1"></script>
+<script src="/static/js/winter-reconciliation.js?v=2"></script>
 <script src="/static/js/nav.js?v=14"></script><script src="/static/js/session.js?v=settings-2"></script><script src="/static/js/theme.js?v=design-1"></script>
 </body></html>

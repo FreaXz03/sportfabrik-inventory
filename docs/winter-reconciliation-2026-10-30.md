@@ -9,3 +9,9 @@ Managers and head office can open `/winter-abgleich` (also linked from receiving
 - Migration `b20261030` (checked up/down/up on throwaway PostgreSQL 18; downgrade refuses once audits exist).
 
 Verification: full SQLite suite 383 passed, 43 skipped (private documents/Tesseract/Node missing in the default PATH); `tests/test_betrieb.py` 35 passed with the Playwright-bundled Node; browser flow with confirmation, cancellation, history and receiving list. Not tested with the private branch PDFs or on the development instance (no deployment). The SF1 file totals 2,600 pieces versus 3,266 stored — resolve this difference before applying.
+
+## Full revision (added 30 October 2026)
+
+A branch list can be an updated order rather than a size split of the stored one (the real SF1 list: 2,600 pieces versus 3,266 stored, different models/colours). The page therefore also offers: **new article** as match target, an **entfällt** list for previous articles missing in the new list, and a button "Neufassung auswählen". Any new article, dropped article or quantity change requires the explicit order revision with a reason (at least 10 characters). With an explicit revision the new list's prices apply to the new lines; without it a price difference still blocks. Dropped/replaced lines stay as history; received articles can never be dropped. No stock is booked.
+
+Real-data check (throwaway copy of the development database, PDF `winterhw_sf1.pdf`): 224 of 229 groups applied, 655 active lines, 2,460 pieces; repeating the request was idempotent. The remaining 140 pieces are 5 groups blocked on purpose: Vector CRB and Vector 300 (section header says EP/VP but the totals columns follow the opposite order) and three Flyte JR Revo lines (size column "2" next to ONESIZE sections). They need a human decision.

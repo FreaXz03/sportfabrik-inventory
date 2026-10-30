@@ -49,20 +49,21 @@ async def preview(receipt_id:int,file:UploadFile=File(...),user=Depends(require_
 
 @router.post('/api/winter-abgleich/{receipt_id}/uebernehmen')
 async def apply(receipt_id:int,file:UploadFile=File(...),fingerprint:str=Form(...),selection:str=Form(...,max_length=100000),
-                confirmed:bool=Form(False),revise_quantities:bool=Form(False),reason:str=Form('',max_length=500),
+                confirmed:bool=Form(False),revise_quantities:bool=Form(False),reason:str=Form('',max_length=500),withdraw:str=Form('[]',max_length=100000),
                 user=Depends(require_chef_api),session=Depends(get_session),language:str=Depends(get_language)):
     from ..core.database import SessionLocal
     try:
         if not confirmed:raise ReconciliationRejected(translate('errors.preview.confirm_required',language))
         data,parsed=await read(file,language)
         try:
-            selected=json.loads(selection)
+            selected=json.loads(selection);removed=json.loads(withdraw)
+            if not isinstance(removed,list):raise ValueError
         except (TypeError,ValueError) as exc:
             raise ReconciliationRejected(translate('winter.selection_required',language)) from exc
         allowed={l.id for l in list_wareneingang_lagerorte(session,user)}
         return await run_in_threadpool(apply_revision,SessionLocal,receipt_id,parsed,hashlib.sha256(data).hexdigest(),
             file.filename,fingerprint,selected,allowed,{'kassennummer':user.kassennummer,'name':user.name},language,
-            revise_quantities,reason.strip())
+            revise_quantities,reason.strip(),removed)
     except (DocumentParseError,ReconciliationRejected) as exc:
         raise HTTPException(409,str(exc)) from exc
     except SQLAlchemyError as exc:

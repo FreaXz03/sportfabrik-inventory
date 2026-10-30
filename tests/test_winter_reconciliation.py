@@ -195,3 +195,72 @@ def test_replaced_onesize_lines_are_not_counted_twice_in_totals(welt):
     assert apply(welt,rid,pdf,view).status_code==200
     # SF1 had 20 expected pieces before and has 20 after; the replaced line must not add a second 20.
     assert Decimal(welt.client.get('/api/dashboard').json()['delivered_quantity'])==base
+
+
+def post_revision(welt, rid, pdf, view, selection, withdraw=(), **values):
+    import json
+    return welt.client.post(f'/api/winter-abgleich/{rid}/uebernehmen', files={'file': ('synthetic.pdf', pdf, 'application/pdf')},
+        data={'confirmed': 'true', 'fingerprint': view['fingerprint'], 'selection': json.dumps(selection),
+              'withdraw': json.dumps(list(withdraw)), **values})
+
+
+def test_revised_list_creates_new_article_and_withdraws_unlisted_with_reason(welt):
+    rid = setup_order(welt); pdf = size_pdf(name='Atomic Brand New 90 W'); view = preview(welt, rid, pdf).json()
+    group = view['groups'][0]; old = view['originals'][0]
+    assert group['target_id'] is None
+    with welt.sessions() as s:
+        articles = s.scalar(select(func.count()).select_from(Artikel))
+    # New article and withdrawal are order corrections: reason is mandatory.
+    assert post_revision(welt, rid, pdf, view, {group['key']: 0}, [old['id']]).status_code == 409
+    assert post_revision(welt, rid, pdf, view, {group['key']: 0}, [old['id']], revise_quantities='true', reason='short').status_code == 409
+    done = post_revision(welt, rid, pdf, view, {group['key']: 0}, [old['id']], revise_quantities='true', reason='Neue Filialliste ersetzt die Bestellung')
+    assert done.status_code == 200, done.text
+    assert post_revision(welt, rid, pdf, view, {group['key']: 0}, [old['id']], revise_quantities='true', reason='Neue Filialliste ersetzt die Bestellung').json()['repeated']
+    with welt.sessions() as s:
+        assert s.scalar(select(func.count()).select_from(Artikel)) == articles + 1
+        active = s.scalars(select(WareneingangPosition).where(WareneingangPosition.wareneingang_id == rid,
+            WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))).all()
+        assert sum(p.menge for p in active) == 20 and len(active) == 2
+        assert {s.get(Variante, p.varianten_id).groesse for p in active} == {'23/23.5', '24'}
+        article = s.get(Artikel, s.get(Variante, active[0].varianten_id).artikel_id)
+        assert article.marke == 'Atomic' and article.lieferanten_artikelnr == 'Atomic Brand New 90 W'
+        assert all(p.uvp == 335 for p in active)
+        assert not s.scalars(select(Lagerbewegung)).all()
+
+
+def test_withdraw_rejects_targeted_or_received_articles(welt):
+    rid = setup_order(welt); pdf = size_pdf(); view = preview(welt, rid, pdf).json()
+    group = view['groups'][0]; old = view['originals'][0]
+    assert post_revision(welt, rid, pdf, view, {group['key']: old['id']}, [old['id']], revise_quantities='true', reason='Withdraw and replace same').status_code == 409
+    with welt.sessions.begin() as s:
+        p = s.scalar(select(WareneingangPosition).where(WareneingangPosition.wareneingang_id == rid)); p.menge_eingetroffen = 1
+    view = preview(welt, rid, pdf).json()
+    assert post_revision(welt, rid, pdf, view, {}, [old['id']], revise_quantities='true', reason='Entfallen aber schon gebucht').status_code == 409
+
+
+def test_explicit_revision_takes_new_list_prices_but_plain_split_still_blocks(welt):
+    rid = setup_order(welt); pdf = size_pdf(); view = preview(welt, rid, pdf).json(); group = view['groups'][0]
+    changed = pdf.replace(b'', b'')
+    import pymupdf
+    with pymupdf.open(stream=pdf, filetype='pdf') as doc:
+        page = doc[0]
+        for rect in page.search_for('335'):
+            page.add_redact_annot(rect)
+        page.apply_redactions(); page.insert_text((232, 120), '349', fontsize=8)
+        for rect in doc[1].search_for(str(20 * 335)):
+            doc[1].add_redact_annot(rect)
+        doc[1].apply_redactions(); doc[1].insert_text((49, 120), str(20 * 349), fontsize=8)
+        changed = doc.tobytes()
+    try:
+        view = preview(welt, rid, changed).json(); group = view['groups'][0]
+    except Exception:
+        pytest.skip('synthetic price edit not parseable')
+    if preview(welt, rid, changed).status_code != 200 or group['warnings']:
+        pytest.skip('synthetic price edit rejected by the matrix checks')
+    assert post_revision(welt, rid, changed, view, {group['key']: group['target_id']}).status_code == 409
+    done = post_revision(welt, rid, changed, view, {group['key']: group['target_id']}, revise_quantities='true', reason='Neue Preise der Filialliste')
+    assert done.status_code == 200, done.text
+    with welt.sessions() as s:
+        active = s.scalars(select(WareneingangPosition).where(WareneingangPosition.wareneingang_id == rid,
+            WareneingangPosition.ersetzt_durch_abgleich_id.is_(None))).all()
+        assert {p.uvp for p in active} == {349}

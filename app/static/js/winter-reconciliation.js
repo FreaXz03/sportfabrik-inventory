@@ -2,7 +2,7 @@
   const $ = id => document.getElementById(id);
   const t = (...args) => window.SportfabrikI18n.t(...args);
   const node = (tag, text) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; return el; };
-  let view = null, sourceFile = null, targetLabels = new Map(), controls = [], busy = false;
+  let view = null, sourceFile = null, targetLabels = new Map(), controls = [], withdrawals = [], busy = false, newLabel = '';
   function reset() { view = null; $('winterReview').hidden = true; $('winterApply').disabled = true; }
   async function request(url, body) {
     const response = await fetch(url, body ? { method: 'POST', body } : {});
@@ -15,26 +15,35 @@
     for (const c of controls) if (c.check.checked && targetLabels.has(c.input.value)) result[c.group.key] = targetLabels.get(c.input.value);
     return result;
   }
+  function withdrawn() { return withdrawals.filter(w => w.check.checked && !w.check.disabled).map(w => w.original.id); }
   function update(changed = true) {
     if (!view) return;
     if (changed) $('winterConfirmed').checked = false;
     const targets = new Map();
-    let valid = true, selected = 0;
+    let valid = true, selected = 0, created = 0, createdTotal = 0, removed = 0, removedTotal = 0;
     for (const c of controls) {
-      const id = targetLabels.get(c.input.value), original = view.originals.find(o => o.id === id);
+      const id = targetLabels.get(c.input.value), original = view.originals.find(o => o.id === id), isNew = id === 0;
       c.message.textContent = c.group.warnings.join(' ') + (c.group.applied ? ' ' + t('winter.already_used') : '');
-      if (!original) c.message.append(node('span', t('winter.needs_match')));
+      if (isNew) c.message.append(node('span', t('winter.new_note')));
+      else if (!original) c.message.append(node('span', t('winter.needs_match')));
       else {
         c.message.append(node('span', t('winter.compare', { old: original.quantity, current: c.group.quantity })));
         if (original.blocked) c.message.append(node('span', ' ' + t('winter.already_received')));
       }
       if (c.check.checked) {
         selected++;
-        if (!original || original.blocked || c.group.applied || c.group.warnings.length) valid = false;
+        if (isNew) { created++; createdTotal += Number(c.group.quantity); }
+        else if (!original || original.blocked || c.group.applied || c.group.warnings.length) valid = false;
+        if (isNew && (c.group.applied || c.group.warnings.length)) valid = false;
         if (original) targets.set(id, (targets.get(id) || 0) + Number(c.group.quantity));
       }
     }
-    let oldTotal = 0, newTotal = 0, mismatch = false;
+    for (const w of withdrawals) {
+      w.check.disabled = targets.has(w.original.id) || w.original.blocked;
+      if (w.check.disabled) w.check.checked = false;
+      if (w.check.checked) { removed++; removedTotal += Number(w.original.quantity); }
+    }
+    let oldTotal = 0, newTotal = 0, mismatch = created > 0 || removed > 0;
     for (const [id, quantity] of targets) {
       const old = Number(view.originals.find(o => o.id === id).quantity);
       oldTotal += old; newTotal += quantity; mismatch ||= old !== quantity;
@@ -42,18 +51,24 @@
     const revision = $('winterRevise').checked;
     $('winterReason').disabled = !revision;
     if (mismatch && (!revision || $('winterReason').value.trim().length < 10)) valid = false;
-    $('winterSelected').textContent = t('winter.selection_summary', { count: selected, old: oldTotal, current: newTotal, unchanged: view.originals.length - targets.size }) + (mismatch ? ' ' + t('winter.quantity_conflict') : '');
-    $('winterApply').disabled = busy || !selected || !valid || !$('winterConfirmed').checked;
+    $('winterSelected').textContent = t('winter.selection_summary', { count: selected, old: oldTotal, current: newTotal, unchanged: view.originals.length - targets.size - removed })
+      + ' ' + t('winter.revision_summary', { created, createdTotal, removed, removedTotal }) + (mismatch ? ' ' + t('winter.quantity_conflict') : '');
+    $('winterApply').disabled = busy || !(selected || removed) || !valid || !$('winterConfirmed').checked;
   }
   function render() {
     controls = []; targetLabels = new Map();
     $('winterTargets').replaceChildren(); $('winterOriginals').replaceChildren();
-    const labels = new Map();
+    const labels = new Map(); withdrawals = []; $('winterWithdraw').replaceChildren();
+    newLabel = t('winter.new_option');
+    targetLabels.set(newLabel, 0); const newOption = node('option'); newOption.value = newLabel; $('winterTargets').append(newOption);
     for (const original of view.originals) {
       const label = original.name + ' · ' + original.quantity + ' · ' + Object.keys(original.sizes).join(' / ') + ' [' + original.id + ']';
       targetLabels.set(label, original.id); labels.set(original.id, label);
       const option = node('option'); option.value = label; $('winterTargets').append(option);
       $('winterOriginals').append(node('li', label));
+      const item = node('li'), box = node('input'), caption = node('label'); box.type = 'checkbox'; box.setAttribute('aria-label', t('winter.withdraw') + ': ' + original.name);
+      caption.append(box, node('span', ' ' + label)); item.append(caption); $('winterWithdraw').append(item);
+      withdrawals.push({ original, check: box }); box.addEventListener('change', () => update());
     }
     const fragment = document.createDocumentFragment();
     for (const group of view.groups) {
@@ -98,11 +113,21 @@
   for (const id of ['winterFile', 'winterOrder']) $(id).addEventListener('change', reset);
   for (const id of ['winterRevise', 'winterReason']) $(id).addEventListener('input', () => update());
   $('winterConfirmed').addEventListener('change', () => update(false));
+  $('winterSelectAll').addEventListener('click', () => {
+    if (!view) return;
+    for (const c of controls) {
+      if (c.check.disabled) continue;
+      if (!c.input.value) c.input.value = newLabel;
+      c.check.checked = true;
+    }
+    for (const w of withdrawals) w.check.checked = true;
+    update();
+  });
   $('winterApply').addEventListener('click', async () => {
     if (busy || $('winterApply').disabled || !view) return;
     if (!window.confirm(t($('winterRevise').checked ? 'winter.confirm_revision' : 'winter.confirm_apply'))) return;
     const data = body(); data.append('confirmed', 'true'); data.append('fingerprint', view.fingerprint);
-    data.append('selection', JSON.stringify(selections())); data.append('revise_quantities', String($('winterRevise').checked));
+    data.append('selection', JSON.stringify(selections())); data.append('withdraw', JSON.stringify(withdrawn())); data.append('revise_quantities', String($('winterRevise').checked));
     data.append('reason', $('winterRevise').checked ? $('winterReason').value.trim() : '');
     busy = true; $('winterUpload').inert = true; $('winterRead').disabled = true; $('winterReview').inert = true; update(false);
     try {

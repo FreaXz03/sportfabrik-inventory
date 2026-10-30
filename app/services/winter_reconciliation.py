@@ -89,14 +89,31 @@ def snapshot(session, receipt_id, parsed, allowed, language):
                 original_total=str(sum(o['quantity'] for o in old.values())),new_total=str(sum(Decimal(n['quantity']) for n in new.values())))
 
 
+def _article_for(session, supplier_id, row):
+    """Reuse the shared article with the same brand/name, otherwise create it like a document import."""
+    from .artikel import artikel_group_key, finde_artikel
+    from .importer import _resolve_kategorie_id
+    key=artikel_group_key(row.get('brand'),row['name'])
+    article=finde_artikel(session,supplier_id,key)
+    if article is None:
+        article=Artikel(lieferant_id=supplier_id,marke=row.get('brand'),lieferanten_artikelnr=row['name'],
+            bezeichnung=row.get('description'),fedas_code=None,
+            kategorie_id=_resolve_kategorie_id(session,{},None,row.get('description'),None))
+        session.add(article);session.flush()
+    return article
+
+
 def apply_revision(session_factory, receipt_id, parsed, digest, filename, fingerprint, selection,
-                   allowed, actor, language='de', revise_quantities=False, reason=''):
-    if not isinstance(selection,dict) or not selection or any(type(v) is not int for v in selection.values()):
+                   allowed, actor, language='de', revise_quantities=False, reason='', withdraw=()):
+    # Selection value 0 creates/reuses a new article; `withdraw` removes unlisted open articles.
+    withdraw=sorted(set(withdraw))
+    if not isinstance(selection,dict) or any(type(v) is not int for v in selection.values()) \
+            or any(type(v) is not int for v in withdraw) or not (selection or withdraw):
         reject('selection_required',language)
     with session_factory() as session,session.begin():
         if session.bind.dialect.name=='postgresql':
             session.execute(text(f'SELECT pg_advisory_xact_lock({ADVISORY_LOCK_ID})'))
-        request_hash=hashlib.sha256(json.dumps([receipt_id,digest,selection,revise_quantities,reason],sort_keys=True).encode()).hexdigest()
+        request_hash=hashlib.sha256(json.dumps([receipt_id,digest,selection,revise_quantities,reason,withdraw],sort_keys=True).encode()).hexdigest()
         receipt=session.get(Wareneingang,receipt_id)
         if receipt is None or receipt.lagerort_id not in allowed:reject('forbidden',language)
         prior=session.scalar(select(WinterAbgleich).where(WinterAbgleich.anfrage_hash==request_hash))
@@ -107,20 +124,35 @@ def apply_revision(session_factory, receipt_id, parsed, digest, filename, finger
             reject('already_used',language)
         view=snapshot(session,receipt_id,parsed,allowed,language)
         if view['fingerprint']!=fingerprint:reject('stale',language)
+        supplier_id=session.get(Dokument,receipt.dokument_id).lieferant_id
         new={g['key']:g for g in view['groups']};old={g['id']:g for g in view['originals']}
-        targets=defaultdict(list)
+        targets=defaultdict(list);created_groups=[]
         for key,aid in selection.items():
-            if key not in new or aid not in old:reject('selection_required',language)
+            if key not in new or (aid and aid not in old):reject('selection_required',language)
             if new[key]['warnings']:reject('source_error',language)
+            if not aid:
+                created_groups.append(new[key]);continue
             if old[aid]['blocked']:reject('already_received',language)
             targets[aid].append(new[key])
+        for aid in withdraw:
+            if aid not in old or aid in targets:reject('selection_required',language)
+            if old[aid]['blocked']:reject('already_received',language)
+        if (created_groups or withdraw) and not (revise_quantities and len(reason.strip())>=10):
+            reject('quantity_conflict',language)
         for aid,groups in targets.items():
             amount=sum(Decimal(g['quantity']) for g in groups)
             if amount!=Decimal(old[aid]['quantity']) and not (revise_quantities and len(reason.strip())>=10):
                 reject('quantity_conflict',language)
         # Never change a receipt price from a size matrix; price discrepancies require review.
-        before=[r for r in view['before'] if r['article_id'] in targets]
+        before=[r for r in view['before'] if r['article_id'] in targets or r['article_id'] in withdraw]
+        revised=revise_quantities and len(reason.strip())>=10
+        new_prices={}
         for aid,groups in targets.items():
+            if revised:
+                # Explicit order revision: the new list's prices apply to the new lines (old lines stay as history).
+                listed={(Decimal(r['uvp']),Decimal(r['ek'])) for g in groups for r in g['rows']}
+                if len(listed)!=1:reject('price_conflict',language)
+                new_prices[aid]=next(iter(listed));continue
             prices={(r['uvp'],r['ek'],r['unit']) for r in before if r['article_id']==aid}
             if len(prices)!=1:reject('price_conflict',language)
             old_vp,old_ep,_=next(iter(prices))
@@ -128,7 +160,7 @@ def apply_revision(session_factory, receipt_id, parsed, digest, filename, finger
                 reject('price_conflict',language)
         audit=WinterAbgleich(wareneingang_id=receipt_id,datei_hash=digest,anfrage_hash=request_hash,dateiname=(filename or 'winter.pdf')[:500],
             benutzer_kassennummer=actor.get('kassennummer'),benutzer_name=actor.get('name'),zeitpunkt=datetime.now(timezone.utc),
-            data=dict(before=before,after=[],selection=selection,revise_quantities=revise_quantities,reason=reason,source=parsed['groups']))
+            data=dict(before=before,after=[],selection=selection,withdrawn=withdraw,revise_quantities=revise_quantities,reason=reason,source=parsed['groups']))
         session.add(audit);session.flush()
         created=[]
         for aid,groups in targets.items():
@@ -149,8 +181,9 @@ def apply_revision(session_factory, receipt_id, parsed, digest, filename, finger
                     variant=Variante(artikel_id=aid,groesse=size,farbe=color,ean=None,ean_intern=False)
                     session.add(variant);session.flush()
                 position=WareneingangPosition(wareneingang_id=receipt_id,varianten_id=variant.id,menge=quantity,
-                    menge_eingetroffen=0,einheit=original['unit'],uvp=Decimal(original['uvp']),
-                    ek=None if original['ek']=='None' else Decimal(original['ek']))
+                    menge_eingetroffen=0,einheit=original['unit'],
+                    uvp=new_prices[aid][0] if aid in new_prices else Decimal(original['uvp']),
+                    ek=new_prices[aid][1] if aid in new_prices else (None if original['ek']=='None' else Decimal(original['ek'])))
                 session.add(position);session.flush()
                 source=dict(winter_reconciliation_id=audit.id,replaced_position_ids=old[aid]['position_ids'],
                     size=size,quantity=str(quantity),source_rows=[r for g in groups for r in g['rows']])
@@ -160,5 +193,26 @@ def apply_revision(session_factory, receipt_id, parsed, digest, filename, finger
                 p=session.get(WareneingangPosition,pid)
                 p.ersetzt_durch_abgleich_id=audit.id
                 # Original expected quantities and immutable source snapshots remain as history.
+        for group in created_groups:
+            prices={(Decimal(r['uvp']),Decimal(r['ek'])) for r in group['rows']}
+            if len(prices)!=1:reject('price_conflict',language)
+            uvp,ek=next(iter(prices));row=group['rows'][0]
+            artikel=_article_for(session,supplier_id,row)
+            for size,q in group['sizes'].items():
+                quantity=Decimal(q)
+                if not quantity:continue
+                variants=session.scalars(select(Variante).where(Variante.artikel_id==artikel.id,Variante.groesse==size,Variante.farbe.is_(None))).all()
+                if len(variants)>1:reject('selection_required',language)
+                variant=variants[0] if variants else Variante(artikel_id=artikel.id,groesse=size,farbe=None,ean=None,ean_intern=False)
+                if not variants:session.add(variant);session.flush()
+                position=WareneingangPosition(wareneingang_id=receipt_id,varianten_id=variant.id,menge=quantity,menge_eingetroffen=0,
+                    einheit='Stk',uvp=uvp,ek=ek)
+                session.add(position);session.flush()
+                session.add(WareneingangPositionQuelle(position_id=position.id,data=dict(winter_reconciliation_id=audit.id,
+                    replaced_position_ids=[],size=size,quantity=str(quantity),new_article=True,source_rows=group['rows'])))
+                created.append(dict(position_id=position.id,article_id=artikel.id,variant_id=variant.id,size=size,quantity=str(quantity),new_article=True))
+        for aid in withdraw:
+            for pid in old[aid]['position_ids']:
+                session.get(WareneingangPosition,pid).ersetzt_durch_abgleich_id=audit.id
         audit.data={**audit.data,'after':created}
         return dict(id=audit.id,repeated=False,positions=len(created))
