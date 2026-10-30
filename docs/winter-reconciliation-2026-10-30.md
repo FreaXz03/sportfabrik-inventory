@@ -29,3 +29,29 @@ In the real SF2 list the sections *Winterschuhe Men* and *Winterschuhe Lady* pri
 ## Automatic match suggestions (30 October 2026)
 
 The review table now proposes a target for every new group (`suggest()` in `app/services/winter_reconciliation.py`; nothing is applied automatically). Confidence levels: **exact** (same name), **high** (name ratio >= 0.93, same numbers, unambiguous), **medium** (ratio >= 0.75 but a number/model number differs or several old articles are almost equally similar), **none** (a new article is proposed). Only exact/high suggestions are pre-ticked; medium ones are filled in but unticked with a visible warning, `none` pre-fills "new article" unticked. Articles with received goods are never proposed, each old article is proposed at most once, every field stays editable and manual changes are labelled. A summary line shows the counts and how many previous articles do not occur in the new list. Real SF2 check (parser level, names only): 26 exact, 5 high, 52 medium, 119 none. Tests: `tests/test_winter_suggestions.py`.
+
+## OPEN FINDING – to be reworked: assignment quality and quantity differences (30 October 2026)
+
+Status: **open, needs review and rework.** Raised by Fabian while testing the SF2 review page on the development instance (commit da30244). Nothing was changed for this finding; it is documentation only.
+
+### Observations (checked)
+- The SF2 review page showed: 24 same name, 4 very similar, 55 uncertain, 112 without match, and 152 previous articles missing from the new list.
+- Example from the screenshot: new line "Atomic Hawx Prime RX85 W 100mm" was proposed against the previous article "Atomic Hawk Prime RX100 …" (85 % similarity, flagged as uncertain, not ticked). Two differences: model number (RX85 vs RX100) and spelling (Hawx vs Hawk).
+- Total quantities differ strongly between stored order and new list. SF1: 3,266 stored vs 2,600 in the PDF. SF2: 3,220 stored vs 2,324 in the PDF. The PDF section totals and row/grand totals were verified earlier, so this is not a reading error (parser-level check).
+- Real SF2 name check at parser level: 26 exact, 5 high, 52 medium, 119 none (page at that time later showed slightly different counts after upload).
+
+### Not verified
+- Fabian's example of a ski boot with 16 pieces in the old list vs 18 in the new list was **not** checked for the specific article. The PDF shows Scarpa Rush Polar GTX with 17 (Men) and 16 (Lady); it is unknown whether this is the boot meant.
+- Whether "Hawx" is a typo in the old or the new list is unknown (needs the original receipts).
+- The review page was not opened logged in by the assistant; observations come from the user's screenshot and parser-level checks.
+
+### Hypotheses (not confirmed)
+- The new branch lists are a revised order with different models, colours and quantities, not just the old list with sizes. This would explain the many "none" and "uncertain" rows.
+- Name-similarity matching alone is too weak for foreign model names and produces wrong suggestions for different models in the same product family.
+
+### To rework / decide
+1. Compare old order and new list per article for the affected boots (e.g. the 16 vs 18 example) and confirm with Fabian whether quantity changes are real.
+2. Improve matching beyond name similarity (for example brand, model number as hard criterion, article number or supplier number where present, colour handling, known spelling variants) and keep uncertain rows unticked.
+3. Make the review page show clearer why a row is uncertain and show quantity difference next to each suggestion, including a filter for "quantity differs".
+4. Decide how to handle new-list lines without an old counterpart (new article with revision reason) and old articles missing from the new list (withdrawal), per branch.
+5. SF3 and SF4 lists are untested; production has not been updated.
